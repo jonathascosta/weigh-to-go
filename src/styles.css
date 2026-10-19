@@ -1128,6 +1128,7 @@ main {
   .table-fit th,
   .table-fit td {
     white-space: normal;
+    padding-inline: 4px;
   }
 }
 

@@ -130,6 +130,8 @@ describe('settings', () => {
     vi.stubGlobal('navigator', { languages: ['en-GB'], language: 'en-GB' });
     target.dispatchEvent(new Event('languagechange'));
     target.dispatchEvent(Object.assign(new Event('storage'), { key: 'other-app' }));
+    // A chart preference is the dashboard's to follow, not a change of settings.
+    target.dispatchEvent(Object.assign(new Event('storage'), { key: `${PREFS_PREFIX}pct.blocks` }));
     expect(heard).toEqual(['en-US', 'en-GB']);
     stop();
     target.dispatchEvent(new Event('languagechange'));

@@ -2,6 +2,7 @@
  * The diary: its parts laid out in the page, each drawn again when the data or the settings change.
  */
 import type { App, State } from '../app/app';
+import { watchView } from '../app/view';
 import { onSettingsChange, settings, type Settings } from '../i18n';
 import { mountChart } from './chart';
 import { mountData } from './data';
@@ -67,5 +68,9 @@ export function mountDashboard(root: HTMLElement, app: App): void {
   });
   onSettingsChange((s) => {
     render(app.state(), s);
+  });
+  // Choices made in another tab show up here too.
+  watchView(window, () => {
+    render(app.state(), settings());
   });
 }

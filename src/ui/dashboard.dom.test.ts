@@ -297,6 +297,43 @@ describe('Dashboard II', () => {
     );
   });
 
+  it('shows the choices made in another tab', async () => {
+    await saveDays(climbs);
+    const block = () => section('pct-title').querySelector('.chart')!.closest<HTMLElement>('.block')!;
+    expect(block().hidden).toBe(false);
+    // Another tab turns the % chart off and changes the hiccup rules.
+    localStorage.setItem('weigh-to-go:pct.blocks', JSON.stringify(['kpis', 'weekly', 'milestones']));
+    window.dispatchEvent(Object.assign(new Event('storage'), { key: 'weigh-to-go:pct.blocks' }));
+    expect(block().hidden).toBe(true);
+    expect(chip('pct-title', 'Chart').getAttribute('aria-pressed')).toBe('false');
+    localStorage.setItem(
+      'weigh-to-go:hiccups.rules',
+      JSON.stringify({ basis: 'kg', minDays: 3, minGain: 1, tolerance: 0.5 }),
+    );
+    window.dispatchEvent(Object.assign(new Event('storage'), { key: 'weigh-to-go:hiccups.rules' }));
+    expect(section('chart-title').querySelectorAll('rect.hiccup')).toHaveLength(1);
+    // Another app's key changes nothing here.
+    chip('pct-title', 'Chart').click();
+    window.dispatchEvent(Object.assign(new Event('storage'), { key: 'other-app' }));
+    expect(block().hidden).toBe(false);
+  });
+
+  it('writes the simulator rate back as kept, and empties a bad weight after an erase', async () => {
+    const rate = root.querySelector<HTMLInputElement>('#sim-rate')!;
+    rate.value = '0.1234';
+    rate.dispatchEvent(new Event('input'));
+    rate.dispatchEvent(new Event('change'));
+    expect(rate.value).toBe('0.123');
+    const start = root.querySelector<HTMLInputElement>('#sim-start')!;
+    start.value = '2x';
+    start.dispatchEvent(new Event('input'));
+    expect(section('rate-title').textContent).toContain('Type the starting weight in kg');
+    await app.erase();
+    await settle();
+    expect([start.value, rate.value]).toEqual(['', '0.1']);
+    expect(section('rate-title').textContent).not.toContain('Type the starting weight in kg');
+  });
+
   it('works, and says what is missing, with 0 to 3 weigh-ins', async () => {
     const errors = vi.spyOn(console, 'error');
     const text = () =>

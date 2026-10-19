@@ -370,12 +370,20 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
   // While a field holds something that isn't a weight, the simulator says so (and saves nothing).
   let startBad = false;
   let targetBad = false;
+  /** Set when what is held was read again (an erase, another tab): the fields show it, typed or not. */
+  let refill = false;
+  let generation = viewGeneration();
   rateField.input.addEventListener('input', () => {
     const text = rateField.input.value.trim();
     const v = text === '' ? null : parseNumber(text);
     // Kept to the precision it is shown with.
     simRate.set(v === null || Number.isNaN(v) ? null : Math.round(v * 1000) / 1000);
     redraw();
+  });
+  // Once typed, the rate reads back as kept: 0.1234 becomes 0.123.
+  rateField.input.addEventListener('change', () => {
+    const rate = simRate.get();
+    if (rate !== null) rateField.input.value = rateText(rate, settings());
   });
   startField.input.addEventListener('input', () => {
     const kg = typedKg(startField.input.value);
@@ -810,11 +818,13 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
     const rate = simRate.get();
     const start = simStart.get();
     const target = simTarget.get();
-    if (document.activeElement !== rateField.input)
+    const force = refill;
+    refill = false;
+    if (force || document.activeElement !== rateField.input)
       rateField.input.value = rate === null ? '' : rateText(rate, s);
-    if (document.activeElement !== startField.input && !startBad)
+    if (force || (document.activeElement !== startField.input && !startBad))
       startField.input.value = start === null ? '' : f.weightValue(start, unit);
-    if (document.activeElement !== targetField.input && !targetBad)
+    if (force || (document.activeElement !== targetField.input && !targetBad))
       targetField.input.value = target === null ? '' : f.weightValue(target, unit);
     const view = simView(
       { rate, start: startBad ? undefined : start, target: targetBad ? undefined : target },
@@ -866,6 +876,13 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
     curveNote.textContent = m['rate.curve.note'](unitName);
     simTitle.textContent = m['sim.title'];
     simNote.textContent = m['sim.note'](unitName);
+    if (generation !== viewGeneration()) {
+      // What was typed but not kept belongs to the choices just forgotten.
+      generation = viewGeneration();
+      startBad = false;
+      targetBad = false;
+      refill = true;
+    }
     const key = `${s.locale.tag}|${s.weightUnit}|${String(viewGeneration())}`;
     if (built !== key) {
       buildControls(s);

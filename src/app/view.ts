@@ -7,7 +7,16 @@ import type { Method } from '../analysis/analyze';
 import { METHODS } from '../analysis/goals';
 import { DEFAULT_RULES, type HiccupBasis, type HiccupRules } from '../analysis/hiccups';
 import { isWeight } from '../data/records';
-import { oneOf, pref, type Pref } from '../data/prefs';
+import { oneOf, pref as savedPref, PREFS_PREFIX, type Pref } from '../data/prefs';
+
+/** The keys of this file's preferences, so a change made in another tab can be told apart. */
+const viewKeys = new Set<string>();
+
+/** A screen preference of the charts and sections (see `pref` in data/prefs.ts). */
+const pref = <T>(key: string, valid: (value: unknown) => value is T, fallback: T): Pref<T> => {
+  viewKeys.add(PREFS_PREFIX + key);
+  return savedPref(key, valid, fallback);
+};
 
 /**
  * What the page holds in memory for each preference: read from storage the first time it is needed
@@ -78,6 +87,26 @@ export function resetView(): void {
 
 /** Changes on every reset: parts that built their chips before must build them again. */
 export const viewGeneration = (): number => generation;
+
+/**
+ * Follows the choices made in another tab: when one of these preferences changes there (or all of
+ * them are cleared), forgets what is held and calls `onChange` to draw again. The language and
+ * units are i18n's own (`watchSettings`). Returns the unsubscribe.
+ */
+export function watchView(
+  target: Pick<Window, 'addEventListener' | 'removeEventListener'>,
+  onChange: () => void,
+): () => void {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key !== null && !viewKeys.has(event.key)) return;
+    resetView();
+    onChange();
+  };
+  target.addEventListener('storage', onStorage);
+  return () => {
+    target.removeEventListener('storage', onStorage);
+  };
+}
 
 /** A guard for a list of values from a fixed set (each at most once), for `pref`. */
 const someOf =

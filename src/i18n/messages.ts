@@ -846,7 +846,7 @@ export const pt: Messages = {
   'pct.weekly.partialBefore': 'a semana anterior tem dias sem pesagem',
   'pct.weekly.partialBoth': 'as duas semanas têm dias sem pesagem',
   'pct.weekly.legendFull': 'as duas semanas com todos os dias registrados',
-  'pct.weekly.legendPartial': 'mais clara: esta semana ou a anterior tem dias sem pesagem',
+  'pct.weekly.legendPartial': 'barra mais clara: esta semana ou a anterior tem dias sem pesagem',
   'pct.ms.title': 'Marcos de perda',
   'pct.ms.note': 'Quando cada marco foi ou seria atingido, em cada ritmo de projeção.',
   'pct.ms.milestone': 'Marco',

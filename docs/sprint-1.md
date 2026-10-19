@@ -119,9 +119,10 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    give. A figure without a projection says what it needs, never "not reached". The bar charts
    label their time axis like the others (months with their year over long spans).
 
-   Left for later: preferences don't follow a change made in another tab until a reload (as in
-   story 5); the hiccup gain and tolerance chips are the kg lists shown in lb (1.1, 2.2 lb…), not
-   round pound values.
+   A choice made in another tab shows up here: a `storage` event for one of these preferences
+   reads them all again and draws again (`watchView`), while `watchSettings` now follows only the
+   language and units, so neither handles the other's keys. Left for later: the hiccup gain and
+   tolerance chips are the kg lists shown in lb (1.1, 2.2 lb…), not round pound values.
 
 7. **Dashboard III.** Goal, BMI, facts, daily variation, weekly averages, weekdays, calendar, and the
    section toggles.

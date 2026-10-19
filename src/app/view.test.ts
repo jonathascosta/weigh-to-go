@@ -9,6 +9,7 @@ import {
   pctBlocks,
   pctBlocksPref,
   resetView,
+  watchView,
   pctLayersPref,
   simRatePref,
   simStartPref,
@@ -84,5 +85,30 @@ describe('the held choices', () => {
     resetView();
     expect(pctBlocks.has('chart')).toBe(true);
     expect(hiccupRules()).toEqual(DEFAULT_RULES);
+  });
+});
+
+describe('watchView', () => {
+  it('reads again, and redraws, when another tab changes one of these preferences', () => {
+    const target = new EventTarget() as unknown as Window;
+    let drawn = 0;
+    const stop = watchView(target, () => {
+      drawn++;
+    });
+    expect(pctBlocks.has('chart')).toBe(true);
+    // Saved by another tab: the page still holds what it read, until the event says so.
+    storage.setItem(`${PREFS_PREFIX}pct.blocks`, JSON.stringify(['kpis']));
+    expect(pctBlocks.has('chart')).toBe(true);
+    const event = (key: string | null) => Object.assign(new Event('storage'), { key });
+    target.dispatchEvent(event(`${PREFS_PREFIX}lang`));
+    target.dispatchEvent(event('other-app'));
+    expect([drawn, pctBlocks.has('chart')]).toEqual([0, true]);
+    target.dispatchEvent(event(`${PREFS_PREFIX}pct.blocks`));
+    expect([drawn, pctBlocks.has('chart')]).toEqual([1, false]);
+    target.dispatchEvent(event(null));
+    expect(drawn).toBe(2);
+    stop();
+    target.dispatchEvent(event(null));
+    expect(drawn).toBe(2);
   });
 });
