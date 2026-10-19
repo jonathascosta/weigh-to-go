@@ -16,16 +16,19 @@ import {
   HICCUP_DAYS,
   HICCUP_GAINS,
   HICCUP_TOLERANCES,
+  hiccupChoice,
   hiccupRules,
-  hiccupRulesPref,
+  viewGeneration,
+  type One,
   type HiccupChoice,
 } from '../app/view';
 import { count, plural, settings, type Settings } from '../i18n';
 import { fromKg } from '../units';
-import { control, controlRow, one, oneChips } from './controls';
+import { control, controlRow, oneChips } from './controls';
 import { h, rich, s as svg, tone } from './dom';
 import {
   createPlot,
+  labelRow,
   dotsPath,
   leftFor,
   nearDay,
@@ -201,19 +204,19 @@ export function mountHiccups(
   app: { state(): State },
   onRules: () => void,
 ): (state: State, s: Settings) => void {
-  const saved = hiccupRulesPref.read();
-  const basis = one({ read: () => saved.basis, write: () => hiccupRulesPref.write(choice()) });
-  const minDays = one({ read: () => saved.minDays, write: () => hiccupRulesPref.write(choice()) });
-  const minGain = one({ read: () => saved.minGain, write: () => hiccupRulesPref.write(choice()) });
-  const tolerance = one({ read: () => saved.tolerance, write: () => hiccupRulesPref.write(choice()) });
-  /** The rules as chosen in this visit (kept here too, for a browser that keeps nothing). */
-  const choice = (): HiccupChoice => ({
-    basis: basis.get(),
-    minDays: minDays.get(),
-    minGain: minGain.get(),
-    tolerance: tolerance.get(),
+  // One chip row per rule, over the rules held once for this card and the main chart.
+  const rule = <K extends keyof HiccupChoice>(key: K): One<HiccupChoice[K]> => ({
+    get: () => hiccupChoice.get()[key],
+    set: (value) => {
+      hiccupChoice.set({ ...hiccupChoice.get(), [key]: value });
+    },
   });
-  const rules = () => ({ ...hiccupRules(), ...choice() });
+  const basis = rule('basis');
+  const minDays = rule('minDays');
+  const minGain = rule('minGain');
+  const tolerance = rule('tolerance');
+  const choice = () => hiccupChoice.get();
+  const rules = hiccupRules;
 
   const title = h('h2', { attrs: { id: 'hiccups-title' } });
   const note = h('p', { class: 'note' });
@@ -331,9 +334,9 @@ export function mountHiccups(
     timeAxis(grid, x, f, { left, right, bottom, height });
     root.append(grid);
     const { g, labels } = plotGroups(root, 'hiccups-clip', { left, right, bottom });
-    // Each hiccup: its band, the way back to where it started, and its gain above it. Labels take
-    // turns between two rows, and are left out where neither has room (the tooltip still says).
-    const rowEnds = [-Infinity, -Infinity];
+    // Each hiccup: its band, the way back to where it started, and its gain above it, written only
+    // where there is room, as on the main chart (the tooltip still has every one).
+    const room = labelRow();
     for (const x0 of hiccups) {
       const a = x(x0.start.t);
       const p = x(x0.peak.t);
@@ -362,15 +365,9 @@ export function mountHiccups(
       const text = f.weightChange(x0.gain, unit);
       const half = textWidth(text) / 2;
       const centre = (a + p) / 2;
-      const row = rowEnds.findIndex((e) => centre - half > e + 4);
-      if (row < 0) continue;
-      rowEnds[row] = centre + half;
+      if (!room(centre, 2 * half)) continue;
       labels.append(
-        svg(
-          'text',
-          { class: 'annot annot-bad', x: centre, y: row ? top + 12 : top - 6, 'text-anchor': 'middle' },
-          text,
-        ),
+        svg('text', { class: 'annot annot-bad', x: centre, y: top - 6, 'text-anchor': 'middle' }, text),
       );
     }
     const path = (value: (d: Day) => number | null) =>
@@ -449,7 +446,7 @@ export function mountHiccups(
     const m = s.messages;
     title.textContent = m['hiccups.title'];
     note.textContent = m['hiccups.note'];
-    const key = `${s.locale.tag}|${s.weightUnit}`;
+    const key = `${s.locale.tag}|${s.weightUnit}|${String(viewGeneration())}`;
     if (built !== key) {
       buildControls(s);
       built = key;
@@ -479,7 +476,12 @@ export function mountHiccups(
         h('th', { attrs: { scope: 'col' }, text: m['hiccups.col.start'] }),
         h('th', { class: 'col-wide', attrs: { scope: 'col' }, text: m['hiccups.col.peak'] }),
         h('th', { class: 'num', attrs: { scope: 'col' }, text: m['hiccups.col.days'] }),
-        h('th', { class: 'num col-wide', attrs: { scope: 'col' }, text: m['hiccups.col.weight'] }),
+        h('th', {
+          class: 'num col-wide',
+          attrs: { scope: 'col' },
+          // The values are on the line measured: say which.
+          text: basis.get() === 'kg' ? m['hiccups.col.weight'] : m[`hiccups.basis.${basis.get()}`],
+        }),
         h('th', { class: 'num', attrs: { scope: 'col' }, text: m['hiccups.col.gain'] }),
         h('th', { class: 'num col-wide', attrs: { scope: 'col' }, text: m['hiccups.col.gainPct'] }),
         h('th', { attrs: { scope: 'col' }, text: m['hiccups.col.back'] }),

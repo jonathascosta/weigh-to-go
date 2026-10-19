@@ -14,24 +14,26 @@ import { weightForBmi } from '../analysis/goals';
 import { detectHiccups } from '../analysis/hiccups';
 import type { State } from '../app/app';
 import {
+  chartHorizon,
+  chartLayers,
+  chartMethod,
+  chartPeriod,
   ESSENTIAL_LAYERS,
   hiccupRules,
   HORIZONS,
-  horizonPref,
   LAYERS,
-  layersPref,
-  methodPref,
   PERIODS,
-  periodPref,
-  type Horizon,
+  viewGeneration,
   type Layer,
   type Period,
 } from '../app/view';
 import { count, settings, type Settings } from '../i18n';
 import { fromKg } from '../units';
+import { control, controlRow, oneChips } from './controls';
 import { chips, h, rich, s as svg } from './dom';
 import {
   createPlot,
+  labelRow,
   dotsPath,
   leftFor,
   nearDay,
@@ -92,10 +94,7 @@ export function mountChart(
   container: HTMLElement,
   app: { state(): State },
 ): (state: State, s: Settings) => void {
-  let layers = new Set<Layer>(layersPref.read());
-  let method = methodPref.read();
-  let horizon = horizonPref.read();
-  let period = periodPref.read();
+  const layers = chartLayers;
   const on = (layer: Layer) => layers.has(layer);
 
   const title = h('h2', { attrs: { id: 'chart-title' } });
@@ -121,9 +120,7 @@ export function mountChart(
       LAYERS.map((layer) => ({ value: layer, label: m[`layer.${layer}`], swatch: SWATCH[layer] })),
       (layer) => layers.has(layer),
       (layer) => {
-        if (layers.has(layer)) layers.delete(layer);
-        else layers.add(layer);
-        layersPref.write([...layers]);
+        layers.toggle(layer);
         layerChips.sync();
         redraw();
       },
@@ -131,61 +128,50 @@ export function mountChart(
     const preset = (label: string, pick: readonly Layer[]) => {
       const button = h('button', { class: 'link', attrs: { type: 'button' }, text: label });
       button.addEventListener('click', () => {
-        layers = new Set(pick);
-        layersPref.write([...layers]);
+        layers.set(pick);
         layerChips.sync();
         redraw();
       });
       return button;
     };
-    const methodChips = chips(
-      m['chart.method'],
-      METHOD_KEYS.map((k) => ({ value: k, label: m[`method.${k}`] })),
-      (k) => k === method,
-      (k) => {
-        method = k;
-        methodPref.write(k);
-        methodChips.sync();
-        redraw();
-      },
-    );
-    const horizonChips = chips(
-      m['chart.horizon'],
-      HORIZONS.map((d) => ({ value: d, label: count(d, m['word.day'], s) })),
-      (d) => d === horizon,
-      (d: Horizon) => {
-        horizon = d;
-        horizonPref.write(d);
-        horizonChips.sync();
-        redraw();
-      },
-    );
-    const periodChips = chips(
-      m['chart.period'],
-      PERIODS.map((p) => ({ value: p, label: p === 'all' ? m['period.all'] : count(p, m['word.day'], s) })),
-      (p) => p === period,
-      (p: Period) => {
-        period = p;
-        periodPref.write(p);
-        periodChips.sync();
-        redraw();
-      },
-    );
-    const group = (label: string, ...children: Node[]) =>
-      h('div', { class: 'control' }, h('span', { class: 'control-label', text: label }), ...children);
     controls.replaceChildren(
-      group(
+      control(
         m['chart.layers'],
         layerChips.element,
         preset(m['chart.essential'], ESSENTIAL_LAYERS),
         preset(m['chart.everything'], LAYERS),
       ),
-      h(
-        'div',
-        { class: 'control-row' },
-        group(m['chart.method'], methodChips.element),
-        group(m['chart.horizon'], horizonChips.element),
-        group(m['chart.period'], periodChips.element),
+      controlRow(
+        control(
+          m['chart.method'],
+          oneChips(
+            m['chart.method'],
+            METHOD_KEYS.map((k) => ({ value: k, label: m[`method.${k}`] })),
+            chartMethod,
+            redraw,
+          ),
+        ),
+        control(
+          m['chart.horizon'],
+          oneChips(
+            m['chart.horizon'],
+            HORIZONS.map((d) => ({ value: d, label: count(d, m['word.day'], s) })),
+            chartHorizon,
+            redraw,
+          ),
+        ),
+        control(
+          m['chart.period'],
+          oneChips(
+            m['chart.period'],
+            PERIODS.map((p) => ({
+              value: p,
+              label: p === 'all' ? m['period.all'] : count(p, m['word.day'], s),
+            })),
+            chartPeriod,
+            redraw,
+          ),
+        ),
       ),
     );
   };
@@ -193,6 +179,9 @@ export function mountChart(
   let lastLang = '';
 
   const draw = (state: State, s: Settings) => {
+    const method = chartMethod.get();
+    const horizon = chartHorizon.get();
+    const period = chartPeriod.get();
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
     const u = (kg: number) => fromKg(kg, unit);
@@ -309,14 +298,12 @@ export function mountChart(
     }
     // A hiccup's gain is written under it only where there is room, so many don't pile up; every
     // one still shows in the tooltip of its days.
-    let labelEnd = -Infinity;
+    const room = labelRow();
     for (const hc of hiccups) {
       const a = new Date(Math.max(hc.start.t.getTime(), start.getTime()));
       const text = f.weightChange(hc.gain, unit);
       const centre = (x(a) + x(hc.peak.t)) / 2;
-      const half = textWidth(text) / 2;
-      const labelled = centre - half > labelEnd + 4;
-      if (labelled) labelEnd = centre + half;
+      const labelled = room(centre, textWidth(text));
       g.append(
         svg('rect', {
           class: 'hiccup',
@@ -545,9 +532,10 @@ export function mountChart(
     const m = s.messages;
     title.textContent = m['chart.title'];
     note.textContent = m['chart.note'](m[`unit.${s.weightUnit}`]);
-    if (lastLang !== s.locale.tag) {
+    const key = `${s.locale.tag}|${String(viewGeneration())}`;
+    if (lastLang !== key) {
       buildControls(s);
-      lastLang = s.locale.tag;
+      lastLang = key;
     }
     draw(state, s);
   };

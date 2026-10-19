@@ -4,7 +4,8 @@
  * the pointer, a finger and the keyboard all move, with its tooltip and the hidden line that reads
  * it out. A chart redrawn under a reader keeps their focus and their place.
  */
-import type { ScaleLinear, ScaleTime } from 'd3-scale';
+import { bisector } from 'd3-array';
+import { scaleUtc, type ScaleLinear, type ScaleTime } from 'd3-scale';
 import { utcDay } from 'd3-time';
 import type { Formatter } from '../i18n/format';
 import { h, s as svg } from './dom';
@@ -378,13 +379,6 @@ export function barsPath(bars: readonly { x: number; width: number; y0: number; 
   return parts.join('');
 }
 
-/** Which of `n` evenly spaced labels to write, from the last back, so they don't collide. */
-export function everyNth(n: number, plotWidth: number, labelWidth: number): (i: number) => boolean {
-  const fit = Math.max(1, Math.floor(plotWidth / (labelWidth + 12)));
-  const every = Math.max(1, Math.ceil(n / fit));
-  return (i) => (n - 1 - i) % every === 0;
-}
-
 /** The anchor for a label centred at `x` that must stay between `left` and `right`. */
 export function anchorWithin(
   x: number,
@@ -395,4 +389,68 @@ export function anchorWithin(
   if (x + width / 2 > right) return 'end';
   if (x - width / 2 < left) return 'start';
   return 'middle';
+}
+
+/**
+ * A row of labels that skips one that would touch the last written (the tooltip still has it):
+ * returns whether the label centred at `centre`, `width` wide, has room, and takes it if so.
+ */
+export function labelRow(gap = 4): (centre: number, width: number) => boolean {
+  let end = -Infinity;
+  return (centre, width) => {
+    if (centre - width / 2 <= end + gap) return false;
+    end = centre + width / 2;
+    return true;
+  };
+}
+
+const byTime = (dates: readonly Date[], t: number): number =>
+  bisector((d: Date) => d.getTime()).left(dates, t);
+
+/**
+ * The time axis of a bar chart, whose bars are days or weeks in order (with gaps): the ticks
+ * `timeTicks` picks for their span, each written under the first bar on or after it.
+ */
+export function barTimeAxis(
+  parent: SVGElement,
+  dates: readonly Date[],
+  centre: (i: number) => number,
+  f: Formatter,
+  { left, right, height }: { left: number; right: number; height: number },
+  today = new Date(),
+): void {
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  if (first === undefined || last === undefined) return;
+  const { ticks, style } = timeTicks(scaleUtc([first, last], [left, right]), right - left, today);
+  const room = labelRow(8);
+  let written = 0;
+  let previous = -1;
+  const write = (i: number, day: Date) => {
+    const text = f.day(day.toISOString().slice(0, 10), style);
+    const width = textWidth(text);
+    if (!room(centre(i), width)) return;
+    written++;
+    parent.append(
+      svg(
+        'text',
+        {
+          class: 'tick',
+          x: centre(i),
+          y: height - 8,
+          'text-anchor': anchorWithin(centre(i), width, 0, right + 6),
+        },
+        text,
+      ),
+    );
+  };
+  for (const t of ticks) {
+    const i = byTime(dates, t.getTime());
+    const bar = dates[i];
+    if (bar === undefined || i === previous) continue;
+    previous = i;
+    // A month is named by its tick; a day by the bar's own day (a gap can move it along).
+    write(i, style === 'monthYear' ? t : bar);
+  }
+  if (written === 0) write(dates.length - 1, last);
 }

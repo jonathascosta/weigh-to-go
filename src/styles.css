@@ -1135,3 +1135,27 @@ main {
 .table-fit td.num {
   white-space: nowrap;
 }
+
+.sw-faded {
+  opacity: 0.5;
+}
+
+/* "% a week" stays one unit: in a narrow tile it moves under the value whole. */
+.kpi-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.25em;
+}
+
+.kpi-unit {
+  white-space: nowrap;
+}
+
+/* A label drawn over bars and lines, readable on any of them. */
+.halo {
+  paint-order: stroke;
+  stroke: var(--panel);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}

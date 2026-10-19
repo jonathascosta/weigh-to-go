@@ -26,21 +26,21 @@ import {
   HORIZONS,
   PCT_BLOCKS,
   PCT_LAYERS,
-  pctBlocksPref,
-  pctHorizonPref,
-  pctLayersPref,
-  pctMethodPref,
+  pctBlocks,
+  pctHorizon,
+  pctLayers,
+  pctMethod,
+  viewGeneration,
   type PctLayer,
 } from '../app/view';
 import { count, settings, type Settings } from '../i18n';
-import { control, controlRow, many, manyChips, one, oneChips } from './controls';
+import { control, controlRow, manyChips, oneChips } from './controls';
 import { h, rich, s as svg } from './dom';
 import {
-  anchorWithin,
   barsPath,
+  barTimeAxis,
   createPlot,
   dotsPath,
-  everyNth,
   leftFor,
   nearDay,
   plotGroups,
@@ -82,6 +82,17 @@ export function pctKpiList(analysis: Analysis, method: Method, goalKg: number | 
     above: m['pct.band.above'](hiText),
   };
   const fewRecent = analysis.recentIsFallback && analysis.models.recent !== null;
+  /** What the chosen projection needs when it can't be worked out. */
+  const needsModel = method === 'recent' && fewRecent ? m['pct.needsRecent'] : m['kpi.needsThree'];
+  const hasModel = !(method === 'recent' && analysis.recentIsFallback) && analysis.models[method] !== null;
+  const { last } = analysis;
+  /** What "the last 7 days" needs: two weeks at all, a full last week, or weigh-ins a week ago. */
+  const needsLast7 =
+    last.index < 13
+      ? m['pct.needsTwoWeeks']
+      : last.avg7 === null
+        ? m['pct.needsLastWeek']
+        : m['pct.needsWeekAgo'];
   const list: Kpi[] = [
     {
       label: m['pct.kpi.loss'],
@@ -109,7 +120,7 @@ export function pctKpiList(analysis: Analysis, method: Method, goalKg: number | 
           sub: [m['pct.kpi.vsStart']],
         },
     k.last7LossPct === null
-      ? missing(m['pct.kpi.last7'], m['pct.needsTwoWeeks'])
+      ? missing(m['pct.kpi.last7'], needsLast7)
       : {
           label: m['pct.kpi.last7'],
           value: change(k.last7LossPct),
@@ -118,10 +129,7 @@ export function pctKpiList(analysis: Analysis, method: Method, goalKg: number | 
           sub: [m['pct.kpi.last7Sub']],
         },
     k.currentWeekLossPct === null || k.band === null
-      ? missing(
-          m['pct.kpi.vsCurrent'],
-          method === 'recent' && fewRecent ? m['pct.needsRecent'] : m['kpi.needsThree'],
-        )
+      ? missing(m['pct.kpi.vsCurrent'], needsModel)
       : {
           label: m['pct.kpi.vsCurrent'],
           value: change(k.currentWeekLossPct),
@@ -152,9 +160,12 @@ export function pctKpiList(analysis: Analysis, method: Method, goalKg: number | 
       unit: null,
       tone: null,
       sub: [
-        k.next.days === null
-          ? m['pct.kpi.nextNever']
-          : m['pct.kpi.nextOn'](f.day(isoDay(addDays(analysis.last.t, k.next.days)), 'medium')),
+        // Without a projection there is no "never", only what it needs.
+        !hasModel
+          ? needsModel
+          : k.next.days === null
+            ? m['pct.kpi.nextNever']
+            : m['pct.kpi.nextOn'](f.day(isoDay(addDays(analysis.last.t, k.next.days)), 'medium')),
       ],
     });
   }
@@ -257,10 +268,10 @@ export function mountPercent(
   container: HTMLElement,
   app: { state(): State },
 ): (state: State, s: Settings) => void {
-  const blocks = many(pctBlocksPref);
-  const layers = many(pctLayersPref);
-  const method = one(pctMethodPref);
-  const horizon = one(pctHorizonPref);
+  const blocks = pctBlocks;
+  const layers = pctLayers;
+  const method = pctMethod;
+  const horizon = pctHorizon;
   const on = (layer: PctLayer) => layers.has(layer);
 
   const title = h('h2', { attrs: { id: 'pct-title' } });
@@ -276,7 +287,16 @@ export function mountPercent(
   const weeklyTitle = h('h3', { attrs: { id: 'pct-weekly-title' } });
   const weeklyNote = h('p', { class: 'note' });
   const weekly = createPlot(redraw);
-  const weeklyBlock = h('div', { class: 'block sub' }, weeklyTitle, weeklyNote, weekly.element, weekly.live);
+  const weeklyLegend = h('p', { class: 'legend' });
+  const weeklyBlock = h(
+    'div',
+    { class: 'block sub' },
+    weeklyTitle,
+    weeklyNote,
+    weekly.element,
+    weekly.live,
+    weeklyLegend,
+  );
   const msTitle = h('h3', { attrs: { id: 'pct-ms-title' } });
   const msNote = h('p', { class: 'note' });
   const msHead = h('thead');
@@ -604,9 +624,6 @@ export function mountPercent(
     ).padding(0.3);
     const bw = x.bandwidth();
     const bx = (r: WeeklyPct) => x(r.week.week) ?? left;
-    const short = (d: Date) => f.day(isoDay(d), 'dayMonth');
-    const withYear = rows.some((r) => r.week.t.getUTCFullYear() !== new Date().getFullYear());
-    const label = (d: Date) => (withYear ? f.day(isoDay(d), 'short') : short(d));
 
     const root = weekly.root({
       width,
@@ -646,8 +663,7 @@ export function mountPercent(
       ['bar bar-bad bar-partial', (r: WeeklyPct) => r.pct < 0 && r.partial],
     ] as const)
       root.append(svg('path', { class: cls, d: bars(pick) }));
-    const show = everyNth(rows.length, right - left, textWidth(label(firstRow.week.t)));
-    rows.forEach((r, i) => {
+    for (const r of rows) {
       if (bw >= 26)
         root.append(
           svg(
@@ -661,20 +677,14 @@ export function mountPercent(
             pt(r.pct),
           ),
         );
-      if (show(i))
-        root.append(
-          svg(
-            'text',
-            {
-              class: 'tick',
-              x: bx(r) + bw / 2,
-              y: height - 8,
-              'text-anchor': anchorWithin(bx(r) + bw / 2, textWidth(label(r.week.t)), 0, width),
-            },
-            label(r.week.t),
-          ),
-        );
-    });
+    }
+    barTimeAxis(
+      root,
+      rows.map((r) => r.week.t),
+      (i) => bx(rows[i] ?? firstRow) + bw / 2,
+      f,
+      { left, right, height },
+    );
     const at = (i: number) => rows[i] ?? firstRow;
     weekly.show(
       root,
@@ -696,7 +706,16 @@ export function mountPercent(
             { name: m['pct.weekly.mean'], value: f.weight(r.week.mean, unit, 2) },
             { name: m['pct.weekly.previous'], value: f.weight(r.previous.mean, unit, 2) },
           ];
-          if (r.partial) tipRows.push({ name: m['pct.weekly.noteName'], value: m['pct.weekly.partial'] });
+          if (r.partial)
+            tipRows.push({
+              name: m['pct.weekly.noteName'],
+              value:
+                r.week.n < 7 && r.previous.n < 7
+                  ? m['pct.weekly.partialBoth']
+                  : r.week.n < 7
+                    ? m['pct.weekly.partialThis']
+                    : m['pct.weekly.partialBefore'],
+            });
           return {
             heading: m['pct.weekly.week'](f.day(r.week.week, 'medium'), f.day(isoDay(r.week.end), 'medium')),
             rows: tipRows,
@@ -721,7 +740,8 @@ export function mountPercent(
         'tr',
         {},
         h('th', { attrs: { scope: 'col' }, text: m['pct.ms.milestone'] }),
-        h('th', { class: 'num', attrs: { scope: 'col' }, text: m['pct.ms.target'] }),
+        // On a phone the status says how much is left; the target weight gives way.
+        h('th', { class: 'num col-wide', attrs: { scope: 'col' }, text: m['pct.ms.target'] }),
         h('th', { attrs: { scope: 'col' }, text: m['pct.ms.status'] }),
         ...METHODS.map((k) => h('th', { class: col(k), attrs: { scope: 'col' }, text: m[`method.${k}`] })),
       ),
@@ -744,7 +764,7 @@ export function mountPercent(
           'tr',
           {},
           h('th', { class: row.goal ? 'tone-good' : '', attrs: { scope: 'row' }, text: row.name }),
-          h('td', { class: 'num', text: row.target }),
+          h('td', { class: 'num col-wide', text: row.target }),
           'reached' in row.status
             ? h(
                 'td',
@@ -777,11 +797,26 @@ export function mountPercent(
       s.format.percent(bandLo / 100, 1),
       s.format.percent(bandHi / 100, 0),
     );
+    weeklyLegend.replaceChildren(
+      h(
+        'span',
+        {},
+        h('span', { class: 'swatch sw-ok', attrs: { 'aria-hidden': 'true' } }),
+        m['pct.weekly.legendFull'],
+      ),
+      h(
+        'span',
+        {},
+        h('span', { class: 'swatch sw-ok sw-faded', attrs: { 'aria-hidden': 'true' } }),
+        m['pct.weekly.legendPartial'],
+      ),
+    );
     msTitle.textContent = m['pct.ms.title'];
     msNote.textContent = m['pct.ms.note'];
-    if (built !== s.locale.tag) {
+    const key = `${s.locale.tag}|${String(viewGeneration())}`;
+    if (built !== key) {
       buildControls(s);
-      built = s.locale.tag;
+      built = key;
     }
     kpis.setAttribute('aria-label', m['pct.block.kpis']);
     kpis.hidden = !blocks.has('kpis');

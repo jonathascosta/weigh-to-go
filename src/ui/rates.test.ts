@@ -54,9 +54,24 @@ describe('rateKpiList', () => {
 describe('curveFoot', () => {
   it('compares the curve and the line by the horizon', () => {
     expect(curveFoot(a, rates(a), 365, en)).toMatch(
-      /^Fitted curve: \*\*0\.200% a day\*\* \(R² 1\.00\); line: \*\*−0\.[\d]+ lb a day\*\* \(R² [\d.]+\)\. In 1 year, the curve reaches [\d.]+ lb and the line [\d.]+ lb\./,
+      /^Fitted curve: \*\*0\.200% lost a day\*\* \(R² 1\.00\); line: \*\*0\.[\d]+ lb lost a day\*\* \(R² [\d.]+\)\. In 1 year, the curve reaches [\d.]+ lb and the line [\d.]+ lb\./,
     );
     expect(horizonLabel(90, pt)).toBe('90 dias');
+  });
+
+  it('shows the same 180-day weights in the figure and under the curve', () => {
+    const tile = rateKpiList(a, en).find((k) => k.label === 'Difference in 180 days')!;
+    const foot = curveFoot(a, rates(a), 180, en);
+    const [, curve, line] = /curve reaches ([\d.]+ lb) and the line ([\d.]+ lb)/.exec(foot)!;
+    expect(tile.sub).toEqual([`constant %: ${curve!} · constant lb: ${line!}`]);
+  });
+
+  it('has no R² to give, and nothing to compare, for a flat series', () => {
+    const flat = analyze(constant(10, 0))!;
+    expect(curveFoot(flat, rates(flat), 30, pt)).toBe(
+      'Curva ajustada: perda de **0,000% ao dia** (R² —); reta: perda de **0,000 kg por dia** (R² —). Em 30 dias, a curva chega a 100,0 kg e a reta a 100,0 kg.',
+    );
+    expect(rateKpiList(flat, en)[1]!.sub).toEqual(['regression over every day · R² —']);
   });
 });
 
@@ -81,8 +96,13 @@ describe('simView', () => {
     const typed = simView({ rate: 1, start: 100, target: 99 }, a, 90, en);
     expect(typed.summary).toMatch(/It would reach the target of 218\.3 lb in 1 day \(Oct 1, 2026\)\.$/);
     const goal = simView({ rate: 1, start: null, target: null }, null, 90, en);
-    expect(goal.summary).toBe(
-      'Type a rate between 0% and 5% a day, and a starting weight (or log a weigh-in).',
+    // Only what is missing: here the starting weight.
+    expect(goal.summary).toBe('Type a starting weight, or log a weigh-in.');
+    expect(simView({ rate: 7, start: null, target: null }, null, null, en).summary).toBe(
+      'Type a rate between 0% and 5% a day. Type a starting weight, or log a weigh-in.',
+    );
+    expect(simView({ rate: null, start: 100, target: null }, null, null, pt).summary).toBe(
+      'Informe uma taxa entre 0% e 5% ao dia.',
     );
     const fromGoal = simView({ rate: 1, start: 100, target: null }, null, 90, en);
     expect(fromGoal.summary).toMatch(/It would reach your goal of 198\.4 lb in 11 days\.$/);

@@ -125,9 +125,9 @@ const ptSim = (p: SimParts): string => {
 };
 
 const enCurveFoot = (p: CurveFootParts): string => {
-  let text = `Fitted curve: **${p.rate} a day** (R² ${p.r2})`;
+  let text = `Fitted curve: **${p.rate} lost a day** (R² ${p.r2})`;
   if (p.line)
-    text += `; line: **${p.line.perDay} a day** (R² ${p.line.r2}). In ${p.line.horizon}, the curve reaches ${p.line.curveEnd} and the line ${p.line.lineEnd}.`;
+    text += `; line: **${p.line.perDay} lost a day** (R² ${p.line.r2}). In ${p.line.horizon}, the curve reaches ${p.line.curveEnd} and the line ${p.line.lineEnd}.`;
   else text += '.';
   if (p.close)
     text +=
@@ -136,9 +136,9 @@ const enCurveFoot = (p: CurveFootParts): string => {
 };
 
 const ptCurveFoot = (p: CurveFootParts): string => {
-  let text = `Curva ajustada: **${p.rate} ao dia** (R² ${p.r2})`;
+  let text = `Curva ajustada: perda de **${p.rate} ao dia** (R² ${p.r2})`;
   if (p.line)
-    text += `; reta: **${p.line.perDay} por dia** (R² ${p.line.r2}). Em ${p.line.horizon}, a curva chega a ${p.line.curveEnd} e a reta a ${p.line.lineEnd}.`;
+    text += `; reta: perda de **${p.line.perDay} por dia** (R² ${p.line.r2}). Em ${p.line.horizon}, a curva chega a ${p.line.curveEnd} e a reta a ${p.line.lineEnd}.`;
   else text += '.';
   if (p.close)
     text +=
@@ -371,6 +371,8 @@ export const en = {
   'pct.kpi.nextNever': 'not reached at the chosen pace',
   'pct.needsRecent': 'needs 5 weigh-ins in the last 3 weeks',
   'pct.needsTwoWeeks': 'needs 2 weeks of weigh-ins',
+  'pct.needsLastWeek': 'needs 4 weigh-ins in the last 7 days',
+  'pct.needsWeekAgo': 'needs weigh-ins from about a week ago',
   'pct.band.rising': 'weight rising at this pace',
   'pct.band.flat': 'weight about stable',
   'pct.band.below': (lo: string, hi: string) => `below the ${lo} to ${hi} range`,
@@ -398,7 +400,11 @@ export const en = {
   'pct.weekly.mean': "Week's average",
   'pct.weekly.previous': 'Week before',
   'pct.weekly.noteName': 'Note',
-  'pct.weekly.partial': 'a week with missing days',
+  'pct.weekly.partialThis': 'this week has days without a weigh-in',
+  'pct.weekly.partialBefore': 'the week before has days without a weigh-in',
+  'pct.weekly.partialBoth': 'both weeks have days without a weigh-in',
+  'pct.weekly.legendFull': 'both weeks fully logged',
+  'pct.weekly.legendPartial': 'faded: this week or the one before has days without a weigh-in',
   'pct.ms.title': 'Loss milestones',
   'pct.ms.note': 'When each milestone was reached, or would be, at each projection pace.',
   'pct.ms.milestone': 'Milestone',
@@ -407,7 +413,7 @@ export const en = {
   'pct.ms.goal': (pct: string) => `Goal (${pct})`,
   'pct.ms.reached': (day: string) => `reached on ${day}`,
   'pct.ms.toGo': (weight: string) => `${weight} to go`,
-  'pct.ms.never': 'not reached',
+  'pct.ms.never': 'never at this pace',
   'pct.ms.empty': 'The milestones appear from the first weigh-in.',
   'pct.ms.fallback': 'The last 3 weeks hold fewer than 5 weigh-ins, so that column waits for more.',
 
@@ -470,8 +476,8 @@ export const en = {
   'sim.goal': 'your goal',
   'sim.optional': 'optional',
   'sim.mine': 'Use my current rate',
-  'sim.needs': (lo: string, hi: string) =>
-    `Type a rate between ${lo} and ${hi} a day, and a starting weight (or log a weigh-in).`,
+  'sim.needsRate': (lo: string, hi: string) => `Type a rate between ${lo} and ${hi} a day.`,
+  'sim.needsStart': 'Type a starting weight, or log a weigh-in.',
   'sim.badStart': (unit: string, example: string) =>
     `Type the starting weight in ${unit}, for example ${example}, or leave it empty for the last weigh-in.`,
   'sim.badTarget': (unit: string, example: string) =>
@@ -807,6 +813,8 @@ export const pt: Messages = {
   'pct.kpi.nextNever': 'não chega no ritmo escolhido',
   'pct.needsRecent': 'precisa de 5 pesagens nas últimas 3 semanas',
   'pct.needsTwoWeeks': 'precisa de 2 semanas de registros',
+  'pct.needsLastWeek': 'precisa de 4 pesagens nos últimos 7 dias',
+  'pct.needsWeekAgo': 'precisa de pesagens de cerca de uma semana atrás',
   'pct.band.rising': 'peso subindo neste ritmo',
   'pct.band.flat': 'peso praticamente estável',
   'pct.band.below': (lo: string, hi: string) => `abaixo da faixa de ${lo} a ${hi}`,
@@ -834,7 +842,11 @@ export const pt: Messages = {
   'pct.weekly.mean': 'Média da semana',
   'pct.weekly.previous': 'Semana anterior',
   'pct.weekly.noteName': 'Obs.',
-  'pct.weekly.partial': 'semana com dias sem registro',
+  'pct.weekly.partialThis': 'esta semana tem dias sem pesagem',
+  'pct.weekly.partialBefore': 'a semana anterior tem dias sem pesagem',
+  'pct.weekly.partialBoth': 'as duas semanas têm dias sem pesagem',
+  'pct.weekly.legendFull': 'as duas semanas com todos os dias registrados',
+  'pct.weekly.legendPartial': 'mais clara: esta semana ou a anterior tem dias sem pesagem',
   'pct.ms.title': 'Marcos de perda',
   'pct.ms.note': 'Quando cada marco foi ou seria atingido, em cada ritmo de projeção.',
   'pct.ms.milestone': 'Marco',
@@ -908,8 +920,8 @@ export const pt: Messages = {
   'sim.goal': 'sua meta',
   'sim.optional': 'opcional',
   'sim.mine': 'Usar minha taxa atual',
-  'sim.needs': (lo: string, hi: string) =>
-    `Informe uma taxa entre ${lo} e ${hi} ao dia e um peso de partida (ou registre uma pesagem).`,
+  'sim.needsRate': (lo: string, hi: string) => `Informe uma taxa entre ${lo} e ${hi} ao dia.`,
+  'sim.needsStart': 'Informe um peso de partida, ou registre uma pesagem.',
   'sim.badStart': (unit: string, example: string) =>
     `Digite o peso de partida em ${unit}, por exemplo ${example}, ou deixe em branco para usar a última pesagem.`,
   'sim.badTarget': (unit: string, example: string) =>

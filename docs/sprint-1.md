@@ -111,6 +111,18 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    "last 3 weeks" column empty while that model is the whole period, and the "rate today" figures
    appear only while the fitted rate is a loss, as in the original.
 
+   What the page holds of each preference lives once, in `src/app/view.ts`: read from storage the
+   first time and kept for the visit, so with storage blocked the main chart still sees the hiccup
+   rules the card set; erasing everything puts them back to the defaults. The 180-day difference
+   compares the fitted curve with the fitted line, the same weights the curve chart draws (not the
+   rate applied to the last weigh-in), and both read as losses a day. A flat series has no R² to
+   give. A figure without a projection says what it needs, never "not reached". The bar charts
+   label their time axis like the others (months with their year over long spans).
+
+   Left for later: preferences don't follow a change made in another tab until a reload (as in
+   story 5); the hiccup gain and tolerance chips are the kg lists shown in lb (1.1, 2.2 lb…), not
+   round pound values.
+
 7. **Dashboard III.** Goal, BMI, facts, daily variation, weekly averages, weekdays, calendar, and the
    section toggles.
 8. **Installable, offline, and quality gates.** Web app manifest and icons, a service worker for

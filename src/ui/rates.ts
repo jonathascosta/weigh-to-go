@@ -30,30 +30,30 @@ import type { App, State } from '../app/app';
 import {
   CURVE_HORIZONS,
   CURVE_LAYERS,
-  curveHorizonPref,
-  curveLayersPref,
+  curveHorizon,
+  curveLayers as curveLayersHeld,
   RATE_BLOCKS,
   RATE_LAYERS,
   RATE_WINDOWS,
-  rateBlocksPref,
-  rateLayersPref,
-  rateWindowPref,
-  simRatePref,
-  simStartPref,
-  simTargetPref,
+  rateBlocks,
+  rateLayers,
+  rateWindow as rateWindowHeld,
+  simRate as simRateHeld,
+  simStart as simStartHeld,
+  simTarget as simTargetHeld,
+  viewGeneration,
   type CurveLayer,
   type RateLayer,
 } from '../app/view';
 import { parseNumber, toKg } from '../data/paste';
 import { count, plural, settings, type Settings } from '../i18n';
-import { control, controlRow, many, manyChips, one, oneChips } from './controls';
+import { control, controlRow, manyChips, oneChips } from './controls';
 import { h, rich, s as svg } from './dom';
 import {
   barsPath,
   createPlot,
   dotsPath,
-  anchorWithin,
-  everyNth,
+  barTimeAxis,
   leftFor,
   plotGroups,
   textWidth,
@@ -73,6 +73,7 @@ export function rateKpiList(analysis: Analysis, s: Settings): Kpi[] {
   const rate = (v: number) => f.percent(v / 100, 3);
   const aWeek = (v: number) => f.percent(v / 100, 2);
   const needs = m['kpi.needsThree'];
+  const r2 = (v: number) => (flatSeries(analysis) ? '—' : f.number(v, 2));
   const list: Kpi[] = [
     k.mean === null || k.meanWeekly === null
       ? missing(m['rate.kpi.mean'], needs)
@@ -90,7 +91,7 @@ export function rateKpiList(analysis: Analysis, s: Settings): Kpi[] {
           value: rate(k.fitted.rate),
           unit: m['unit.aDay'],
           tone: toneOf(-k.fitted.rate, 0),
-          sub: [m['rate.kpi.fittedSub'](f.number(k.fitted.r2, 2))],
+          sub: [m['rate.kpi.fittedSub'](r2(k.fitted.r2))],
         },
     k.recent === null || k.recentWeekly === null
       ? missing(
@@ -122,23 +123,24 @@ export function rateKpiList(analysis: Analysis, s: Settings): Kpi[] {
         tone: null,
         sub: [m['rate.kpi.lose10Sub'](f.weight(analysis.last.kg * 0.9, unit))],
       });
-    if (l.constantKg !== null)
+    // The fitted curve against the fitted line, as the curve chart draws them (not the rate
+    // applied to the last weigh-in), so the card shows one weight for each.
+    const curve = k.fitted ? projectRate(k.fitted, COMPARE_DAYS) : null;
+    if (l.constantKg !== null && curve !== null)
       list.push({
         label: m['rate.kpi.diff'](count(COMPARE_DAYS, m['word.day'], s)),
-        value: f.weightValue(Math.abs(l.constantPct - l.constantKg), unit),
+        value: f.weightValue(Math.abs(curve - l.constantKg), unit),
         unit,
         tone: null,
-        sub: [
-          m['rate.kpi.diffSub'](
-            f.weight(l.constantPct, unit),
-            f.weight(l.constantKg, unit),
-            m[`unit.${unit}`],
-          ),
-        ],
+        sub: [m['rate.kpi.diffSub'](f.weight(curve, unit), f.weight(l.constantKg, unit), m[`unit.${unit}`])],
       });
   }
   return list;
 }
+
+/** Whether every weigh-in is the same weight: nothing varies, so R² says nothing. */
+export const flatSeries = (analysis: Analysis): boolean =>
+  analysis.series.every((d) => Math.abs(d.kg - analysis.first.kg) < 1e-9);
 
 /** "30 days", or "1 year" for 365. */
 export const horizonLabel = (days: number, s: Settings): string =>
@@ -151,19 +153,23 @@ export function curveFoot(analysis: Analysis, r: Rates, horizon: number, s: Sett
   const full = r.full;
   if (!full) return m['rate.empty'];
   const linear = analysis.models.linear;
+  const flat = flatSeries(analysis);
+  const r2 = (v: number) => (flat ? '—' : f.number(v, 2));
   return m['rate.curve.foot']({
     rate: f.percent(full.rate / 100, 3),
-    r2: f.number(full.r2, 2),
+    r2: r2(full.r2),
     line: linear
       ? {
-          perDay: f.weightChange(linear.slope, unit, 3),
-          r2: f.number(linear.r2 ?? 0, 2),
+          // Lost a day, like the rate: positive while losing.
+          perDay: f.weight(-linear.slope, unit, 3),
+          r2: r2(linear.r2 ?? 0),
           horizon: horizonLabel(horizon, s),
           curveEnd: f.weight(projectRate(full, horizon), unit),
           lineEnd: f.weight(project(linear, horizon), unit),
         }
       : null,
-    close: linear !== null && Math.abs(full.r2 - (linear.r2 ?? 0)) < 0.01,
+    // With nothing varying, both "explain" nothing: no comparison to make.
+    close: !flat && linear !== null && Math.abs(full.r2 - (linear.r2 ?? 0)) < 0.01,
   });
 }
 
@@ -199,8 +205,13 @@ export function simView(
     return { summary: m['sim.badTarget'](m[`unit.${unit}`], example), rows: [] };
   const start = input.start ?? analysis?.last.kg ?? null;
   const rate = input.rate;
-  if (rate === null || start === null || !canSimulate(rate, start))
-    return { summary: m['sim.needs'](f.percent(0, 0), f.percent(SIM_RATE_MAX / 100, 0)), rows: [] };
+  const rateOk = rate !== null && canSimulate(rate, 100);
+  if (!rateOk || start === null || !canSimulate(rate, start)) {
+    const needs: string[] = [];
+    if (!rateOk) needs.push(m['sim.needsRate'](f.percent(0, 0), f.percent(SIM_RATE_MAX / 100, 0)));
+    if (start === null) needs.push(m['sim.needsStart']);
+    return { summary: needs.join(' '), rows: [] };
+  }
   const typed = input.target !== null;
   const target = input.target ?? (isGoal(goalKg) ? goalKg : null);
   const sum = simulationSummary(rate, start, target);
@@ -257,14 +268,14 @@ const CURVE_SWATCH: Partial<Record<CurveLayer, string>> = {
 };
 
 export function mountRates(container: HTMLElement, app: App): (state: State, s: Settings) => void {
-  const blocks = many(rateBlocksPref);
-  const layers = many(rateLayersPref);
-  const curveLayers = many(curveLayersPref);
-  const rateWindow = one(rateWindowPref);
-  const horizon = one(curveHorizonPref);
-  const simRate = one(simRatePref);
-  const simStart = one(simStartPref);
-  const simTarget = one(simTargetPref);
+  const blocks = rateBlocks;
+  const layers = rateLayers;
+  const curveLayers = curveLayersHeld;
+  const rateWindow = rateWindowHeld;
+  const horizon = curveHorizon;
+  const simRate = simRateHeld;
+  const simStart = simStartHeld;
+  const simTarget = simTargetHeld;
 
   const title = h('h2', { attrs: { id: 'rate-title' } });
   const note = h('p', { class: 'note' });
@@ -327,6 +338,11 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
   const simSummary = h('p', { class: 'foot', attrs: { 'aria-live': 'polite' } });
   const simHead = h('thead');
   const simBody = h('tbody');
+  const simTable = h(
+    'div',
+    { class: 'table-box', attrs: { tabindex: 0, role: 'region', 'aria-labelledby': 'sim-title' } },
+    h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'sim-title' } }, simHead, simBody),
+  );
   const simBlock = h(
     'div',
     { class: 'block sub' },
@@ -334,11 +350,7 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
     simNote,
     h('div', { class: 'entry-row' }, rateField.element, startField.element, targetField.element, mine),
     simSummary,
-    h(
-      'div',
-      { class: 'table-box', attrs: { tabindex: 0, role: 'region', 'aria-labelledby': 'sim-title' } },
-      h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'sim-title' } }, simHead, simBody),
-    ),
+    simTable,
   );
 
   container.replaceChildren(
@@ -361,7 +373,8 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
   rateField.input.addEventListener('input', () => {
     const text = rateField.input.value.trim();
     const v = text === '' ? null : parseNumber(text);
-    simRate.set(v === null || Number.isNaN(v) ? null : v);
+    // Kept to the precision it is shown with.
+    simRate.set(v === null || Number.isNaN(v) ? null : Math.round(v * 1000) / 1000);
     redraw();
   });
   startField.input.addEventListener('input', () => {
@@ -534,16 +547,8 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
         svg('path', { class: `bar bar-flat${faded}`, d: bars((d) => d.rate === 0) }),
       );
     }
-    if (showMean) {
-      root.append(
-        svg('line', { class: 'rate-mean', x1: left, x2: right, y1: y(r.mean), y2: y(r.mean) }),
-        svg(
-          'text',
-          { class: 'annot rate-mean-label', x: right - 2, y: y(r.mean) - 6, 'text-anchor': 'end' },
-          m['rate.days.mean'](f.percent(r.mean / 100, 3)),
-        ),
-      );
-    }
+    if (showMean)
+      root.append(svg('line', { class: 'rate-mean', x1: left, x2: right, y1: y(r.mean), y2: y(r.mean) }));
     if (showRolling) {
       const path = line<number>()
         .defined((i) => roll(i) !== null)
@@ -551,26 +556,25 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
         .y((i) => y(roll(i) ?? 0))(range(rows.length));
       root.append(svg('path', { class: 'avg7', d: path ?? '' }));
     }
-    const withYear =
-      analysis.first.t.getUTCFullYear() !== new Date().getFullYear() ||
-      analysis.first.date.slice(0, 4) !== analysis.last.date.slice(0, 4);
-    const label = (date: string) => f.day(date, withYear ? 'short' : 'dayMonth');
-    const show = everyNth(rows.length, right - left, textWidth(label(analysis.last.date)));
-    rows.forEach((d, i) => {
-      if (show(i))
-        root.append(
-          svg(
-            'text',
-            {
-              class: 'tick',
-              x: cx(d),
-              y: height - 8,
-              'text-anchor': anchorWithin(cx(d), textWidth(label(d.day.date)), 0, width),
-            },
-            label(d.day.date),
-          ),
-        );
-    });
+    // The label last, in its own group, with a halo: the bars and the line don't hide it.
+    if (showMean) {
+      const labels = svg('g');
+      labels.append(
+        svg(
+          'text',
+          { class: 'annot rate-mean-label halo', x: right - 2, y: y(r.mean) - 6, 'text-anchor': 'end' },
+          m['rate.days.mean'](f.percent(r.mean / 100, 3)),
+        ),
+      );
+      root.append(labels);
+    }
+    barTimeAxis(
+      root,
+      rows.map((d) => d.day.t),
+      (i) => cx(rows[i] ?? firstRow),
+      f,
+      { left, right, height },
+    );
     const at = (i: number) => rows[i] ?? firstRow;
     daysPlot.show(
       root,
@@ -819,6 +823,8 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
       s,
     );
     simSummary.replaceChildren(...rich(view.summary));
+    // Nothing to list until there is something to simulate.
+    simTable.hidden = view.rows.length === 0;
     const wide = (cls: string) => `num ${cls}`;
     simHead.replaceChildren(
       h(
@@ -860,7 +866,7 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
     curveNote.textContent = m['rate.curve.note'](unitName);
     simTitle.textContent = m['sim.title'];
     simNote.textContent = m['sim.note'](unitName);
-    const key = `${s.locale.tag}|${s.weightUnit}`;
+    const key = `${s.locale.tag}|${s.weightUnit}|${String(viewGeneration())}`;
     if (built !== key) {
       buildControls(s);
       built = key;

@@ -57,7 +57,27 @@ describe('pctKpiList', () => {
     expect(k[1]).toMatchObject({ value: '—', sub: ['needs 3 weigh-ins'] });
     expect(k[3]).toMatchObject({ value: '—', sub: ['needs 2 weeks of weigh-ins'] });
     expect(k[4]).toMatchObject({ value: '—', sub: ['needs 3 weigh-ins'] });
-    expect(k[5]).toMatchObject({ label: 'Next milestone', sub: ['not reached at the chosen pace'] });
+    // No projection yet: not "never", but what it needs.
+    expect(k[5]).toMatchObject({ label: 'Next milestone', value: '5%', sub: ['needs 3 weigh-ins'] });
+  });
+
+  it('says never only when the projection goes the wrong way', () => {
+    const up = analyze(series(30, -0.1))!;
+    expect(pctKpiList(up, 'linear', null, en)[5]).toMatchObject({ sub: ['not reached at the chosen pace'] });
+  });
+
+  it('says what the last 7 days really miss', () => {
+    // A year of daily weigh-ins, but none from 5 to 12 days ago.
+    const year = series(365, 0.02).filter((_, i) => i < 352 || i > 359);
+    expect(pctKpiList(analyze(year)!, 'linear', null, en)[3]).toMatchObject({
+      value: '—',
+      sub: ['needs weigh-ins from about a week ago'],
+    });
+    // A year, but only 2 weigh-ins in the last 7 days.
+    const sparse = series(365, 0.02).filter((_, i) => i < 358 || i === 362 || i === 364);
+    expect(pctKpiList(analyze(sparse)!, 'linear', null, en)[3]).toMatchObject({
+      sub: ['needs 4 weigh-ins in the last 7 days'],
+    });
   });
 
   it('does not pass the whole period off as the last 3 weeks', () => {
@@ -68,6 +88,7 @@ describe('pctKpiList', () => {
     const k = pctKpiList(sparse, 'recent', null, en);
     expect(k[2]).toMatchObject({ value: '—', sub: ['needs 5 weigh-ins in the last 3 weeks'] });
     expect(k[4]).toMatchObject({ value: '—', sub: ['needs 5 weigh-ins in the last 3 weeks'] });
+    expect(k[5]).toMatchObject({ label: 'Next milestone', sub: ['needs 5 weigh-ins in the last 3 weeks'] });
   });
 
   it('tones the band: within 0.5–1% is good, rising is bad', () => {
@@ -101,6 +122,7 @@ describe('milestoneRows', () => {
   it('says never for a projection going the wrong way, and nothing without a model', () => {
     const up = analyze(series(4, -0.2, 80))!;
     expect(milestoneRows(up, null, en)[0]!.by.linear).toBe('never');
+    expect(en.messages['pct.ms.never']).toBe('never at this pace');
     const one = analyze(series(1))!;
     expect(milestoneRows(one, null, en)[0]!.by).toEqual({ linear: null, recent: null, smoothed: null });
   });

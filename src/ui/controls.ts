@@ -1,43 +1,9 @@
 /**
- * The state behind a section's chips: a set of toggles (blocks, layers) or one choice (a method, a
- * horizon), read from its preference once and kept here, so it holds for the visit even when the
- * browser keeps nothing; and the chips and labelled groups that show it.
+ * The chips that show a section's held choices (see app/view.ts): a set of toggles (blocks, layers)
+ * or one choice (a method, a horizon); and the labelled groups they sit in.
  */
-import type { Pref } from '../data/prefs';
+import type { Many, One } from '../app/view';
 import { chips, h, type Chip } from './dom';
-
-export interface Many<T> {
-  has(value: T): boolean;
-  toggle(value: T): void;
-}
-
-export function many<T>(p: Pref<T[]>): Many<T> {
-  const on = new Set(p.read());
-  return {
-    has: (value) => on.has(value),
-    toggle: (value) => {
-      if (on.has(value)) on.delete(value);
-      else on.add(value);
-      p.write([...on]);
-    },
-  };
-}
-
-export interface One<T> {
-  get(): T;
-  set(value: T): void;
-}
-
-export function one<T>(p: Pref<T>): One<T> {
-  let value = p.read();
-  return {
-    get: () => value,
-    set: (next) => {
-      value = next;
-      p.write(next);
-    },
-  };
-}
 
 /** Toggle chips for a set; `after` runs once the set has changed. */
 export function manyChips<T>(

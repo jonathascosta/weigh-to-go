@@ -7,7 +7,77 @@ import type { Method } from '../analysis/analyze';
 import { METHODS } from '../analysis/goals';
 import { DEFAULT_RULES, type HiccupBasis, type HiccupRules } from '../analysis/hiccups';
 import { isWeight } from '../data/records';
-import { oneOf, pref } from '../data/prefs';
+import { oneOf, pref, type Pref } from '../data/prefs';
+
+/**
+ * What the page holds in memory for each preference: read from storage the first time it is needed
+ * and kept here, so a choice holds for the visit even when the browser keeps nothing, and every part
+ * that reads it (the main chart and the hiccups card both read the hiccup rules) sees the same.
+ */
+interface Holder {
+  reset(): void;
+}
+const holders = new Set<Holder>();
+let generation = 0;
+
+export interface Many<T> {
+  has(value: T): boolean;
+  toggle(value: T): void;
+  set(values: readonly T[]): void;
+}
+
+export function many<T>(p: Pref<T[]>): Many<T> {
+  let on: Set<T> | null = null;
+  const get = () => (on ??= new Set(p.read()));
+  const holder = {
+    has: (value: T) => get().has(value),
+    toggle: (value: T) => {
+      const set = get();
+      if (set.has(value)) set.delete(value);
+      else set.add(value);
+      p.write([...set]);
+    },
+    set: (values: readonly T[]) => {
+      on = new Set(values);
+      p.write([...on]);
+    },
+    reset: () => {
+      on = null;
+    },
+  };
+  holders.add(holder);
+  return holder;
+}
+
+export interface One<T> {
+  get(): T;
+  set(value: T): void;
+}
+
+export function one<T>(p: Pref<T>): One<T> {
+  let value: { v: T } | null = null;
+  const holder = {
+    get: () => (value ??= { v: p.read() }).v,
+    set: (next: T) => {
+      value = { v: next };
+      p.write(next);
+    },
+    reset: () => {
+      value = null;
+    },
+  };
+  holders.add(holder);
+  return holder;
+}
+
+/** Forgets what is held, so everything is read again from storage (after an erase, say). */
+export function resetView(): void {
+  for (const holder of holders) holder.reset();
+  generation++;
+}
+
+/** Changes on every reset: parts that built their chips before must build them again. */
+export const viewGeneration = (): number => generation;
 
 /** A guard for a list of values from a fixed set (each at most once), for `pref`. */
 const someOf =
@@ -58,6 +128,10 @@ export const layersPref = pref('chart.layers', someOf<Layer>(LAYERS), [...DEFAUL
 export const methodPref = pref('chart.method', oneOf<Method>(METHODS), 'linear');
 export const horizonPref = pref('chart.horizon', oneOf<Horizon>(HORIZONS), 30);
 export const periodPref = pref('chart.period', oneOf<Period>(PERIODS), 'all');
+export const chartLayers = many(layersPref);
+export const chartMethod = one(methodPref);
+export const chartHorizon = one(horizonPref);
+export const chartPeriod = one(periodPref);
 
 // ---------- Percentage loss ----------
 
@@ -82,6 +156,10 @@ export const pctLayersPref = pref(
 );
 export const pctMethodPref = pref('pct.method', oneOf<Method>(METHODS), 'linear');
 export const pctHorizonPref = pref('pct.horizon', oneOf<Horizon>(HORIZONS), 60);
+export const pctBlocks = many(pctBlocksPref);
+export const pctLayers = many(pctLayersPref);
+export const pctMethod = one(pctMethodPref);
+export const pctHorizon = one(pctHorizonPref);
 
 // ---------- Compound daily rate ----------
 
@@ -117,6 +195,14 @@ export const simRatePref = pref('sim.rate', isRate, 0.1);
 export const simStartPref = pref('sim.start', isKg, null);
 /** Its target weight in kg; null aims at the goal, if there is one. */
 export const simTargetPref = pref('sim.target', isKg, null);
+export const rateBlocks = many(rateBlocksPref);
+export const rateLayers = many(rateLayersPref);
+export const curveLayers = many(curveLayersPref);
+export const rateWindow = one(rateWindowPref);
+export const curveHorizon = one(curveHorizonPref);
+export const simRate = one(simRatePref);
+export const simStart = one(simStartPref);
+export const simTarget = one(simTargetPref);
 
 // ---------- Hiccups ----------
 
@@ -147,9 +233,12 @@ export const hiccupRulesPref = pref<HiccupChoice>('hiccups.rules', isChoice, {
   tolerance: DEFAULT_RULES.tolerance,
 });
 
+/** The hiccup rules chosen, held once for the card that sets them and the main chart that uses them. */
+export const hiccupChoice = one(hiccupRulesPref);
+
 /** The hiccup rules the reader chose, for every part that finds hiccups (the main chart too). */
 export function hiccupRules(): HiccupRules {
   // Field by field: a saved object with more in it (a hand-edited maxGap) changes nothing else.
-  const { basis, minDays, minGain, tolerance } = hiccupRulesPref.read();
+  const { basis, minDays, minGain, tolerance } = hiccupChoice.get();
   return { ...DEFAULT_RULES, basis, minDays, minGain, tolerance };
 }

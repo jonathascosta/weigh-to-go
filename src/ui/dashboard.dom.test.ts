@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, type App } from '../app/app';
+import { resetView } from '../app/view';
 import { fakeStorage } from '../data/fake-storage.test-helper';
 import { memoryStore } from '../data/store';
 import { choose, resetSettings } from '../i18n';
@@ -16,6 +17,8 @@ let root: HTMLElement;
 beforeEach(async () => {
   resetSettings();
   vi.stubGlobal('localStorage', fakeStorage());
+  // What the page holds of the preferences lives for the module: start each test from storage.
+  resetView();
   Object.defineProperty(navigator, 'languages', { value: ['en-US'], configurable: true });
   choose({ lang: 'en', weightUnit: 'kg' });
   root = document.createElement('div');
@@ -233,6 +236,65 @@ describe('Dashboard II', () => {
     await settle();
     expect(document.activeElement).toBe(svg());
     expect(section('pct-title').querySelector<HTMLElement>('.tip')!.hidden).toBe(false);
+  });
+
+  it('gives the main chart the card’s hiccup rules when the browser keeps nothing', async () => {
+    const blocked = () => {
+      throw new DOMException('blocked', 'SecurityError');
+    };
+    vi.stubGlobal('localStorage', { getItem: blocked, setItem: blocked, removeItem: blocked, key: blocked });
+    resetView();
+    root = document.createElement('div');
+    document.body.replaceChildren(root);
+    app = createApp(() => Promise.resolve(memoryStore()));
+    mountDashboard(root, app);
+    await settle();
+    await saveDays(climbs);
+    const rows = () => section('hiccups-title').querySelectorAll('tbody tr[data-key]').length;
+    const bands = () => section('chart-title').querySelectorAll('rect.hiccup').length;
+    chip('hiccups-title', '1 kg').click();
+    expect([rows(), bands()]).toEqual([1, 1]);
+    // And they hold when everything is drawn again.
+    await app.save([{ date: '2026-09-18', kg: 98.5 }]);
+    await settle();
+    expect(rows()).toBe(bands());
+    expect(chip('hiccups-title', '1 kg').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('puts the chips back to their defaults after erasing everything', async () => {
+    await saveDays(climbs);
+    chip('pct-title', 'Chart').click();
+    chip('hiccups-title', '1 kg').click();
+    expect(chip('pct-title', 'Chart').getAttribute('aria-pressed')).toBe('false');
+    await app.erase();
+    await settle();
+    expect(chip('pct-title', 'Chart').getAttribute('aria-pressed')).toBe('true');
+    expect(chip('hiccups-title', '0.5 kg').getAttribute('aria-pressed')).toBe('true');
+    expect(
+      section('pct-title').querySelector<HTMLElement>('.chart')!.closest<HTMLElement>('.block')!.hidden,
+    ).toBe(false);
+  });
+
+  it('lists nothing in the simulator until it can simulate, and says what it needs', () => {
+    const table = root.querySelector('#sim-title')!.parentElement!.querySelector<HTMLElement>('.table-box')!;
+    expect(table.hidden).toBe(true);
+    expect(section('rate-title').textContent).toContain('Type a starting weight, or log a weigh-in.');
+    const start = root.querySelector<HTMLInputElement>('#sim-start')!;
+    start.value = '90';
+    start.dispatchEvent(new Event('input'));
+    expect(table.hidden).toBe(false);
+  });
+
+  it('heads the weight column by the line measured, and explains the faded weeks', async () => {
+    await saveDays(climbs);
+    const head = () => section('hiccups-title').querySelector('thead')!.textContent;
+    expect(head()).toContain('Weight');
+    chip('hiccups-title', '7-day average').click();
+    expect(head()).toContain('7-day average');
+    expect(head()).not.toContain('Weight');
+    expect(section('pct-title').querySelector('.legend')!.textContent).toContain(
+      'faded: this week or the one before has days without a weigh-in',
+    );
   });
 
   it('works, and says what is missing, with 0 to 3 weigh-ins', async () => {

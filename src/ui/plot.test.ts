@@ -1,6 +1,8 @@
+// @vitest-environment happy-dom
 import { scaleUtc } from 'd3-scale';
 import { describe, expect, it } from 'vitest';
-import { anchorWithin, barsPath, dotsPath, everyNth, needsYear, timeTicks } from './plot';
+import { formatter } from '../i18n/format';
+import { anchorWithin, barsPath, barTimeAxis, dotsPath, labelRow, needsYear, timeTicks } from './plot';
 
 const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const today = new Date(2026, 9, 19);
@@ -38,9 +40,9 @@ describe('marks drawn as one path', () => {
     expect(barsPath([{ x: 1, width: 4, y0: 50, y1: 50 }])).toBe('M1 50h4v1.5h-4z');
   });
 
-  it('labels every nth bar, counting from the last', () => {
-    const show = everyNth(10, 100, 38);
-    expect([...Array(10).keys()].filter(show)).toEqual([4, 9]);
+  it('skips a label that would touch the last one written', () => {
+    const room = labelRow();
+    expect([room(10, 20), room(25, 20), room(40, 20), room(60, 20)]).toEqual([true, false, true, false]);
   });
 });
 
@@ -49,5 +51,34 @@ describe('anchorWithin', () => {
     expect(anchorWithin(100, 40, 0, 400)).toBe('middle');
     expect(anchorWithin(395, 40, 0, 400)).toBe('end');
     expect(anchorWithin(5, 40, 0, 400)).toBe('start');
+  });
+});
+
+describe('barTimeAxis', () => {
+  const labels = (dates: readonly Date[], width: number) => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const step = width / dates.length;
+    barTimeAxis(
+      g,
+      dates,
+      (i) => step * (i + 0.5),
+      formatter('en-US'),
+      { left: 0, right: width, height: 200 },
+      today,
+    );
+    return [...g.querySelectorAll('text')].map((t) => t.textContent);
+  };
+  const weeks = (from: string, n: number) =>
+    Array.from({ length: n }, (_, i) => new Date(day(from).getTime() + i * 7 * 86_400_000));
+
+  it('names months with their year over a long span, like the time axes', () => {
+    const text = labels(weeks('2019-01-07', 160), 900);
+    expect(text.length).toBeGreaterThan(2);
+    expect(text.every((t) => /^[A-Z][a-z]{2} \d{4}$/.test(t))).toBe(true);
+  });
+
+  it('labels a few weeks of this year by day and month, and one bar alone', () => {
+    expect(labels(weeks('2026-08-03', 6), 600).every((t) => /^\d\d\/\d\d$/.test(t))).toBe(true);
+    expect(labels([day('2026-09-07')], 300)).toEqual(['09/07']);
   });
 });
