@@ -23,11 +23,19 @@ jobs:
     strategy:
       matrix:
         node: [22, 24, 26]
+        # The line the site is built and deployed from; the first step checks it is the .nvmrc one.
+        include:
+          - node: 24
+            deploy: true
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Check the deploying line matches .nvmrc
+        if: matrix.deploy
+        run: test "$(cat .nvmrc)" = "${{ matrix.node }}"
 
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -51,7 +59,7 @@ jobs:
         run: npm run check:dist
 
       - name: Upload site artifact
-        if: github.ref == 'refs/heads/main' && matrix.node == 24
+        if: github.ref == 'refs/heads/main' && matrix.deploy
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: dist
