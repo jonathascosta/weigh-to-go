@@ -97,6 +97,19 @@ export function mountDashboard(root: HTMLElement, app: App): void {
     [null, mountData(data, notice, app)],
   ];
 
+  /**
+   * Shows and hides the sections as chosen: a section that just appeared is drawn, and nothing else
+   * (redrawing every visible section on each toggle took 300 ms with years of weigh-ins).
+   */
+  const toggled = () => {
+    for (const k of SECTIONS) el[k].hidden = !sections.has(k);
+    for (const [section, part] of parts) {
+      if (section === null) continue;
+      if (!sections.has(section)) hidden.add(part);
+      else if (hidden.delete(part)) safely(part, app.state(), settings());
+    }
+  };
+
   let built = '';
   const render = (state: State, s: Settings) => {
     const m = s.messages;
@@ -110,9 +123,7 @@ export function mountDashboard(root: HTMLElement, app: App): void {
           m['sections.label'],
           SECTIONS.map((k) => ({ value: k, label: m[`sections.${k}`] })),
           sections,
-          () => {
-            render(app.state(), settings());
-          },
+          toggled,
         ),
       );
     }

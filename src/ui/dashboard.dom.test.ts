@@ -521,6 +521,23 @@ describe('Dashboard III', () => {
     expect(section('calendar-title').querySelector('button.link')).toBeNull();
   });
 
+  it('draws only the section a toggle shows, and none on a hide', async () => {
+    await saveDays([100, 99.6, 99.1, 98.9]);
+    const charts = () =>
+      ['chart-title', 'pct-title', 'rate-title', 'hiccups-title', 'variation-title', 'calendar-title'].map(
+        (id) => section(id).querySelector('svg'),
+      );
+    const before = charts();
+    sectionChip('Calendar').click();
+    const same = (now: (SVGSVGElement | null)[]) => now.map((svg, i) => svg !== null && svg === before[i]);
+    // Hiding draws nothing: every chart is the very one drawn before.
+    expect(same(charts())).toEqual([true, true, true, true, true, true]);
+    sectionChip('Calendar').click();
+    // Showing draws the calendar again, and only it.
+    expect(same(charts())).toEqual([true, true, true, true, true, false]);
+    expect(section('calendar-title').hidden).toBe(false);
+  });
+
   it('says what each card needs with 0 to 3 weigh-ins, without errors', async () => {
     const errors = vi.spyOn(console, 'error');
     const text = (id: string) => section(id).textContent;
