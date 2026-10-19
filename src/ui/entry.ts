@@ -183,7 +183,9 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
       })
       .catch((error: unknown) => {
         console.error(error);
-        pasteStatus.replaceChildren(h('p', { class: 'status status-bad', text: failure(error, app, settings()) }));
+        pasteStatus.replaceChildren(
+          h('p', { class: 'status status-bad', text: failure(error, app, settings()) }),
+        );
       })
       .finally(() => {
         for (const b of buttons) b.disabled = false;
@@ -197,7 +199,10 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
     yes.addEventListener('click', () => {
       savePaste(result, [yes, pasteButton, ...others]);
     });
-    pasteStatus.replaceChildren(h('p', { class: 'note', text: question }), h('div', { class: 'actions' }, yes, ...others));
+    pasteStatus.replaceChildren(
+      h('p', { class: 'note', text: question }),
+      h('div', { class: 'actions' }, yes, ...others),
+    );
     yes.focus();
   };
 
@@ -216,21 +221,34 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
     }
     const result = parsePaste(text, { order, unit: s.weightUnit, today: localToday() });
     if (result.rows.length === 0) {
-      pasteStatus.replaceChildren(h('p', { class: 'status status-bad', text: m['paste.none'](sampleLine(s)) }));
+      pasteStatus.replaceChildren(
+        h('p', { class: 'status status-bad', text: m['paste.none'](sampleLine(s)) }),
+      );
       return;
     }
     if (result.orderGuessed && result.sample && !orderConfirmed) {
-      const swap = h('button', { class: 'button button-ghost', attrs: { type: 'button' }, text: m['paste.swap'] });
+      const swap = h('button', {
+        class: 'button button-ghost',
+        attrs: { type: 'button' },
+        text: m['paste.swap'],
+      });
       swap.addEventListener('click', () => {
         readPaste(order === 'dmy' ? 'mdy' : 'dmy', false);
       });
-      const confirmOrder = h('button', { class: 'button', attrs: { type: 'button' }, text: m['paste.confirm'] });
+      const confirmOrder = h('button', {
+        class: 'button',
+        attrs: { type: 'button' },
+        text: m['paste.confirm'],
+      });
       confirmOrder.addEventListener('click', () => {
         // Read as shown; if it also overwrites days, that is asked next.
         afterOrder(result);
       });
       pasteStatus.replaceChildren(
-        h('p', { class: 'note', text: m['paste.readAs'](result.sample.line, s.format.day(result.sample.date, 'long')) }),
+        h('p', {
+          class: 'note',
+          text: m['paste.readAs'](result.sample.line, s.format.day(result.sample.date, 'long')),
+        }),
         h('div', { class: 'actions' }, confirmOrder, swap),
       );
       confirmOrder.focus();
@@ -247,17 +265,26 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
     else savePaste(result, [pasteButton]);
   };
 
-  const showPasteResult = (result: PasteResult, changes: { added: number; replaced: number }, s: Settings) => {
+  const showPasteResult = (
+    result: PasteResult,
+    changes: { added: number; replaced: number },
+    s: Settings,
+  ) => {
     const m = s.messages;
     const parts: Node[] = [
-      h('p', { class: 'status status-ok', text: m['paste.done'](count(result.rows.length, m['word.weighIn'], s)) }),
+      h('p', {
+        class: 'status status-ok',
+        text: m['paste.done'](count(result.rows.length, m['word.weighIn'], s)),
+      }),
       h('p', {
         class: 'note',
         text: m['paste.changed'](s.format.number(changes.added, 0), s.format.number(changes.replaced, 0)),
       }),
     ];
     if (result.repeated > 0)
-      parts.push(h('p', { class: 'note', text: m['paste.repeated'](count(result.repeated, m['paste.word.line'], s)) }));
+      parts.push(
+        h('p', { class: 'note', text: m['paste.repeated'](count(result.repeated, m['paste.word.line'], s)) }),
+      );
     if (result.bad.length > 0) {
       parts.push(
         h('p', { class: 'status status-bad', text: m['paste.bad'](s.format.number(result.bad.length, 0)) }),

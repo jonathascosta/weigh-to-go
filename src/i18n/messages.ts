@@ -165,7 +165,8 @@ export const en = {
   'paste.confirm': 'Yes, import',
   'paste.overwrites': (days: string) =>
     `${days} already logged will get the weight from the paste instead. Import anyway?`,
-  'paste.changed': (added: string, replaced: string) => `New: ${added}. Replaced with a different weight: ${replaced}.`,
+  'paste.changed': (added: string, replaced: string) =>
+    `New: ${added}. Replaced with a different weight: ${replaced}.`,
   'paste.empty': 'Paste at least one line first.',
   'paste.none': (example: string) => `No line was recognised. Use “${example}”, one per line.`,
   'paste.done': (saved: string) => `Imported ${saved}.`,
@@ -379,7 +380,8 @@ export const pt: Messages = {
   'entry.futureDate': 'Esse dia ainda não chegou. Escolha hoje ou um dia anterior.',
   'entry.badWeight': (unit: string, example: string) => `Digite o peso em ${unit}, por exemplo ${example}.`,
   'entry.failed': 'Não foi possível salvar a pesagem. Tente de novo.',
-  'entry.reload': 'Não foi possível salvar: o diário não está conseguindo acessar seus dados. Recarregue a página.',
+  'entry.reload':
+    'Não foi possível salvar: o diário não está conseguindo acessar seus dados. Recarregue a página.',
   'entry.full': 'Não foi possível salvar: o aparelho está sem espaço de armazenamento.',
 
   'paste.open': 'Colar vários dias de uma vez',
@@ -390,11 +392,13 @@ export const pt: Messages = {
   'paste.confirm': 'Sim, importar',
   'paste.overwrites': (days: string) =>
     `${days} já registrados vão ficar com o peso da colagem. Importar mesmo assim?`,
-  'paste.changed': (added: string, replaced: string) => `Novos: ${added}. Substituídos por outro peso: ${replaced}.`,
+  'paste.changed': (added: string, replaced: string) =>
+    `Novos: ${added}. Substituídos por outro peso: ${replaced}.`,
   'paste.empty': 'Cole ao menos uma linha antes.',
   'paste.none': (example: string) => `Nenhuma linha reconhecida. Use “${example}”, uma por linha.`,
   'paste.done': (saved: string) => `Importação concluída: ${saved}.`,
-  'paste.repeated': (lines: string) => `Algumas datas apareciam mais de uma vez (${lines}): ficou a última de cada.`,
+  'paste.repeated': (lines: string) =>
+    `Algumas datas apareciam mais de uma vez (${lines}): ficou a última de cada.`,
   'paste.bad': (count: string) => `Linhas não reconhecidas (${count}):`,
   'paste.readAs': (line: string, day: string) => `A linha “${line}” foi lida como ${day}. Está certo?`,
   'paste.swap': 'Ler dia e mês ao contrário',
