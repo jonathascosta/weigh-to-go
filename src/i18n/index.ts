@@ -143,8 +143,10 @@ export function onSettingsChange(listener: (settings: Settings) => void): () => 
  * changed in its settings. Returns the unsubscribe.
  */
 export function watchSettings(target: Pick<Window, 'addEventListener' | 'removeEventListener'>): () => void {
+  // Only the language and units: the charts' own preferences are followed by app/view.ts.
+  const keys = new Set(['lang', 'weightUnit', 'heightUnit'].map((key) => PREFS_PREFIX + key));
   const onStorage = (event: StorageEvent) => {
-    if (event.key === null || event.key.startsWith(PREFS_PREFIX)) update({ chosen: savedChoices() });
+    if (event.key === null || keys.has(event.key)) update({ chosen: savedChoices() });
   };
   const onLanguages = () => {
     update({});

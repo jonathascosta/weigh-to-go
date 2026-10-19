@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, type App } from '../app/app';
+import { resetView } from '../app/view';
 import { fakeStorage } from '../data/fake-storage.test-helper';
 import { memoryStore } from '../data/store';
 import { choose, resetSettings } from '../i18n';
@@ -16,6 +17,8 @@ let root: HTMLElement;
 beforeEach(async () => {
   resetSettings();
   vi.stubGlobal('localStorage', fakeStorage());
+  // What the page holds of the preferences lives for the module: start each test from storage.
+  resetView();
   Object.defineProperty(navigator, 'languages', { value: ['en-US'], configurable: true });
   choose({ lang: 'en', weightUnit: 'kg' });
   root = document.createElement('div');
@@ -150,5 +153,200 @@ describe('notices', () => {
     await settle();
     expect(notice.hidden).toBe(false);
     expect(notice.textContent).toContain('Export a backup');
+  });
+});
+
+describe('Dashboard II', () => {
+  const section = (id: string) => root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!;
+  const chip = (id: string, text: string) =>
+    [...section(id).querySelectorAll<HTMLButtonElement>('button.chip')].find((b) => b.textContent === text)!;
+  // Down to 98, a 4-day climb to 99.2 and back, then a climb of 0.9 still going on.
+  const climbs = [
+    100, 99.5, 99, 98.5, 98, 98.3, 98.6, 98.9, 99.2, 98.8, 98.4, 98.1, 97.9, 97.5, 97.8, 98.1, 98.4,
+  ];
+  const saveDays = async (weights: readonly number[]) => {
+    await app.save(weights.map((kg, i) => ({ date: `2026-09-${String(i + 1).padStart(2, '0')}`, kg })));
+    await settle();
+  };
+
+  it('lets the hiccup rules change the table and the main chart’s hiccups alike', async () => {
+    await saveDays(climbs);
+    const rows = () => section('hiccups-title').querySelectorAll('tbody tr[data-key]').length;
+    const bands = () => section('chart-title').querySelectorAll('rect.hiccup').length;
+    expect([rows(), bands()]).toEqual([2, 2]);
+    chip('hiccups-title', '1 kg').click();
+    expect([rows(), bands()]).toEqual([1, 1]);
+    expect(chip('hiccups-title', '1 kg').getAttribute('aria-pressed')).toBe('true');
+    expect(section('hiccups-title').querySelector('.rules')!.textContent).toContain('1 kg or more');
+    chip('hiccups-title', '1.5 kg').click();
+    expect([rows(), bands()]).toEqual([0, 0]);
+    expect(section('hiccups-title').querySelector('tbody')!.textContent).toContain(
+      'No hiccup with the chosen rules',
+    );
+    // Kept for the next visit.
+    expect(JSON.parse(localStorage.getItem('weigh-to-go:hiccups.rules')!)).toMatchObject({ minGain: 1.5 });
+  });
+
+  it('shows the gain chips in lb, keeping kg values', () => {
+    choose({ weightUnit: 'lb' });
+    chip('hiccups-title', '2.2 lb').click();
+    expect(JSON.parse(localStorage.getItem('weigh-to-go:hiccups.rules')!)).toMatchObject({ minGain: 1 });
+  });
+
+  it('reads the simulator’s weights in lb', async () => {
+    await saveDays(climbs);
+    choose({ weightUnit: 'lb' });
+    expect(root.querySelector('#sim-target-unit')!.textContent).toBe('lb');
+    const target = root.querySelector<HTMLInputElement>('#sim-target')!;
+    target.value = '200';
+    target.dispatchEvent(new Event('input'));
+    expect(JSON.parse(localStorage.getItem('weigh-to-go:sim.target')!)).toBeCloseTo(90.718474, 6);
+    expect(section('rate-title').textContent).toContain('the target of 200.0 lb');
+    target.value = '2x';
+    target.dispatchEvent(new Event('input'));
+    expect(section('rate-title').textContent).toContain('Type the target weight in lb');
+    const rate = root.querySelector<HTMLInputElement>('#sim-rate')!;
+    rate.value = '0,5';
+    rate.dispatchEvent(new Event('input'));
+    expect(JSON.parse(localStorage.getItem('weigh-to-go:sim.rate')!)).toBe(0.5);
+  });
+
+  it('hides the blocks turned off', async () => {
+    await saveDays(climbs);
+    const chartSvg = () => section('pct-title').querySelector('svg[aria-labelledby="pct-title"]');
+    expect(chartSvg()).not.toBeNull();
+    chip('pct-title', 'Chart').click();
+    expect(chartSvg()!.closest<HTMLElement>('.block')!.hidden).toBe(true);
+    chip('rate-title', 'Simulator').click();
+    expect(root.querySelector('#sim-rate')!.closest<HTMLElement>('.block')!.hidden).toBe(true);
+    chip('pct-title', 'Chart').click();
+    expect(chartSvg()!.closest<HTMLElement>('.block')!.hidden).toBe(false);
+  });
+
+  it('keeps focus and the day on a chart drawn again', async () => {
+    await saveDays(climbs);
+    const svg = () => section('pct-title').querySelector<SVGSVGElement>('svg[aria-labelledby="pct-title"]')!;
+    expect(svg().getAttribute('role')).toBe('group');
+    expect(svg().getAttribute('aria-roledescription')).toBe('chart');
+    svg().focus();
+    svg().dispatchEvent(new KeyboardEvent('keydown', { key: 'Home' }));
+    const live = section('pct-title').querySelector('[aria-live]')!;
+    expect(live.textContent).toMatch(/^Tuesday, September 1, 2026: Lost so far 0.00%/);
+    await app.save([{ date: '2026-09-18', kg: 98 }]);
+    await settle();
+    expect(document.activeElement).toBe(svg());
+    expect(section('pct-title').querySelector<HTMLElement>('.tip')!.hidden).toBe(false);
+  });
+
+  it('gives the main chart the card’s hiccup rules when the browser keeps nothing', async () => {
+    const blocked = () => {
+      throw new DOMException('blocked', 'SecurityError');
+    };
+    vi.stubGlobal('localStorage', { getItem: blocked, setItem: blocked, removeItem: blocked, key: blocked });
+    resetView();
+    root = document.createElement('div');
+    document.body.replaceChildren(root);
+    app = createApp(() => Promise.resolve(memoryStore()));
+    mountDashboard(root, app);
+    await settle();
+    await saveDays(climbs);
+    const rows = () => section('hiccups-title').querySelectorAll('tbody tr[data-key]').length;
+    const bands = () => section('chart-title').querySelectorAll('rect.hiccup').length;
+    chip('hiccups-title', '1 kg').click();
+    expect([rows(), bands()]).toEqual([1, 1]);
+    // And they hold when everything is drawn again.
+    await app.save([{ date: '2026-09-18', kg: 98.5 }]);
+    await settle();
+    expect(rows()).toBe(bands());
+    expect(chip('hiccups-title', '1 kg').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('puts the chips back to their defaults after erasing everything', async () => {
+    await saveDays(climbs);
+    chip('pct-title', 'Chart').click();
+    chip('hiccups-title', '1 kg').click();
+    expect(chip('pct-title', 'Chart').getAttribute('aria-pressed')).toBe('false');
+    await app.erase();
+    await settle();
+    expect(chip('pct-title', 'Chart').getAttribute('aria-pressed')).toBe('true');
+    expect(chip('hiccups-title', '0.5 kg').getAttribute('aria-pressed')).toBe('true');
+    expect(
+      section('pct-title').querySelector<HTMLElement>('.chart')!.closest<HTMLElement>('.block')!.hidden,
+    ).toBe(false);
+  });
+
+  it('lists nothing in the simulator until it can simulate, and says what it needs', () => {
+    const table = root.querySelector('#sim-title')!.parentElement!.querySelector<HTMLElement>('.table-box')!;
+    expect(table.hidden).toBe(true);
+    expect(section('rate-title').textContent).toContain('Type a starting weight, or log a weigh-in.');
+    const start = root.querySelector<HTMLInputElement>('#sim-start')!;
+    start.value = '90';
+    start.dispatchEvent(new Event('input'));
+    expect(table.hidden).toBe(false);
+  });
+
+  it('heads the weight column by the line measured, and explains the faded weeks', async () => {
+    await saveDays(climbs);
+    const head = () => section('hiccups-title').querySelector('thead')!.textContent;
+    expect(head()).toContain('Weight');
+    chip('hiccups-title', '7-day average').click();
+    expect(head()).toContain('7-day average');
+    expect(head()).not.toContain('Weight');
+    expect(section('pct-title').querySelector('.legend')!.textContent).toContain(
+      'faded: this week or the one before has days without a weigh-in',
+    );
+  });
+
+  it('shows the choices made in another tab', async () => {
+    await saveDays(climbs);
+    const block = () => section('pct-title').querySelector('.chart')!.closest<HTMLElement>('.block')!;
+    expect(block().hidden).toBe(false);
+    // Another tab turns the % chart off and changes the hiccup rules.
+    localStorage.setItem('weigh-to-go:pct.blocks', JSON.stringify(['kpis', 'weekly', 'milestones']));
+    window.dispatchEvent(Object.assign(new Event('storage'), { key: 'weigh-to-go:pct.blocks' }));
+    expect(block().hidden).toBe(true);
+    expect(chip('pct-title', 'Chart').getAttribute('aria-pressed')).toBe('false');
+    localStorage.setItem(
+      'weigh-to-go:hiccups.rules',
+      JSON.stringify({ basis: 'kg', minDays: 3, minGain: 1, tolerance: 0.5 }),
+    );
+    window.dispatchEvent(Object.assign(new Event('storage'), { key: 'weigh-to-go:hiccups.rules' }));
+    expect(section('chart-title').querySelectorAll('rect.hiccup')).toHaveLength(1);
+    // Another app's key changes nothing here.
+    chip('pct-title', 'Chart').click();
+    window.dispatchEvent(Object.assign(new Event('storage'), { key: 'other-app' }));
+    expect(block().hidden).toBe(false);
+  });
+
+  it('writes the simulator rate back as kept, and empties a bad weight after an erase', async () => {
+    const rate = root.querySelector<HTMLInputElement>('#sim-rate')!;
+    rate.value = '0.1234';
+    rate.dispatchEvent(new Event('input'));
+    rate.dispatchEvent(new Event('change'));
+    expect(rate.value).toBe('0.123');
+    const start = root.querySelector<HTMLInputElement>('#sim-start')!;
+    start.value = '2x';
+    start.dispatchEvent(new Event('input'));
+    expect(section('rate-title').textContent).toContain('Type the starting weight in kg');
+    await app.erase();
+    await settle();
+    expect([start.value, rate.value]).toEqual(['', '0.1']);
+    expect(section('rate-title').textContent).not.toContain('Type the starting weight in kg');
+  });
+
+  it('works, and says what is missing, with 0 to 3 weigh-ins', async () => {
+    const errors = vi.spyOn(console, 'error');
+    const text = () =>
+      ['pct-title', 'rate-title', 'hiccups-title'].map((id) => section(id).textContent).join(' ');
+    expect(text()).toContain('The % chart appears from the second weigh-in.');
+    for (const n of [1, 2, 3]) {
+      await saveDays(climbs.slice(0, n));
+      if (n < 3) expect(text()).toContain('Appears from the third weigh-in.');
+      if (n < 3) expect(text()).toContain('Hiccups show from the third weigh-in.');
+    }
+    expect(text()).toContain('needs 2 weeks of weigh-ins');
+    expect(section('rate-title').querySelector('svg')).not.toBeNull();
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
   });
 });

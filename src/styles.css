@@ -956,3 +956,207 @@ main {
     gap: 4px;
   }
 }
+
+/* Dashboard II: percentage loss, compound daily rate, hiccups */
+
+.card h3 {
+  margin: 0;
+  font-family: var(--f-num);
+  font-weight: 500;
+  font-size: 1.125rem;
+}
+
+.block {
+  min-width: 0;
+}
+
+.sub {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.sub > .note {
+  margin-bottom: 10px;
+}
+
+.sub > .controls {
+  margin-top: 4px;
+}
+
+/* Key figures inside a card: on the card's own background, a little smaller. */
+.kpis-in {
+  margin-bottom: 14px;
+}
+
+.kpis-in .kpi {
+  background: var(--bg);
+  border-color: transparent;
+}
+
+.kpis-in .kpi-value {
+  font-size: 1.5rem;
+}
+
+.kpis-in .empty {
+  grid-column: 1 / -1;
+  padding: 8px 0;
+}
+
+.rules {
+  margin: 0 0 12px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 8px 0 12px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sw-ok {
+  background: var(--ok);
+}
+.sw-ok.sw-dash {
+  color: var(--ok);
+  background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px);
+}
+.sw-faint {
+  height: 10px;
+  opacity: 0.35;
+}
+
+.pct-area {
+  fill: var(--c-weight);
+  fill-opacity: 0.08;
+}
+.sustainable {
+  fill: var(--ok);
+  fill-opacity: 0.1;
+}
+.bar-good {
+  fill: var(--ok);
+}
+.bar-bad {
+  fill: var(--bad);
+}
+.bar-flat {
+  fill: var(--axis);
+}
+.bar-partial {
+  fill-opacity: 0.5;
+}
+.bar-faded {
+  fill-opacity: 0.55;
+}
+.rate-mean {
+  stroke: var(--c-trend);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+.annot.rate-mean-label {
+  fill: var(--c-trend);
+}
+.exp-curve,
+.regression-line,
+.sim-curve {
+  fill: none;
+  stroke-linejoin: round;
+}
+.exp-curve {
+  stroke: var(--c-proj);
+  stroke-width: 2.5;
+}
+.regression-line {
+  stroke: var(--c-reg);
+  stroke-width: 2;
+  stroke-dasharray: 8 5;
+}
+.sim-curve {
+  stroke: var(--c-week);
+  stroke-width: 2;
+  stroke-dasharray: 3 4;
+}
+.endlabel-reg {
+  fill: var(--c-reg);
+}
+.endlabel-week {
+  fill: var(--c-week);
+}
+.point-faint {
+  fill-opacity: 0.5;
+}
+.way-back {
+  stroke: var(--ok);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+}
+.way-back-open {
+  stroke-dasharray: 2 3;
+}
+.way-back-dot {
+  fill: var(--ok);
+}
+.peak-dot {
+  fill: var(--bad);
+  stroke: var(--panel);
+  stroke-width: 1.5;
+}
+
+.table .wrap {
+  white-space: normal;
+}
+
+.table-fit {
+  margin-top: 4px;
+}
+
+/* On a phone the tables keep what matters in view, like the log. */
+@media (max-width: 520px) {
+  .col-wide {
+    display: none;
+  }
+
+  .table-fit th,
+  .table-fit td {
+    white-space: normal;
+    padding-inline: 4px;
+  }
+}
+
+/* A weight or a change stays on one line, even where the other cells wrap. */
+.table-fit td.num {
+  white-space: nowrap;
+}
+
+.sw-faded {
+  opacity: 0.5;
+}
+
+/* "% a week" stays one unit: in a narrow tile it moves under the value whole. */
+.kpi-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.25em;
+}
+
+.kpi-unit {
+  white-space: nowrap;
+}
+
+/* A label drawn over bars and lines, readable on any of them. */
+.halo {
+  paint-order: stroke;
+  stroke: var(--panel);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}

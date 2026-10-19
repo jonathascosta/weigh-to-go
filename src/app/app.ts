@@ -10,6 +10,7 @@ import { requestPersistence } from '../data/persist';
 import { pref } from '../data/prefs';
 import { EMPTY_PROFILE, type Profile, type StoredWeighIn } from '../data/records';
 import { memoryStore, openStore, type MergeResult, type Store } from '../data/store';
+import { resetView } from './view';
 
 export interface State {
   /** 'loading' until the store has been opened and read. */
@@ -146,6 +147,14 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
         askPersistence();
         return result;
       }),
-    erase: () => write((s) => eraseEverything(s)),
+    erase: () =>
+      write(async (s) => {
+        try {
+          return await eraseEverything(s);
+        } finally {
+          // The preferences are gone: what the page held of them goes back to the defaults too.
+          resetView();
+        }
+      }),
   };
 }

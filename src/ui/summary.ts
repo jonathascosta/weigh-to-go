@@ -56,9 +56,17 @@ export function takeLine(state: State, s: Settings): string {
   });
 }
 
+export type Tone = 'good' | 'bad' | null;
+
 /** The tone of a change: good when it falls by more than `flat`, bad when it rises. */
-const toneOf = (change: number, flat: number): 'good' | 'bad' | null =>
+export const toneOf = (change: number, flat: number): Tone =>
   Math.abs(change) <= flat ? null : change < 0 ? 'good' : 'bad';
+
+/** A part of the line under a key figure: text, a change shown with its tone, or text with a tone. */
+export type KpiPart =
+  | string
+  | { readonly text: string; readonly change: number }
+  | { readonly text: string; readonly tone: Tone };
 
 /** One key figure: its label, value, unit and the line under it. */
 export interface Kpi {
@@ -66,9 +74,48 @@ export interface Kpi {
   readonly value: string;
   readonly unit: string | null;
   /** The value's tone: a loss is good, a gain bad; null for none (or too small to matter). */
-  readonly tone: 'good' | 'bad' | null;
-  /** The line under the value: text, and changes shown with their tone. */
-  readonly sub: readonly (string | { readonly text: string; readonly change: number })[];
+  readonly tone: Tone;
+  /** The line under the value. */
+  readonly sub: readonly KpiPart[];
+}
+
+/** A figure that can't be worked out yet, and what it needs. */
+export const missing = (label: string, needs: string): Kpi => ({
+  label,
+  value: '—',
+  unit: null,
+  tone: null,
+  sub: [needs],
+});
+
+/** Key figures as tiles. */
+export function kpiTiles(list: readonly Kpi[]): HTMLElement[] {
+  return list.map((k) =>
+    h(
+      'div',
+      { class: 'kpi' },
+      h('span', { class: 'kpi-label', text: k.label }),
+      h(
+        'span',
+        { class: k.tone ? `kpi-value tone-${k.tone}` : 'kpi-value' },
+        k.value,
+        k.unit ? h('span', { class: 'kpi-unit', text: ` ${k.unit}` }) : null,
+      ),
+      h(
+        'span',
+        { class: 'kpi-sub' },
+        ...k.sub.map((part) =>
+          typeof part === 'string'
+            ? part
+            : 'change' in part
+              ? tone(part.text, part.change, FLAT_KG)
+              : part.tone
+                ? h('span', { class: `tone-${part.tone}`, text: part.text })
+                : part.text,
+        ),
+      ),
+    ),
+  );
 }
 
 /** The six key figures, or dashes without weigh-ins. */
@@ -157,27 +204,6 @@ export function renderSummary(target: { period: HTMLElement; take: HTMLElement; 
     target.period.textContent = periodLine(state, s);
     target.take.replaceChildren(...rich(takeLine(state, s)));
     target.kpis.setAttribute('aria-label', s.messages['kpi.label']);
-    target.kpis.replaceChildren(
-      ...kpis(state.analysis, s).map((k) =>
-        h(
-          'div',
-          { class: 'kpi' },
-          h('span', { class: 'kpi-label', text: k.label }),
-          h(
-            'span',
-            {
-              class: k.tone ? `kpi-value tone-${k.tone}` : 'kpi-value',
-            },
-            k.value,
-            k.unit ? h('span', { class: 'kpi-unit', text: ` ${k.unit}` }) : null,
-          ),
-          h(
-            'span',
-            { class: 'kpi-sub' },
-            ...k.sub.map((part) => (typeof part === 'string' ? part : tone(part.text, part.change, FLAT_KG))),
-          ),
-        ),
-      ),
-    );
+    target.kpis.replaceChildren(...kpiTiles(kpis(state.analysis, s)));
   };
 }

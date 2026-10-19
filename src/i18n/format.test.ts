@@ -19,6 +19,9 @@ describe('formatter', () => {
     expect(us.weightChange(-0.02, 'kg')).toBe('0.0 kg');
     expect(us.percentChange(-0.052)).toBe('−5.2%');
     expect(br.percent(0.052)).toBe('5,2%');
+    expect(br.signedNumber(0.123, 2)).toBe('+0,12');
+    expect(us.signedNumber(-1.25)).toBe('−1.3');
+    expect(us.signedNumber(0.001, 2)).toBe('0.00');
   });
 
   it('never shows a sign on a value that rounds to zero', () => {
