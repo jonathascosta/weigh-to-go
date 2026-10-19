@@ -53,21 +53,48 @@ describe('detectHiccups', () => {
 });
 
 describe('hiccupStats', () => {
-  it('sums the climbs and averages the recoveries', () => {
-    const list = hiccups([90, 89, 89.3, 89.6, 90, 89.5, 88.8, 88, 88.4, 88.8, 89.1, 88.9]);
-    const s = hiccupStats(list);
+  it('sums the climbs, averages the recoveries and says where things stand', () => {
+    const a = analyze(daily([90, 89, 89.3, 89.6, 90, 89.5, 88.8, 88, 88.4, 88.8, 89.1, 88.9]))!;
+    const list = detectHiccups(a, DEFAULT_RULES);
+    const s = hiccupStats(list, a);
     expect(s.count).toBe(2);
     expect(s.daysClimbing).toBe(6);
+    expect(s.climbingShare).toBeCloseTo(6 / 12, 10);
     expect(s.regained).toBeCloseTo(2.1, 10);
+    expect(s.regainedShareOfLoss).toBeCloseTo(2.1 / 1.1, 10);
     expect(s.biggest?.start.date).toBe('2026-09-08');
     expect([s.recoveredCount, s.meanRecoveryDays]).toEqual([1, 2]);
-    expect(hiccupStats([])).toEqual({
+    expect(s.now.state).toBe('returning');
+    if (s.now.state === 'returning') expect(s.now.remaining).toBeCloseTo(0.9, 10);
+  });
+
+  it('reports an ongoing climb, a recovered one, and none', () => {
+    const ongoing = analyze(daily([85, 84, 84.3, 84.6, 85]))!;
+    expect(hiccupStats(detectHiccups(ongoing, DEFAULT_RULES), ongoing).now.state).toBe('ongoing');
+    const recovered = analyze(daily([100, 99, 99.3, 99.6, 100, 99.8, 99.4, 98.9, 98.5]))!;
+    const r = hiccupStats(detectHiccups(recovered, DEFAULT_RULES), recovered);
+    expect(r.now).toEqual({ state: 'none', recoveredOn: recovered.series[7] });
+    const none = analyze(daily([90, 89, 88]))!;
+    expect(hiccupStats([], none)).toMatchObject({
       count: 0,
-      daysClimbing: 0,
-      regained: 0,
       biggest: null,
       meanRecoveryDays: null,
-      recoveredCount: 0,
+      now: { state: 'none', recoveredOn: null },
     });
+  });
+});
+
+describe('hiccups across gaps', () => {
+  it('ends a climb at a gap longer than the limit', () => {
+    const entries = [
+      { date: '2026-01-01', kg: 90 },
+      { date: '2026-01-02', kg: 90.3 },
+      { date: '2026-06-01', kg: 91 },
+      { date: '2026-06-02', kg: 91.5 },
+    ];
+    const a = analyze(entries)!;
+    expect(detectHiccups(a, { ...DEFAULT_RULES, minDays: 1, minGain: 0.3 }).map((h) => h.start.date)).toEqual(
+      ['2026-01-01', '2026-06-01'],
+    );
   });
 });

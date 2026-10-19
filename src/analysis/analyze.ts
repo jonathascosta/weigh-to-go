@@ -8,7 +8,10 @@ import { fitLine, type Model } from './fit';
 export interface WeighIn {
   /** The day, YYYY-MM-DD. */
   readonly date: string;
-  /** Weight in kilograms. */
+  /**
+   * Weight in kilograms, stored unrounded: a reading in pounds is kept as `lb × 0.45359237`, so
+   * converting back shows exactly what was entered.
+   */
   readonly kg: number;
 }
 
@@ -44,7 +47,7 @@ export interface Week {
   readonly min: number;
   readonly max: number;
   readonly n: number;
-  /** Change of the mean from the previous week with weigh-ins, or null for the first. */
+  /** Change of the mean from the week just before, or null if that week has no weigh-ins. */
   readonly delta: number | null;
 }
 
@@ -72,7 +75,7 @@ export interface Summary {
   /** Number of weigh-ins. */
   readonly n: number;
   readonly mean: number;
-  /** The biggest drop and the biggest rise between consecutive weigh-ins. */
+  /** The biggest drop and the biggest rise between consecutive weigh-ins; null if there is none. */
   readonly biggestDrop: Day | null;
   readonly biggestRise: Day | null;
   readonly longestDrops: number;
@@ -82,14 +85,15 @@ export interface Summary {
   readonly drops: number;
   readonly rises: number;
   readonly flats: number;
-  /** Standard deviation of the changes between consecutive weigh-ins. */
+  /** Standard deviation (population) of the changes between consecutive weigh-ins. */
   readonly changeSd: number | null;
-  /** The 7-day average a week before the last weigh-in. */
+  /** The 7-day average a week before the last weigh-in (within two days of it), or null. */
   readonly avg7WeekBefore: number | null;
   /** Weigh-ins above the smoothed trend. */
   readonly aboveTrend: number;
   /** Days in the period without a weigh-in. */
   readonly missing: number;
+  /** The week whose mean dropped most from the week before, or null if none dropped. */
   readonly bestWeek: Week | null;
 }
 
@@ -98,6 +102,11 @@ export interface Analysis {
   readonly first: Day;
   readonly last: Day;
   readonly models: Readonly<Record<Method, Model | null>>;
+  /**
+   * Whether the "recent" model fell back to every weigh-in because the last 3 weeks hold fewer than
+   * 5 (then it repeats the linear one, and the dashboard shouldn't present it as recent).
+   */
+  readonly recentIsFallback: boolean;
   readonly weeks: readonly Week[];
   readonly weekdays: readonly Weekday[];
   readonly summary: Summary;
@@ -105,8 +114,17 @@ export interface Analysis {
 
 /** Smoothing factor of the trend: each weigh-in moves it 10% of the way. */
 export const TREND_ALPHA = 0.1;
-/** Changes smaller than this are treated as no change (rounding noise of decimal weights). */
-const EPS = 1e-6;
+/**
+ * Changes this small count as no change. It sits under the smallest step a scale shows (0.1 lb is
+ * 0.045 kg), so every real step counts, and above the rounding between units, so 176.2 lb
+ * (79.92 kg) and a later 79.9 kg read as the same weight.
+ */
+export const FLAT_KG = 0.04;
+/** Weights outside this range are not weigh-ins (a typo, or a different unit). */
+export const KG_RANGE = [20, 500] as const;
+/** The "recent" model: the last 3 weeks, when they hold at least 5 weigh-ins. */
+export const RECENT_DAYS = 21;
+export const RECENT_MIN = 5;
 
 const mean = (values: readonly number[]): number => values.reduce((sum, v) => sum + v, 0) / values.length;
 /** Rounds away floating-point noise, so 108.3 - 108.1 is 0.2, not 0.20000000000000284. */
@@ -118,7 +136,10 @@ const clean = (v: number): number => Math.round(v * 1e6) / 1e6;
  */
 export function analyze(input: readonly WeighIn[]): Analysis | null {
   const byDate = new Map<string, number>();
-  for (const w of input) if (isIsoDay(w.date) && Number.isFinite(w.kg) && w.kg > 0) byDate.set(w.date, w.kg);
+  for (const w of input) {
+    if (isIsoDay(w.date) && Number.isFinite(w.kg) && w.kg >= KG_RANGE[0] && w.kg <= KG_RANGE[1])
+      byDate.set(w.date, w.kg);
+  }
   const rows = [...byDate].sort(([a], [b]) => (a < b ? -1 : 1));
   const firstRow = rows[0];
   if (firstRow === undefined) return null;
@@ -154,8 +175,9 @@ export function analyze(input: readonly WeighIn[]): Analysis | null {
   const points = (days: readonly Day[]) => days.map((d) => ({ index: d.index, value: d.kg, t: d.t }));
 
   const linear = fitLine(points(series), last.index);
-  const recentDays = series.filter((d) => d.index > last.index - 21);
-  const recent = fitLine(points(recentDays.length >= 5 ? recentDays : series), last.index);
+  const recentDays = series.filter((d) => d.index > last.index - RECENT_DAYS);
+  const recentIsFallback = recentDays.length < RECENT_MIN;
+  const recent = fitLine(points(recentIsFallback ? series : recentDays), last.index);
   const ref = [...series].reverse().find((d) => d.index <= last.index - 14) ?? first;
   const span = last.index - ref.index;
   const smoothed: Model | null =
@@ -167,7 +189,7 @@ export function analyze(input: readonly WeighIn[]): Analysis | null {
           error: null,
           xMean: 0,
           sxx: 0,
-          r2: 0,
+          r2: null,
           start: ref.t,
         }
       : null;
@@ -185,6 +207,7 @@ export function analyze(input: readonly WeighIn[]): Analysis | null {
     first,
     last,
     models: { linear, recent, smoothed },
+    recentIsFallback,
     weeks,
     weekdays,
     summary: summarize(series, weeks),
@@ -203,6 +226,7 @@ function buildWeeks(series: readonly Day[]): Week[] {
     const t = parseDay(g.week);
     const m = mean(g.weights);
     const prev = weeks[weeks.length - 1];
+    const adjacent = prev !== undefined && t.getTime() - prev.t.getTime() === 7 * DAY;
     weeks.push({
       week: g.week,
       t,
@@ -212,7 +236,7 @@ function buildWeeks(series: readonly Day[]): Week[] {
       min: Math.min(...g.weights),
       max: Math.max(...g.weights),
       n: g.weights.length,
-      delta: prev ? m - prev.mean : null,
+      delta: adjacent ? m - prev.mean : null,
     });
   }
   return weeks;
@@ -237,10 +261,11 @@ function summarize(series: readonly Day[], weeks: readonly Week[]): Summary {
   let longestDropsEnd: Day | null = null;
   let longestRisesEnd: Day | null = null;
   for (const d of changed) {
-    if (biggestDrop === null || d.change < (biggestDrop.change ?? 0)) biggestDrop = d;
-    if (biggestRise === null || d.change > (biggestRise.change ?? 0)) biggestRise = d;
-    dropRun = d.change < -EPS ? dropRun + 1 : 0;
-    riseRun = d.change > EPS ? riseRun + 1 : 0;
+    if (d.change < -FLAT_KG && (biggestDrop === null || d.change < (biggestDrop.change ?? 0)))
+      biggestDrop = d;
+    if (d.change > FLAT_KG && (biggestRise === null || d.change > (biggestRise.change ?? 0))) biggestRise = d;
+    dropRun = d.change < -FLAT_KG ? dropRun + 1 : 0;
+    riseRun = d.change > FLAT_KG ? riseRun + 1 : 0;
     if (dropRun > longestDrops) {
       longestDrops = dropRun;
       longestDropsEnd = d;
@@ -252,12 +277,16 @@ function summarize(series: readonly Day[], weeks: readonly Week[]): Summary {
   }
   const changes = changed.map((d) => d.change);
   const changeMean = changes.length ? mean(changes) : 0;
-  const weekBefore = [...series].reverse().find((d) => d.index <= last.index - 7 && d.avg7 !== null);
+  const weekBefore = [...series]
+    .reverse()
+    .find((d) => d.index <= last.index - 7 && d.index >= last.index - 9 && d.avg7 !== null);
   const loss = first.kg - last.kg;
   const days = last.index + 1;
   let bestWeek: Week | null = null;
-  for (const w of weeks)
-    if (w.delta !== null && (bestWeek === null || w.delta < (bestWeek.delta ?? 0))) bestWeek = w;
+  for (const w of weeks) {
+    if (w.delta !== null && w.delta < -FLAT_KG && (bestWeek === null || w.delta < (bestWeek.delta ?? 0)))
+      bestWeek = w;
+  }
   return {
     first,
     last,
@@ -274,9 +303,9 @@ function summarize(series: readonly Day[], weeks: readonly Week[]): Summary {
     longestDropsEnd,
     longestRises,
     longestRisesEnd,
-    drops: changes.filter((c) => c < -EPS).length,
-    rises: changes.filter((c) => c > EPS).length,
-    flats: changes.filter((c) => Math.abs(c) <= EPS).length,
+    drops: changes.filter((c) => c < -FLAT_KG).length,
+    rises: changes.filter((c) => c > FLAT_KG).length,
+    flats: changes.filter((c) => Math.abs(c) <= FLAT_KG).length,
     changeSd: changes.length ? Math.sqrt(mean(changes.map((c) => (c - changeMean) ** 2))) : null,
     avg7WeekBefore: weekBefore?.avg7 ?? null,
     aboveTrend: series.filter((d) => d.kg > d.trend + 1e-4).length,

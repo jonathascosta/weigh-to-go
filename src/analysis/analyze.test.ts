@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { analyze, type WeighIn } from './analyze';
 import { addDays, isoDay, parseDay } from './dates';
-import { daysTo, project, projectBand } from './fit';
+import { ceilDays, daysTo, fitLine, project, projectBand, t975 } from './fit';
 
 /** One weigh-in a day from `start`, with the given weights. */
 function daily(start: string, weights: readonly number[]): WeighIn[] {
@@ -183,5 +183,114 @@ describe('analyze', () => {
     )!;
     expect(a.summary.bestWeek?.week).toBe('2026-10-12');
     expect(a.summary.bestWeek?.delta).toBeCloseTo(-1, 10);
+  });
+
+  it('has no biggest drop, best week or drop streak when nothing dropped', () => {
+    const s = analyze(daily('2026-10-05', [80, 80.5, 81, 81, 81.5, 82, 82, 82.3, 82.5]))!.summary;
+    expect([s.biggestDrop, s.bestWeek, s.longestDrops, s.drops]).toEqual([null, null, 0, 0]);
+    expect(s.biggestRise?.change).toBe(0.5);
+    const flat = analyze(daily('2026-10-05', [80, 80, 80, 80]))!;
+    expect([flat.summary.biggestDrop, flat.summary.biggestRise, flat.summary.flats]).toEqual([null, null, 3]);
+    expect(flat.models.linear?.r2).toBe(0);
+    expect(flat.models.linear?.slope).toBe(0);
+    expect(daysTo(flat.models.linear, 80, 79)).toBeNull();
+  });
+
+  it('handles a single weigh-in', () => {
+    const a = analyze([{ date: '2026-10-19', kg: 80 }])!;
+    expect([a.summary.n, a.summary.days, a.summary.loss, a.summary.changeSd, a.summary.biggestDrop]).toEqual([
+      1,
+      1,
+      0,
+      null,
+      null,
+    ]);
+    expect(a.models).toEqual({ linear: null, recent: null, smoothed: null });
+    expect(a.weeks).toHaveLength(1);
+  });
+
+  it('keeps the first of tied extremes', () => {
+    const s = analyze(daily('2026-10-01', [80, 79, 80, 79]))!.summary;
+    expect([s.max.date, s.min.date]).toEqual(['2026-10-01', '2026-10-02']);
+  });
+
+  it('treats pound readings and kilogram readings within a scale step as the same', () => {
+    const lb = 0.45359237;
+    const a = analyze([
+      { date: '2026-10-01', kg: 176.4 * lb },
+      { date: '2026-10-02', kg: 176.2 * lb },
+      { date: '2026-10-03', kg: 176.2 * lb },
+      { date: '2026-10-04', kg: 79.9 },
+    ])!;
+    expect(a.series[1]?.change).toBeCloseTo(-0.2 * lb, 6);
+    expect([a.summary.drops, a.summary.flats]).toEqual([1, 2]);
+  });
+
+  it('skips weights outside a plausible range', () => {
+    const a = analyze([
+      { date: '2026-10-01', kg: 80 },
+      { date: '2026-10-02', kg: 8 },
+      { date: '2026-10-03', kg: 8000 },
+    ])!;
+    expect(a.series).toHaveLength(1);
+  });
+
+  it('only compares a week with the week just before', () => {
+    const a = analyze([
+      { date: '2026-01-05', kg: 100 },
+      { date: '2026-03-02', kg: 90 },
+      { date: '2026-03-09', kg: 89 },
+    ])!;
+    expect(a.weeks.map((w) => w.delta)).toEqual([null, null, -1]);
+  });
+
+  it('takes the 7-day average from about a week before, not from long ago', () => {
+    const early = Array.from({ length: 10 }, (_, i) => ({
+      date: isoDay(addDays(parseDay('2026-01-01'), i)),
+      kg: 90,
+    }));
+    const late = [{ date: '2026-06-01', kg: 85 }];
+    expect(analyze([...early, ...late])!.summary.avg7WeekBefore).toBeNull();
+  });
+
+  it('flags a recent model that falls back to the whole series', () => {
+    const sparse = [
+      ...Array.from({ length: 10 }, (_, i) => ({
+        date: isoDay(addDays(parseDay('2026-01-01'), i)),
+        kg: 90 - i * 0.1,
+      })),
+      { date: '2026-03-01', kg: 88 },
+    ];
+    const a = analyze(sparse)!;
+    expect(a.recentIsFallback).toBe(true);
+    expect(a.models.recent?.n).toBe(11);
+    expect(analyze(daily('2026-10-01', [90, 89.8, 89.6, 89.4, 89.2]))!.recentIsFallback).toBe(false);
+  });
+});
+
+describe('prediction bands', () => {
+  it('match R for a three-point fit (Student t, 1 degree of freedom)', () => {
+    const points = [1, 2, 4].map((value, index) => ({ index, value, t: parseDay('2026-10-01') }));
+    const model = fitLine(points, 2)!;
+    expect(model.slope).toBeCloseTo(1.5, 12);
+    expect(model.error).toBeCloseTo(0.408248290463863, 12);
+    // R: predict(lm(y ~ x), data.frame(x = 3), interval = "prediction")
+    const band = projectBand(model, 1)!;
+    expect(band.lo).toBeCloseTo(-4.13716, 2);
+    expect(band.hi).toBeCloseTo(14.80383, 2);
+    expect(t975(1)).toBe(12.706);
+    expect(t975(200)).toBe(1.96);
+  });
+});
+
+describe('daysTo', () => {
+  it('lands on whole days exactly, whatever the float noise', () => {
+    for (const slope of [-0.1, -0.3, -0.7])
+      for (let k = 1; k <= 50; k++) {
+        const model = { n: 10, slope, level: 100, error: 0, xMean: 0, sxx: 1, r2: 1, start: new Date(0) };
+        expect(daysTo(model, 100, 100 + slope * k)).toBe(k);
+      }
+    expect(ceilDays(2.0000000000000115)).toBe(2);
+    expect(ceilDays(Number.POSITIVE_INFINITY)).toBeNull();
   });
 });
