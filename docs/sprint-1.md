@@ -26,12 +26,19 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    and import also let the owner bring his own history from the original dashboard (its
    `{ "data", "peso" }` rows). Works without storage too (private windows), with a clear message.
 
-   The data layer lives in `src/data/`; the screens that use it (the form, the backup buttons, the
-   "nothing will be kept" message) arrive with the dashboard in story 5. A backup file holds
-   `app: "weigh-to-go"`, `format: 1`, `exportedAt`, the `weighIns` (`date`, `kg`, `savedAt`) and the
-   `profile` (`goalKg`, `heightCm`). Import skips, and counts, rows with a bad date, a weight out of
-   range or a date more than a day ahead; it merges (the file wins on shared days) or replaces, in
-   one transaction.
+   The data layer lives in `src/data/`; the screens that use it arrive with the dashboard in
+   story 5. A backup file holds `app: "weigh-to-go"`, `format: 1`, `exportedAt`, the `weighIns`
+   (`date`, `kg`, `savedAt`) and the `profile` (`goalKg`, `heightCm`). Import skips, and counts, rows with a
+   bad date, a weight out of range, a day before 1900 or more than a day ahead, and repeated days.
+   Merge keeps, for a day both have, the weigh-in saved later (so an old backup can't undo a
+   correction); replace leaves only the file's weigh-ins (and its profile, if it has one). Each is
+   one transaction. From the original it takes the `{ data, peso, registrado_em }` rows, in an
+   array or under `pesagens`, and the `{ meta, altura }` profile.
+
+   Private windows usually have IndexedDB too, emptied when the window closes, so the store can't
+   tell them apart: the page falls back to memory only when IndexedDB is missing or refused (and
+   says why, asking for a reload when the data may still be on disk), and relies on the
+   persistent-storage request and backup reminders (`lastBackupAt`) against eviction.
 
 4. **Two languages and units.** English and Portuguese dictionaries, language from the browser and a
    switcher; numbers, dates and decimal input per locale; bulk paste in both date orders; kg or lb
@@ -40,6 +47,11 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    `<html lang>`.
 5. **Dashboard I.** Header summary, weigh-in form, bulk paste, KPIs, the main chart with all its
    layers, projection methods, horizons and periods, and the log with delete and confirmation.
+   From story 3: ask for persistent storage after the first save, not on load; say when the store
+   is in memory, and why; remind to export a backup when `lastBackupAt` is old or missing; confirm
+   replace and erase, offering a backup first; show how bulk paste read an ambiguous date
+   (`orderGuessed`) and how many days a paste or merge changes; check a file's size before reading
+   it; handle a failed save (a full disk).
 6. **Dashboard II.** Percentage loss (KPIs, chart, weekly rate, milestones table), compound daily
    rate (KPIs, daily rate chart, constant % vs constant kg, simulator) and hiccups (rules, KPIs,
    chart, table).

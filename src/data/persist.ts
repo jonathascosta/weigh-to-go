@@ -2,7 +2,8 @@
  * Asks the browser to keep this site's data under storage pressure. Without it, a browser may
  * evict IndexedDB from a site not visited in a while (Safari after seven days without a visit,
  * unless installed). Browsers decide on their own: Chrome grants it to sites that are bookmarked or
- * installed, Firefox may ask the person.
+ * installed, Firefox may ask the person. Because of that prompt, call it after something the person
+ * did (the first save), never on page load.
  */
 export type Persistence = 'persisted' | 'not-persisted' | 'unsupported';
 

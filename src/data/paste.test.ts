@@ -65,11 +65,68 @@ describe('parsePaste', () => {
       '20/10/2026 100',
       '19/10 1.234,5',
     ];
-    expect(parsePaste(lines.join('\n'), pt)).toEqual({ rows: [], bad: lines });
+    expect(parsePaste(lines.join('\n'), pt)).toMatchObject({ rows: [], bad: lines });
   });
 
-  it('reads the same line differently by order', () => {
+  it('reads an ambiguous line in the language order, and says so', () => {
+    expect(parsePaste('05/10 100', pt)).toMatchObject({ order: 'dmy', orderGuessed: true });
     expect(parsePaste('05/10 100', pt).rows[0]!.date).toBe('2026-10-05');
     expect(parsePaste('05/10 100', { ...en, unit: 'kg' }).rows[0]!.date).toBe('2026-05-10');
+    expect(parsePaste('2026-10-05 100', pt).orderGuessed).toBe(false);
+  });
+
+  it('takes the order from the paste when a day over 12 settles it', () => {
+    const text = '05/10 100\n19/10 99';
+    expect(parsePaste(text, { ...en, unit: 'kg' })).toMatchObject({
+      order: 'dmy',
+      orderGuessed: false,
+      rows: [
+        { date: '2026-10-05', kg: 100 },
+        { date: '2026-10-19', kg: 99 },
+      ],
+    });
+    expect(parsePaste('10/05 100\n10/19 99', pt)).toMatchObject({ order: 'mdy', orderGuessed: false });
+    // Contradicting lines settle nothing: the language order stands, and the odd line is bad.
+    expect(parsePaste('19/10 100\n10/19 99', pt)).toMatchObject({ order: 'dmy', bad: ['10/19 99'] });
+  });
+
+  it('uses the unit written on a line over the page unit', () => {
+    expect(parsePaste('19/10 240 lb\n18/10 108,6 kg\n17/10 109 KGS', pt).rows).toEqual([
+      { date: '2026-10-17', kg: 109 },
+      { date: '2026-10-18', kg: 108.6 },
+      { date: '2026-10-19', kg: 240 * 0.45359237 },
+    ]);
+    expect(parsePaste('10/19 108 kg', en).rows).toEqual([{ date: '2026-10-19', kg: 108 }]);
+  });
+
+  it('counts repeated days', () => {
+    expect(parsePaste('19/10 108,2\n19/10 108,0\n19/10 107,9', pt).repeated).toBe(2);
+  });
+
+  it('reads two-digit years in this century, or the last when that would be ahead', () => {
+    expect(parsePaste('31/12/99 100\n01/01/26 100', pt).rows.map((r) => r.date)).toEqual([
+      '1999-12-31',
+      '2026-01-01',
+    ]);
+  });
+
+  it('refuses days before 1900, mixed separators and overlong lines', () => {
+    const lines = ['0001-01-01 100', '1/1/1850 100', '19/10.2026 100', `19/10 ${'1'.repeat(200)}`];
+    expect(parsePaste(lines.join('\n'), pt).bad).toEqual(lines);
+  });
+
+  it('takes a comma between the date and the weight', () => {
+    expect(parsePaste('19/10/2026,108.2\n18/10/2026, 108,4\n2026-10-17;109', pt).rows).toEqual([
+      { date: '2026-10-17', kg: 109 },
+      { date: '2026-10-18', kg: 108.4 },
+      { date: '2026-10-19', kg: 108.2 },
+    ]);
+  });
+
+  it('fails fast on a long line of separators', () => {
+    const start = performance.now();
+    parsePaste(`2026-10-19${','.repeat(50_000)}`, pt);
+    parsePaste(`19/10${' ,'.repeat(50_000)}1`, pt);
+    expect(performance.now() - start).toBeLessThan(100);
   });
 });

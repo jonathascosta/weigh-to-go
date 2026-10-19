@@ -1,18 +1,37 @@
 /**
- * The JSON backup: the only way data moves between devices. Export writes every weigh-in and the
- * profile; import reads that file back, or the weigh-ins of the original dashboard
- * (`{ "data": "YYYY-MM-DD", "peso": 108.2 }` rows), and checks every row before anything is saved.
+ * The JSON backup: the only way data moves between devices, and the only copy outside the
+ * browser. Export writes every weigh-in and the profile; import reads that file back, or the data
+ * of the original dashboard, and checks every row before anything is saved.
+ *
+ * The original kept each weigh-in as `{ "data": "YYYY-MM-DD", "peso": 108.2, "registrado_em": … }`
+ * and the profile as `{ "meta": 90, "altura": 178 }`; import takes those rows as an array, or under
+ * `pesagens` (an array, or an object keyed by date or id), each row bare or wrapped as
+ * `{ "id": …, "data": { … } }`, and the profile under `perfil` or `config`.
  */
-import { addDays, isoDay, parseDay } from '../analysis/dates';
-import { EMPTY_PROFILE, toProfile, toWeighIn, type Profile, type StoredWeighIn } from './records';
-import type { Store } from './store';
+import { addDays, isIsoDay, isoDay, parseDay } from '../analysis/dates';
+import { parseNumber } from './paste';
+import { pref } from './prefs';
+import {
+  byDate,
+  isIsoTime,
+  isWeighInDay,
+  toProfile,
+  toWeighIn,
+  type Profile,
+  type StoredWeighIn,
+} from './records';
+import type { MergeResult, Store } from './store';
 
 export const BACKUP_APP = 'weigh-to-go';
 export const BACKUP_FORMAT = 1;
-/** Text longer than this (in characters) is not a backup: decades of daily weigh-ins fit in 2 MB. */
-export const MAX_BACKUP_BYTES = 5_000_000;
-/** Days before this one are not weigh-ins (a typo in the year). */
-export const FIRST_DAY = '1900-01-01';
+/** Text longer than this is not a backup: decades of daily weigh-ins fit in 2 million characters. */
+export const MAX_BACKUP_CHARS = 5_000_000;
+
+/**
+ * Whether a file of `bytes` is too large to be a backup, checked before reading it (a UTF-8 file
+ * holds at least a third as many characters as bytes).
+ */
+export const isBackupFileTooLarge = (bytes: number): boolean => bytes > 3 * MAX_BACKUP_CHARS;
 
 export interface Backup {
   readonly app: typeof BACKUP_APP;
@@ -27,15 +46,25 @@ export type BackupError = 'too-large' | 'not-json' | 'not-a-backup' | 'newer-for
 export type ParsedBackup =
   | {
       readonly ok: true;
-      /** 'backup' for this app's file, 'original' for the original dashboard's rows. */
+      /** 'backup' for this app's file, 'original' for the original dashboard's data. */
       readonly source: 'backup' | 'original';
       readonly weighIns: readonly StoredWeighIn[];
-      /** The profile in the file, or null if it has none (the original's rows). */
+      /** The profile in the file, or null if it has none. */
       readonly profile: Profile | null;
-      /** Rows left out: not a weigh-in, a weight out of range, a date in the future, or a repeated day. */
+      /**
+       * Rows left out: not a weigh-in, a weight out of range, a day before 1900 or more than a day
+       * ahead, or a day an earlier row already gave (the later row is kept).
+       */
       readonly skipped: number;
     }
   | { readonly ok: false; readonly error: BackupError };
+
+/** When the last backup was exported, so the page can remind the person to make another. */
+export const lastBackupAt = pref(
+  'lastBackupAt',
+  (v: unknown): v is string | null => v === null || isIsoTime(v),
+  null,
+);
 
 /** The backup of `weighIns` and `profile`, as the text of the file. */
 export function createBackup(weighIns: readonly StoredWeighIn[], profile: Profile, now: Date): string {
@@ -54,13 +83,42 @@ export const backupFileName = (today: string): string => `weigh-to-go-${today}.j
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
-/** The original dashboard's rows: an array of them, or an object holding them under `pesagens`. */
-function originalRows(value: unknown): unknown[] | null {
-  const rows = Array.isArray(value) ? value : isObject(value) ? value.pesagens : null;
-  if (!Array.isArray(rows) || rows.length === 0) return null;
-  const looksOriginal = rows.some((row) => isObject(row) && 'data' in row && 'peso' in row);
-  return looksOriginal ? rows : null;
+/** A number, or a number written as text with a comma or a point ("108,2"). */
+const numeric = (v: unknown): number | null => {
+  const n = typeof v === 'string' ? parseNumber(v) : v;
+  return typeof n === 'number' && Number.isFinite(n) ? n : null;
+};
+
+/** A row of the original, unwrapped from `{ id, data: { … } }` if needed. */
+const unwrap = (row: unknown): unknown => (isObject(row) && isObject(row.data) ? row.data : row);
+const isOriginalRow = (row: unknown): row is Record<string, unknown> =>
+  isObject(row) && typeof row.data === 'string' && 'peso' in row;
+
+/** The original dashboard's weigh-ins and profile in `value`, or null if it doesn't hold them. */
+function original(value: unknown): { rows: unknown[]; profile: Profile | null } | null {
+  const holder = isObject(value) && !Array.isArray(value) ? value : null;
+  const list = holder ? holder.pesagens : value;
+  const rows = (Array.isArray(list) ? list : isObject(list) ? Object.values(list) : []).map(unwrap);
+  if (!rows.some(isOriginalRow)) return null;
+
+  const config = holder && isObject(holder.config) ? holder.config : null;
+  const perfil = unwrap(holder?.perfil ?? (config && isObject(config.perfil) ? config.perfil : config));
+  let profile: Profile | null = null;
+  if (isObject(perfil)) {
+    const altura = numeric(perfil.altura);
+    // The original asked for centimetres; a height in metres is an easy slip.
+    const heightCm = altura !== null && altura < 3 ? altura * 100 : altura;
+    profile = toProfile({ goalKg: numeric(perfil.meta), heightCm });
+  }
+  return {
+    rows: rows.map((row) =>
+      isOriginalRow(row) ? { date: row.data, kg: numeric(row.peso), savedAt: row.registrado_em } : row,
+    ),
+    profile,
+  };
 }
+
+const hasValue = (p: Profile | null): boolean => p !== null && (p.goalKg !== null || p.heightCm !== null);
 
 /**
  * Reads a backup file's text. `today` is the device's day (YYYY-MM-DD): a weigh-in more than a day
@@ -68,7 +126,8 @@ function originalRows(value: unknown): unknown[] | null {
  * day keep the last, as when saving.
  */
 export function parseBackup(text: string, today: string, now: Date = new Date()): ParsedBackup {
-  if (text.length > MAX_BACKUP_BYTES) return { ok: false, error: 'too-large' };
+  if (!isIsoDay(today)) throw new TypeError(`today must be YYYY-MM-DD, not ${today}`);
+  if (text.length > MAX_BACKUP_CHARS) return { ok: false, error: 'too-large' };
   let value: unknown;
   try {
     value = JSON.parse(text);
@@ -80,60 +139,58 @@ export function parseBackup(text: string, today: string, now: Date = new Date())
   let profile: Profile | null;
   let source: 'backup' | 'original';
   if (isObject(value) && value.app === BACKUP_APP) {
-    if (typeof value.format !== 'number' || !Array.isArray(value.weighIns))
+    const { format } = value;
+    if (
+      typeof format !== 'number' ||
+      !Number.isInteger(format) ||
+      format < 1 ||
+      !Array.isArray(value.weighIns)
+    )
       return { ok: false, error: 'not-a-backup' };
-    if (value.format > BACKUP_FORMAT) return { ok: false, error: 'newer-format' };
+    if (format > BACKUP_FORMAT) return { ok: false, error: 'newer-format' };
     rows = value.weighIns;
     profile = toProfile(value.profile);
     source = 'backup';
   } else {
-    const original = originalRows(value);
-    if (original === null) return { ok: false, error: 'not-a-backup' };
-    rows = original.map((row) =>
-      isObject(row) ? { date: row.data, kg: row.peso, savedAt: row.registrado_em } : row,
-    );
-    profile = null;
+    const found = original(value);
+    if (found === null) return { ok: false, error: 'not-a-backup' };
+    ({ rows, profile } = found);
     source = 'original';
   }
 
   const latest = isoDay(addDays(parseDay(today), 1));
   const saved = now.toISOString();
-  const byDate = new Map<string, StoredWeighIn>();
+  const byDay = new Map<string, StoredWeighIn>();
   let skipped = 0;
   for (const row of rows) {
     const w = toWeighIn(row, saved);
-    if (w === null || w.date < FIRST_DAY || w.date > latest) {
+    if (w === null || !isWeighInDay(w.date, latest)) {
       skipped++;
       continue;
     }
-    if (byDate.has(w.date)) skipped++;
-    byDate.set(w.date, w);
+    if (byDay.has(w.date)) skipped++;
+    byDay.set(w.date, w);
   }
-  if (byDate.size === 0) return { ok: false, error: 'no-weigh-ins' };
-  const weighIns = [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
-  return { ok: true, source, weighIns, profile, skipped };
+  // A backup made before the first weigh-in still carries the goal and height.
+  if (byDay.size === 0 && !(source === 'backup' && hasValue(profile)))
+    return { ok: false, error: 'no-weigh-ins' };
+  return { ok: true, source, weighIns: [...byDay.values()].sort(byDate), profile, skipped };
 }
 
 export type ImportMode = 'merge' | 'replace';
 
 /**
- * Saves an imported backup. 'merge' keeps what is here and adds the file's weigh-ins (the file wins
- * on a day both have) and the profile fields the file has; 'replace' leaves only what the file
- * holds. Either way it is one transaction.
+ * Saves an imported backup, in one transaction. 'merge' keeps what is here and adds the file's
+ * weigh-ins: on a day both have, the one saved later wins (so an old backup doesn't undo a later
+ * correction); the profile fields the file has replace the ones here. 'replace' leaves only the
+ * file's weigh-ins, and its profile if it has one. Returns what a merge did, or null for 'replace'.
  */
 export async function importBackup(
   store: Store,
   parsed: Extract<ParsedBackup, { ok: true }>,
   mode: ImportMode,
-): Promise<void> {
-  if (mode === 'replace') {
-    await store.replace(parsed.weighIns, parsed.profile ?? EMPTY_PROFILE);
-    return;
-  }
-  const current = await store.profile();
-  const profile = parsed.profile && {
-    goalKg: parsed.profile.goalKg ?? current.goalKg,
-    heightCm: parsed.profile.heightCm ?? current.heightCm,
-  };
-  await store.put(parsed.weighIns, profile ?? undefined);
+): Promise<MergeResult | null> {
+  if (mode === 'merge') return store.merge(parsed.weighIns, parsed.profile);
+  await store.replace(parsed.weighIns, parsed.profile ?? undefined);
+  return null;
 }

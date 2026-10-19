@@ -1,5 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import { backupFileName, createBackup, importBackup, MAX_BACKUP_BYTES, parseBackup } from './backup';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  backupFileName,
+  createBackup,
+  importBackup,
+  isBackupFileTooLarge,
+  lastBackupAt,
+  MAX_BACKUP_CHARS,
+  parseBackup,
+} from './backup';
+import { fakeStorage } from './fake-storage.test-helper';
 import type { StoredWeighIn } from './records';
 import { memoryStore } from './store';
 
@@ -97,7 +106,46 @@ describe('createBackup and parseBackup', () => {
     expect(error('{"app":"weigh-to-go","format":1}')).toBe('not-a-backup');
     expect(error('{"app":"weigh-to-go","format":2,"weighIns":[]}')).toBe('newer-format');
     expect(error('{"app":"weigh-to-go","format":1,"weighIns":[{"date":"x","kg":1}]}')).toBe('no-weigh-ins');
-    expect(error(' '.repeat(MAX_BACKUP_BYTES + 1))).toBe('too-large');
+    expect(error(' '.repeat(MAX_BACKUP_CHARS + 1))).toBe('too-large');
+    for (const format of ['-5', '0', '1.5', '"1"'])
+      expect(error(`{"app":"weigh-to-go","format":${format},"weighIns":[]}`)).toBe('not-a-backup');
+    expect(error('{"app":"weigh-to-go","format":1,"weighIns":[],"profile":{}}')).toBe('no-weigh-ins');
+  });
+
+  it('takes a backup with no weigh-ins when it holds a goal or height', () => {
+    const parsed = ok(createBackup([], { goalKg: 90, heightCm: null }, now));
+    expect(parsed.weighIns).toEqual([]);
+    expect(parsed.profile).toEqual({ goalKg: 90, heightCm: null });
+  });
+
+  it('refuses a today that is not a day', () => {
+    expect(() => parseBackup('[]', 'garbage', now)).toThrow(TypeError);
+  });
+
+  it("reads the original's rows keyed by id, wrapped, or with the weight as text", () => {
+    const text = JSON.stringify({
+      pesagens: {
+        'pesagens/2026-10-17': { id: 'pesagens/2026-10-17', data: { data: '2026-10-17', peso: '109,1' } },
+        '2026-10-18': { data: '2026-10-18', peso: 108.7, registrado_em: at },
+        x: { data: '2026-10-19', peso: 'heavy' },
+      },
+      config: { perfil: { meta: '90', altura: 1.78 } },
+    });
+    const parsed = ok(text);
+    expect(parsed.weighIns.map((x) => [x.date, x.kg])).toEqual([
+      ['2026-10-17', 109.1],
+      ['2026-10-18', 108.7],
+    ]);
+    expect(parsed.skipped).toBe(1);
+    expect(parsed.profile).toEqual({ goalKg: 90, heightCm: 178 });
+  });
+
+  it("reads the original's profile under perfil", () => {
+    const text = JSON.stringify({
+      pesagens: [{ data: '2026-10-18', peso: 108 }],
+      perfil: { meta: 85, altura: 180 },
+    });
+    expect(ok(text).profile).toEqual({ goalKg: 85, heightCm: 180 });
   });
 });
 
@@ -131,10 +179,55 @@ describe('importBackup', () => {
     expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 178 });
   });
 
-  it('replaces: only what the file holds is left', async () => {
+  it('merges: a day saved here after the file was made keeps its weigh-in', async () => {
     const store = await setup();
-    await importBackup(store, ok(JSON.stringify([{ data: '2026-10-18', peso: 108 }])), 'replace');
+    const old = createBackup(
+      [w('2026-10-17', 110, '2026-10-01T08:00:00.000Z')],
+      { goalKg: null, heightCm: null },
+      now,
+    );
+    expect(await importBackup(store, ok(old), 'merge')).toEqual({ added: 0, updated: 0, kept: 1 });
+    expect((await store.weighIns()).find((x) => x.date === '2026-10-17')!.kg).toBe(109);
+    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 178 });
+  });
+
+  it("replaces the weigh-ins with the original's, keeping the profile here", async () => {
+    const store = await setup();
+    expect(
+      await importBackup(store, ok(JSON.stringify([{ data: '2026-10-18', peso: 108 }])), 'replace'),
+    ).toBeNull();
     expect((await store.weighIns()).map((x) => x.date)).toEqual(['2026-10-18']);
-    expect(await store.profile()).toEqual({ goalKg: null, heightCm: null });
+    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 178 });
+  });
+
+  it('replaces everything with a backup, profile included', async () => {
+    const store = await setup();
+    await importBackup(
+      store,
+      ok(createBackup([w('2026-10-18', 108)], { goalKg: null, heightCm: 170 }, now)),
+      'replace',
+    );
+    expect((await store.weighIns()).map((x) => x.date)).toEqual(['2026-10-18']);
+    expect(await store.profile()).toEqual({ goalKg: null, heightCm: 170 });
+  });
+});
+
+describe('the last backup', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('is remembered, and a broken value reads as never', () => {
+    vi.stubGlobal('localStorage', fakeStorage());
+    expect(lastBackupAt.read()).toBeNull();
+    lastBackupAt.write(now.toISOString());
+    expect(lastBackupAt.read()).toBe(now.toISOString());
+    localStorage.setItem('weigh-to-go:lastBackupAt', '"soon"');
+    expect(lastBackupAt.read()).toBeNull();
+  });
+
+  it('refuses files too large to be one before reading them', () => {
+    expect(isBackupFileTooLarge(2_000_000)).toBe(false);
+    expect(isBackupFileTooLarge(3 * MAX_BACKUP_CHARS + 1)).toBe(true);
   });
 });

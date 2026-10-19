@@ -1,29 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { memoryStore } from './store';
-import { eraseEverything } from './erase';
-import { clearPrefs, oneOf, PREFS_PREFIX, readPref, writePref } from './prefs';
-import { requestPersistence } from './persist';
-
-/** A localStorage in memory, as the browser's. */
-function fakeStorage(): Storage {
-  const data = new Map<string, string>();
-  return {
-    get length() {
-      return data.size;
-    },
-    key: (i) => [...data.keys()][i] ?? null,
-    getItem: (key) => data.get(key) ?? null,
-    setItem: (key, value) => {
-      data.set(key, value);
-    },
-    removeItem: (key) => {
-      data.delete(key);
-    },
-    clear: () => {
-      data.clear();
-    },
-  };
-}
+import { fakeStorage } from './fake-storage.test-helper';
+import { clearPrefs, oneOf, pref, PREFS_PREFIX, readPref, writePref } from './prefs';
 
 const isUnit = oneOf(['kg', 'lb'] as const);
 
@@ -38,6 +15,14 @@ describe('preferences', () => {
     expect(writePref('unit', 'lb')).toBe(true);
     expect(readPref('unit', isUnit, 'kg')).toBe('lb');
     expect(localStorage.getItem(`${PREFS_PREFIX}unit`)).toBe('"lb"');
+  });
+
+  it('ties reads and writes together in a descriptor', () => {
+    vi.stubGlobal('localStorage', fakeStorage());
+    const unit = pref('unit', isUnit, 'kg');
+    expect(unit.read()).toBe('kg');
+    expect(unit.write('lb')).toBe(true);
+    expect(unit.read()).toBe('lb');
   });
 
   it('falls back on a value that no longer makes sense, or broken JSON', () => {
@@ -75,44 +60,5 @@ describe('preferences', () => {
     clearPrefs();
     expect(localStorage.length).toBe(1);
     expect(localStorage.getItem('other-app')).toBe('keep');
-  });
-});
-
-describe('eraseEverything', () => {
-  it('erases the data and the preferences', async () => {
-    vi.stubGlobal('localStorage', fakeStorage());
-    const store = memoryStore();
-    await store.put([{ date: '2026-10-17', kg: 100, savedAt: '2026-10-17T08:00:00Z' }], {
-      goalKg: 90,
-      heightCm: 180,
-    });
-    writePref('unit', 'lb');
-    await eraseEverything(store);
-    expect(await store.weighIns()).toEqual([]);
-    expect(readPref('unit', isUnit, 'kg')).toBe('kg');
-  });
-});
-
-describe('requestPersistence', () => {
-  const manager = (persisted: boolean, grant: boolean) =>
-    ({
-      persisted: () => Promise.resolve(persisted),
-      persist: () => Promise.resolve(grant),
-    }) as unknown as StorageManager;
-
-  it('reports what the browser decides', async () => {
-    expect(await requestPersistence(manager(true, false))).toBe('persisted');
-    expect(await requestPersistence(manager(false, true))).toBe('persisted');
-    expect(await requestPersistence(manager(false, false))).toBe('not-persisted');
-  });
-
-  it('copes with browsers without it, or that throw', async () => {
-    expect(await requestPersistence(undefined)).toBe('unsupported');
-    expect(await requestPersistence({} as StorageManager)).toBe('unsupported');
-    const throwing = {
-      persisted: () => Promise.reject(new Error('no')),
-      persist: () => Promise.resolve(true),
-    };
-    expect(await requestPersistence(throwing as unknown as StorageManager)).toBe('unsupported');
   });
 });

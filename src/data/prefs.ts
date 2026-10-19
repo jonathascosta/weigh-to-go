@@ -27,7 +27,7 @@ export function readPref<T>(key: string, valid: (value: unknown) => value is T, 
   }
 }
 
-/** Saves the preference `key`; returns whether it was kept. */
+/** Saves the preference `key` (any JSON value; `pref` ties it to a type); returns whether it was kept. */
 export function writePref(key: string, value: unknown): boolean {
   try {
     const store = storage();
@@ -60,3 +60,15 @@ export const oneOf =
   <T>(values: readonly T[]) =>
   (value: unknown): value is T =>
     values.includes(value as T);
+
+/** A preference: its key, which values it takes, and its default, so reads and writes agree. */
+export interface Pref<T> {
+  read(): T;
+  /** Returns whether it was kept. */
+  write(value: T): boolean;
+}
+
+export const pref = <T>(key: string, valid: (value: unknown) => value is T, fallback: T): Pref<T> => ({
+  read: () => readPref(key, valid, fallback),
+  write: (value) => writePref(key, value),
+});

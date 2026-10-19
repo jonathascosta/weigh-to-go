@@ -10,6 +10,8 @@ import { isIsoDay } from '../analysis/dates';
 export const LB_KG = 0.45359237;
 /** Heights outside this range, in cm, are not heights (a typo, or a different unit). */
 export const HEIGHT_RANGE = [100, 250] as const;
+/** Days before this one are not weigh-ins (a typo in the year). */
+export const FIRST_DAY = '1900-01-01';
 
 export interface StoredWeighIn extends WeighIn {
   /** When it was saved, ISO 8601; kept for the backup, not used by the analysis. */
@@ -31,6 +33,15 @@ const inRange = (v: unknown, [lo, hi]: readonly [number, number]): v is number =
 export const isWeight = (v: unknown): v is number => inRange(v, KG_RANGE);
 export const isHeight = (v: unknown): v is number => inRange(v, HEIGHT_RANGE);
 
+/** Whether `date` is a real day, YYYY-MM-DD, from `FIRST_DAY` to `latest`. */
+export const isWeighInDay = (date: string, latest: string): boolean =>
+  isIsoDay(date) && date >= FIRST_DAY && date <= latest;
+
+const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+/** Whether `v` is a moment written in ISO 8601, as `toISOString` gives. */
+export const isIsoTime = (v: unknown): v is string =>
+  typeof v === 'string' && ISO_TIME.test(v) && !Number.isNaN(Date.parse(v));
+
 /** The weigh-in in `value`, if it is one: a real day and a weight in range. */
 export function toWeighIn(value: unknown, savedAt: string): StoredWeighIn | null {
   if (typeof value !== 'object' || value === null) return null;
@@ -39,7 +50,7 @@ export function toWeighIn(value: unknown, savedAt: string): StoredWeighIn | null
   return {
     date,
     kg,
-    savedAt: typeof saved === 'string' && !Number.isNaN(Date.parse(saved)) ? saved : savedAt,
+    savedAt: isIsoTime(saved) ? saved : savedAt,
   };
 }
 
@@ -49,3 +60,15 @@ export function toProfile(value: unknown): Profile {
   const { goalKg, heightCm } = value as Record<string, unknown>;
   return { goalKg: isWeight(goalKg) ? goalKg : null, heightCm: isHeight(heightCm) ? heightCm : null };
 }
+
+/** Whether `w` can be saved as it is: the check every write passes before it reaches the store. */
+export const isStoredWeighIn = (w: StoredWeighIn): boolean =>
+  isIsoDay(w.date) && w.date >= FIRST_DAY && isWeight(w.kg) && isIsoTime(w.savedAt);
+
+/** Whether `p` can be saved as it is: each field null or valid. */
+export const isProfile = (p: Profile): boolean =>
+  (p.goalKg === null || isWeight(p.goalKg)) && (p.heightCm === null || isHeight(p.heightCm));
+
+/** Orders weigh-ins by day. */
+export const byDate = (a: { date: string }, b: { date: string }): number =>
+  a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
