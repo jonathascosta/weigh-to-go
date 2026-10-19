@@ -26,8 +26,8 @@ npm run preview      # serve dist/ as it will be deployed
 npm run check:dist   # check the built site keeps its protections
 ```
 
-Requires Node 22 (22.19 or later), 24, or 26 and later; CI tests all three and deploys from the
-`.nvmrc` one. The dev server applies the same Content Security Policy as the build, except that live
+Requires Node 22 (22.19 or later), 24, or 26 and later; CI tests all three and deploys from Node 24,
+the `.nvmrc` line. The dev server applies the same Content Security Policy as the build, except that live
 reload may connect; `vite preview` answers unknown paths with an empty 404, where GitHub Pages serves
 `404.html`.
 
@@ -46,4 +46,9 @@ also deployed to GitHub Pages. One-time setup, in the repository's **Settings �
 source to **GitHub Actions**, the custom domain to `weightogo.jonathas.net`, and turn on **Enforce
 HTTPS**. The DNS record is a CNAME from `weightogo` to `jonathascosta.github.io`. With Actions
 deployments the domain in Settings is the one that counts; `public/CNAME` only records it in the
-repository. If the site is ever retired, remove the DNS record first.
+repository.
+
+To keep anyone else from claiming the subdomain, verify `jonathas.net` once in the GitHub account's
+**Settings → Pages → Verified domains**. Pull requests are merged automatically once CI passes, so in
+**Settings → General** allow auto-merge, and protect `main` with the three "Lint, type-check, test and
+build" checks as required. If the site is ever retired, remove the DNS record first.

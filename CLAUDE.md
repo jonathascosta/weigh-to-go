@@ -17,10 +17,10 @@ version of a dashboard the owner first built as a claude.ai artifact.
 - **New dependencies wait a week** after release: install with
   `npm install --before="$(date -u -d '-7 days' +%FT%TZ)" <package>`; Dependabot applies the same
   cooldown.
-- **The diary needs scripts, and nothing works without them**: the frame gate (`src/frame.ts`) relies
-  on it, so never add a form or action that works with scripts off.
-- **No HTML from strings.** Trusted Types allow no policy: build the DOM from nodes and text; with
-  d3, `.text()`, `.style()` and SVG elements, never `.html()` or `.attr('style', …)`.
+- **With scripts off, the page only shows text**: no forms or controls that do anything, since the
+  frame gate (`src/frame.ts`) doesn't run then (and `form-action 'none'` blocks forms anyway).
+- **No HTML from strings.** Trusted Types allow no policy (story 8 adds one, for the service worker's
+  URL only): build the DOM from nodes and text; with d3, `.text()`, `.style()` and SVG elements, never `.html()` or `.attr('style', …)`.
 - Same quality bar as json2types: TypeScript strict, ESLint strictTypeChecked, Prettier, Vitest, and
   (from Sprint 1, story 8) Playwright, axe and Lighthouse in CI.
 

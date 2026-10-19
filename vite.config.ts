@@ -7,8 +7,9 @@ const { version } = JSON.parse(readFileSync(new URL('package.json', import.meta.
   version: string;
 };
 
-// The policy goes into every page, built or served: the dev server gets the same one except that its
-// live reload may open a WebSocket, so Trusted Types and style mistakes show up while developing.
+// The policy goes into every page, built or served: the dev server gets devPolicy (live reload and
+// Vite's own <style> elements), so Trusted Types mistakes show up while developing. In dev, Vite puts
+// its client script before the charset and the policy; that's expected, the build has no such tag.
 function securityPolicy(): Plugin {
   return {
     name: 'content-security-policy',

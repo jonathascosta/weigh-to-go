@@ -70,6 +70,11 @@ describe('findProblems', () => {
     ]);
   });
 
+  it('finds an inline script hidden behind a spaced closing tag', () => {
+    const html = page('<script src="/x.js"></script ><script>alert(1)</script >');
+    expect(findProblems(site(html))).toEqual(['index.html: has an inline script']);
+  });
+
   it('reports a page without the no-script stylesheet', () => {
     const html = page().replace(/<noscript>.*<\/noscript>/, '');
     expect(findProblems(site(html))).toEqual(["index.html: lacks the frame gate's no-script stylesheet"]);
@@ -151,10 +156,14 @@ describe('injectPolicy', () => {
     expect(() => injectPolicy('<head><title>x</title></head>')).toThrow(/charset/);
   });
 
-  it('gives the dev server the same policy, except a connection for live reload', () => {
+  it('gives the dev server the same policy, plus live reload and Vite’s style elements', () => {
     expect(devPolicy).toBe(
-      contentSecurityPolicy.replace("connect-src 'none'", "connect-src 'self' ws: wss:"),
+      contentSecurityPolicy.replace(
+        "connect-src 'none'",
+        "connect-src 'self' ws://localhost:* ws://127.0.0.1:*",
+      ) + "; style-src-elem 'self' 'unsafe-inline'",
     );
     expect(devPolicy).toContain("trusted-types 'none'");
+    expect(devPolicy).not.toContain('style-src-attr');
   });
 });
