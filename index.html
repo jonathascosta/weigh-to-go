@@ -10,6 +10,9 @@
       content="Log your weigh-ins and see your trend, projections, weekly averages and more. Weigh to Go runs entirely in your browser: your data never leaves your device."
     />
     <link rel="canonical" href="https://weightogo.jonathas.net/" />
+    <link rel="alternate" hreflang="en" href="https://weightogo.jonathas.net/" />
+    <link rel="alternate" hreflang="pt-BR" href="https://weightogo.jonathas.net/pt/" />
+    <link rel="alternate" hreflang="x-default" href="https://weightogo.jonathas.net/" />
     <meta name="author" content="Jonathas Costa" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#F2F5F6" media="(prefers-color-scheme: light)" />
@@ -17,12 +20,19 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Weigh to Go" />
-    <meta property="og:title" content="Weigh to Go · A weight diary that stays on your device" />
+    <meta
+      property="og:title"
+      data-i18n-content="page.home.title"
+      content="Weigh to Go · A weight diary that stays on your device"
+    />
     <meta
       property="og:description"
+      data-i18n-content="page.home.ogDescription"
       content="Log your weigh-ins and see your trend, projections, weekly averages and more, entirely in your browser."
     />
     <meta property="og:url" content="https://weightogo.jonathas.net/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="pt_BR" />
     <link rel="stylesheet" href="/src/styles.css" />
     <noscript><link rel="stylesheet" href="/noscript.css" /></noscript>
   </head>
@@ -30,7 +40,7 @@
     <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
     <header class="site-header">
       <a class="brand" href="/"><img src="/favicon.svg" alt="" width="28" height="28" /> Weigh to Go</a>
-      <div class="settings" id="settings" role="group"></div>
+      <div class="settings" id="settings"></div>
     </header>
     <main id="main" tabindex="-1">
       <section class="intro">

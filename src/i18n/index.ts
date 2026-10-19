@@ -1,9 +1,9 @@
 /**
  * The page's language and units: chosen by the reader (saved as preferences) or taken from the
- * browser, applied to the page's own text, and announced when they change so what is drawn can be
- * drawn again.
+ * page and the browser, applied to the page's own text, and announced when they change so what is
+ * drawn can be drawn again.
  */
-import { oneOf, pref } from '../data/prefs';
+import { oneOf, pref, PREFS_PREFIX } from '../data/prefs';
 import { defaultUnits, HEIGHT_UNITS, WEIGHT_UNITS, type HeightUnit, type WeightUnit } from '../units';
 import { formatter, type Formatter } from './format';
 import { homeTag, isLang, pickLocale, type Lang, type Locale } from './locale';
@@ -11,73 +11,123 @@ import { en, pt, type MessageKey, type Messages } from './messages';
 
 const DICTIONARIES: Record<Lang, Messages> = { en, pt };
 
-/** The reader's choices; null means "not chosen": follow the browser. */
+/** The reader's choices; null means "automatic": follow the page and the browser. */
 export const langPref = pref('lang', (v: unknown): v is Lang | null => v === null || isLang(v), null);
 export const weightUnitPref = pref('weightUnit', oneOf<WeightUnit | null>([...WEIGHT_UNITS, null]), null);
 export const heightUnitPref = pref('heightUnit', oneOf<HeightUnit | null>([...HEIGHT_UNITS, null]), null);
+
+export interface Choices {
+  readonly lang: Lang | null;
+  readonly weightUnit: WeightUnit | null;
+  readonly heightUnit: HeightUnit | null;
+}
 
 export interface Settings {
   readonly locale: Locale;
   readonly weightUnit: WeightUnit;
   readonly heightUnit: HeightUnit;
+  /** What the reader chose; null fields follow the page and the browser. */
+  readonly chosen: Choices;
   readonly messages: Messages;
   readonly format: Formatter;
 }
 
-/** The settings from the saved choices and the browser's languages. */
+/** The settings from the reader's choices, the browser's languages and the page's own language. */
 export function resolveSettings(
   preferred: readonly string[],
-  saved: { lang: Lang | null; weightUnit: WeightUnit | null; heightUnit: HeightUnit | null },
+  chosen: Choices,
+  pageLang: Lang | null = null,
 ): Settings {
-  const locale = pickLocale(preferred, saved.lang);
-  // Units follow where the reader is (the browser's own locale), not the language they read in: a
-  // reader in Brazil who switches to English still weighs in kg.
+  const locale = pickLocale(preferred, chosen.lang, pageLang);
+  // Units follow where the reader is (the browser's first language), not the language they read
+  // in: a reader in Brazil who switches to English still weighs in kg.
   const units = defaultUnits(homeTag(preferred));
   return {
     locale,
-    weightUnit: saved.weightUnit ?? units.weight,
-    heightUnit: saved.heightUnit ?? units.height,
+    weightUnit: chosen.weightUnit ?? units.weight,
+    heightUnit: chosen.heightUnit ?? units.height,
+    chosen,
     messages: DICTIONARIES[locale.lang],
     format: formatter(locale.tag),
   };
 }
 
-const browserLanguages = (): readonly string[] =>
-  typeof navigator === 'undefined'
-    ? []
-    : navigator.languages.length > 0
-      ? navigator.languages
-      : [navigator.language];
+/** The browser's languages; some browsers leave `navigator.languages` empty or out. */
+function browserLanguages(): readonly string[] {
+  if (typeof navigator === 'undefined') return [];
+  const { languages, language } = navigator as { languages?: unknown; language?: unknown };
+  if (Array.isArray(languages) && languages.length > 0)
+    return languages.filter((l): l is string => typeof l === 'string');
+  return typeof language === 'string' ? [language] : [];
+}
 
-type Choices = Parameters<typeof resolveSettings>[1];
+const savedChoices = (): Choices => ({
+  lang: langPref.read(),
+  weightUnit: weightUnitPref.read(),
+  heightUnit: heightUnitPref.read(),
+});
 
-/** The reader's choices, kept here too so they hold for the visit when storage is blocked. */
-let chosen: Choices | null = null;
-let current: Settings | null = null;
+interface State {
+  /** The reader's choices, kept here too so they hold for the visit when storage is blocked. */
+  readonly chosen: Choices;
+  readonly pageLang: Lang | null;
+  readonly settings: Settings;
+}
+
+let state: State | null = null;
 const listeners = new Set<(settings: Settings) => void>();
 
+function current(): State {
+  if (state === null) {
+    const chosen = savedChoices();
+    state = { chosen, pageLang: null, settings: resolveSettings(browserLanguages(), chosen) };
+  }
+  return state;
+}
+
+function update(next: { chosen?: Choices }): Settings {
+  const { chosen: before, pageLang } = current();
+  const chosen = next.chosen ?? before;
+  const settings = resolveSettings(browserLanguages(), chosen, pageLang);
+  state = { chosen, pageLang, settings };
+  for (const listener of listeners) {
+    // One listener failing must not keep the others from hearing.
+    try {
+      listener(settings);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  return settings;
+}
+
 /** The current settings, read from the preferences and the browser the first time. */
-export function settings(): Settings {
-  chosen ??= { lang: langPref.read(), weightUnit: weightUnitPref.read(), heightUnit: heightUnitPref.read() };
-  current ??= resolveSettings(browserLanguages(), chosen);
-  return current;
+export const settings = (): Settings => current().settings;
+
+/** What "automatic" gives now (the language and units the page and the browser pick). */
+export function automatic(): Settings {
+  const { pageLang } = current();
+  return resolveSettings(browserLanguages(), { lang: null, weightUnit: null, heightUnit: null }, pageLang);
 }
 
 /** The message `key` in the current language. */
 export const t = <K extends MessageKey>(key: K): Messages[K] => settings().messages[key];
 
-/** Saves the reader's choice and tells everyone who listens. */
-export function choose(
-  choice: Partial<{ lang: Lang; weightUnit: WeightUnit; heightUnit: HeightUnit }>,
-): Settings {
-  settings();
-  chosen = { ...(chosen as Choices), ...choice };
+/**
+ * Sets the language the page itself is written in (a page made for one language), used when the
+ * reader hasn't chosen one. Called before anything is shown, so it tells no one.
+ */
+export function setPageLang(pageLang: Lang | null): void {
+  const { chosen } = current();
+  state = { chosen, pageLang, settings: resolveSettings(browserLanguages(), chosen, pageLang) };
+}
+
+/** Saves the reader's choice (null: back to automatic) and tells everyone who listens. */
+export function choose(choice: Partial<Choices>): Settings {
   if (choice.lang !== undefined) langPref.write(choice.lang);
   if (choice.weightUnit !== undefined) weightUnitPref.write(choice.weightUnit);
   if (choice.heightUnit !== undefined) heightUnitPref.write(choice.heightUnit);
-  current = resolveSettings(browserLanguages(), chosen);
-  for (const listener of listeners) listener(current);
-  return current;
+  return update({ chosen: { ...current().chosen, ...choice } });
 }
 
 /** Calls `listener` whenever the settings change; returns the unsubscribe. */
@@ -88,10 +138,28 @@ export function onSettingsChange(listener: (settings: Settings) => void): () => 
   };
 }
 
+/**
+ * Follows changes made elsewhere: a choice saved in another tab, or the browser's languages
+ * changed in its settings. Returns the unsubscribe.
+ */
+export function watchSettings(target: Pick<Window, 'addEventListener' | 'removeEventListener'>): () => void {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === null || event.key.startsWith(PREFS_PREFIX)) update({ chosen: savedChoices() });
+  };
+  const onLanguages = () => {
+    update({});
+  };
+  target.addEventListener('storage', onStorage);
+  target.addEventListener('languagechange', onLanguages);
+  return () => {
+    target.removeEventListener('storage', onStorage);
+    target.removeEventListener('languagechange', onLanguages);
+  };
+}
+
 /** For tests: forget the settings, so the next read starts again. */
 export function resetSettings(): void {
-  chosen = null;
-  current = null;
+  state = null;
   listeners.clear();
 }
 
@@ -106,12 +174,13 @@ export interface TranslatableDocument {
   querySelectorAll(selector: string): Iterable<TranslatableElement>;
 }
 
-const isKey = (key: string | null, messages: Messages): key is MessageKey => key !== null && key in messages;
+const isKey = (key: string | null, messages: Messages): key is MessageKey =>
+  key !== null && Object.hasOwn(messages, key);
 
 /**
  * Puts the page's own text in the reader's language: each element's `data-i18n` key becomes its
- * text, `data-i18n-content` its `content` attribute (the description), and `<html lang>` follows.
- * The page is written in English, so without scripts it reads in English.
+ * text, `data-i18n-content` its `content` attribute (the description and its og: copy), and
+ * `<html lang>` follows. Each page is written in one language, so without scripts it reads in that.
  */
 export function translatePage(doc: TranslatableDocument, { locale, messages }: Settings = settings()): void {
   doc.documentElement.lang = locale.tag;
@@ -125,11 +194,21 @@ export function translatePage(doc: TranslatableDocument, { locale, messages }: S
   }
 }
 
-/** Picks a form by `n`'s plural category in the current language ("1 weigh-in", "2 weigh-ins"). */
+const pluralRules = new Map<string, Intl.PluralRules>();
+
+/**
+ * Picks a form by `n`'s plural category ("1 weigh-in", "2 weigh-ins"). Pass the number as shown
+ * (rounded), since that is what the reader sees the form agree with.
+ */
 export function plural(
   n: number,
   forms: { one: string; other: string },
   tag = settings().locale.tag,
 ): string {
-  return new Intl.PluralRules(tag).select(n) === 'one' ? forms.one : forms.other;
+  let rules = pluralRules.get(tag);
+  if (rules === undefined) {
+    rules = new Intl.PluralRules(tag);
+    pluralRules.set(tag, rules);
+  }
+  return rules.select(n) === 'one' ? forms.one : forms.other;
 }

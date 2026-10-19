@@ -3,7 +3,6 @@
  * convert for showing and for reading what was typed.
  */
 import { LB_KG } from './data/records';
-import { regionOf } from './i18n/locale';
 
 export type WeightUnit = 'kg' | 'lb';
 export type HeightUnit = 'cm' | 'ftin';
@@ -16,6 +15,15 @@ const INCHES_PER_FOOT = 12;
 /** Regions that weigh in pounds, and that measure height in feet and inches. */
 const POUND_REGIONS = new Set(['US', 'LR', 'MM']);
 const FEET_REGIONS = new Set(['US', 'LR', 'MM', 'GB']);
+
+/** The region of a tag, upper case ("US" for en-US, and for a bare "en"), or null. */
+export function regionOf(tag: string): string | null {
+  try {
+    return new Intl.Locale(tag).maximize().region ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /** The units a locale most likely uses, for a reader who hasn't chosen. */
 export function defaultUnits(tag: string): { weight: WeightUnit; height: HeightUnit } {
@@ -33,10 +41,11 @@ export const toKgFrom = (value: number, unit: WeightUnit): number => (unit === '
 
 /**
  * A height in cm as whole feet and inches, the inches rounded to `step` (0.5 by default), carrying
- * into the feet when they round up to 12.
+ * into the feet when they round up to 12. Heights below zero, or not numbers, are zero.
  */
 export function toFeetInches(cm: number, step = 0.5): { feet: number; inches: number } {
-  const total = Math.round(cm / CM_PER_INCH / step) * step;
+  const safe = Number.isFinite(cm) ? Math.max(0, cm) : 0;
+  const total = Math.round(safe / CM_PER_INCH / step) * step;
   const feet = Math.floor(total / INCHES_PER_FOOT + 1e-9);
   return { feet, inches: Math.max(0, total - feet * INCHES_PER_FOOT) };
 }

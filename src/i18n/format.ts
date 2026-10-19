@@ -2,7 +2,7 @@
  * Numbers, weights, heights and days in the reader's locale. Days are calendar days (UTC midnights,
  * see analysis/dates.ts), so they are always formatted in UTC: no time zone moves them.
  */
-import { parseDay } from '../analysis/dates';
+import { isIsoDay, parseDay } from '../analysis/dates';
 import { fromKg, toFeetInches, type HeightUnit, type WeightUnit } from '../units';
 
 export type DayStyle = 'short' | 'medium' | 'long' | 'dayMonth' | 'weekday';
@@ -29,21 +29,24 @@ export interface Formatter {
   percentChange(share: number, digits?: number): string;
   /** A height given in cm: "178 cm", or "5′ 10″". */
   height(cm: number, unit: HeightUnit): string;
-  /** A calendar day, YYYY-MM-DD. */
+  /** A calendar day, YYYY-MM-DD (a TypeError for anything else, which is a bug upstream). */
   day(iso: string, style?: DayStyle): string;
 }
 
 export function formatter(tag: string): Formatter {
   const numbers = new Map<string, Intl.NumberFormat>();
-  const num = (digits: number, sign: boolean, style: 'decimal' | 'percent' = 'decimal') => {
+  const num = (digits: number, sign: boolean, style: 'decimal' | 'percent' | 'weight' = 'decimal') => {
     const key = `${String(digits)}/${String(sign)}/${style}`;
     let format = numbers.get(key);
     if (format === undefined) {
       format = new Intl.NumberFormat(tag, {
-        style,
+        style: style === 'percent' ? 'percent' : 'decimal',
         minimumFractionDigits: digits,
         maximumFractionDigits: digits,
-        signDisplay: sign ? 'exceptZero' : 'auto',
+        // 'negative' and 'exceptZero' both drop the sign of a value that rounds to zero ("0.0").
+        signDisplay: sign ? 'exceptZero' : 'negative',
+        // A weight reads, and can be typed back, without thousands separators: 1102.3 lb.
+        useGrouping: style !== 'weight',
       });
       numbers.set(key, format);
     }
@@ -64,8 +67,10 @@ export function formatter(tag: string): Formatter {
   return {
     tag,
     number: (value, digits = 1) => minus(num(digits, false).format(value)),
-    weight: (kg, unit, digits = 1) => `${minus(num(digits, false).format(fromKg(kg, unit)))} ${unit}`,
-    weightChange: (kg, unit, digits = 1) => `${minus(num(digits, true).format(fromKg(kg, unit)))} ${unit}`,
+    weight: (kg, unit, digits = 1) =>
+      `${minus(num(digits, false, 'weight').format(fromKg(kg, unit)))} ${unit}`,
+    weightChange: (kg, unit, digits = 1) =>
+      `${minus(num(digits, true, 'weight').format(fromKg(kg, unit)))} ${unit}`,
     percent: (share, digits = 1) => minus(num(digits, false, 'percent').format(share)),
     percentChange: (share, digits = 1) => minus(num(digits, true, 'percent').format(share)),
     height: (cm, unit) => {
@@ -73,6 +78,9 @@ export function formatter(tag: string): Formatter {
       const { feet, inches } = toFeetInches(cm);
       return `${String(feet)}′ ${num(inches % 1 === 0 ? 0 : 1, false).format(inches)}″`;
     },
-    day: (iso, style = 'medium') => dayFormat(style).format(parseDay(iso)),
+    day: (iso, style = 'medium') => {
+      if (!isIsoDay(iso)) throw new TypeError(`Not a day: ${iso}`);
+      return dayFormat(style).format(parseDay(iso));
+    },
   };
 }

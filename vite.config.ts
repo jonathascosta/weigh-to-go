@@ -28,7 +28,7 @@ export default defineConfig({
     // site supports has native modulepreload.
     modulePreload: { polyfill: false },
     rolldownOptions: {
-      input: { home: 'index.html', notFound: '404.html' },
+      input: { home: 'index.html', homePt: 'pt/index.html', notFound: '404.html' },
     },
   },
   define: {

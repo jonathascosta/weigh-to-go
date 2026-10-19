@@ -245,11 +245,20 @@ main {
 }
 
 .setting select {
+  /* 16px at least: iOS Safari zooms the page into any smaller control that gets focus. */
   font: inherit;
+  font-size: max(1rem, 16px);
   color: var(--fg);
   background: var(--panel);
-  border: 1px solid var(--line);
+  /* Control edges need 3:1 against the page (WCAG 1.4.11); --line is for dividers. */
+  border: 1px solid var(--ref);
   border-radius: 8px;
   padding: 4px 6px;
-  min-height: 32px;
+  min-height: 36px;
+}
+
+@media (pointer: coarse) {
+  .setting select {
+    min-height: 44px;
+  }
 }

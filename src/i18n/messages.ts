@@ -1,13 +1,15 @@
 /**
- * Every string the page shows, in English and Portuguese. A message is text, or a function of its
- * values when it has some; the Portuguese dictionary has the English one's type, so a key missing
- * or with other values fails the type check.
+ * Every string the page shows, in English and Portuguese (Brazilian wording, for every Portuguese
+ * reader). The Portuguese dictionary has the English one's type, so a missing key fails the type
+ * check.
  */
 
 export const en = {
   'page.home.title': 'Weigh to Go · A weight diary that stays on your device',
   'page.home.description':
     'Log your weigh-ins and see your trend, projections, weekly averages and more. Weigh to Go runs entirely in your browser: your data never leaves your device.',
+  'page.home.ogDescription':
+    'Log your weigh-ins and see your trend, projections, weekly averages and more, entirely in your browser.',
   'page.notFound.title': 'Page not found · Weigh to Go',
 
   skip: 'Skip to content',
@@ -29,10 +31,11 @@ export const en = {
   'settings.language': 'Language',
   'settings.weightUnit': 'Weight unit',
   'settings.heightUnit': 'Height unit',
+  'settings.auto': 'Automatic',
   'unit.kg': 'kg',
   'unit.lb': 'lb',
   'unit.cm': 'cm',
-  'unit.ftin': 'ft, in',
+  'unit.ftin': 'ft and in',
 };
 
 export type Messages = typeof en;
@@ -41,7 +44,9 @@ export type MessageKey = keyof Messages;
 export const pt: Messages = {
   'page.home.title': 'Weigh to Go · Um diário de peso que fica no seu aparelho',
   'page.home.description':
-    'Registre suas pesagens e veja sua tendência, projeções, médias semanais e mais. O Weigh to Go roda inteiro no seu navegador: seus dados nunca saem do seu aparelho.',
+    'Registre suas pesagens e veja sua tendência, projeções, médias semanais e mais. O Weigh to Go funciona inteiramente no seu navegador: seus dados nunca saem do seu aparelho.',
+  'page.home.ogDescription':
+    'Registre suas pesagens e veja sua tendência, projeções, médias semanais e mais, inteiramente no seu navegador.',
   'page.notFound.title': 'Página não encontrada · Weigh to Go',
 
   skip: 'Ir para o conteúdo',
@@ -51,22 +56,23 @@ export const pt: Messages = {
   'home.heading': 'Seu diário de peso, no seu aparelho',
   'home.lede':
     'Registre uma pesagem por dia e o Weigh to Go mostra para onde você está indo: a tendência por trás do sobe e desce diário, projeções, médias semanais, os dias em que o peso volta a subir e mais.',
-  'home.privacy': 'Tudo roda no seu navegador: suas pesagens ficam guardadas só neste aparelho.',
+  'home.privacy': 'Tudo funciona no seu navegador: suas pesagens ficam guardadas só neste aparelho.',
   'home.noscript': 'O Weigh to Go precisa de JavaScript, que está desativado.',
   'home.placeholder': 'O diário está a caminho.',
 
   'notFound.heading': 'Página não encontrada',
-  'notFound.text': 'Não há nada aqui.',
+  'notFound.text': 'Não tem nada aqui.',
   'notFound.link': 'Ir para o seu diário',
 
-  'settings.label': 'Preferências',
+  'settings.label': 'Configurações',
   'settings.language': 'Idioma',
   'settings.weightUnit': 'Unidade de peso',
   'settings.heightUnit': 'Unidade de altura',
+  'settings.auto': 'Automático',
   'unit.kg': 'kg',
   'unit.lb': 'lb',
   'unit.cm': 'cm',
-  'unit.ftin': 'pés, pol.',
+  'unit.ftin': 'pés e pol.',
 };
 
 /** Each language's name in itself, for the switcher: a reader looks for their own. */

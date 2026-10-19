@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { en, pt } from './messages';
+import { en, pt, type Messages } from './messages';
 
-const pages = import.meta.glob<string>(['/index.html', '/404.html'], {
+const pages = import.meta.glob<string>(['/index.html', '/404.html', '/pt/index.html'], {
   query: '?raw',
   import: 'default',
   eager: true,
@@ -16,19 +16,20 @@ describe('the dictionaries', () => {
       for (const [key, text] of Object.entries(dictionary)) expect(text.trim(), key).not.toBe('');
   });
 
-  it("cover every key the pages use, the pages' English matching the dictionary", () => {
-    expect(Object.keys(pages)).toHaveLength(2);
+  it("cover every key the pages use, each page's text matching its language's dictionary", () => {
+    expect(Object.keys(pages)).toHaveLength(3);
     for (const [page, html] of Object.entries(pages)) {
+      const dictionary: Messages = html.includes('data-lang="pt"') ? pt : en;
       const tagged = [...html.matchAll(/<(\w+)[^>]*\sdata-i18n="([^"]+)"[^>]*>([\s\S]*?)<\/\1>/g)];
       expect(tagged.length, page).toBeGreaterThan(3);
       for (const [, , key = '', text = ''] of tagged) {
-        expect(key in en, `${page}: ${key}`).toBe(true);
-        expect(squash(text), `${page}: ${key}`).toBe(en[key as keyof typeof en]);
+        expect(Object.hasOwn(en, key), `${page}: ${key}`).toBe(true);
+        expect(squash(text), `${page}: ${key}`).toBe(dictionary[key as keyof Messages]);
       }
-      for (const [, key = '', content = ''] of html.matchAll(
-        /data-i18n-content="([^"]+)"\s+content="([^"]*)"/g,
-      ))
-        expect(content, `${page}: ${key}`).toBe(en[key as keyof typeof en]);
+      const contents = [...html.matchAll(/data-i18n-content="([^"]+)"\s+content="([^"]*)"/g)];
+      expect(contents.length, page).toBeGreaterThanOrEqual(page === '/404.html' ? 0 : 3);
+      for (const [, key = '', content = ''] of contents)
+        expect(content, `${page}: ${key}`).toBe(dictionary[key as keyof Messages]);
     }
   });
 });

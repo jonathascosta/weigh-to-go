@@ -48,14 +48,19 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    text of index.html and 404.html, the page title and description, the frame-gate link and
    `<html lang>`.
 
-   The language picks the dictionary (`src/i18n/messages.ts`, Portuguese typed against English);
-   the browser's locale for that language (en-GB, pt-PT…) shapes numbers and dates, through
-   `Intl`, with days formatted in UTC. Units follow where the reader is (the browser's first
-   language tag), not the language they read in, and the reader's choices are kept as
-   preferences. Typed decimals take a comma or a point whatever the language. The page is written
-   in English, so without scripts it reads in English. Story 5 uses `dateOrder` for bulk paste and
-   the formatter for everything it shows; the height inputs (cm, or feet and inches) come with the
-   profile.
+   The language picks the dictionary (`src/i18n/messages.ts`, Portuguese typed against English,
+   in Brazilian wording for every Portuguese reader): the reader's choice, else the page's own
+   language, else the browser's. Numbers and dates go through `Intl` in a locale cut down to a
+   language and a region, with days formatted in UTC; the region is the browser's own for that
+   language, else where the reader is (a Brazilian reading English gets day/month dates). Units
+   follow where the reader is too, not the language: lb in the US, Liberia and Myanmar, feet and
+   inches there and in the UK, metric elsewhere (a bare "en" counts as the US). Every choice can go
+   back to "Automatic". Typed decimals take a comma or a point whatever the language.
+
+   Each page is written in one language, so without scripts it reads in that one: English at `/`
+   and Portuguese at `/pt/`, a static copy that search engines and link previews read, linked both
+   ways with `hreflang` and in the sitemap. The header has the language and weight-unit switchers;
+   the height unit is chosen with the height, in the profile.
 
 5. **Dashboard I.** Header summary, weigh-in form, bulk paste, KPIs, the main chart with all its
    layers, projection methods, horizons and periods, and the log with delete and confirmation.
@@ -63,7 +68,10 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    is in memory, and why; remind to export a backup when `lastBackupAt` is old or missing; confirm
    replace and erase, offering a backup first; show how bulk paste read an ambiguous date
    (`orderGuessed`) and how many days a paste or merge changes; check a file's size before reading
-   it; handle a failed save (a full disk).
+   it; handle a failed save (a full disk). From story 4: read pasted dates in `dayMonthOrder` of
+   the locale; show the unit a weight is read in next to every weight input and the paste box (a
+   unitless 80 read as lb is 36 kg, still a valid weight); format everything through
+   `settings().format`; read `needsReload` after a failed operation.
 6. **Dashboard II.** Percentage loss (KPIs, chart, weekly rate, milestones table), compound daily
    rate (KPIs, daily rate chart, constant % vs constant kg, simulator) and hiccups (rules, KPIs,
    chart, table).

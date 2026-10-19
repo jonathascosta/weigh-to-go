@@ -5,8 +5,8 @@
  * after it (kg, lb, lbs) or else the unit chosen on the page.
  */
 import { isIsoDay } from '../analysis/dates';
-import type { WeightUnit } from '../units';
-import { byDate, isWeight, isWeighInDay, LB_KG } from './records';
+import { toKgFrom, type WeightUnit } from '../units';
+import { byDate, isWeight, isWeighInDay } from './records';
 
 export type DateOrder = 'dmy' | 'mdy';
 
@@ -59,8 +59,7 @@ export function parseNumber(text: string): number {
 
 /** A weight typed in `unit`, in kg (unrounded), or null if it isn't a weight. */
 export function toKg(text: string, unit: WeightUnit): number | null {
-  const v = parseNumber(text);
-  const kg = unit === 'lb' ? v * LB_KG : v;
+  const kg = toKgFrom(parseNumber(text), unit);
   return isWeight(kg) ? kg : null;
 }
 
