@@ -1,5 +1,7 @@
 /** The numbers behind the "Facts" card and the header summary. */
-import type { Analysis } from './analyze';
+import { STABLE_KG_PER_WEEK, type Analysis } from './analyze';
+
+export { STABLE_KG_PER_WEEK };
 
 /** Energy usually equated with a kilogram of body fat. */
 export const KCAL_PER_KG = 7700;
@@ -7,8 +9,6 @@ export const KCAL_PER_KG = 7700;
 export const DIET_KCAL = 2000;
 /** The water bottles the loss is compared with: 2 litres weigh 2 kg. */
 export const BOTTLE_KG = 2;
-/** Below this pace, in kg per week, the recent weight counts as stable. */
-export const STABLE_KG_PER_WEEK = 0.05;
 
 export interface Facts {
   /** Highest minus lowest weigh-in. */

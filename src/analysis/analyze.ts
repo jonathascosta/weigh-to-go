@@ -120,6 +120,8 @@ export const TREND_ALPHA = 0.1;
  * (79.92 kg) and a later 79.9 kg read as the same weight.
  */
 export const FLAT_KG = 0.04;
+/** Below this pace, in kg per week, the weight counts as stable. */
+export const STABLE_KG_PER_WEEK = 0.05;
 /** Weights outside this range are not weigh-ins (a typo, or a different unit). */
 export const KG_RANGE = [20, 500] as const;
 /** The "recent" model: the last 3 weeks, when they hold at least 5 weigh-ins. */

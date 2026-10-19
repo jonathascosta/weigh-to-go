@@ -97,6 +97,8 @@ describe('simulate and daysAtRate', () => {
     expect(s.daysToGoal).toBe(3);
     expect(simulationSummary(1, 100, 120)?.daysToGoal).toBeNull();
     expect(simulationSummary(150, 100, 80)).toBeNull();
+    expect(simulationSummary(5, 100, 80)).toBeNull();
+    expect(simulationSummary(1, 100, 10)?.daysToGoal).toBeNull();
     expect(simulate(Number.NaN, 100)).toEqual([]);
   });
 });

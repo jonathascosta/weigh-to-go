@@ -5,6 +5,7 @@
  */
 import { RECENT_DAYS, RECENT_MIN, type Analysis, type Day } from './analyze';
 import { ceilDays, fitLine, project, type Model } from './fit';
+import { isGoal } from './goals';
 
 /** An exponential fitted to the weigh-ins: a straight line through their logarithms. */
 export interface RateModel {
@@ -41,7 +42,7 @@ export interface Rates {
   readonly mean: number | null;
 }
 
-/** The simulator accepts rates up to this, in % per day; anything higher is surely a typo. */
+/** The simulator accepts rates below this, in % per day; anything higher is surely a typo. */
 export const SIM_RATE_MAX = 5;
 
 /** Rates need this many weigh-ins before they mean anything (two readings make a wild 'rate'). */
@@ -123,9 +124,9 @@ export interface SimulationRow {
 /** The days the simulator lists. */
 export const SIMULATION_DAYS = [1, 2, 3, 4, 5, 6, 7, 14, 21, 30, 60, 90, 180, 365] as const;
 
-/** Whether the simulator can run: a rate above 0 and up to SIM_RATE_MAX, and a starting weight. */
+/** Whether the simulator can run: a rate above 0 and below SIM_RATE_MAX, and a starting weight. */
 export function canSimulate(rate: number, start: number): boolean {
-  return Number.isFinite(rate) && rate > 0 && rate <= SIM_RATE_MAX && Number.isFinite(start) && start > 0;
+  return Number.isFinite(rate) && rate > 0 && rate < SIM_RATE_MAX && Number.isFinite(start) && start > 0;
 }
 
 /** Weight day by day at a constant `rate` % per day from `start` kg; empty if it can't simulate. */
@@ -169,7 +170,7 @@ export function simulationSummary(
     year: compound(rate, 365),
     kgFirstDay: (start * rate) / 100,
     kgDay90: (start * (1 - rate / 100) ** 89 * rate) / 100,
-    daysToGoal: goalKg !== null && goalKg < start ? daysAtRate(rate, start, goalKg) : null,
+    daysToGoal: isGoal(goalKg) && goalKg < start ? daysAtRate(rate, start, goalKg) : null,
   };
 }
 

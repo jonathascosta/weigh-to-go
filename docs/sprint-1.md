@@ -16,7 +16,8 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    are ignored; "the 7-day average a week ago" must come from within 2 days of a week ago; the
    biggest drop or rise and the best week exist only if something dropped or rose; the "last 3
    weeks" figures are hidden when there aren't 5 weigh-ins in them; rate figures need 3 weigh-ins;
-   milestones go past 40% and merge with an equal goal.
+   milestones go past 40% and merge with an equal goal; a pace under 0.05 kg a week is shown as flat
+   rather than rising or slow.
 
 3. **Local data.** IndexedDB store for weigh-ins and the profile (goal, height); screen preferences
    in localStorage; persistent-storage request; JSON backup export and import (validated, merge or

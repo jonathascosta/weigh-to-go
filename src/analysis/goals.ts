@@ -1,5 +1,13 @@
 /** Percentage loss, milestones, the goal, and BMI. */
-import { FLAT_KG, KG_RANGE, type Analysis, type Day, type Method, type Week } from './analyze';
+import {
+  FLAT_KG,
+  KG_RANGE,
+  STABLE_KG_PER_WEEK,
+  type Analysis,
+  type Day,
+  type Method,
+  type Week,
+} from './analyze';
 import { addDays } from './dates';
 import { daysTo } from './fit';
 
@@ -122,7 +130,7 @@ export function pctKpis(analysis: Analysis, method: Method, goalKg: number | nul
   let band: PaceBand | null = null;
   if (model !== null && currentWeekLossPct !== null) {
     const [lo, hi] = SUSTAINABLE_WEEKLY_PCT;
-    const flat = Math.abs(model.slope * 7) <= FLAT_KG;
+    const flat = Math.abs(model.slope * 7) < STABLE_KG_PER_WEEK;
     band = flat
       ? 'flat'
       : currentWeekLossPct < 0
