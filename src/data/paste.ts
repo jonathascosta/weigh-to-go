@@ -5,14 +5,13 @@
  * after it (kg, lb, lbs) or else the unit chosen on the page.
  */
 import { isIsoDay } from '../analysis/dates';
+import type { DayMonthOrder } from '../i18n/locale';
 import { toKgFrom, type WeightUnit } from '../units';
 import { byDate, isWeight, isWeighInDay } from './records';
 
-export type DateOrder = 'dmy' | 'mdy';
-
 export interface PasteOptions {
   /** The order of the person's language, used when the paste itself doesn't settle it. */
-  readonly order: DateOrder;
+  readonly order: DayMonthOrder;
   /** The page's unit, for weights written without one. */
   readonly unit: WeightUnit;
   /** The device's day, YYYY-MM-DD. */
@@ -32,7 +31,7 @@ export interface PasteResult {
   /** Lines for a day an earlier line already gave (the later one is kept). */
   readonly repeated: number;
   /** The order day/month dates were read in. */
-  readonly order: DateOrder;
+  readonly order: DayMonthOrder;
   /**
    * Whether there were day/month dates and nothing in them (a number over 12) settled the order,
    * so it came from the language: the page can say how "05/10" was read.
@@ -69,7 +68,7 @@ const unitOf = (suffix: string | undefined, fallback: WeightUnit): WeightUnit =>
 const pad = (n: number): string => String(n).padStart(2, '0');
 
 /** The order the paste's own day/month dates settle, or null if they don't (or contradict). */
-function orderInText(lines: readonly string[]): { order: DateOrder | null; short: boolean } {
+function orderInText(lines: readonly string[]): { order: DayMonthOrder | null; short: boolean } {
   let dmy = false;
   let mdy = false;
   let short = false;
@@ -85,7 +84,7 @@ function orderInText(lines: readonly string[]): { order: DateOrder | null; short
 
 function readLine(
   line: string,
-  order: DateOrder,
+  order: DayMonthOrder,
   { unit, today }: PasteOptions,
 ): { date: string; weight: string; unit: WeightUnit } | null {
   if (line.length > MAX_LINE) return null;

@@ -28,6 +28,15 @@ describe('formatter', () => {
     expect(us.number(-1.25, 1)).toBe('−1.3');
   });
 
+  it('drops the sign of a zero in browsers without signDisplay "negative" too', () => {
+    const old = formatter('en-US', false);
+    expect(old.number(-0.02)).toBe('0.0');
+    expect(old.percent(-0.0004)).toBe('0.0%');
+    expect(old.weight(-0.01, 'kg')).toBe('0.0 kg');
+    expect(old.number(-1.25, 1)).toBe('−1.3');
+    expect(old.weightChange(-0.4, 'kg')).toBe('−0.4 kg');
+  });
+
   it('writes weights without thousands separators, so they can be typed back', () => {
     expect(us.weight(500, 'lb')).toBe('1102.3 lb');
     expect(us.number(1234.5)).toBe('1,234.5');

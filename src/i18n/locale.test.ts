@@ -22,7 +22,8 @@ describe('pickLocale', () => {
   });
 
   it('writes dates as at home when reading in another language', () => {
-    // Intl has no en-BR: an English that writes day first stands in.
+    // These follow Node's full ICU; a browser may lack en-FR or en-JP and fall back the same way
+    // as for en-BR, which has no data anywhere: an English that writes dates in home's order.
     expect(pickLocale(['pt-BR'], 'en')).toEqual({ lang: 'en', tag: 'en-GB' });
     expect(pickLocale(['de-DE'], null)).toEqual({ lang: 'en', tag: 'en-DE' });
     expect(pickLocale(['fr-FR'], null)).toEqual({ lang: 'en', tag: 'en-FR' });

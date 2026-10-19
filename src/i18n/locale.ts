@@ -11,6 +11,8 @@ export type Lang = (typeof LANGS)[number];
 
 /** The order a locale writes a full date in. */
 export type DateOrder = 'dmy' | 'mdy' | 'ymd';
+/** The order of a day and month written alone (19/10 or 10/19). */
+export type DayMonthOrder = 'dmy' | 'mdy';
 
 export interface Locale {
   readonly lang: Lang;
@@ -68,7 +70,7 @@ export function dateOrder(tag: string): DateOrder {
  * The order a locale writes a day and month alone in (19/10 or 10/19), for reading pasted dates:
  * year-first locales still put one of the two first there (en-CA 10/19, sv 19/10).
  */
-export function dayMonthOrder(tag: string): 'dmy' | 'mdy' {
+export function dayMonthOrder(tag: string): DayMonthOrder {
   const types = new Intl.DateTimeFormat(tag, { timeZone: 'UTC', day: 'numeric', month: 'numeric' })
     .formatToParts(new Date(Date.UTC(2026, 9, 19)))
     .map((p) => p.type);

@@ -33,7 +33,20 @@ export interface Formatter {
   day(iso: string, style?: DayStyle): string;
 }
 
-export function formatter(tag: string): Formatter {
+/**
+ * Whether this browser takes `signDisplay: 'negative'` (Chrome 106, Safari 15.4, Firefox 116); older
+ * ones throw on it, and get 'auto' with a value that rounds to zero formatted as zero instead.
+ */
+const SIGN_NEGATIVE = (() => {
+  try {
+    new Intl.NumberFormat('en', { signDisplay: 'negative' }).format(-1);
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+export function formatter(tag: string, signNegative = SIGN_NEGATIVE): Formatter {
   const numbers = new Map<string, Intl.NumberFormat>();
   const num = (digits: number, sign: boolean, style: 'decimal' | 'percent' | 'weight' = 'decimal') => {
     const key = `${String(digits)}/${String(sign)}/${style}`;
@@ -44,13 +57,16 @@ export function formatter(tag: string): Formatter {
         minimumFractionDigits: digits,
         maximumFractionDigits: digits,
         // 'negative' and 'exceptZero' both drop the sign of a value that rounds to zero ("0.0").
-        signDisplay: sign ? 'exceptZero' : 'negative',
+        signDisplay: sign ? 'exceptZero' : signNegative ? 'negative' : 'auto',
         // A weight reads, and can be typed back, without thousands separators: 1102.3 lb.
         useGrouping: style !== 'weight',
       });
       numbers.set(key, format);
     }
-    return format;
+    const scale = style === 'percent' ? 100 : 1;
+    // Without 'negative', a value that rounds to zero is written as zero, sign and all dropped.
+    return (value: number) =>
+      format.format(!signNegative && !sign && Number((value * scale).toFixed(digits)) === 0 ? 0 : value);
   };
   const days = new Map<DayStyle, Intl.DateTimeFormat>();
   const dayFormat = (style: DayStyle) => {
@@ -66,17 +82,15 @@ export function formatter(tag: string): Formatter {
 
   return {
     tag,
-    number: (value, digits = 1) => minus(num(digits, false).format(value)),
-    weight: (kg, unit, digits = 1) =>
-      `${minus(num(digits, false, 'weight').format(fromKg(kg, unit)))} ${unit}`,
-    weightChange: (kg, unit, digits = 1) =>
-      `${minus(num(digits, true, 'weight').format(fromKg(kg, unit)))} ${unit}`,
-    percent: (share, digits = 1) => minus(num(digits, false, 'percent').format(share)),
-    percentChange: (share, digits = 1) => minus(num(digits, true, 'percent').format(share)),
+    number: (value, digits = 1) => minus(num(digits, false)(value)),
+    weight: (kg, unit, digits = 1) => `${minus(num(digits, false, 'weight')(fromKg(kg, unit)))} ${unit}`,
+    weightChange: (kg, unit, digits = 1) => `${minus(num(digits, true, 'weight')(fromKg(kg, unit)))} ${unit}`,
+    percent: (share, digits = 1) => minus(num(digits, false, 'percent')(share)),
+    percentChange: (share, digits = 1) => minus(num(digits, true, 'percent')(share)),
     height: (cm, unit) => {
-      if (unit === 'cm') return `${num(0, false).format(cm)} cm`;
+      if (unit === 'cm') return `${num(0, false)(cm)} cm`;
       const { feet, inches } = toFeetInches(cm);
-      return `${String(feet)}′ ${num(inches % 1 === 0 ? 0 : 1, false).format(inches)}″`;
+      return `${String(feet)}′ ${num(inches % 1 === 0 ? 0 : 1, false)(inches)}″`;
     },
     day: (iso, style = 'medium') => {
       if (!isIsoDay(iso)) throw new TypeError(`Not a day: ${iso}`);

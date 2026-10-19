@@ -65,9 +65,9 @@ export function findProblems(files) {
 
 /** The pages the site must have; `url` is null for the one kept out of search. */
 const PAGES = [
-  { name: 'index.html', url: SITE, hreflang: 'en' },
-  { name: 'pt/index.html', url: `${SITE}pt/`, hreflang: 'pt-BR' },
-  { name: '404.html', url: null, hreflang: null },
+  { name: 'index.html', url: SITE, hreflang: 'en', html: '<html lang="en">' },
+  { name: 'pt/index.html', url: `${SITE}pt/`, hreflang: 'pt-BR', html: '<html lang="pt-BR" data-lang="pt">' },
+  { name: '404.html', url: null, hreflang: null, html: '<html lang="en">' },
 ];
 
 /**
@@ -103,12 +103,14 @@ export function findMissingPages(files) {
       .map((field) => field?.[2]);
     if (!sitemaps.includes(`${SITE}sitemap.xml`)) problems.push("robots.txt: doesn't point to the sitemap");
   }
-  for (const { name, url } of PAGES) {
+  for (const { name, url, html } of PAGES) {
     const text = files.find((file) => file.name === name)?.text;
     if (text === undefined) {
       problems.push(`${name}: missing`);
       continue;
     }
+    // The page's language, which the script reads to keep a page made for one language in it.
+    if (!text.includes(html)) problems.push(`${name}: isn't marked as ${html}`);
     if (!text.includes('class="site-header"') || !text.includes('class="site-footer"')) {
       problems.push(`${name}: lacks the site header or footer`);
     }

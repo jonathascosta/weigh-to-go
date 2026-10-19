@@ -106,14 +106,18 @@ describe('findMissingPages', () => {
     `<link rel="alternate" hreflang="pt-BR" href="${SITE}pt/" />`,
     `<link rel="alternate" hreflang="x-default" href="${SITE}" />`,
   ].join('');
-  /** @param {string} url */
-  const home = (url = SITE) =>
-    page().replace('<head>', `<head><link rel="canonical" href="${url}" />${alternates}`);
-  const notFound = page().replace('<head>', '<head><meta name="robots" content="noindex" />');
+  /** @param {string} url @param {string} html */
+  const home = (url = SITE, html = '<html lang="en">') =>
+    page()
+      .replace('<html>', html)
+      .replace('<head>', `<head><link rel="canonical" href="${url}" />${alternates}`);
+  const notFound = page()
+    .replace('<html>', '<html lang="en">')
+    .replace('<head>', '<head><meta name="robots" content="noindex" />');
   /** @returns {SiteFile[]} */
   const all = () => [
     { name: 'index.html', text: home() },
-    { name: 'pt/index.html', text: home(`${SITE}pt/`) },
+    { name: 'pt/index.html', text: home(`${SITE}pt/`, '<html lang="pt-BR" data-lang="pt">') },
     { name: '404.html', text: notFound },
     { name: 'robots.txt', text: robots },
     { name: 'sitemap.xml', text: sitemap },
@@ -133,14 +137,18 @@ describe('findMissingPages', () => {
     };
     files[1] = {
       name: 'pt/index.html',
-      text: home(`${SITE}pt/`).replace(/<link rel="alternate" hreflang="en"[^>]*>/, ''),
+      text: home(`${SITE}pt/`, '<html lang="pt-BR">').replace(
+        /<link rel="alternate" hreflang="en"[^>]*>/,
+        '',
+      ),
     };
-    files[2] = { name: '404.html', text: page() };
+    files[2] = { name: '404.html', text: page().replace('<html>', '<html lang="en">') };
     files[3] = { name: 'robots.txt', text: `${robots}this is not a field\n` };
     expect(findMissingPages(files)).toEqual([
       'robots.txt: has a line crawlers would not understand',
       'index.html: lacks the site header or footer',
       `index.html: its canonical isn't ${SITE}`,
+      'pt/index.html: isn\'t marked as <html lang="pt-BR" data-lang="pt">',
       "pt/index.html: doesn't point to its en version",
       "404.html: isn't kept out of search",
     ]);
