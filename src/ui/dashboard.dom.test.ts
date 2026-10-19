@@ -453,6 +453,74 @@ describe('Dashboard III', () => {
     expect(section('calendar-title').querySelector('svg')!.textContent).toContain('Sep 2026');
   });
 
+  it('keeps a goal and a height saved one right after the other', async () => {
+    await saveDays([100, 99.6, 99.1]);
+    choose({ heightUnit: 'cm' });
+    type('goal-weight', '90');
+    submit('goal-weight');
+    // No wait: the height is saved while the goal's save is still on its way.
+    type('height-cm', '180');
+    submit('height-cm');
+    await settle();
+    expect(app.state().profile).toEqual({ goalKg: 90, heightCm: 180 });
+  });
+
+  it('can put the height unit back to automatic', async () => {
+    await saveDays([100, 99.6, 99.1]);
+    const chip = (text: string) =>
+      [...section('bmi-title').querySelectorAll<HTMLButtonElement>('button.chip')].find(
+        (b) => b.textContent === text,
+      )!;
+    // In the US, automatic is feet and inches.
+    expect(chip('Automatic (ft and in)').getAttribute('aria-pressed')).toBe('true');
+    chip('cm').click();
+    expect(chip('cm').getAttribute('aria-pressed')).toBe('true');
+    chip('Automatic (ft and in)').click();
+    expect(chip('Automatic (ft and in)').getAttribute('aria-pressed')).toBe('true');
+    expect(root.querySelector('#height-ft')).not.toBeNull();
+  });
+
+  it('moves focus to the first week shown by "Show more"', async () => {
+    // 60 weeks of weigh-ins, one a week.
+    await app.save(
+      Array.from({ length: 60 }, (_, i) => ({
+        date: new Date(Date.UTC(2025, 7, 4) + i * 7 * 86_400_000).toISOString().slice(0, 10),
+        kg: 100 - i * 0.1,
+      })),
+    );
+    await settle();
+    const more = [...section('weeks-title').querySelectorAll<HTMLButtonElement>('button')].find(
+      (b) => b.textContent === 'Show more',
+    )!;
+    more.click();
+    const focused = document.activeElement as HTMLElement;
+    expect(focused.tagName).toBe('TH');
+    // The 53rd week from the newest.
+    expect(focused.closest('tr')!.dataset.key).toBe('2025-09-22');
+  });
+
+  it('shows "All" of a long calendar a page of months at a time', async () => {
+    await app.save(
+      Array.from({ length: 100 }, (_, i) => ({
+        date: new Date(Date.UTC(2023, 0, 1) + i * 12 * 86_400_000).toISOString().slice(0, 10),
+        kg: 100 - i * 0.05,
+      })),
+    );
+    await settle();
+    const chip = [...section('calendar-title').querySelectorAll<HTMLButtonElement>('button.chip')].find(
+      (b) => b.textContent === 'All',
+    )!;
+    chip.click();
+    const months = () => section('calendar-title').querySelectorAll('svg text.cal-month').length;
+    expect(months()).toBe(24);
+    const earlier = [...section('calendar-title').querySelectorAll<HTMLButtonElement>('button.link')][0]!;
+    expect(earlier.textContent).toBe('Show 16 months earlier');
+    expect(section('calendar-title').textContent).toContain('Showing the latest 24 months (of 40).');
+    earlier.click();
+    expect(months()).toBe(40);
+    expect(section('calendar-title').querySelector('button.link')).toBeNull();
+  });
+
   it('says what each card needs with 0 to 3 weigh-ins, without errors', async () => {
     const errors = vi.spyOn(console, 'error');
     const text = (id: string) => section(id).textContent;

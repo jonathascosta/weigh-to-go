@@ -37,6 +37,8 @@ export interface App {
   save(rows: readonly { date: string; kg: number }[]): Promise<void>;
   remove(date: string): Promise<void>;
   setProfile(profile: Profile): Promise<void>;
+  /** Changes only the profile fields given (null removes one): saves made close together all land. */
+  updateProfile(change: Partial<Profile>): Promise<void>;
   importBackup(parsed: Extract<ParsedBackup, { ok: true }>, mode: ImportMode): Promise<MergeResult | null>;
   /** Erases everything; resolves with whether the data is known to be gone. */
   erase(): Promise<boolean>;
@@ -141,6 +143,7 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
       }),
     remove: (date) => write((s) => s.remove(date)),
     setProfile: (profile) => write((s) => s.setProfile(profile)),
+    updateProfile: (change) => write((s) => s.updateProfile(change)),
     importBackup: (parsed, mode) =>
       write(async (s) => {
         const result = await importBackup(s, parsed, mode);

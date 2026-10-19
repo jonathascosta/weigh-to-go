@@ -54,7 +54,7 @@ describe('goalView', () => {
     });
     const up = goalView(analyze(series(30, -0.1)), 90, en);
     if (up.kind !== 'plan') throw new Error('a plan');
-    expect(up.paces[0]!.value).toEqual({ never: 'not reached at this pace' });
+    expect(up.paces[0]!.value).toEqual({ never: 'never at this pace' });
     expect(up.progress).toMatchObject({ share: 0, covered: '0% of the way' });
     // A goal above the first weight (but below today's) has no way to cover.
     const above = goalView(analyze(series(30, -0.1)), 101, en);
@@ -69,6 +69,17 @@ describe('goalView', () => {
   });
 });
 
+describe('goalView above the start', () => {
+  it('says the goal is not below the start, rather than reached', () => {
+    expect(goalView(a, 100, en)).toEqual({
+      kind: 'none',
+      text: 'Your goal of 220.5 lb is not below your starting weight of 220.5 lb: there is nothing to lose to reach it.',
+    });
+    // Still a plan when the weight has climbed past a goal above the start.
+    expect(goalView(analyze(series(30, -0.1)), 101, en).kind).toBe('plan');
+  });
+});
+
 describe('bmiView', () => {
   it('gives the BMI, its band, the start and the weights of the round BMIs above it', () => {
     // 94.2 kg at 1.75 m: 30.8; 100 kg at the start: 32.7.
@@ -76,10 +87,17 @@ describe('bmiView', () => {
     expect(v).toMatchObject({ big: '30,8', band: 'obese1', bandName: 'Obesidade grau I' });
     expect(v.at).toBeCloseTo((30.76 - 18.5) / 26.5, 2);
     expect(v.rows).toEqual([
-      { name: 'IMC no início', value: '32,7', sub: 'redução de 1,9 desde o início' },
+      { name: 'IMC no início', value: '32,7', sub: 'redução de 1,9 ponto desde o início' },
       { name: 'Peso para IMC abaixo de 30', value: '91,9 kg', sub: 'faltam 2,3 kg' },
       { name: 'Peso para IMC abaixo de 25', value: '76,6 kg', sub: 'faltam 17,6 kg' },
     ]);
+  });
+
+  it('gives the BMI change in points, agreeing with the number', () => {
+    // 100 to 99.6 kg at 2 m: down 0.1 point; "0,1 ponto" in Portuguese, "0.1 points" in English.
+    const small = analyze(series(3, 0.2, 100))!;
+    expect(bmiView(small, 200, en)!.rows[0]!.sub).toBe('down 0.1 points since the start');
+    expect(bmiView(small, 200, pt)!.rows[0]!.sub).toBe('redução de 0,1 ponto desde o início');
   });
 
   it('draws the bands across the whole scale', () => {

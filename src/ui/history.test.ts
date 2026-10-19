@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { analyze } from '../analysis/analyze';
 import { addDays, isoDay, parseDay } from '../analysis/dates';
 import { resolveSettings } from '../i18n';
-import { calendarMonths, variationDays, weekdayFoot, weekdayRows } from './days';
+import { calendarMonths, variationDays, weekdayFoot, weekdayHeadings, weekdayRows } from './days';
 import { factList } from './facts';
 import { weekRows } from './weeks';
 
@@ -48,6 +48,15 @@ describe('factList', () => {
   });
 });
 
+describe('the energy fact in pounds', () => {
+  it('quotes the per-pound figure', () => {
+    const lb = resolveSettings(['en-US'], { ...none, weightUnit: 'lb' });
+    expect(factList(a, lb).find((x) => x.label === 'Energy equivalent of the loss')!.detail).toBe(
+      'at 3,500 kcal per lb, about 10 days of a 2,000 kcal diet',
+    );
+  });
+});
+
 describe('variationDays', () => {
   it('keeps the weigh-ins with a change in the period', () => {
     const rows = variationDays(a, parseDay('2026-09-15'));
@@ -67,13 +76,13 @@ describe('weekdays', () => {
   it('names the days in the reader’s language, Monday first, and says the best and worst', () => {
     const rows = weekdayRows(a, pt);
     expect(rows.map((r) => r.name)).toEqual([
-      'segunda-feira',
-      'terça-feira',
-      'quarta-feira',
-      'quinta-feira',
-      'sexta-feira',
-      'sábado',
-      'domingo',
+      'Segunda-feira',
+      'Terça-feira',
+      'Quarta-feira',
+      'Quinta-feira',
+      'Sexta-feira',
+      'Sábado',
+      'Domingo',
     ]);
     // Monday is never a day after another weigh-in here but the 14th (98.6 → 98.2).
     expect(rows[0]).toMatchObject({ mean: expect.closeTo(-0.4, 6) as number, n: 1 });
@@ -82,11 +91,27 @@ describe('weekdays', () => {
     );
     expect(weekdayFoot([], pt)).toBe('');
   });
+
+  it('never calls a falling day the one that rises most', () => {
+    const row = (name: string, mean: number) => ({ name, mean, n: 3 });
+    expect(weekdayFoot([row('Seg', -0.3), row('Ter', -0.1)], pt)).toBe(
+      'Dia que mais desce: **Seg (−0,30 kg)**. Dia que menos desce: **Ter (−0,10 kg)**.',
+    );
+    expect(weekdayFoot([row('Mon', 0.1), row('Tue', 0.3)], en)).toBe(
+      'The day that rises least: **Mon (+0.10 kg)**. The day that rises most: **Tue (+0.30 kg)**.',
+    );
+    expect(weekdayFoot([row('Mon', -0.2)], en)).toBe('The day that falls most: **Mon (−0.20 kg)**.');
+  });
+
+  it('heads the calendar with letters in English, short names in Portuguese', () => {
+    expect(weekdayHeadings(en)).toEqual(['M', 'T', 'W', 'T', 'F', 'S', 'S']);
+    expect(weekdayHeadings(pt)).toEqual(['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']);
+  });
 });
 
 describe('calendarMonths', () => {
   it('lays out each month from Monday, and tones each day by its change', () => {
-    const [sep] = calendarMonths(a, 12);
+    const [sep] = calendarMonths(a, 12, '2026-09-20');
     // 1 Sep 2026 is a Tuesday.
     expect(sep).toMatchObject({ first: '2026-09-01', offset: 1 });
     expect(sep!.days).toHaveLength(30);
@@ -108,9 +133,19 @@ describe('calendarMonths', () => {
       Array.from({ length: 400 }, (_, i) => 100 - i * 0.01),
       '2025-09-01',
     );
-    expect(calendarMonths(long, 3).map((m) => m.first)).toEqual(['2026-08-01', '2026-09-01', '2026-10-01']);
-    expect(calendarMonths(long, 12)).toHaveLength(12);
-    expect(calendarMonths(long, 'all')).toHaveLength(14);
+    expect(calendarMonths(long, 3, '2026-10-05').map((m) => m.first)).toEqual([
+      '2026-08-01',
+      '2026-09-01',
+      '2026-10-01',
+    ]);
+    expect(calendarMonths(long, 12, '2026-10-05')).toHaveLength(12);
+    expect(calendarMonths(long, 'all', '2026-10-05')).toHaveLength(14);
+  });
+
+  it('leaves the days after today blank, but not the days since the last weigh-in', () => {
+    const [sep] = calendarMonths(a, 12, '2026-09-25');
+    const tone = (date: string) => sep!.days.find((d) => d.date === date)!.tone;
+    expect([tone('2026-09-21'), tone('2026-09-25'), tone('2026-09-26')]).toEqual(['none', 'none', 'future']);
   });
 });
 

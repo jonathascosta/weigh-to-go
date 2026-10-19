@@ -29,6 +29,16 @@
   --ref: #85929a;
   --tip: #ffffff;
   --shadow: 0 8px 28px rgb(20 32 42 / 0.14);
+  /* The calendar: blue falls and orange rises (safe for red-green colour blindness), four
+     strengths each, every one at least 3:1 against the panel. */
+  --cal-d1: #6e94c4;
+  --cal-d2: #4a78b3;
+  --cal-d3: #2c5d9a;
+  --cal-d4: #173f73;
+  --cal-u1: #c4762e;
+  --cal-u2: #a95d17;
+  --cal-u3: #8a4609;
+  --cal-u4: #622f00;
   --f-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --f-num: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
   --r: 10px;
@@ -58,6 +68,14 @@
     --ref: #7c8992;
     --tip: #1f292f;
     --shadow: 0 8px 28px rgb(0 0 0 / 0.5);
+    --cal-d1: #4f7fb8;
+    --cal-d2: #6f9ad0;
+    --cal-d3: #94b8e4;
+    --cal-d4: #c3daf5;
+    --cal-u1: #a8661f;
+    --cal-u2: #c98236;
+    --cal-u3: #e3a35e;
+    --cal-u4: #f5c993;
     color-scheme: dark;
   }
 }
@@ -1384,35 +1402,44 @@ main {
   background: var(--c-week);
 }
 
-/* The calendar: four strengths each way, mixed from the theme's colours, so dark mode follows. */
+/* The calendar's squares and their legend swatches. */
 .cal-down1 {
-  fill: color-mix(in srgb, var(--ok) 38%, var(--panel));
+  fill: var(--cal-d1);
+  background: var(--cal-d1);
 }
 .cal-down2 {
-  fill: color-mix(in srgb, var(--ok) 58%, var(--panel));
+  fill: var(--cal-d2);
+  background: var(--cal-d2);
 }
 .cal-down3 {
-  fill: color-mix(in srgb, var(--ok) 78%, var(--panel));
+  fill: var(--cal-d3);
+  background: var(--cal-d3);
 }
 .cal-down4 {
-  fill: var(--ok);
+  fill: var(--cal-d4);
+  background: var(--cal-d4);
 }
 .cal-up1 {
-  fill: color-mix(in srgb, var(--bad) 38%, var(--panel));
+  fill: var(--cal-u1);
+  background: var(--cal-u1);
 }
 .cal-up2 {
-  fill: color-mix(in srgb, var(--bad) 58%, var(--panel));
+  fill: var(--cal-u2);
+  background: var(--cal-u2);
 }
 .cal-up3 {
-  fill: color-mix(in srgb, var(--bad) 78%, var(--panel));
+  fill: var(--cal-u3);
+  background: var(--cal-u3);
 }
 .cal-up4 {
-  fill: var(--bad);
+  fill: var(--cal-u4);
+  background: var(--cal-u4);
 }
 .cal-flat {
   fill: var(--soft);
-  stroke: var(--axis);
-  stroke-width: 0.5;
+  /* The edge carries it: a flat day's fill is close to the panel. */
+  stroke: var(--ref);
+  stroke-width: 1;
 }
 .cal-none {
   fill: none;
@@ -1430,15 +1457,13 @@ main {
   height: 12px;
   border-radius: 3px;
 }
-span.cal-down4 {
-  background: var(--ok);
-}
-span.cal-up4 {
-  background: var(--bad);
-}
 span.cal-flat {
   background: var(--soft);
-  border: 1px solid var(--axis);
+  border: 1px solid var(--ref);
+}
+.cal-ramp {
+  display: inline-flex;
+  gap: 2px;
 }
 span.cal-none {
   border: 1px dashed var(--ref);
@@ -1447,4 +1472,9 @@ span.cal-none {
   fill: none;
   stroke: var(--fg);
   stroke-width: 2;
+}
+
+/* Three-letter weekday headings over a square: a little smaller. */
+.cal-weekday {
+  font-size: 9px;
 }

@@ -213,6 +213,8 @@ export const en = {
 
   'word.weighIn': { one: 'weigh-in', other: 'weigh-ins' },
   'word.day': { one: 'day', other: 'days' },
+  'word.point': { one: 'point', other: 'points' },
+  'word.month': { one: 'month', other: 'months' },
 
   'summary.none': 'No weigh-ins yet',
   'summary.start':
@@ -579,7 +581,9 @@ export const en = {
   'goal.pace.recent': 'At the pace of the last 3 weeks',
   'goal.pace.smoothed': 'At the smoothed trend’s pace',
   'goal.paceSub': (days: string, pace: string) => `in ${days}, at ${pace} a week`,
-  'goal.never': 'not reached at this pace',
+  'goal.never': 'never at this pace',
+  'goal.aboveStart': (goal: string, start: string) =>
+    `Your goal of ${goal} is not below your starting weight of ${start}: there is nothing to lose to reach it.`,
   'goal.saved': (goal: string) => `Goal saved: ${goal}.`,
   'goal.removed': 'Goal removed.',
   'goal.bad': (unit: string) => `Type the goal in ${unit}, or leave the field empty to remove it.`,
@@ -605,6 +609,7 @@ export const en = {
   'bmi.scaleAria': (bmi: string, band: string) => `BMI ${bmi} on the scale of bands: ${band}`,
   'bmi.start': 'BMI at the start',
   'bmi.reduced': (points: string) => `down ${points} since the start`,
+  'bmi.autoUnit': (unit: string) => `Automatic (${unit})`,
   'bmi.notReduced': 'not lower than at the start yet',
   'bmi.target': (bmi: string) => `Weight for a BMI below ${bmi}`,
   'bmi.toGo': (weight: string) => `${weight} to go`,
@@ -670,8 +675,10 @@ export const en = {
   'weekdays.mean': 'Mean change',
   'weekdays.count': 'Comparisons',
   'weekdays.noData': 'no weigh-ins a day apart yet',
-  'weekdays.foot': (best: string, bestChange: string, worst: string, worstChange: string) =>
-    `The day that falls most: **${best} (${bestChange})**. The day that rises most: **${worst} (${worstChange})**.`,
+  'weekdays.fallsMost': (day: string, change: string) => `The day that falls most: **${day} (${change})**.`,
+  'weekdays.risesLeast': (day: string, change: string) => `The day that rises least: **${day} (${change})**.`,
+  'weekdays.risesMost': (day: string, change: string) => `The day that rises most: **${day} (${change})**.`,
+  'weekdays.fallsLeast': (day: string, change: string) => `The day that falls least: **${day} (${change})**.`,
 
   'calendar.title': 'Calendar',
   'calendar.note':
@@ -684,6 +691,8 @@ export const en = {
   'calendar.none': 'no weigh-in',
   'calendar.strength': 'Stronger colour, bigger change.',
   'calendar.empty': 'Log your first weigh-in to see the calendar.',
+  'calendar.shown': (shown: string, total: string) => `Showing the latest ${shown} (of ${total}).`,
+  'calendar.earlier': (months: string) => `Show ${months} earlier`,
   'calendar.roleDescription': 'calendar',
   'calendar.aria': (count: string) =>
     `Calendar of the days, coloured by the change from the previous weigh-in, ${count}. Every weigh-in and its change are also in the Weigh-ins table.`,
@@ -719,7 +728,7 @@ export const en = {
   'log.deleted': (day: string) => `Deleted the weigh-in of ${day}.`,
   'log.failed': "Couldn't delete the weigh-in. Try again.",
   'log.empty': 'No weigh-ins yet.',
-  'log.more': (shown: string, total: string) => `Showing the latest ${shown} of ${total}.`,
+  'log.more': (shown: string, total: string) => `Showing the latest ${shown} (of ${total}).`,
   'log.showMore': 'Show more',
 
   'data.title': 'Your data',
@@ -806,6 +815,8 @@ export const pt: Messages = {
 
   'word.weighIn': { one: 'pesagem', other: 'pesagens' },
   'word.day': { one: 'dia', other: 'dias' },
+  'word.point': { one: 'ponto', other: 'pontos' },
+  'word.month': { one: 'mês', other: 'meses' },
 
   'summary.none': 'Nenhuma pesagem ainda',
   'summary.start':
@@ -1177,6 +1188,8 @@ export const pt: Messages = {
   'goal.pace.smoothed': 'No ritmo da tendência suavizada',
   'goal.paceSub': (days: string, pace: string) => `em ${days}, a ${pace} por semana`,
   'goal.never': 'não chega neste ritmo',
+  'goal.aboveStart': (goal: string, start: string) =>
+    `Sua meta de ${goal} não está abaixo do peso inicial de ${start}: não há o que perder para chegar a ela.`,
   'goal.saved': (goal: string) => `Meta salva: ${goal}.`,
   'goal.removed': 'Meta removida.',
   'goal.bad': (unit: string) => `Digite a meta em ${unit}, ou deixe o campo vazio para removê-la.`,
@@ -1203,6 +1216,7 @@ export const pt: Messages = {
   'bmi.scaleAria': (bmi: string, band: string) => `IMC ${bmi} na escala de faixas: ${band}`,
   'bmi.start': 'IMC no início',
   'bmi.reduced': (points: string) => `redução de ${points} desde o início`,
+  'bmi.autoUnit': (unit: string) => `Automático (${unit})`,
   'bmi.notReduced': 'ainda não está abaixo do inicial',
   'bmi.target': (bmi: string) => `Peso para IMC abaixo de ${bmi}`,
   'bmi.toGo': (weight: string) => `faltam ${weight}`,
@@ -1255,7 +1269,7 @@ export const pt: Messages = {
     `Diferença em ${unit} para a pesagem anterior. Segue o período escolhido no gráfico principal.`,
   'variation.down': 'desceu',
   'variation.up': 'subiu',
-  'variation.gap': 'mais clara: em mais de um dia',
+  'variation.gap': 'barra mais clara: em mais de um dia',
   'variation.empty': 'A variação aparece a partir da segunda pesagem.',
   'variation.none': 'Sem variações neste período.',
   'variation.aria': (count: string) => `Gráfico de barras da diferença para a pesagem anterior, ${count}.`,
@@ -1268,8 +1282,10 @@ export const pt: Messages = {
   'weekdays.mean': 'Variação média',
   'weekdays.count': 'Comparações',
   'weekdays.noData': 'ainda sem pesagens em dias seguidos',
-  'weekdays.foot': (best: string, bestChange: string, worst: string, worstChange: string) =>
-    `Dia que mais desce: **${best} (${bestChange})**. Dia que mais sobe: **${worst} (${worstChange})**.`,
+  'weekdays.fallsMost': (day: string, change: string) => `Dia que mais desce: **${day} (${change})**.`,
+  'weekdays.risesLeast': (day: string, change: string) => `Dia que menos sobe: **${day} (${change})**.`,
+  'weekdays.risesMost': (day: string, change: string) => `Dia que mais sobe: **${day} (${change})**.`,
+  'weekdays.fallsLeast': (day: string, change: string) => `Dia que menos desce: **${day} (${change})**.`,
 
   'calendar.title': 'Calendário',
   'calendar.note': 'Cada quadrado é um dia. A cor mostra se o peso desceu ou subiu, e a intensidade, quanto.',
@@ -1281,6 +1297,8 @@ export const pt: Messages = {
   'calendar.none': 'sem pesagem',
   'calendar.strength': 'Cor mais forte, variação maior.',
   'calendar.empty': 'Registre a primeira pesagem para ver o calendário.',
+  'calendar.shown': (shown: string, total: string) => `Mostrando os ${shown} mais recentes (de ${total}).`,
+  'calendar.earlier': (months: string) => `Mostrar anteriores: ${months}`,
   'calendar.roleDescription': 'calendário',
   'calendar.aria': (count: string) =>
     `Calendário dos dias, coloridos pela variação em relação à pesagem anterior, ${count}. Todas as pesagens e suas variações também estão na tabela de registros.`,

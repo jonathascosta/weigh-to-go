@@ -128,8 +128,15 @@ export function mountWeeks(
     if (rows.length > shown) {
       const button = h('button', { class: 'link', attrs: { type: 'button' }, text: m['log.showMore'] });
       button.addEventListener('click', () => {
+        const firstNew = rows[shown]?.key;
         shown += WEEKS_PAGE;
         render(app.state(), settings());
+        // Keyboard readers go on from the first week that just appeared (the button is gone).
+        const heading = firstNew ? body.querySelector<HTMLElement>(`tr[data-key="${firstNew}"] th`) : null;
+        if (heading) {
+          heading.setAttribute('tabindex', '-1');
+          heading.focus();
+        }
       });
       more.replaceChildren(
         h('span', { class: 'note', text: m['weeks.more'](f.number(shown, 0), f.number(rows.length, 0)) }),

@@ -10,7 +10,7 @@ import { BMI_BANDS, bmiSummary, dateAfterLast, goalPlan, METHODS, type BmiBand }
 import type { App, State } from '../app/app';
 import { parseNumber, toKg } from '../data/paste';
 import { isHeight } from '../data/records';
-import { choose, count, settings, type Settings } from '../i18n';
+import { automatic, choose, count, settings, type Settings } from '../i18n';
 import { fromFeetInches, HEIGHT_UNITS, toFeetInches, type HeightUnit } from '../units';
 import { chips, h, say } from './dom';
 import { failure } from './entry';
@@ -49,6 +49,13 @@ export function goalView(analysis: Analysis | null, goalKg: number | null, s: Se
   if (!analysis) return { kind: 'none', text: m['goal.noWeighIns'](f.weight(goalKg, unit)) };
   const plan = goalPlan(analysis, goalKg);
   if (!plan) return { kind: 'none', text: m['goal.none'] };
+  // A goal not below the starting weight, and already met, isn't a goal reached: nothing was lost
+  // to get there.
+  if (plan.reached && goalKg >= analysis.first.kg)
+    return {
+      kind: 'none',
+      text: m['goal.aboveStart'](f.weight(goalKg, unit), f.weight(analysis.first.kg, unit)),
+    };
   if (plan.reached)
     return {
       kind: 'reached',
@@ -120,7 +127,7 @@ export function bmiView(analysis: Analysis, heightCm: number, s: Settings): BmiV
       {
         name: m['bmi.start'],
         value: f.number(b.start, 1),
-        sub: b.reduced > 0 ? m['bmi.reduced'](f.number(b.reduced, 1)) : m['bmi.notReduced'],
+        sub: b.reduced > 0 ? m['bmi.reduced'](count(b.reduced, m['word.point'], s, 1)) : m['bmi.notReduced'],
       },
       ...b.targets.map((t) => ({
         name: m['bmi.target'](f.number(t.bmi, 0)),
@@ -192,7 +199,8 @@ async function saveProfile(
   done: string,
 ): Promise<boolean> {
   try {
-    await app.setProfile({ ...app.state().profile, ...change });
+    // Only this field: a save of the other one moments before must not be undone.
+    await app.updateProfile(change);
     say(status, done, 'ok');
     return true;
   } catch (error) {
@@ -357,12 +365,17 @@ export function mountBmi(container: HTMLElement, app: App): (state: State, s: Se
     const { format: f, heightUnit } = s;
     title.textContent = m['bmi.title'];
     save.textContent = m['goal.save'];
-    if (builtFor !== `${s.locale.tag}|${heightUnit}`) {
-      builtFor = `${s.locale.tag}|${heightUnit}`;
-      const row = chips(
+    const chosen = s.chosen.heightUnit;
+    if (builtFor !== `${s.locale.tag}|${heightUnit}|${String(chosen)}`) {
+      builtFor = `${s.locale.tag}|${heightUnit}|${String(chosen)}`;
+      // Automatic follows where the reader is; it says which unit that gives.
+      const row = chips<HeightUnit | null>(
         m['settings.heightUnit'],
-        HEIGHT_UNITS.map((u) => ({ value: u, label: m[`unit.${u}`] })),
-        (u) => u === heightUnit,
+        [
+          { value: null, label: m['bmi.autoUnit'](m[`unit.${automatic().heightUnit}`]) },
+          ...HEIGHT_UNITS.map((u) => ({ value: u, label: m[`unit.${u}`] })),
+        ],
+        (u) => u === chosen,
         (u) => {
           // The height unit lives here, with the height (as the weight unit lives in the header).
           choose({ heightUnit: u });
@@ -388,7 +401,9 @@ export function mountBmi(container: HTMLElement, app: App): (state: State, s: Se
     const typing = [cm.input, feet.input, inches.input].includes(document.activeElement as HTMLInputElement);
     if (!typing && (shown?.height !== height || shown.unit !== heightUnit)) {
       const ftIn = height === null ? null : toFeetInches(height);
-      cm.input.value = height === null ? '' : f.number(height, 0);
+      // Up to a tenth, as it may have been typed (or come from feet and inches).
+      const tenths = height === null ? 0 : Math.round(height * 10);
+      cm.input.value = height === null ? '' : f.number(tenths / 10, tenths % 10 === 0 ? 0 : 1);
       feet.input.value = ftIn ? String(ftIn.feet) : '';
       inches.input.value = ftIn ? f.number(ftIn.inches, ftIn.inches % 1 === 0 ? 0 : 1) : '';
       shown = { height, unit: heightUnit };

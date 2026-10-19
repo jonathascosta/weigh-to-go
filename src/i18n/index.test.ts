@@ -4,6 +4,7 @@ import { PREFS_PREFIX } from '../data/prefs';
 import {
   automatic,
   choose,
+  count,
   onSettingsChange,
   plural,
   resetSettings,
@@ -136,6 +137,19 @@ describe('settings', () => {
     stop();
     target.dispatchEvent(new Event('languagechange'));
     expect(heard).toHaveLength(2);
+  });
+});
+
+describe('count with decimals', () => {
+  it('agrees with the number as shown', () => {
+    const en = resolveSettings(['en-US'], none);
+    const pt = resolveSettings(['pt-BR'], none);
+    const point = { one: 'point', other: 'points' };
+    const ponto = { one: 'ponto', other: 'pontos' };
+    expect(count(1, point, en, 1)).toBe('1.0 points');
+    expect(count(1, point, en)).toBe('1 point');
+    expect(count(1, ponto, pt, 1)).toBe('1,0 ponto');
+    expect(count(5.06, ponto, pt, 1)).toBe('5,1 pontos');
   });
 });
 

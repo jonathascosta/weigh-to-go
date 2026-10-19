@@ -99,6 +99,8 @@ export function createPlot(redraw: () => void): Plot {
   let frame = 0;
   new ResizeObserver(() => {
     const widthNow = box.clientWidth;
+    // A hidden section (or one off the page) has nothing to fit: it is drawn when it shows again.
+    if (widthNow === 0 || !box.isConnected || box.closest('[hidden]') !== null) return;
     if (widthNow === lastWidth) return;
     lastWidth = widthNow;
     cancelAnimationFrame(frame);
@@ -139,6 +141,8 @@ export function createPlot(redraw: () => void): Plot {
       const keep = current && document.activeElement === current.root ? { key: current.key() } : null;
       tip.hidden = true;
       sized(height);
+      // Drawn at this width: the observer's next call, for the same width, has nothing to do.
+      lastWidth = box.clientWidth;
       const cursor = spec ? attachCursor(root, spec, { box, tip, live }) : null;
       box.replaceChildren(root);
       current = { root, key: () => cursor?.key() ?? null };

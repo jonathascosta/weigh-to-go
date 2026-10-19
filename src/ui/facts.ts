@@ -10,6 +10,9 @@ import { h, tone } from './dom';
 import { flatSeries } from './rates';
 import { dayShort } from './summary';
 
+/** The energy usually equated with a pound of body fat (7,700 kcal a kg, rounded as it is quoted). */
+export const KCAL_PER_LB = 3500;
+
 export interface Fact {
   readonly label: string;
   readonly value: string;
@@ -69,8 +72,9 @@ export function factList(analysis: Analysis, s: Settings): Fact[] {
       m['facts.energy'],
       m['facts.about'](`${f.number(x.kcal, 0)} kcal`),
       m['facts.energyDetail'](
-        f.number(KCAL_PER_KG, 0),
-        m[`unit.kg`],
+        // The rule of thumb in the reader's unit: 7,700 kcal a kg is about 3,500 a pound.
+        f.number(unit === 'lb' ? KCAL_PER_LB : KCAL_PER_KG, 0),
+        m[`unit.${unit}`],
         f.number(x.dietDays, 0),
         f.number(DIET_KCAL, 0),
       ),

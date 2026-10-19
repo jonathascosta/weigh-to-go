@@ -149,6 +149,17 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    A bar of chips under the summary shows and hides every section (the original's `SECS`), kept
    like the other choices; a hidden section isn't drawn until it shows again.
 
+   The profile's fields are saved one at a time (`store.updateProfile`, a read and a write in one
+   transaction), so a goal and a height saved moments apart both land. A goal not below the
+   starting weight is said to be so, not "reached". The height unit can go back to Automatic. The
+   calendar's colours are blue for a fall and orange for a rise (not red and green), four strengths
+   each, every one at least 3:1 against the card in both themes; days after today stay blank; on
+   "All" it shows the newest 24 months, earlier ones on request, so years of data don't make a
+   page-tall card. Its weekday headings are letters in English and short names in Portuguese,
+   whose letters repeat. BMI changes are counted in points with CLDR's plural rules ("1,9 ponto"
+   in Portuguese, where the whole part decides). The calendar stays a focusable group with a
+   cursor, not an ARIA grid: that is valid as it is, and the log holds every weigh-in.
+
 8. **Installable, offline, and quality gates.** Web app manifest and icons, a service worker for
    offline use, Playwright end-to-end tests, axe in light and dark on desktop and phone, Lighthouse
    in CI. Registering the worker needs one narrow Trusted Types policy (its own URL only), from our

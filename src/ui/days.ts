@@ -6,7 +6,7 @@
 import { max } from 'd3-array';
 import { scaleBand, scaleLinear } from 'd3-scale';
 import { FLAT_KG, type Analysis, type Day } from '../analysis/analyze';
-import { addDays, isoDay, parseDay } from '../analysis/dates';
+import { addDays, isoDay, localToday, parseDay } from '../analysis/dates';
 import type { State } from '../app/app';
 import { CALENDAR_SPANS, calendarSpan, chartPeriod, viewGeneration, type CalendarSpan } from '../app/view';
 import { count, settings, type Settings } from '../i18n';
@@ -36,9 +36,28 @@ export interface WeekdayRow {
 /** A Monday, for naming the weekdays in the reader's language (0 = Monday, as in the engine). */
 const MONDAY = parseDay('2026-01-05');
 
+/** A name used as a label starts with a capital ("segunda-feira" → "Segunda-feira"). */
+const capitalised = (text: string, s: Settings): string =>
+  text.charAt(0).toLocaleUpperCase(s.locale.tag) + text.slice(1);
+
+/**
+ * The calendar's weekday headings: one letter where the letters tell the days apart (M T W T F S S
+ * is read by position), else the short name without its dot (Portuguese "S T Q Q S S D" would not).
+ */
+export function weekdayHeadings(s: Settings): string[] {
+  const day = (i: number, style: 'weekdayNarrow' | 'weekday') =>
+    s.format.day(isoDay(addDays(MONDAY, i)), style);
+  const narrow = Array.from({ length: 7 }, (_, i) => day(i, 'weekdayNarrow'));
+  // English repeats T and S, but its readers know the order; for other languages, the short names.
+  if (s.locale.lang === 'en') return narrow;
+  return Array.from({ length: 7 }, (_, i) =>
+    capitalised(day(i, 'weekday').replace(/\.$/, '').slice(0, 3), s),
+  );
+}
+
 export function weekdayRows(analysis: Analysis, s: Settings): WeekdayRow[] {
   return analysis.weekdays.map((w) => ({
-    name: s.format.day(isoDay(addDays(MONDAY, w.weekday)), 'weekdayLong'),
+    name: capitalised(s.format.day(isoDay(addDays(MONDAY, w.weekday)), 'weekdayLong'), s),
     mean: w.mean,
     n: w.n,
   }));
@@ -55,19 +74,20 @@ export function weekdayFoot(rows: readonly WeekdayRow[], s: Settings): string {
     if (r.mean < best.mean) best = r;
     if (r.mean > worst.mean) worst = r;
   }
+  const m = s.messages;
   const { format: f, weightUnit: unit } = s;
-  return s.messages['weekdays.foot'](
-    best.name,
-    f.weightChange(best.mean, unit, 2),
-    worst.name,
-    f.weightChange(worst.mean, unit, 2),
-  );
+  const change = (r: { mean: number }) => f.weightChange(r.mean, unit, 2);
+  // Each end says what it does: the lowest mean may still be a rise, the highest still a fall.
+  const low = best.mean < 0 ? m['weekdays.fallsMost'] : m['weekdays.risesLeast'];
+  const high = worst.mean > 0 ? m['weekdays.risesMost'] : m['weekdays.fallsLeast'];
+  if (best === worst) return low(best.name, change(best));
+  return `${low(best.name, change(best))} ${high(worst.name, change(worst))}`;
 }
 
 // ---------- Calendar ----------
 
 /** How a day's change is coloured: down or up at one of four strengths, flat, or no weigh-in. */
-export type CalendarTone = `down${1 | 2 | 3 | 4}` | `up${1 | 2 | 3 | 4}` | 'flat' | 'none';
+export type CalendarTone = `down${1 | 2 | 3 | 4}` | `up${1 | 2 | 3 | 4}` | 'flat' | 'none' | 'future';
 
 export interface CalendarDay {
   readonly date: string;
@@ -84,7 +104,13 @@ export interface CalendarMonth {
 }
 
 /** The months the calendar shows (the last `span`, or all), each day with its tone. */
-export function calendarMonths(analysis: Analysis, span: CalendarSpan): CalendarMonth[] {
+export function calendarMonths(
+  analysis: Analysis,
+  span: CalendarSpan,
+  today: string = localToday(),
+): CalendarMonth[] {
+  // Days after today (and after the last weigh-in) haven't happened: they stay blank.
+  const end = today > analysis.last.date ? today : analysis.last.date;
   const byDate = new Map(analysis.series.map((d) => [d.date, d]));
   const last = analysis.last.t;
   const lastMonth = last.getUTCFullYear() * 12 + last.getUTCMonth();
@@ -112,7 +138,7 @@ export function calendarMonths(analysis: Analysis, span: CalendarSpan): Calendar
     for (let t = start; t < next; t = addDays(t, 1)) {
       const date = isoDay(t);
       const day = byDate.get(date) ?? null;
-      days.push({ date, day, tone: toneOf(day) });
+      days.push({ date, day, tone: date > end ? 'future' : toneOf(day) });
     }
     months.push({ first: isoDay(start), offset: (start.getUTCDay() + 6) % 7, days });
   }
@@ -120,6 +146,9 @@ export function calendarMonths(analysis: Analysis, span: CalendarSpan): Calendar
 }
 
 // ---------- Mounting ----------
+
+/** Months the calendar shows at a time on "All". */
+export const ALL_PAGE = 24;
 
 /** The variation chart, following the main chart's period. */
 export function mountVariation(
@@ -393,6 +422,11 @@ export function mountCalendar(
     legend,
   );
 
+  /** On "All", the newest months shown; "Show earlier" adds more. */
+  let allShown = ALL_PAGE;
+  const earlier = h('div', { class: 'log-more' });
+  container.append(earlier);
+
   let built = '';
   const render = (state: State, s: Settings) => {
     const m = s.messages;
@@ -412,27 +446,70 @@ export function mountCalendar(
               label: v === 'all' ? m['period.all'] : m['calendar.months'](f.number(v, 0)),
             })),
             calendarSpan,
-            redraw,
+            () => {
+              allShown = ALL_PAGE;
+              redraw();
+            },
           ),
         ),
       );
     }
     const swatch = (cls: string, text: string) =>
       h('span', {}, h('span', { class: `cal-swatch ${cls}`, attrs: { 'aria-hidden': 'true' } }), text);
+    // Each way's four strengths, palest first.
+    const ramp = (way: 'down' | 'up', text: string) =>
+      h(
+        'span',
+        {},
+        h(
+          'span',
+          { class: 'cal-ramp', attrs: { 'aria-hidden': 'true' } },
+          ...[1, 2, 3, 4].map((i) => h('span', { class: `cal-swatch cal-${way}${String(i)}` })),
+        ),
+        text,
+      );
     legend.replaceChildren(
-      swatch('cal-down4', m['calendar.down']),
-      swatch('cal-up4', m['calendar.up']),
+      ramp('down', m['calendar.down']),
+      ramp('up', m['calendar.up']),
       swatch('cal-flat', m['calendar.flat']),
       swatch('cal-none', m['calendar.none']),
       h('span', { text: m['calendar.strength'] }),
     );
     const { analysis } = state;
+    earlier.replaceChildren();
     if (!analysis) {
       plot.empty(state.status === 'loading' ? m['home.placeholder'] : m['calendar.empty'], 200);
       return;
     }
-    const months = calendarMonths(analysis, calendarSpan.get());
-    const days = months.flatMap((mo) => mo.days);
+    const every = calendarMonths(analysis, calendarSpan.get());
+    // "All" of years of months would be a page tall: the newest first, earlier ones on request.
+    const months = every.slice(-allShown);
+    const hiddenMonths = every.length - months.length;
+    if (hiddenMonths > 0) {
+      const more = h('button', { class: 'link', attrs: { type: 'button' } });
+      more.textContent = m['calendar.earlier'](count(Math.min(ALL_PAGE, hiddenMonths), m['word.month'], s));
+      more.addEventListener('click', () => {
+        allShown += ALL_PAGE;
+        redraw();
+        // The new months are at the top: the reader goes on from the calendar itself.
+        container.querySelector<SVGSVGElement>('svg.chart-svg')?.focus();
+      });
+      earlier.replaceChildren(
+        h('span', {
+          class: 'note',
+          text: m['calendar.shown'](count(months.length, m['word.month'], s), f.number(every.length, 0)),
+        }),
+        ' ',
+        more,
+      );
+    }
+    // The cursor stops on days that have happened.
+    const days = months.flatMap((mo) => mo.days).filter((d) => d.tone !== 'future');
+    const firstDay = days[0];
+    if (!firstDay) {
+      plot.empty(m['calendar.empty'], 200);
+      return;
+    }
     const width = plot.width();
     // Months side by side, as many as fit: a square a day, Monday first.
     const gap = 2;
@@ -454,7 +531,7 @@ export function mountCalendar(
       desc: `${m['calendar.aria'](count(analysis.summary.n, m['word.weighIn'], s))} ${m['calendar.keys']}`,
     });
     const place = new Map<string, { x: number; y: number }>();
-    const weekdays = Array.from({ length: 7 }, (_, i) => f.day(isoDay(addDays(MONDAY, i)), 'weekdayNarrow'));
+    const weekdays = weekdayHeadings(s);
     const cells: Record<string, string[]> = {};
     months.forEach((mo, k) => {
       const ox = (k % cols) * (monthW + monthGap);
@@ -462,7 +539,16 @@ export function mountCalendar(
       root.append(svg('text', { class: 'cal-month', x: ox, y: oy + 12 }, f.day(mo.first, 'monthYear')));
       weekdays.forEach((w, i) => {
         root.append(
-          svg('text', { class: 'tick', x: ox + i * step + cell / 2, y: oy + 27, 'text-anchor': 'middle' }, w),
+          svg(
+            'text',
+            {
+              class: w.length > 1 ? 'tick cal-weekday' : 'tick',
+              x: ox + i * step + cell / 2,
+              y: oy + 27,
+              'text-anchor': 'middle',
+            },
+            w,
+          ),
         );
       });
       mo.days.forEach((d, i) => {
@@ -477,9 +563,7 @@ export function mountCalendar(
       });
     });
     for (const [toneName, parts] of Object.entries(cells))
-      root.append(svg('path', { class: `cal-${toneName}`, d: parts.join('') }));
-    const firstDay = days[0];
-    if (!firstDay) return;
+      if (toneName !== 'future') root.append(svg('path', { class: `cal-${toneName}`, d: parts.join('') }));
     const at = (i: number) => days[i] ?? firstDay;
     const lastIndex = days.findIndex((d) => d.date === analysis.last.date);
     plot.show(
@@ -511,7 +595,14 @@ export function mountCalendar(
                   : [
                       {
                         name: d.day.gap === 1 ? m['tip.vsDay'] : m['tip.vsPrevious'],
-                        value: f.weightChange(d.day.change, unit),
+                        // Over a gap, say over how many days.
+                        value:
+                          d.day.gap !== null && d.day.gap > 1
+                            ? m['chart.inDays'](
+                                f.weightChange(d.day.change, unit),
+                                count(d.day.gap, m['word.day'], s),
+                              )
+                            : f.weightChange(d.day.change, unit),
                       },
                     ]),
               ]
