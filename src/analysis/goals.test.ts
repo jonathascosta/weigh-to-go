@@ -1,0 +1,189 @@
+import { describe, expect, it } from 'vitest';
+import { analyze, type WeighIn } from './analyze';
+import { addDays, isoDay, parseDay } from './dates';
+import { bmi, bmiBand, bmiSummary, goalPlan, milestones, pctKpis, weeklyPct, weightForBmi } from './goals';
+
+function daily(weights: readonly number[]): WeighIn[] {
+  return weights.map((kg, i) => ({ date: isoDay(addDays(parseDay('2026-09-01'), i)), kg }));
+}
+
+describe('milestones', () => {
+  // From 100 kg down 0.2 kg a day for 30 days: 94.2 kg, 5.8% lost.
+  const a = analyze(daily(Array.from({ length: 30 }, (_, i) => 100 - 0.2 * i)))!;
+
+  it('lists the round milestones up to 5 points past the current loss, at least 15%', () => {
+    const list = milestones(a, null);
+    expect(list.map((m) => m.pct)).toEqual([5, 10, 15]);
+    expect(list[0]?.reached?.date).toBe('2026-09-26');
+    expect(list[0]?.daysBy).toEqual({ linear: 0, recent: 0, smoothed: 0 });
+    // 10%: 90 kg, 4.2 kg away at 0.2 a day.
+    expect(list[1]?.kg).toBeCloseTo(90, 10);
+    expect(list[1]?.reached).toBeNull();
+    expect(list[1]?.daysBy.linear).toBe(21);
+  });
+
+  it('adds the goal in order, and extends the list to 5 points past it', () => {
+    const list = milestones(a, 82);
+    expect(list.map((m) => [Math.round(m.pct * 10) / 10, m.goal])).toEqual([
+      [5, false],
+      [10, false],
+      [15, false],
+      [18, true],
+      [20, false],
+      [25, false],
+    ]);
+  });
+
+  it('ignores a goal above the first weight', () => {
+    expect(milestones(a, 105).some((m) => m.goal)).toBe(false);
+  });
+
+  it('reports never for a model going the wrong way', () => {
+    const up = analyze(daily([80, 80.2, 80.4, 80.6]))!;
+    expect(milestones(up, null)[0]?.daysBy.linear).toBeNull();
+  });
+});
+
+describe('goalPlan', () => {
+  it('measures the way covered and when each projection gets there', () => {
+    const a = analyze(daily(Array.from({ length: 30 }, (_, i) => 100 - 0.2 * i)))!;
+    const plan = goalPlan(a, 90);
+    expect(plan?.remaining).toBeCloseTo(4.2, 10);
+    expect(plan?.reached).toBe(false);
+    expect(plan?.progress).toBeCloseTo(5.8 / 10, 10);
+    expect(plan?.byMethod.linear?.days).toBe(21);
+    expect(plan?.byMethod.linear?.kgPerWeek).toBeCloseTo(1.4, 10);
+  });
+
+  it('reports a reached goal and how far below it the weight is', () => {
+    const plan = goalPlan(analyze(daily([100, 95]))!, 96);
+    expect([plan?.reached, plan?.remaining, plan?.below, plan?.progress]).toEqual([true, 0, 1, 1]);
+  });
+
+  it('still plans a goal above the first weight when the weight is above it', () => {
+    const plan = goalPlan(analyze(daily([100, 104, 106]))!, 103);
+    expect(plan?.remaining).toBeCloseTo(3, 10);
+    expect(plan?.progress).toBeNull();
+    expect(plan?.byMethod.linear?.days).toBeNull();
+  });
+
+  it('refuses a goal that isn’t a weight', () => {
+    expect(goalPlan(analyze(daily([100, 95]))!, 0)).toBeNull();
+    expect(goalPlan(analyze(daily([100, 95]))!, Number.NaN)).toBeNull();
+  });
+});
+
+describe('pctKpis', () => {
+  // 100 kg, down 0.2 kg a day for 30 days.
+  const a = analyze(daily(Array.from({ length: 30 }, (_, i) => 100 - 0.2 * i)))!;
+
+  it('gives the pace in % of the first and of the current weight, with its band', () => {
+    const k = pctKpis(a, 'linear', null);
+    expect(k.lossPct).toBeCloseTo(5.8, 10);
+    expect(k.weekLossPct).toBeCloseTo(1.4, 10);
+    expect(k.monthLossPct).toBeCloseTo(0.2 * 30.44, 10);
+    expect(k.currentWeekLossPct).toBeCloseTo((1.4 / 94.2) * 100, 10);
+    expect(k.band).toBe('above');
+    expect(k.last7LossPct).toBeCloseTo((1.4 / 96.2) * 100, 8);
+    expect(k.next).toEqual({ pct: 10, days: 21 });
+    expect(k.goal).toBeNull();
+  });
+
+  it('shows the goal instead of the next milestone when one is set', () => {
+    const k = pctKpis(a, 'linear', 88);
+    expect(k.next).toBeNull();
+    expect(k.goal?.pct).toBeCloseTo(12, 10);
+    expect(k.goal?.progress).toBeCloseTo(5.8 / 12, 10);
+    expect(pctKpis(a, 'linear', 99).goal?.progress).toBe(1);
+    expect(pctKpis(a, 'linear', -5).goal).toBeNull();
+  });
+
+  it('bands the pace and hides a recent model that is only a fallback', () => {
+    const slow = analyze(daily(Array.from({ length: 30 }, (_, i) => 100 - 0.1 * i)))!;
+    expect(pctKpis(slow, 'linear', null).band).toBe('within');
+    const up = analyze(daily([80, 80.2, 80.4]))!;
+    expect(pctKpis(up, 'linear', null).band).toBe('rising');
+    expect(pctKpis(up, 'linear', null).recentWeekLossPct).toBeNull();
+    expect(pctKpis(up, 'recent', null).band).toBeNull();
+    expect(pctKpis(analyze(daily([80, 80, 80, 80]))!, 'linear', null).band).toBe('flat');
+    // 0.045 kg a week: stable here and in the header alike.
+    const slight = analyze(daily(Array.from({ length: 8 }, (_, i) => 80 - (0.045 / 7) * i)))!;
+    expect(pctKpis(slight, 'linear', null).band).toBe('flat');
+  });
+
+  it('points at 5% after a gain, and past a milestone hit exactly', () => {
+    expect(pctKpis(analyze(daily([100, 100.5, 100.8, 101]))!, 'linear', null).next?.pct).toBe(5);
+    // 63 kg to 56.7 kg is exactly 10%, which floats store as 9.999999999999995.
+    expect(pctKpis(analyze(daily([63, 60, 58, 56.7]))!, 'linear', null).next?.pct).toBe(15);
+  });
+});
+
+describe('bmi', () => {
+  it('computes BMI, its band and the weight for a BMI', () => {
+    expect(bmi(80, 200)).toBe(20);
+    expect(bmi(80, 0)).toBeNull();
+    expect(bmiBand(Number.NaN)).toBeNull();
+    expect(bmiBand(18.49)).toBe('under');
+    expect(bmiBand(18.5)).toBe('normal');
+    expect(bmiBand(29.99)).toBe('over');
+    expect(bmiBand(30)).toBe('obese1');
+    expect(bmiBand(41)).toBe('obese3');
+    expect(weightForBmi(25, 180)).toBeCloseTo(81, 10);
+  });
+});
+
+describe('weeklyPct', () => {
+  it('compares each week’s mean with the one before, flagging partial weeks', () => {
+    // Monday 2026-09-07: one full week at 100, then a week at 99, then three days at 98.
+    const entries = [100, 99].flatMap((kg) => Array.from({ length: 7 }, () => kg)).concat([98, 98, 98]);
+    const weeks = analyze(
+      entries.map((kg, i) => ({ date: isoDay(addDays(parseDay('2026-09-07'), i)), kg })),
+    )!.weeks;
+    const rows = weeklyPct(weeks);
+    expect(rows.map((r) => [r.week.week, r.partial])).toEqual([
+      ['2026-09-14', false],
+      ['2026-09-21', true],
+    ]);
+    expect(rows[0]?.pct).toBeCloseTo(1, 10);
+    expect(rows[1]?.pct).toBeCloseTo(100 / 99, 10);
+  });
+});
+
+describe('bmiSummary', () => {
+  it('lists the BMI now and at the start, and the weights for the targets still ahead', () => {
+    // 180 cm: BMI 30 is 97.2 kg, 25 is 81 kg.
+    const s = bmiSummary(analyze(daily([110, 100]))!, 180)!;
+    expect(s.now).toBeCloseTo(100 / 3.24, 10);
+    expect(s.reduced).toBeCloseTo(10 / 3.24, 10);
+    expect(s.band).toBe('obese1');
+    expect(
+      s.targets.map((t) => [t.bmi, Math.round(t.kg * 10) / 10, Math.round(t.remaining * 10) / 10]),
+    ).toEqual([
+      [30, 97.2, 2.8],
+      [25, 81, 19],
+    ]);
+    expect(bmiSummary(analyze(daily([80]))!, 0)).toBeNull();
+  });
+});
+
+describe('milestones beyond the basics', () => {
+  it('merges a goal that falls on a round milestone, and goes past 40%', () => {
+    const a = analyze(daily([200, 150]))!;
+    const list = milestones(a, 100);
+    expect(list.filter((m) => Math.abs(m.pct - 50) < 1e-9)).toHaveLength(1);
+    expect(list.find((m) => m.goal)?.pct).toBeCloseTo(50, 10);
+    expect(list.at(-1)?.pct).toBe(55);
+  });
+});
+
+describe('weeklyPct after a gap', () => {
+  it('only compares consecutive weeks', () => {
+    const entries = [
+      { date: '2026-01-05', kg: 100 },
+      { date: '2026-03-02', kg: 90 },
+      { date: '2026-03-09', kg: 89 },
+    ];
+    const rows = weeklyPct(analyze(entries)!.weeks);
+    expect(rows.map((r) => r.week.week)).toEqual(['2026-03-09']);
+  });
+});

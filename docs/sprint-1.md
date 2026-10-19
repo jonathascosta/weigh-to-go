@@ -9,9 +9,21 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    average, smoothed trend (EMA), linear fits with prediction bands, the three projection methods,
    weekly stats, weekday averages, streaks and records, hiccups (with their rules), the compound
    daily rate, milestones, goal and BMI figures. Tested against hand-checked series.
+
+   Deliberate differences from the original dashboard: prediction bands use Student's t (honest with
+   few weigh-ins); weeks, weekly % and hiccups don't bridge gaps (a hiccup ends at a gap over 7
+   days); changes within 0.04 kg count as flat (so kg and lb readings mix); weights outside 20–500 kg
+   are ignored; "the 7-day average a week ago" must come from within 2 days of a week ago; the
+   biggest drop or rise and the best week exist only if something dropped or rose; the "last 3
+   weeks" figures are hidden when there aren't 5 weigh-ins in them; rate figures need 3 weigh-ins;
+   milestones go past 40% and merge with an equal goal; a pace under 0.05 kg a week is shown as flat
+   rather than rising or slow.
+
 3. **Local data.** IndexedDB store for weigh-ins and the profile (goal, height); screen preferences
    in localStorage; persistent-storage request; JSON backup export and import (validated, merge or
-   replace); erase everything. Bulk paste and import also let the owner bring his own history from
+   replace); erase everything. Weights are stored in kg unrounded (a pound reading as lb ×
+   0.45359237), and imports are validated with `KG_RANGE` from `src/analysis/analyze.ts`. Bulk paste
+   and import also let the owner bring his own history from
    the original dashboard. Works without storage too (private windows), with a clear message.
 4. **Two languages and units.** English and Portuguese dictionaries, language from the browser and a
    switcher; numbers, dates and decimal input per locale; bulk paste in both date orders; kg or lb
