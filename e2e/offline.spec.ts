@@ -6,6 +6,9 @@
 import { expect, test } from '@playwright/test';
 import { loadBackup, previewServer, watch } from './helpers';
 
+// Weights in kg, as in Britain.
+test.use({ locale: 'en-GB' });
+
 test('works offline once the service worker has the site', async ({ page }) => {
   // A server of this test's own, so it can be stopped: being offline for real, the worker's own
   // requests included.
@@ -40,6 +43,15 @@ test('works offline once the service worker has the site', async ({ page }) => {
     await expect(page.locator('h1')).toHaveText('Seu diário de peso, no seu aparelho');
     await page.goto(`${server.url}/`);
     await expect(page.locator('h1')).toHaveText('Your weight diary, on your device');
+
+    // A weigh-in logged offline is kept (it never needed the network), and is there after a reload.
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    await page.locator('#entry-date').fill(yesterday);
+    await page.locator('#entry-weight').fill('77.7');
+    await page.locator('#entry-weight').press('Enter');
+    await expect(page.locator('#entry-status')).toContainText('77.7 kg');
+    await page.reload();
+    await expect(page.locator('section[aria-labelledby="log-title"] tbody tr').first()).toContainText('77.7');
     await check();
   } finally {
     server.stop();

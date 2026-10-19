@@ -351,6 +351,31 @@ describe('Dashboard II', () => {
   });
 });
 
+describe('the installed app', () => {
+  it('suggests importing a backup while its diary is empty', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(display-mode: standalone)' }));
+    root = document.createElement('div');
+    document.body.replaceChildren(root);
+    app = createApp(() => Promise.resolve(memoryStore()));
+    mountDashboard(root, app);
+    await settle();
+    const hint = [...root.querySelectorAll<HTMLElement>('.notice')].find((n) =>
+      n.textContent.includes('This installed app keeps its own data'),
+    )!;
+    expect(hint.hidden).toBe(false);
+    await app.save([{ date: '2026-09-20', kg: 100 }]);
+    await settle();
+    expect(hint.hidden).toBe(true);
+  });
+
+  it('says nothing in a browser tab', () => {
+    const hint = [...root.querySelectorAll<HTMLElement>('.notice')].find((n) =>
+      n.textContent.includes('This installed app keeps its own data'),
+    )!;
+    expect(hint.hidden).toBe(true);
+  });
+});
+
 describe('Dashboard III', () => {
   const section = (id: string) => root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!;
   const submit = (id: string) => {

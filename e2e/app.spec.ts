@@ -44,7 +44,6 @@ test('exports a backup, erases everything, and brings it back by importing', asy
   const { check } = await watch(page);
   await page.goto('/');
   await loadBackup(page);
-  const rows = await page.locator('section[aria-labelledby="log-title"] tbody tr').count();
   const download = page.waitForEvent('download');
   // The data card's button (the backup reminder above has one too).
   const data = page.locator('section[aria-labelledby="data-title"]');
@@ -63,10 +62,12 @@ test('exports a backup, erases everything, and brings it back by importing', asy
   await page.locator('#data-file').setInputFiles(file);
   await page.getByRole('button', { name: 'Replace everything' }).click();
   await page.getByRole('button', { name: 'Replace', exact: true }).click();
-  await expect(page.locator('section[aria-labelledby="log-title"] tbody tr')).toHaveCount(
-    Math.min(rows, 100),
-  );
+  // Every weigh-in is back: the log shows the newest 100, and says how many there are.
   expect(saved.weighIns.length).toBeGreaterThan(300);
+  await expect(page.locator('section[aria-labelledby="log-title"] tbody tr')).toHaveCount(100);
+  await expect(page.locator('section[aria-labelledby="log-title"]')).toContainText(
+    `Showing the latest 100 of ${String(saved.weighIns.length)}.`,
+  );
   await check();
 });
 

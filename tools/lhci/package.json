@@ -1,0 +1,8 @@
+{
+  "name": "weigh-to-go-lighthouse",
+  "private": true,
+  "description": "Lighthouse CI for the quality job, kept apart: its CLI's dependency tree has advisories the app shouldn't carry. Run through `npm run lighthouse` at the root.",
+  "dependencies": {
+    "@lhci/cli": "0.15.1"
+  }
+}

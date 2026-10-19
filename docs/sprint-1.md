@@ -189,4 +189,17 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    (`check:dist` checks robots.txt instead). The `quality` job runs all of this in CI, and deploy
    waits for it.
 
+   After review: a page that takes more than 3 seconds comes from the cache (the network's answer
+   still refreshes it), a failed install leaves no cache, a failing cache falls back to the
+   network, and `/pt` maps to the Portuguese page. The Reload button always ends in a reload: in a
+   tab where another tab already switched, or when nothing is waiting any more, it simply reloads
+   (and a first worker claiming a page is not an update). An installed app with an empty diary
+   suggests importing a backup, as iPhone apps don't share Safari's storage. Playwright is pinned
+   at 1.63.0 (axe's `playwright-core` overridden to match); Lighthouse CI lives in `tools/lhci/`
+   with its own lockfile; performance is a warning on the median of three runs, so a slow CI runner
+   doesn't block a deploy, while accessibility, best practices and SEO stay errors. The end-to-end
+   tests cover a weigh-in saved offline and the update flow (a copy of the build whose worker
+   changes). The README holds the kill switch for a misbehaving worker. Left as notes: the
+   manifests' light theme colour in dark mode, and Lighthouse measuring the empty diary only.
+
 9. **Launch on jonathas.net.** Project card, cover and an article.

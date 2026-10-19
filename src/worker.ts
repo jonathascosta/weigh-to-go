@@ -48,9 +48,17 @@ export interface WorkerHost {
   addEventListener(type: 'controllerchange', listener: () => void): void;
 }
 
+/** How long a switch may wait for the new worker to take over before the page reloads anyway. */
+export const SWITCH_TIMEOUT_MS = 4000;
+
 /**
- * Registers the worker, and calls `onUpdate` when a new version is installed and waiting (now, or
- * later while the page is open). The first install says nothing: there was no old version.
+ * Registers the worker, and calls `onUpdate` when a new version is ready: installed and waiting
+ * (now, or later while the page is open), or already taken over by another tab. The first install
+ * says nothing: there was no old version.
+ *
+ * The function given to `onUpdate` always ends in a reload: it asks a waiting worker to take over
+ * and reloads when it has; with no worker waiting (another tab already switched), or if the switch
+ * doesn't happen in time, it reloads at once. A button pressed never leaves the page as it was.
  */
 export async function registerWorker(
   host: WorkerHost,
@@ -61,24 +69,48 @@ export async function registerWorker(
 ): Promise<void> {
   const registration = await host.register(workerScriptUrl(), { scope: '/' });
   let switching = false;
-  host.addEventListener('controllerchange', () => {
-    // Reload once the new worker has taken over, and only when the reader asked for it.
-    if (switching) reload();
-  });
-  const offer = (waiting: ServiceWorker) => {
-    onUpdate(() => {
-      switching = true;
-      waiting.postMessage('skip-waiting');
-    });
+  let reloaded = false;
+  const reloadOnce = () => {
+    if (reloaded) return;
+    reloaded = true;
+    reload();
   };
+  const switchNow = () => {
+    const waiting = registration.waiting;
+    // Nothing waiting any more (another tab switched), or a controller already new: just reload.
+    if (!waiting || switching) {
+      reloadOnce();
+      return;
+    }
+    switching = true;
+    waiting.postMessage('skip-waiting');
+    // Should the take-over not come, the reader still gets what they pressed for.
+    setTimeout(reloadOnce, SWITCH_TIMEOUT_MS);
+  };
+  // A page with no worker yet (a first visit) gets one when it claims the page: not a new version.
+  let controlled = host.controller !== null;
+  host.addEventListener('controllerchange', () => {
+    if (!controlled) {
+      controlled = true;
+      return;
+    }
+    // This tab's own switch: the new worker has taken over, reload into it.
+    if (switching) {
+      reloadOnce();
+      return;
+    }
+    // Another tab switched: this page runs the old version under the new worker. The notice
+    // stays (or shows), and its button reloads.
+    onUpdate(reloadOnce);
+  });
   // A worker already waiting from an earlier visit.
-  if (registration.waiting && host.controller) offer(registration.waiting);
+  if (registration.waiting && host.controller) onUpdate(switchNow);
   registration.addEventListener('updatefound', () => {
     const installing = registration.installing;
     if (!installing) return;
     installing.addEventListener('statechange', () => {
       // Installed while another worker controls the page: a new version, waiting.
-      if (installing.state === 'installed' && host.controller) offer(installing);
+      if (installing.state === 'installed' && host.controller) onUpdate(switchNow);
     });
   });
 }

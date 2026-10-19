@@ -4,7 +4,8 @@
 // `npx playwright install chromium` downloads (CI installs its own).
 import { defineConfig, devices } from '@playwright/test';
 
-export const PORT = 4173;
+// An unusual port, never reused: the tests must run against this build, not a server left running.
+export const PORT = 47319;
 
 export default defineConfig({
   testDir: 'e2e',
@@ -29,6 +30,6 @@ export default defineConfig({
   webServer: {
     command: `npx vite preview --port ${String(PORT)} --strictPort`,
     url: `http://localhost:${String(PORT)}`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
 });

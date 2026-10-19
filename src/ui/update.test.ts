@@ -23,9 +23,13 @@ describe('the update notice', () => {
     const switchNow = vi.fn();
     offer(switchNow);
     expect(notice.hidden).toBe(false);
-    expect(notice.textContent).toBe('A new version of Weigh to Go is ready.Reload');
+    expect(notice.textContent).toBe(
+      'A new version of Weigh to Go is ready. Your weigh-ins stay where they are.Reload',
+    );
     choose({ lang: 'pt' });
-    expect(notice.textContent).toBe('Uma nova versão do Weigh to Go está pronta.Recarregar');
+    expect(notice.textContent).toBe(
+      'Uma nova versão do Weigh to Go está pronta. Suas pesagens continuam aqui.Recarregar',
+    );
     const button = notice.querySelector('button')!;
     button.click();
     expect(switchNow).toHaveBeenCalledTimes(1);

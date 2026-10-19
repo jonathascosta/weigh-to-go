@@ -3,6 +3,7 @@ import {
   onlyWorkerUrl,
   POLICY_NAME,
   registerWorker,
+  SWITCH_TIMEOUT_MS,
   WORKER_URL,
   workerScriptUrl,
   type WorkerHost,
@@ -81,13 +82,62 @@ describe('registerWorker', () => {
     let switchNow: (() => void) | null = null;
     await registerWorker(host, (s) => (switchNow = s), reload);
     expect(switchNow).not.toBeNull();
-    // A controller change the reader didn't ask for doesn't reload.
-    fire('controllerchange');
-    expect(reload).not.toHaveBeenCalled();
     switchNow!();
     expect(waitingWorker?.posted).toEqual(['skip-waiting']);
     fire('controllerchange');
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('reloads anyway if the new version doesn’t take over in time', async () => {
+    vi.useFakeTimers();
+    try {
+      const { host } = fakeHost(true, true);
+      const reload = vi.fn();
+      let switchNow: (() => void) | null = null;
+      await registerWorker(host, (s) => (switchNow = s), reload);
+      switchNow!();
+      expect(reload).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(SWITCH_TIMEOUT_MS);
+      expect(reload).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reloads at once when nothing waits any more (another tab switched first)', async () => {
+    const { host, registration, waitingWorker } = fakeHost(true, true);
+    const reload = vi.fn();
+    let switchNow: (() => void) | null = null;
+    await registerWorker(host, (s) => (switchNow = s), reload);
+    registration.waiting = null;
+    switchNow!();
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(waitingWorker?.posted).toEqual([]);
+  });
+
+  it('says nothing when the first worker claims a page that had none', async () => {
+    const { host, fire } = fakeHost(false, false);
+    const onUpdate = vi.fn();
+    const reload = vi.fn();
+    await registerWorker(host, onUpdate, reload);
+    fire('controllerchange');
+    expect(onUpdate).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('in a tab that didn’t switch, keeps the notice with a button that reloads', async () => {
+    // Tab B: the new version took over from tab A.
+    const { host, fire, waitingWorker } = fakeHost(true, true);
+    const reload = vi.fn();
+    const offers: (() => void)[] = [];
+    await registerWorker(host, (s) => offers.push(s), reload);
+    fire('controllerchange');
+    // Offered again, now as a plain reload; the page doesn't reload by itself.
+    expect(offers).toHaveLength(2);
+    expect(reload).not.toHaveBeenCalled();
+    offers[1]!();
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(waitingWorker?.posted).toEqual([]);
   });
 
   it('offers a version installed while the page is open', async () => {

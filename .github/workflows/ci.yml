@@ -85,7 +85,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # The Chromium this Playwright version expects, with its system libraries.
+      # The Chromium the pinned Playwright (1.63.0) expects, with its system libraries.
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
@@ -95,8 +95,8 @@ jobs:
       - name: End-to-end tests and axe
         run: npx playwright test
 
-      # Lighthouse CI is run at a pinned version rather than installed: its CLI brings dependencies
-      # the project doesn't need. Scores are asserted in lighthouserc.json.
+      # Lighthouse CI has its own lockfile in tools/lhci (installed by the script with npm ci), so its
+      # CLI's dependencies stay out of the app's. Scores are asserted in lighthouserc.json.
       - name: Lighthouse
         run: npm run lighthouse
 

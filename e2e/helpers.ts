@@ -40,7 +40,10 @@ export async function loadBackup(page: Page, buffer = yearBackup()): Promise<voi
     .filter({ hasText: /^(Add to what is here|Juntar ao que está aqui)$/ })
     .click();
   await expect(page.locator('#pct-title')).toBeVisible();
-  await expect(page.locator('section[aria-labelledby="log-title"] tbody tr').first()).toBeVisible();
+  // A weigh-in's row (with its Delete button), not the "No weigh-ins yet" one.
+  await expect(
+    page.locator('section[aria-labelledby="log-title"] tbody button[data-role="delete"]').first(),
+  ).toBeVisible();
 }
 
 /**
@@ -70,21 +73,43 @@ export async function watch(page: Page): Promise<{ check: () => Promise<void> }>
   };
 }
 
-/** A preview server of the build on `port`, that a test can stop (to be offline for real). */
-export async function previewServer(port: number): Promise<{ url: string; stop: () => void }> {
+/**
+ * A preview server of the build (or of a copy of it, in `dir`) on `port`, that a test can stop (to
+ * be offline for real). Fails loudly if the server exits before it is stopped.
+ */
+export async function previewServer(
+  port: number,
+  dir?: string,
+): Promise<{ url: string; stop: () => void; alive: () => void }> {
   const vite = fileURLToPath(new URL('../node_modules/vite/bin/vite.js', import.meta.url));
-  const child = spawn(process.execPath, [vite, 'preview', '--port', String(port), '--strictPort'], {
-    stdio: 'ignore',
+  const args = [vite, 'preview', '--port', String(port), '--strictPort', ...(dir ? ['--outDir', dir] : [])];
+  const child = spawn(process.execPath, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+  let errors = '';
+  child.stderr.on('data', (chunk: Buffer) => (errors += chunk.toString()));
+  let stopped = false;
+  let exited: number | null = null;
+  child.on('exit', (code) => {
+    exited = code ?? -1;
   });
+  const stop = () => {
+    stopped = true;
+    child.kill();
+  };
+  /** Throws if the server went away without being stopped. */
+  const alive = () => {
+    if (exited !== null && !stopped)
+      throw new Error(`The preview server on port ${String(port)} exited (${String(exited)}): ${errors}`);
+  };
   const url = `http://localhost:${String(port)}`;
   for (let i = 0; i < 100; i++) {
+    alive();
     try {
-      if ((await fetch(url)).ok) return { url, stop: () => child.kill() };
+      if ((await fetch(url)).ok) return { url, stop, alive };
     } catch {
       // Not up yet.
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  child.kill();
-  throw new Error(`The preview server didn't start on ${url}`);
+  stop();
+  throw new Error(`The preview server didn't start on ${url}: ${errors}`);
 }

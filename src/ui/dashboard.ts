@@ -17,6 +17,7 @@ import { mountLog } from './log';
 import { mountPercent } from './percent';
 import { mountBmi, mountGoal } from './profile';
 import { mountRates } from './rates';
+import { isStandalone } from './standalone';
 import { renderSummary } from './summary';
 import { mountWeeks } from './weeks';
 
@@ -24,6 +25,10 @@ type Part = (state: State, s: Settings) => void;
 
 export function mountDashboard(root: HTMLElement, app: App): void {
   const notice = h('div', { class: 'notice', attrs: { role: 'status', hidden: true } });
+  // An installed app with nothing in it: its data may be in the browser, which it doesn't share.
+  const installText = h('p');
+  const installHint = h('div', { class: 'notice', attrs: { role: 'status', hidden: true } }, installText);
+  const standalone = isStandalone();
   const period = h('p', { class: 'eyebrow' });
   const take = h('p', { class: 'take' });
   const entry = h('section', { class: 'card entry', attrs: { 'aria-labelledby': 'entry-title' } });
@@ -48,6 +53,7 @@ export function mountDashboard(root: HTMLElement, app: App): void {
   const data = h('section', { class: 'card', attrs: { 'aria-labelledby': 'data-title' } });
   root.replaceChildren(
     notice,
+    installHint,
     h('div', { class: 'top' }, h('div', { class: 'summary' }, period, take), entry),
     bar,
     el.kpis,
@@ -127,6 +133,8 @@ export function mountDashboard(root: HTMLElement, app: App): void {
         ),
       );
     }
+    installHint.hidden = !(standalone && state.status === 'ready' && state.weighIns.length === 0);
+    installText.textContent = m['install.empty'];
     for (const k of SECTIONS) el[k].hidden = !sections.has(k);
     for (const [section, part] of parts) {
       if (section !== null && !sections.has(section)) {

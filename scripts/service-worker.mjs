@@ -3,14 +3,20 @@
 // network, never anything sent elsewhere (the page's policy has connect-src 'none'; the worker
 // isn't under the page's policy, so this file is where that promise is kept).
 //
-// - Pages: the network first, so a deploy shows at once; offline, the cached page (the Portuguese
-//   one for /pt/ paths, else the English one).
-// - Everything else it precached (hashed names never change): the cache first.
+// - Pages: the network first, so a deploy shows at once; offline, or after 3 seconds without an
+//   answer, the cached page (the Portuguese one for /pt paths, else the English one). A page that
+//   arrives later still refreshes the cache.
+// - Everything else it precached (hashed names never change): the cache first, the network if the
+//   cache has nothing or fails.
+// - A failed install deletes the cache it was filling.
 // - On activate, caches of older versions are deleted. A new version waits until the page asks it
 //   to take over (the "A new version is ready" notice), so a page never runs half old, half new.
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+
+/** How long a page may take from the network before the worker shows its cached copy. */
+export const NETWORK_TIMEOUT_MS = 3000;
 
 /** The worker's file and URL; the only URL the page's Trusted Types policy lets it register. */
 export const WORKER_FILE = 'sw.js';
@@ -54,9 +60,13 @@ const CACHE = ${JSON.stringify(CACHE_PREFIX + version)};
 const PRECACHE = ${JSON.stringify(urls)};
 
 self.addEventListener('install', (event) => {
-  // Fresh copies, not the browser's HTTP cache: a page and its assets must match.
+  // Fresh copies, not the browser's HTTP cache: a page and its assets must match. A failed install
+  // leaves no half-filled cache behind.
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE.map((url) => new Request(url, { cache: 'reload' })))),
+    caches
+      .open(CACHE)
+      .then((cache) => cache.addAll(PRECACHE.map((url) => new Request(url, { cache: 'reload' }))))
+      .catch((error) => caches.delete(CACHE).then(() => Promise.reject(error))),
   );
 });
 
@@ -76,23 +86,72 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+/** How long a page may take from the network before the cached one is shown instead. */
+const NETWORK_TIMEOUT_MS = ${String(NETWORK_TIMEOUT_MS)};
+
+/** The cached page for a navigation: its own, else the diary in its language. */
+function cachedPage(request, url) {
+  const page = url.pathname === '/pt' || url.pathname.startsWith('/pt/') ? '/pt/' : '/';
+  return caches
+    .match(request, { ignoreSearch: true, ignoreVary: true })
+    .then((hit) => hit || caches.match(page, { ignoreVary: true }));
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
   // Only this site's own GETs; anything else goes on untouched.
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
   if (request.mode === 'navigate') {
-    const page = url.pathname.startsWith('/pt/') ? '/pt/' : '/';
+    const network = fetch(request);
+    // A page that comes in, even after the cached one was shown, refreshes the cache.
+    event.waitUntil(
+      network
+        .then((response) => {
+          if (!response.ok || !PRECACHE.includes(url.pathname)) return undefined;
+          const copy = response.clone();
+          return caches.open(CACHE).then((cache) => cache.put(url.pathname, copy));
+        })
+        .catch(() => undefined),
+    );
     event.respondWith(
-      fetch(request).catch(() =>
-        caches.match(request, { ignoreSearch: true, ignoreVary: true }).then((hit) => hit || caches.match(page, { ignoreVary: true })),
-      ),
+      new Promise((resolve, reject) => {
+        let done = false;
+        const answer = (response) => {
+          if (done) return;
+          done = true;
+          resolve(response);
+        };
+        // A slow network: the cached page after a few seconds, if there is one.
+        const timer = setTimeout(() => {
+          cachedPage(request, url).then((hit) => hit && answer(hit), () => undefined);
+        }, NETWORK_TIMEOUT_MS);
+        network.then(
+          (response) => {
+            clearTimeout(timer);
+            answer(response);
+          },
+          (error) => {
+            clearTimeout(timer);
+            cachedPage(request, url).then(
+              (hit) => (hit ? answer(hit) : done || reject(error)),
+              () => done || reject(error),
+            );
+          },
+        );
+      }),
     );
     return;
   }
   // ignoreVary: a server may answer with "Vary: Origin", and a module script is asked for with an
-  // Origin; the cache holds only this site's own files, so the header changes nothing here.
-  event.respondWith(caches.match(request, { ignoreVary: true }).then((hit) => hit || fetch(request)));
+  // Origin; the cache holds only this site's own files, so the header changes nothing here. If the
+  // cache itself fails, the network answers.
+  event.respondWith(
+    caches
+      .match(request, { ignoreVary: true })
+      .then((hit) => hit || fetch(request))
+      .catch(() => fetch(request)),
+  );
 });
 `;
 }
