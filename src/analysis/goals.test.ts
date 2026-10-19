@@ -94,7 +94,7 @@ describe('pctKpis', () => {
     expect(k.next).toBeNull();
     expect(k.goal?.pct).toBeCloseTo(12, 10);
     expect(k.goal?.progress).toBeCloseTo(5.8 / 12, 10);
-    expect(pctKpis(a, 'linear', 99)?.goal?.progress).toBe(1);
+    expect(pctKpis(a, 'linear', 99).goal?.progress).toBe(1);
     expect(pctKpis(a, 'linear', -5).goal).toBeNull();
   });
 
