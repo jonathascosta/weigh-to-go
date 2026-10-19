@@ -37,10 +37,26 @@ export const isHeight = (v: unknown): v is number => inRange(v, HEIGHT_RANGE);
 export const isWeighInDay = (date: string, latest: string): boolean =>
   isIsoDay(date) && date >= FIRST_DAY && date <= latest;
 
-const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
-/** Whether `v` is a moment written in ISO 8601, as `toISOString` gives. */
-export const isIsoTime = (v: unknown): v is string =>
-  typeof v === 'string' && ISO_TIME.test(v) && !Number.isNaN(Date.parse(v));
+const ISO_TIME =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(?:Z|[+-](\d{2}):(\d{2}))$/;
+/**
+ * Whether `v` is a moment written in ISO 8601, as `toISOString` gives: every field in range (engines
+ * disagree on "2026-02-31" or "24:00", so they are checked here rather than left to `Date.parse`).
+ */
+export function isIsoTime(v: unknown): v is string {
+  if (typeof v !== 'string') return false;
+  const m = ISO_TIME.exec(v);
+  if (!m) return false;
+  const [, y, mo, d, h, mi, sec = '0', oh = '0', om = '0'] = m;
+  return (
+    isIsoDay(`${y ?? ''}-${mo ?? ''}-${d ?? ''}`) &&
+    Number(h) < 24 &&
+    Number(mi) < 60 &&
+    Number(sec) < 60 &&
+    Number(oh) < 24 &&
+    Number(om) < 60
+  );
+}
 
 /** The weigh-in in `value`, if it is one: a real day and a weight in range. */
 export function toWeighIn(value: unknown, savedAt: string): StoredWeighIn | null {

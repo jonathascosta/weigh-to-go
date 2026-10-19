@@ -29,24 +29,44 @@ export type MemoryReason = 'unsupported' | 'version' | 'error';
 export interface MergeResult {
   /** Days that were not here. */
   readonly added: number;
-  /** Days here that took the incoming weigh-in (newer, or saved at the same moment). */
+  /** Days here that took the incoming weigh-in, a different weight (newer, or saved at the same moment). */
   readonly updated: number;
-  /** Days here that kept their own weigh-in, saved later than the incoming one. */
+  /** Days here that kept their own weigh-in, a different weight saved later than the incoming one. */
   readonly kept: number;
+  /** Days here with the same weight already: nothing to do. */
+  readonly unchanged: number;
 }
+
+type Outcome = keyof MergeResult;
+
+/** What merging `incoming` does to the day, given the weigh-in `here` (or none). */
+function outcome(here: StoredWeighIn | null, incoming: StoredWeighIn): Outcome {
+  if (here === null) return 'added';
+  if (here.kg === incoming.kg) return 'unchanged';
+  return savedLater(here, incoming) ? 'kept' : 'updated';
+}
+
+const emptyResult = (): Record<Outcome, number> => ({ added: 0, updated: 0, kept: 0, unchanged: 0 });
 
 export interface Store {
   /** 'indexeddb' keeps the data on the device; 'memory' loses it when the page closes. */
   readonly kind: 'indexeddb' | 'memory';
   /** For a memory store, why; null for IndexedDB. */
   readonly reason: MemoryReason | null;
+  /**
+   * Whether the page should be reloaded: the data may be on disk but this store can't reach it (a
+   * memory store for 'version' or 'error', or an IndexedDB store whose connection could not be
+   * opened again, after another tab moved to a newer version of the page).
+   */
+  readonly needsReload: boolean;
   /** Every weigh-in, by date. */
   weighIns(): Promise<StoredWeighIn[]>;
   /** Saves weigh-ins, replacing any on the same dates, and the profile if given, all at once. */
   put(weighIns: readonly StoredWeighIn[], profile?: Profile): Promise<void>;
   /**
    * Merges weigh-ins from elsewhere (a backup): for a day both have, the one saved later wins, the
-   * incoming one on a tie. Profile fields given (not null) replace the ones here. All at once.
+   * incoming one on a tie (and among incoming rows for one day, the latest). Profile fields given
+   * (not null) replace the ones here. All at once.
    */
   merge(weighIns: readonly StoredWeighIn[], profile: Profile | null): Promise<MergeResult>;
   remove(date: string): Promise<void>;
@@ -83,6 +103,24 @@ function check(weighIns: readonly StoredWeighIn[], profile?: Profile | null): vo
 const savedLater = (a: StoredWeighIn, b: StoredWeighIn): boolean =>
   Date.parse(a.savedAt) > Date.parse(b.savedAt);
 
+/** One weigh-in per day: the one saved latest, the later row on a tie. */
+function latestPerDay(weighIns: readonly StoredWeighIn[]): StoredWeighIn[] {
+  const byDay = new Map<string, StoredWeighIn>();
+  for (const w of weighIns) {
+    const seen = byDay.get(w.date);
+    if (seen === undefined || !savedLater(seen, w)) byDay.set(w.date, w);
+  }
+  return [...byDay.values()];
+}
+
+/** Tells the other tabs the data changed, from code that has no store (erasing the database). */
+function announceChange(): void {
+  if (typeof BroadcastChannel === 'undefined') return;
+  const channel = new BroadcastChannel(CHANNEL);
+  channel.postMessage('changed');
+  channel.close();
+}
+
 /** The merged profile: fields given replace the current ones. */
 const mergeProfile = (current: Profile, incoming: Profile | null): Profile => ({
   goalKg: incoming?.goalKg ?? current.goalKg,
@@ -100,12 +138,14 @@ function tabs(): {
   // One channel for both: a channel doesn't hear its own messages, so a store isn't told of its writes.
   const channel = new BroadcastChannel(CHANNEL);
   const listeners = new Set<() => void>();
+  let open = true;
   channel.onmessage = () => {
     for (const listener of listeners) listener();
   };
   return {
+    // A write that commits after close() still saved its data: telling no one is not a failure.
     notify: () => {
-      channel.postMessage('changed');
+      if (open) channel.postMessage('changed');
     },
     onChange: (listener) => {
       listeners.add(listener);
@@ -114,6 +154,7 @@ function tabs(): {
       };
     },
     close: () => {
+      open = false;
       listeners.clear();
       channel.close();
     },
@@ -134,6 +175,7 @@ export function memoryStore(reason: MemoryReason = 'unsupported'): Store {
   return {
     kind: 'memory',
     reason,
+    needsReload: reason !== 'unsupported',
     weighIns: () => Promise.resolve([...data.values()].sort(byDate)),
     put: (weighIns, next) =>
       run(() => {
@@ -144,15 +186,11 @@ export function memoryStore(reason: MemoryReason = 'unsupported'): Store {
     merge: (weighIns, next) =>
       run(() => {
         check(weighIns, next);
-        const result = { added: 0, updated: 0, kept: 0 };
-        for (const w of weighIns) {
-          const here = data.get(w.date);
-          if (here === undefined) result.added++;
-          else if (savedLater(here, w)) {
-            result.kept++;
-            continue;
-          } else result.updated++;
-          data.set(w.date, w);
+        const result = emptyResult();
+        for (const w of latestPerDay(weighIns)) {
+          const what = outcome(data.get(w.date) ?? null, w);
+          result[what]++;
+          if (what === 'added' || what === 'updated') data.set(w.date, w);
         }
         profile = mergeProfile(profile, next);
         return result;
@@ -208,6 +246,17 @@ const done = (tx: IDBTransaction): Promise<void> =>
     };
   });
 
+/**
+ * Why an open failed, by the error's name: a newer database on disk; storage refused (Firefox
+ * private windows before version 115 fail this way, later rather than at once); anything else.
+ */
+const openFailure = (name: string | undefined): MemoryReason =>
+  name === 'VersionError'
+    ? 'version'
+    : name === 'InvalidStateError' || name === 'SecurityError'
+      ? 'unsupported'
+      : 'error';
+
 class OpenError extends Error {
   constructor(readonly reason: MemoryReason) {
     super(`IndexedDB could not be opened (${reason})`);
@@ -221,11 +270,12 @@ class OpenError extends Error {
 function openDb(factory: IDBFactory, timeoutMs: number): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     let settled = false;
+    // Opening throws at once (SecurityError, InvalidStateError) where storage is blocked.
+    const req = factory.open(DB_NAME, DB_VERSION);
     const timer = setTimeout(() => {
       settled = true;
       reject(new OpenError('error'));
     }, timeoutMs);
-    const req = factory.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(WEIGH_INS)) db.createObjectStore(WEIGH_INS, { keyPath: 'date' });
@@ -241,7 +291,7 @@ function openDb(factory: IDBFactory, timeoutMs: number): Promise<IDBDatabase> {
     req.onerror = () => {
       clearTimeout(timer);
       settled = true;
-      reject(new OpenError(req.error?.name === 'VersionError' ? 'version' : 'error'));
+      reject(new OpenError(openFailure(req.error?.name)));
     };
   });
 }
@@ -250,11 +300,14 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
   const { notify, onChange, close: closeTabs } = tabs();
   let current: Promise<IDBDatabase> | null = null;
   let closed = false;
+  let unreachable = false;
 
   /** Keeps track of the connection: the browser may close it, or a newer page may need it. */
   const adopt = (db: IDBDatabase): IDBDatabase => {
+    const mine = current;
+    // Forget this connection, unless a newer one has taken its place already.
     const drop = () => {
-      current = null;
+      if (current === mine) current = null;
     };
     // A newer version of the page, open in another tab, needs the database: let it have it.
     db.onversionchange = () => {
@@ -265,24 +318,50 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
     db.onclose = drop;
     return db;
   };
-  current = Promise.resolve(adopt(first));
+  current = Promise.resolve(first);
+  adopt(first);
 
   /** The open connection, opened again if it was closed in the meantime. */
   const connection = (): Promise<IDBDatabase> => {
     if (closed) return Promise.reject(new Error('The store is closed'));
-    current ??= openDb(factory, timeoutMs).then(adopt, (error: unknown) => {
-      current = null;
-      throw error;
-    });
+    if (current === null) {
+      const opening = openDb(factory, timeoutMs).then(
+        (db) => {
+          unreachable = false;
+          return adopt(db);
+        },
+        (error: unknown) => {
+          if (current === opening) current = null;
+          unreachable = true;
+          throw error;
+        },
+      );
+      current = opening;
+    }
     return current;
   };
 
+  /**
+   * A transaction on the open connection. WebKit (iOS 12.2 to 14) could lose the connection without
+   * a close event, and then `transaction()` throws: open again, once.
+   */
+  const transaction = async (stores: string[], mode: IDBTransactionMode): Promise<IDBTransaction> => {
+    const options = { durability: 'strict' } as const;
+    try {
+      return (await connection()).transaction(stores, mode, options);
+    } catch (error) {
+      if (!(error instanceof DOMException) || closed) throw error;
+      current = null;
+      return (await connection()).transaction(stores, mode, options);
+    }
+  };
+
   const read = async <T>(store: string, get: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> =>
-    request(get((await connection()).transaction(store).objectStore(store)));
+    request(get((await transaction([store], 'readonly')).objectStore(store)));
 
   /** Runs `work` in one transaction; if it throws, the transaction is aborted and nothing lands. */
   const write = async <T>(stores: string[], work: (tx: IDBTransaction) => T): Promise<Awaited<T>> => {
-    const tx = (await connection()).transaction(stores, 'readwrite', { durability: 'strict' });
+    const tx = await transaction(stores, 'readwrite');
     const finished = done(tx);
     let result: T;
     try {
@@ -308,6 +387,9 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
   return {
     kind: 'indexeddb',
     reason: null,
+    get needsReload() {
+      return unreachable;
+    },
     weighIns: async () => {
       const rows = await read(WEIGH_INS, (s) => s.getAll());
       const now = new Date().toISOString();
@@ -323,20 +405,19 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
     },
     merge: async (weighIns, profile) => {
       check(weighIns, profile);
+      // All the reads are queued before any write, so each day must come once.
+      const incoming = latestPerDay(weighIns);
       return write([WEIGH_INS, PROFILE], (tx) => {
         const store = tx.objectStore(WEIGH_INS);
-        const result = { added: 0, updated: 0, kept: 0 };
+        const result = emptyResult();
         // Reads and writes are queued in the same transaction, so nothing can change in between.
-        for (const w of weighIns) {
+        for (const w of incoming) {
           const get = store.get(w.date);
           get.onsuccess = () => {
-            const here = toWeighIn(get.result, '');
-            if (here === null) result.added++;
-            else if (savedLater(here, w)) {
-              result.kept++;
-              return;
-            } else result.updated++;
-            store.put({ date: w.date, kg: w.kg, savedAt: w.savedAt });
+            const what = outcome(toWeighIn(get.result, ''), w);
+            result[what]++;
+            if (what === 'added' || what === 'updated')
+              store.put({ date: w.date, kg: w.kg, savedAt: w.savedAt });
           };
         }
         const profiles = tx.objectStore(PROFILE);
@@ -377,9 +458,12 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
     close: () => {
       closed = true;
       closeTabs();
-      void current?.then((db) => {
-        db.close();
-      });
+      void current?.then(
+        (db) => {
+          db.close();
+        },
+        () => undefined,
+      );
       current = null;
     },
   };
@@ -412,8 +496,10 @@ export async function openStore(
 }
 
 /**
- * Deletes the database on disk, for "erase everything" when the page is running in memory (the
- * data may still be there). Resolves whether or not it could; returns whether it did.
+ * Deletes the database on disk, for "erase everything" when this store can't reach it (the data
+ * may still be there), and tells the other tabs. Resolves whether or not it could; returns whether
+ * it did. While another tab keeps the database open the delete waits: after the timeout this
+ * returns false, though the browser may still delete it once that tab lets go.
  */
 export function deleteDatabase(
   factory: IDBFactory | null | undefined = browserIndexedDb(),
@@ -421,19 +507,24 @@ export function deleteDatabase(
 ): Promise<boolean> {
   if (!factory) return Promise.resolve(false);
   return new Promise((resolve) => {
+    let req: IDBOpenDBRequest;
+    try {
+      req = factory.deleteDatabase(DB_NAME);
+    } catch {
+      resolve(false);
+      return;
+    }
     const timer = setTimeout(() => {
       resolve(false);
     }, timeoutMs);
-    const finish = (ok: boolean) => () => {
+    req.onsuccess = () => {
       clearTimeout(timer);
-      resolve(ok);
+      announceChange();
+      resolve(true);
     };
-    try {
-      const req = factory.deleteDatabase(DB_NAME);
-      req.onsuccess = finish(true);
-      req.onerror = finish(false);
-    } catch {
-      finish(false)();
-    }
+    req.onerror = () => {
+      clearTimeout(timer);
+      resolve(false);
+    };
   });
 }

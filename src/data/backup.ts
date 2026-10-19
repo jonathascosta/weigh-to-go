@@ -94,6 +94,9 @@ const unwrap = (row: unknown): unknown => (isObject(row) && isObject(row.data) ?
 const isOriginalRow = (row: unknown): row is Record<string, unknown> =>
   isObject(row) && typeof row.data === 'string' && 'peso' in row;
 
+/** Whether the profile holds anything. */
+const hasValue = (p: Profile | null): boolean => p !== null && (p.goalKg !== null || p.heightCm !== null);
+
 /** The original dashboard's weigh-ins and profile in `value`, or null if it doesn't hold them. */
 function original(value: unknown): { rows: unknown[]; profile: Profile | null } | null {
   const holder = isObject(value) && !Array.isArray(value) ? value : null;
@@ -101,14 +104,23 @@ function original(value: unknown): { rows: unknown[]; profile: Profile | null } 
   const rows = (Array.isArray(list) ? list : isObject(list) ? Object.values(list) : []).map(unwrap);
   if (!rows.some(isOriginalRow)) return null;
 
-  const config = holder && isObject(holder.config) ? holder.config : null;
-  const perfil = unwrap(holder?.perfil ?? (config && isObject(config.perfil) ? config.perfil : config));
+  // The profile doc: under `perfil`, or `config.perfil`, or `config` itself, or among `config`'s docs.
+  const config = holder?.config;
+  const configDocs: unknown[] = Array.isArray(config)
+    ? (config as unknown[])
+    : isObject(config)
+      ? [config.perfil, config]
+      : [];
+  const candidates = [holder?.perfil, ...configDocs].map(unwrap);
+  const perfil = candidates.find((doc) => isObject(doc) && ('meta' in doc || 'altura' in doc));
   let profile: Profile | null = null;
   if (isObject(perfil)) {
     const altura = numeric(perfil.altura);
     // The original asked for centimetres; a height in metres is an easy slip.
-    const heightCm = altura !== null && altura < 3 ? altura * 100 : altura;
-    profile = toProfile({ goalKg: numeric(perfil.meta), heightCm });
+    const heightCm = altura !== null && altura < 3 ? Math.round(altura * 1000) / 10 : altura;
+    const found = toProfile({ goalKg: numeric(perfil.meta), heightCm });
+    // A profile with nothing valid in it is no profile: it must not wipe the one here.
+    if (hasValue(found)) profile = found;
   }
   return {
     rows: rows.map((row) =>
@@ -117,8 +129,6 @@ function original(value: unknown): { rows: unknown[]; profile: Profile | null } 
     profile,
   };
 }
-
-const hasValue = (p: Profile | null): boolean => p !== null && (p.goalKg !== null || p.heightCm !== null);
 
 /**
  * Reads a backup file's text. `today` is the device's day (YYYY-MM-DD): a weigh-in more than a day
@@ -149,7 +159,8 @@ export function parseBackup(text: string, today: string, now: Date = new Date())
       return { ok: false, error: 'not-a-backup' };
     if (format > BACKUP_FORMAT) return { ok: false, error: 'newer-format' };
     rows = value.weighIns;
-    profile = toProfile(value.profile);
+    // A file without a profile leaves the one here alone, as the original's rows do.
+    profile = 'profile' in value ? toProfile(value.profile) : null;
     source = 'backup';
   } else {
     const found = original(value);

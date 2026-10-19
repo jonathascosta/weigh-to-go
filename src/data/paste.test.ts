@@ -103,11 +103,11 @@ describe('parsePaste', () => {
     expect(parsePaste('19/10 108,2\n19/10 108,0\n19/10 107,9', pt).repeated).toBe(2);
   });
 
-  it('reads two-digit years in this century, or the last when that would be ahead', () => {
-    expect(parsePaste('31/12/99 100\n01/01/26 100', pt).rows.map((r) => r.date)).toEqual([
-      '1999-12-31',
-      '2026-01-01',
-    ]);
+  it('reads two-digit years in this century, a future one being a slip', () => {
+    expect(parsePaste('01/01/26 100\n31/12/99 100\n20/10/26 100', pt)).toMatchObject({
+      rows: [{ date: '2026-01-01', kg: 100 }],
+      bad: ['31/12/99 100', '20/10/26 100'],
+    });
   });
 
   it('refuses days before 1900, mixed separators and overlong lines', () => {
@@ -121,6 +121,10 @@ describe('parsePaste', () => {
       { date: '2026-10-18', kg: 108.4 },
       { date: '2026-10-19', kg: 108.2 },
     ]);
+  });
+
+  it('refuses a today that is not a day', () => {
+    expect(() => parsePaste('2099-01-01 100', { ...pt, today: 'garbage' })).toThrow(TypeError);
   });
 
   it('fails fast on a long line of separators', () => {

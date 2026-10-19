@@ -118,6 +118,31 @@ describe('createBackup and parseBackup', () => {
     expect(parsed.profile).toEqual({ goalKg: 90, heightCm: null });
   });
 
+  it('leaves the profile alone when the file has none', () => {
+    const text = JSON.stringify({ app: 'weigh-to-go', format: 1, weighIns: [w('2026-10-17', 100)] });
+    expect(ok(text).profile).toBeNull();
+  });
+
+  it('counts no profile when the original has nothing valid in it', () => {
+    for (const perfil of [{ meta: 'abc' }, { altura: 0 }]) {
+      const text = JSON.stringify({ pesagens: [{ data: '2026-10-18', peso: 108 }], perfil });
+      expect(ok(text).profile).toBeNull();
+    }
+  });
+
+  it("finds the original's profile among config docs", () => {
+    const text = JSON.stringify({
+      pesagens: [{ data: '2026-10-18', peso: 108 }],
+      config: [{ id: 'config/perfil', data: { meta: 88, altura: 175 } }],
+    });
+    expect(ok(text).profile).toEqual({ goalKg: 88, heightCm: 175 });
+  });
+
+  it('takes a height in metres without float noise', () => {
+    const text = JSON.stringify({ pesagens: [{ data: '2026-10-18', peso: 108 }], perfil: { altura: 1.1 } });
+    expect(ok(text).profile).toEqual({ goalKg: null, heightCm: 110 });
+  });
+
   it('refuses a today that is not a day', () => {
     expect(() => parseBackup('[]', 'garbage', now)).toThrow(TypeError);
   });
@@ -186,9 +211,25 @@ describe('importBackup', () => {
       { goalKg: null, heightCm: null },
       now,
     );
-    expect(await importBackup(store, ok(old), 'merge')).toEqual({ added: 0, updated: 0, kept: 1 });
+    expect(await importBackup(store, ok(old), 'merge')).toEqual({
+      added: 0,
+      updated: 0,
+      kept: 1,
+      unchanged: 0,
+    });
     expect((await store.weighIns()).find((x) => x.date === '2026-10-17')!.kg).toBe(109);
     expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 178 });
+  });
+
+  it('reports a backup imported twice as unchanged', async () => {
+    const store = await setup();
+    const text = createBackup(await store.weighIns(), await store.profile(), now);
+    expect(await importBackup(store, ok(text), 'merge')).toEqual({
+      added: 0,
+      updated: 0,
+      kept: 0,
+      unchanged: 2,
+    });
   });
 
   it("replaces the weigh-ins with the original's, keeping the profile here", async () => {

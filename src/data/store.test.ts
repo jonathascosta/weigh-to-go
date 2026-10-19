@@ -1,6 +1,7 @@
-import { IDBFactory } from 'fake-indexeddb';
+import { forceCloseDatabase, IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it } from 'vitest';
 import { EMPTY_PROFILE, type StoredWeighIn } from './records';
+import { eraseEverything } from './erase';
 import { DB_NAME, memoryStore, openStore, type Store } from './store';
 
 const at = '2026-10-19T08:00:00.000Z';
@@ -31,6 +32,21 @@ function raw(factory: IDBFactory, version?: number): Promise<IDBDatabase> {
       reject(new Error('open failed'));
     };
   });
+}
+
+/** A factory that remembers every connection it opens, so a test can have the browser close one. */
+function spied(): { factory: IDBFactory; connections: IDBDatabase[] } {
+  const factory = new IDBFactory();
+  const connections: IDBDatabase[] = [];
+  const open = factory.open.bind(factory);
+  factory.open = (name, version) => {
+    const req = open(name, version);
+    req.addEventListener('success', () => {
+      connections.push(req.result);
+    });
+    return req;
+  };
+  return { factory, connections };
 }
 
 const kinds: [string, () => Promise<Store>][] = [
@@ -96,7 +112,7 @@ describe.each(kinds)('%s store', (kind, open) => {
       ],
       { goalKg: 85, heightCm: null },
     );
-    expect(result).toEqual({ added: 1, updated: 1, kept: 1 });
+    expect(result).toEqual({ added: 1, updated: 1, kept: 1, unchanged: 0 });
     expect((await store.weighIns()).map((x) => [x.date, x.kg])).toEqual([
       ['2026-10-10', 111],
       ['2026-10-17', 108.9],
@@ -126,6 +142,28 @@ describe.each(kinds)('%s store', (kind, open) => {
     await expect(store.merge([w('2026-10-18', 1)], null)).rejects.toThrow(TypeError);
     expect(await store.weighIns()).toEqual([w('2026-10-17', 109)]);
     expect(await store.profile()).toEqual({ goalKg: 85, heightCm: 180 });
+  });
+
+  it('merges repeated incoming days by their save time, as one', async () => {
+    const store = await open();
+    const result = await store.merge(
+      [w('2026-10-19', 100, '2026-10-19T10:00:00Z'), w('2026-10-19', 90, '2026-10-19T08:00:00Z')],
+      null,
+    );
+    expect(result).toEqual({ added: 1, updated: 0, kept: 0, unchanged: 0 });
+    expect((await store.weighIns()).map((x) => x.kg)).toEqual([100]);
+  });
+
+  it('counts a day with the same weight as unchanged, whatever its save time', async () => {
+    const store = await open();
+    await store.put([w('2026-10-17', 109, '2026-10-17T08:00:00Z')]);
+    expect(await store.merge([w('2026-10-17', 109, '2026-10-18T08:00:00Z')], null)).toEqual({
+      added: 0,
+      updated: 0,
+      kept: 0,
+      unchanged: 1,
+    });
+    expect((await store.weighIns())[0]!.savedAt).toBe('2026-10-17T08:00:00Z');
   });
 
   it('erases everything', async () => {
@@ -221,6 +259,38 @@ describe('the IndexedDB store', () => {
     expect(heardB).toBe(1);
   });
 
+  it('opens again after the browser closes the connection', async () => {
+    const { factory, connections } = spied();
+    const store = track(await openStore(factory));
+    await store.put([w('2026-10-17', 109)]);
+    forceCloseDatabase(connections[0]! as never);
+    await store.put([w('2026-10-18', 108)]);
+    expect((await store.weighIns()).map((x) => x.date)).toEqual(['2026-10-17', '2026-10-18']);
+    expect(store.needsReload).toBe(false);
+  });
+
+  it('asks for a reload once another tab moves to a newer version, and still erases', async () => {
+    const factory = new IDBFactory();
+    const store = track(await openStore(factory));
+    await store.put([w('2026-10-17', 109)]);
+    (await raw(factory, 2)).close();
+    await expect(store.weighIns()).rejects.toThrow('version');
+    expect(store.needsReload).toBe(true);
+    expect(await eraseEverything(store, factory)).toBe(true);
+    const fresh = track(await openStore(factory));
+    expect(await fresh.weighIns()).toEqual([]);
+  });
+
+  it('reports a write that commits after close() as saved', async () => {
+    const factory = new IDBFactory();
+    const store = await openStore(factory);
+    const saving = store.put([w('2026-10-17', 109)]);
+    store.close();
+    await expect(saving).resolves.toBeUndefined();
+    const again = track(await openStore(factory));
+    expect(await again.weighIns()).toEqual([w('2026-10-17', 109)]);
+  });
+
   it('refuses work once closed', async () => {
     const store = await openStore(new IDBFactory());
     store.close();
@@ -243,7 +313,25 @@ describe('opening the store', () => {
   it('says when the database is newer than the page', async () => {
     const factory = new IDBFactory();
     (await raw(factory, 2)).close();
-    expect(await openStore(factory)).toMatchObject({ kind: 'memory', reason: 'version' });
+    expect(await openStore(factory)).toMatchObject({ kind: 'memory', reason: 'version', needsReload: true });
+  });
+
+  it('counts a refusal that arrives later (older Firefox private windows) as unsupported', async () => {
+    const refusing = {
+      open: () => {
+        const req = {} as IDBOpenDBRequest & { onerror: () => void };
+        setTimeout(() => {
+          Object.defineProperty(req, 'error', { value: new DOMException('private', 'InvalidStateError') });
+          req.onerror();
+        }, 0);
+        return req;
+      },
+    } as unknown as IDBFactory;
+    expect(await openStore(refusing)).toMatchObject({
+      kind: 'memory',
+      reason: 'unsupported',
+      needsReload: false,
+    });
   });
 
   it('says when opening fails later, or never answers', async () => {

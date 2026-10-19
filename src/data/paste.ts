@@ -4,7 +4,8 @@
  * that isn't in the future. The weight takes a comma or a point for decimals, in the unit written
  * after it (kg, lb, lbs) or else the unit chosen on the page.
  */
-import { isWeight, isWeighInDay, LB_KG } from './records';
+import { isIsoDay } from '../analysis/dates';
+import { byDate, isWeight, isWeighInDay, LB_KG } from './records';
 
 export type DateOrder = 'dmy' | 'mdy';
 export type WeightUnit = 'kg' | 'lb';
@@ -106,9 +107,8 @@ function readLine(
     date = at(thisYear);
     if (date > today) date = at(thisYear - 1);
   } else if (yearText.length === 2) {
-    // A two-digit year is this century's, or the last one's if that would be in the future.
+    // A two-digit year is this century's: "20/10/26" a day ahead is a slip to report, not 1926.
     date = at(2000 + Number(yearText));
-    if (date > today) date = at(1900 + Number(yearText));
   } else {
     date = at(Number(yearText));
   }
@@ -116,13 +116,14 @@ function readLine(
 }
 
 export function parsePaste(text: string, options: PasteOptions): PasteResult {
+  if (!isIsoDay(options.today)) throw new TypeError(`today must be YYYY-MM-DD, not ${options.today}`);
   const lines = text
     .split(/\r?\n/)
     .map((raw) => raw.trim())
     .filter((line) => line !== '');
   const found = orderInText(lines);
   const order = found.order ?? options.order;
-  const byDate = new Map<string, number>();
+  const byDay = new Map<string, number>();
   const bad: string[] = [];
   let repeated = 0;
   for (const line of lines) {
@@ -132,9 +133,9 @@ export function parsePaste(text: string, options: PasteOptions): PasteResult {
       bad.push(line);
       continue;
     }
-    if (byDate.has(read.date)) repeated++;
-    byDate.set(read.date, kg);
+    if (byDay.has(read.date)) repeated++;
+    byDay.set(read.date, kg);
   }
-  const rows = [...byDate].map(([date, kg]) => ({ date, kg })).sort((x, y) => (x.date < y.date ? -1 : 1));
+  const rows = [...byDay].map(([date, kg]) => ({ date, kg })).sort(byDate);
   return { rows, bad, repeated, order, orderGuessed: found.short && found.order === null };
 }
