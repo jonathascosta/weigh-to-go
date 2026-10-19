@@ -28,8 +28,9 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
 
    The data layer lives in `src/data/`; the screens that use it arrive with the dashboard in
    story 5. A backup file holds `app: "weigh-to-go"`, `format: 1`, `exportedAt`, the `weighIns`
-   (`date`, `kg`, `savedAt`) and the `profile` (`goalKg`, `heightCm`). Import skips, and counts, rows with a
-   bad date, a weight out of range, a day before 1900 or more than a day ahead, and repeated days.
+   (`date`, `kg`, `savedAt`) and the `profile` (`goalKg`, `heightCm`). Import skips, and counts,
+   rows with a bad date, a weight out of range, a day before 1900 or more than a day ahead, and
+   repeated days.
    Merge keeps, for a day both have, the weigh-in saved later (so an old backup can't undo a
    correction); replace leaves only the file's weigh-ins (and its profile, if it has one). Each is
    one transaction. From the original it takes the `{ data, peso, registrado_em }` rows, in an
