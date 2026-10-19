@@ -2,7 +2,7 @@
  * Logging weigh-ins: the form for one, and the box for pasting many. Weights are read in the unit
  * shown next to the field, stored in kg unrounded.
  */
-import { addDays, isIsoDay, localToday, parseDay, isoDay } from '../analysis/dates';
+import { addDays, isIsoDay, isoDay, localToday, parseDay } from '../analysis/dates';
 import type { App, State } from '../app/app';
 import { parsePaste, toKg, type PasteResult } from '../data/paste';
 import { count, settings, type Settings } from '../i18n';
@@ -11,21 +11,39 @@ import { h, say } from './dom';
 
 /** Lines of the paste box's bad list shown at most; the count says how many there were. */
 const BAD_SHOWN = 5;
+/** The example weight, in kg (shown in the reader's unit). */
+const EXAMPLE_KG = 108.4;
 
-/** Whether a failed write ran out of storage. */
-const isFull = (error: unknown): boolean =>
-  error instanceof DOMException && (error.name === 'QuotaExceededError' || error.name === 'UnknownError');
+/** What to say when a write fails: out of space, a reload needed, or try again. */
+export function failure(error: unknown, app: Pick<App, 'state'>, s: Settings): string {
+  if (error instanceof DOMException && error.name === 'QuotaExceededError') return s.messages['entry.full'];
+  if (app.state().store?.needsReload) return s.messages['entry.reload'];
+  return s.messages['entry.failed'];
+}
 
-/** The example weight for the field: 108.4 kg, or the same in lb, in the reader's number style. */
-const example = (s: Settings): string =>
-  s.format
-    .weight(s.weightUnit === 'lb' ? 108.4 / 0.45359237 : 108.4, s.weightUnit)
-    .replace(` ${s.weightUnit}`, '');
+/** The example weight for the field, in the reader's unit and number style. */
+export const example = (s: Settings): string => s.format.weightValue(EXAMPLE_KG, s.weightUnit);
 
-/** A sample pasted line in the reader's day/month order. */
-function sampleLine(s: Settings): string {
-  const order = dayMonthOrder(s.locale.tag);
-  return `${order === 'dmy' ? '19/10' : '10/19'} ${example(s)}`;
+/** A sample pasted line, in the reader's day/month order. */
+export function sampleLine(s: Settings, day = 19): string {
+  const d = String(day);
+  return `${dayMonthOrder(s.locale.tag) === 'dmy' ? `${d}/10` : `10/${d}`} ${example(s)}`;
+}
+
+/** How a paste changes the days already logged: new days, and days that get another weight. */
+export function pasteChanges(
+  rows: readonly { date: string; kg: number }[],
+  logged: readonly { date: string; kg: number }[],
+): { added: number; replaced: number } {
+  const here = new Map(logged.map((w) => [w.date, w.kg]));
+  let added = 0;
+  let replaced = 0;
+  for (const r of rows) {
+    const kg = here.get(r.date);
+    if (kg === undefined) added++;
+    else if (kg !== r.kg) replaced++;
+  }
+  return { added, replaced };
 }
 
 export function mountEntry(container: HTMLElement, app: App): (state: State, s: Settings) => void {
@@ -81,9 +99,34 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
   };
   dateInput.addEventListener('change', showExisting);
 
+  /**
+   * Today moves on at midnight for a page left open: the field still showing yesterday's default
+   * moves with it, and so does the latest day it takes.
+   */
+  const followToday = () => {
+    const now = localToday();
+    if (dateInput.value === '' || dateInput.value === today) dateInput.value = now;
+    today = now;
+    dateInput.max = isoDay(addDays(parseDay(now), 1));
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') followToday();
+  });
+  window.addEventListener('focus', followToday);
+  const untilMidnight = () => {
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+    setTimeout(() => {
+      followToday();
+      untilMidnight();
+    }, next.getTime() - now.getTime());
+  };
+  untilMidnight();
+
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     if (busy) return;
+    followToday();
     const s = settings();
     const m = s.messages;
     const date = dateInput.value;
@@ -120,7 +163,7 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
       })
       .catch((error: unknown) => {
         console.error(error);
-        say(status, isFull(error) ? m['entry.full'] : m['entry.failed'], 'bad');
+        say(status, failure(error, app, settings()), 'bad');
       })
       .finally(() => {
         busy = false;
@@ -128,32 +171,42 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
       });
   });
 
-  /** Saves what a paste read, and says how it went. */
-  const savePaste = (result: PasteResult) => {
-    const m = settings().messages;
-    pasteButton.disabled = true;
+  /** Saves what a paste read (exactly what the reader was shown), and says how it went. */
+  const savePaste = (result: PasteResult, buttons: HTMLButtonElement[]) => {
+    const changes = pasteChanges(result.rows, app.state().weighIns);
+    for (const b of buttons) b.disabled = true;
     app
       .save(result.rows)
       .then(() => {
-        showPasteResult(result, settings());
+        showPasteResult(result, changes, settings());
         if (result.bad.length === 0) pasteText.value = '';
       })
       .catch((error: unknown) => {
         console.error(error);
-        pasteStatus.replaceChildren(
-          h('p', { class: 'status status-bad', text: isFull(error) ? m['entry.full'] : m['entry.failed'] }),
-        );
+        pasteStatus.replaceChildren(h('p', { class: 'status status-bad', text: failure(error, app, settings()) }));
       })
       .finally(() => {
-        pasteButton.disabled = false;
+        for (const b of buttons) b.disabled = false;
       });
   };
 
+  /** Asks before going on, with a yes that saves `result` as read, and other choices. */
+  const ask = (question: string, result: PasteResult, others: HTMLButtonElement[] = []) => {
+    const m = settings().messages;
+    const yes = h('button', { class: 'button', attrs: { type: 'button' }, text: m['paste.confirm'] });
+    yes.addEventListener('click', () => {
+      savePaste(result, [yes, pasteButton, ...others]);
+    });
+    pasteStatus.replaceChildren(h('p', { class: 'note', text: question }), h('div', { class: 'actions' }, yes, ...others));
+    yes.focus();
+  };
+
   /**
-   * Reads the paste in `order`. When nothing in it settles day/month order, nothing is saved yet:
-   * the reader sees how a date was read and confirms, or reads it the other way.
+   * Reads the paste in `order`. Nothing is saved before the reader confirms when nothing in it
+   * settles day/month order (they see how a line was read, or read it the other way), or when it
+   * would give days already logged another weight.
    */
-  const readPaste = (order: DayMonthOrder, confirmed: boolean) => {
+  const readPaste = (order: DayMonthOrder, orderConfirmed: boolean) => {
     const s = settings();
     const m = s.messages;
     const text = pasteText.value;
@@ -163,49 +216,48 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
     }
     const result = parsePaste(text, { order, unit: s.weightUnit, today: localToday() });
     if (result.rows.length === 0) {
+      pasteStatus.replaceChildren(h('p', { class: 'status status-bad', text: m['paste.none'](sampleLine(s)) }));
+      return;
+    }
+    if (result.orderGuessed && result.sample && !orderConfirmed) {
+      const swap = h('button', { class: 'button button-ghost', attrs: { type: 'button' }, text: m['paste.swap'] });
+      swap.addEventListener('click', () => {
+        readPaste(order === 'dmy' ? 'mdy' : 'dmy', false);
+      });
+      const confirmOrder = h('button', { class: 'button', attrs: { type: 'button' }, text: m['paste.confirm'] });
+      confirmOrder.addEventListener('click', () => {
+        // Read as shown; if it also overwrites days, that is asked next.
+        afterOrder(result);
+      });
       pasteStatus.replaceChildren(
-        h('p', { class: 'status status-bad', text: m['paste.none'](sampleLine(s)) }),
+        h('p', { class: 'note', text: m['paste.readAs'](result.sample.line, s.format.day(result.sample.date, 'long')) }),
+        h('div', { class: 'actions' }, confirmOrder, swap),
       );
+      confirmOrder.focus();
       return;
     }
-    const sample = result.orderGuessed ? result.rows.find((r) => Number(r.date.slice(8)) <= 12) : undefined;
-    if (!sample || confirmed) {
-      savePaste(result);
-      return;
-    }
-    const [, month = '', day = ''] = sample.date.split('-');
-    const typed = result.order === 'dmy' ? `${day}/${month}` : `${month}/${day}`;
-    const go = h('button', { class: 'button', attrs: { type: 'button' }, text: m['paste.button'] });
-    go.addEventListener('click', () => {
-      readPaste(order, true);
-    });
-    const swap = h('button', {
-      class: 'button button-ghost',
-      attrs: { type: 'button' },
-      text: m['paste.swap'],
-    });
-    swap.addEventListener('click', () => {
-      readPaste(order === 'dmy' ? 'mdy' : 'dmy', false);
-    });
-    pasteStatus.replaceChildren(
-      h('p', { class: 'note', text: m['paste.readAs'](typed, s.format.day(sample.date, 'long')) }),
-      h('div', { class: 'actions' }, go, swap),
-    );
-    go.focus();
+    afterOrder(result);
   };
 
-  const showPasteResult = (result: PasteResult, s: Settings) => {
+  /** Once the order is settled: asks before overwriting logged days, else saves. */
+  const afterOrder = (result: PasteResult) => {
+    const s = settings();
+    const { replaced } = pasteChanges(result.rows, app.state().weighIns);
+    if (replaced > 0) ask(s.messages['paste.overwrites'](count(replaced, s.messages['word.day'], s)), result);
+    else savePaste(result, [pasteButton]);
+  };
+
+  const showPasteResult = (result: PasteResult, changes: { added: number; replaced: number }, s: Settings) => {
     const m = s.messages;
     const parts: Node[] = [
+      h('p', { class: 'status status-ok', text: m['paste.done'](count(result.rows.length, m['word.weighIn'], s)) }),
       h('p', {
-        class: 'status status-ok',
-        text: m['paste.done'](count(result.rows.length, m['word.weighIn'], s)),
+        class: 'note',
+        text: m['paste.changed'](s.format.number(changes.added, 0), s.format.number(changes.replaced, 0)),
       }),
     ];
     if (result.repeated > 0)
-      parts.push(
-        h('p', { class: 'note', text: m['paste.repeated'](count(result.repeated, m['paste.word.line'], s)) }),
-      );
+      parts.push(h('p', { class: 'note', text: m['paste.repeated'](count(result.repeated, m['paste.word.line'], s)) }));
     if (result.bad.length > 0) {
       parts.push(
         h('p', { class: 'status status-bad', text: m['paste.bad'](s.format.number(result.bad.length, 0)) }),
@@ -223,6 +275,10 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
   pasteButton.addEventListener('click', () => {
     readPaste(dayMonthOrder(settings().locale.tag), false);
   });
+  // A question about the text before an edit no longer applies to it.
+  pasteText.addEventListener('input', () => {
+    if (pasteStatus.querySelector('button')) pasteStatus.replaceChildren();
+  });
 
   return (state, s) => {
     const m = s.messages;
@@ -235,13 +291,9 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
     pasteSummary.textContent = m['paste.open'];
     pasteHelp.textContent = m['paste.help'](sampleLine(s), m[`unit.${s.weightUnit}`]);
     pasteLabel.textContent = m['paste.label'];
-    pasteText.placeholder = `${sampleLine(s)}\n${sampleLine(s).replace('19', '20').replace('/19', '/20')}`;
+    pasteText.placeholder = `${sampleLine(s)}\n${sampleLine(s, 20)}`;
     pasteButton.textContent = m['paste.button'];
-    // A new day since the page opened (left open overnight): today moves on.
-    const now = localToday();
-    if (dateInput.value === '' || dateInput.value === today) dateInput.value = now;
-    today = now;
-    dateInput.max = isoDay(addDays(parseDay(now), 1));
+    followToday();
     save.disabled = busy || state.status === 'loading';
   };
 }

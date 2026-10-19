@@ -187,14 +187,20 @@ export function mountChart(
 
   let lastLang = '';
 
+  /** The chart drawn last, to keep the reader's place when it is drawn again. */
+  let current: { root: SVGSVGElement; cursor: () => number } | null = null;
+
   const draw = (state: State, s: Settings) => {
+    const keep = current && document.activeElement === current.root ? { cursor: current.cursor() } : null;
+    current = null;
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
     const u = (kg: number) => fromKg(kg, unit);
     const w = (kg: number) => f.weight(kg, unit);
     tip.hidden = true;
     const { analysis, profile } = state;
-    const width = Math.max(280, box.clientWidth || 640);
+    // The SVG is drawn at the box's own width, so its pixels are the page's (no scaling).
+    const width = box.clientWidth || 640;
     const height = width < 560 ? 300 : 410;
     box.style.minHeight = `${String(height)}px`;
     foot.replaceChildren();
@@ -254,12 +260,15 @@ export function mountChart(
       [left, width - right],
     );
 
+    // A focusable group the keyboard moves through, not an image: it says how to use it.
     const root = svg('svg', {
-      width: '100%',
+      width,
       height,
       viewBox: `0 0 ${String(width)} ${String(height)}`,
-      role: 'img',
-      'aria-labelledby': 'chart-title chart-desc',
+      role: 'group',
+      'aria-roledescription': m['chart.roleDescription'],
+      'aria-labelledby': 'chart-title',
+      'aria-describedby': 'chart-desc',
       tabindex: 0,
       class: 'chart-svg',
     });
@@ -267,12 +276,12 @@ export function mountChart(
       svg(
         'desc',
         { id: 'chart-desc' },
-        m['chart.aria'](
+        `${m['chart.aria'](
           f.day(visible[0]?.date ?? last.date, 'medium'),
           f.day(last.date, 'medium'),
           w(visible[0]?.kg ?? last.kg),
           w(last.kg),
-        ),
+        )} ${m['chart.keys']}`,
       ),
     );
     const grid = svg('g');
@@ -286,13 +295,16 @@ export function mountChart(
     const xTicks = x
       .ticks(Math.max(2, Math.floor((width - left - right) / 74)))
       .filter((t) => +t === +utcDay.floor(t));
+    // Over months, ticks fall on the 1st and read as months with their year ("Jan 2026"); over
+    // weeks, as days, which the period line above dates.
+    const monthly = xTicks.length > 1 && xTicks.every((t) => t.getUTCDate() === 1);
     for (const t of xTicks) {
       const iso = t.toISOString().slice(0, 10);
       grid.append(
         svg(
           'text',
           { class: 'tick', x: x(t), y: height - 9, 'text-anchor': 'middle' },
-          f.day(iso, 'dayMonth'),
+          f.day(iso, monthly ? 'monthYear' : 'dayMonth'),
         ),
       );
     }
@@ -319,10 +331,10 @@ export function mountChart(
         );
       }
     }
-    const half = DAY / 2;
+    const halfDay = DAY / 2;
     const weekSpan = (wk: (typeof weeks)[number]): [Date, Date] => [
-      new Date(Math.max(wk.t.getTime(), start.getTime(), analysis.first.t.getTime()) - half),
-      new Date(Math.min(wk.end.getTime(), last.t.getTime()) + half),
+      new Date(Math.max(wk.t.getTime(), start.getTime(), analysis.first.t.getTime()) - halfDay),
+      new Date(Math.min(wk.end.getTime(), last.t.getTime()) + halfDay),
     ];
     if (on('weekRange')) {
       for (const wk of shownWeeks) {
@@ -340,8 +352,16 @@ export function mountChart(
         );
       }
     }
+    // A hiccup's gain is written under it only where there is room, so many don't pile up; every
+    // one still shows in the tooltip of its days.
+    let labelEnd = -Infinity;
     for (const hc of hiccups) {
       const a = new Date(Math.max(hc.start.t.getTime(), start.getTime()));
+      const text = f.weightChange(hc.gain, unit);
+      const centre = (x(a) + x(hc.peak.t)) / 2;
+      const half = textWidth(text) / 2;
+      const labelled = centre - half > labelEnd + 4;
+      if (labelled) labelEnd = centre + half;
       g.append(
         svg('rect', {
           class: 'hiccup',
@@ -352,13 +372,10 @@ export function mountChart(
           rx: 3,
         }),
       );
-      labels.append(
-        svg(
-          'text',
-          { class: 'annot annot-bad', x: (x(a) + x(hc.peak.t)) / 2, y: bottom - 8, 'text-anchor': 'middle' },
-          f.weightChange(hc.gain, unit),
-        ),
-      );
+      if (labelled)
+        labels.append(
+          svg('text', { class: 'annot annot-bad', x: centre, y: bottom - 8, 'text-anchor': 'middle' }, text),
+        );
     }
     if (band) {
       const shape = area<ProjectionPoint>()
@@ -429,9 +446,16 @@ export function mountChart(
       );
     }
     if (on('points')) {
-      const radius = width < 560 ? 2.5 : 3.2;
-      for (const d of visible)
-        g.append(svg('circle', { class: 'point', cx: x(d.t), cy: y(u(d.kg)), r: radius }));
+      // One path of dots, not an element each: years of weigh-ins stay light to draw.
+      const r0 = width < 560 ? 2.5 : 3.2;
+      const dots = visible
+        .map((d) => {
+          const cx = Math.round(x(d.t) * 10) / 10;
+          const cy = Math.round(y(u(d.kg)) * 10) / 10;
+          return `M${String(cx - r0)} ${String(cy)}a${String(r0)} ${String(r0)} 0 1 0 ${String(2 * r0)} 0a${String(r0)} ${String(r0)} 0 1 0 ${String(-2 * r0)} 0`;
+        })
+        .join('');
+      g.append(svg('path', { class: 'point', d: dots }));
     }
     const anchorAt = (px: number) => (px < left + 40 ? 'start' : px > width - right - 40 ? 'end' : 'middle');
     const annotate = (d: Day, text: string, above: boolean, kind = '') => {
@@ -446,7 +470,8 @@ export function mountChart(
         ),
       );
     };
-    if (on('extremes')) {
+    // One weigh-in is both the highest and the lowest: it needs no marks.
+    if (on('extremes') && r.n > 1 && r.max.kg !== r.min.kg) {
       if (r.max.t >= start) annotate(r.max, m['chart.max'](f.number(u(r.max.kg))), true);
       if (r.min.t >= start) annotate(r.min, m['chart.min'](f.number(u(r.min.kg))), false);
     }
@@ -454,14 +479,20 @@ export function mountChart(
       if (r.biggestDrop && r.biggestDrop.t >= start && r.biggestDrop.change !== null)
         annotate(
           r.biggestDrop,
-          m['chart.inOneDay'](f.weightChange(r.biggestDrop.change, unit)),
+          m['chart.inDays'](
+            f.weightChange(r.biggestDrop.change, unit),
+            count(r.biggestDrop.gap ?? 1, m['word.day'], s),
+          ),
           false,
           'annot-good',
         );
       if (r.biggestRise && r.biggestRise.t >= start && r.biggestRise.change !== null)
         annotate(
           r.biggestRise,
-          m['chart.inOneDay'](f.weightChange(r.biggestRise.change, unit)),
+          m['chart.inDays'](
+            f.weightChange(r.biggestRise.change, unit),
+            count(r.biggestRise.gap ?? 1, m['word.day'], s),
+          ),
           true,
           'annot-bad',
         );
@@ -484,13 +515,14 @@ export function mountChart(
       ...visible.map((d) => ({ t: d.t, day: d, p: null })),
       ...pj.filter((p) => p.h > 0).map((p) => ({ t: p.t, day: null, p })),
     ];
-    let cursor = -1;
+    let cursor = keep?.cursor ?? -1;
     const hide = () => {
       rule.setAttribute('visibility', 'hidden');
       dot.setAttribute('visibility', 'hidden');
       tip.hidden = true;
     };
-    const show = (i: number) => {
+    /** Shows the day `i`; `announce` reads it out (keyboard only: the pointer would chatter). */
+    const show = (i: number, announce = false) => {
       const item = days[i];
       if (!item) {
         hide();
@@ -520,7 +552,8 @@ export function mountChart(
         const reg = regression(d.t);
         if (on('regression') && reg !== null) rows.push([m['tip.regression'], w(reg), 'sw-reg']);
       } else {
-        const p = item.p as ProjectionPoint;
+        const p = item.p;
+        if (!p) return;
         heading = m['tip.projectionOn'](f.day(p.t.toISOString().slice(0, 10), 'long'));
         rows.push([m['tip.projection'], w(p.v), 'sw-proj']);
         if (band && p.lo !== null && p.hi !== null)
@@ -540,17 +573,15 @@ export function mountChart(
         ),
       );
       tip.hidden = false;
-      // In the box's own pixels: the SVG scales with the box.
-      const scale = box.clientWidth / width;
-      const boxX = px * scale;
-      const boxY = py * scale;
+      const boxX = px;
+      const boxY = py;
       let tipLeft = boxX + 14;
       if (tipLeft + tip.offsetWidth > box.clientWidth) tipLeft = Math.max(0, boxX - 14 - tip.offsetWidth);
       let tipTop = boxY - tip.offsetHeight - 12;
       if (tipTop < 0) tipTop = boxY + 16;
       tip.style.left = `${String(tipLeft)}px`;
       tip.style.top = `${String(tipTop)}px`;
-      live.textContent = rows.length > 0 ? `${heading}: ${rows.map(([n, v]) => `${n} ${v}`).join(', ')}` : '';
+      if (announce) live.textContent = `${heading}: ${rows.map(([n, v]) => `${n} ${v}`).join(', ')}`;
     };
     const nearest = (clientX: number) => {
       const rect = root.getBoundingClientRect();
@@ -565,12 +596,18 @@ export function mountChart(
       height: bottom,
       class: 'surface',
     });
-    surface.addEventListener('pointermove', (event) => {
+    const point = (event: PointerEvent) => {
       const i = nearest(event.clientX);
       if (i < 0) hide();
       else show(i);
+    };
+    // On the whole chart, not just the plot area: a finger lands on a label or a line as often as
+    // on the space between. A tap shows the day too (touch has no hover); a drag across scrubs.
+    root.addEventListener('pointermove', point);
+    root.addEventListener('pointerdown', point);
+    root.addEventListener('pointerleave', (event) => {
+      if (event.pointerType === 'mouse') hide();
     });
-    surface.addEventListener('pointerleave', hide);
     root.append(surface);
     root.addEventListener('keydown', (event) => {
       const key = event.key;
@@ -584,10 +621,17 @@ export function mountChart(
       event.preventDefault();
       // Start from the last weigh-in, where the reader's eye is.
       const from = cursor < 0 ? visible.length - 1 : cursor;
-      show(jump ?? Math.min(days.length - 1, Math.max(0, from + step)));
+      show(jump ?? Math.min(days.length - 1, Math.max(0, from + step)), true);
     });
     root.addEventListener('blur', hide);
     box.replaceChildren(root);
+    // Drawn again under a reader using it (another tab saved, the window resized): keep their
+    // place and their focus.
+    if (keep) {
+      root.focus();
+      if (keep.cursor >= 0 && keep.cursor < days.length) show(keep.cursor);
+    }
+    current = { root, cursor: () => cursor };
 
     // The line under the chart: what the projection says, and what a layer needs to show.
     if (model) {
@@ -606,8 +650,6 @@ export function mountChart(
       );
       if (method === 'recent' && analysis.recentIsFallback) foot.append(' ', m['chart.footFallback']);
     } else foot.append(m['chart.footNone']);
-    if (on('bmi') && heightCm === null) foot.append(' ', m['chart.needsHeight']);
-    if (on('goal') && goal === null) foot.append(' ', m['chart.needsGoal']);
   };
 
   // Drawn again when the box changes width (a rotated phone, a resized window).

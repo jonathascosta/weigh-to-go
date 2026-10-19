@@ -66,11 +66,22 @@ export function mountData(
   const note = h('p', { class: 'note' });
   const last = h('p', { class: 'note' });
   const exportButton = h('button', { class: 'button', attrs: { type: 'button' } });
+  // The file input stays out of the tab order and out of sight: a real button opens it, so the
+  // control the keyboard lands on is the one the reader sees.
   const fileInput = h('input', {
     class: 'visually-hidden',
-    attrs: { type: 'file', accept: 'application/json,.json', id: 'data-file' },
+    attrs: {
+      type: 'file',
+      accept: 'application/json,.json',
+      id: 'data-file',
+      tabindex: -1,
+      'aria-hidden': 'true',
+    },
   });
-  const importLabel = h('label', { class: 'button button-ghost', attrs: { for: 'data-file' } });
+  const importButton = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
+  importButton.addEventListener('click', () => {
+    fileInput.click();
+  });
   const eraseButton = h('button', {
     class: 'button button-ghost button-danger-text',
     attrs: { type: 'button' },
@@ -78,7 +89,7 @@ export function mountData(
   const panel = h('div', { class: 'data-panel', attrs: { role: 'status' } });
   container.replaceChildren(
     h('div', { class: 'card-head' }, h('div', {}, title, note, last)),
-    h('div', { class: 'actions' }, exportButton, fileInput, importLabel, eraseButton),
+    h('div', { class: 'actions' }, exportButton, fileInput, importButton, eraseButton),
     panel,
   );
 
@@ -113,12 +124,33 @@ export function mountData(
     });
     button.addEventListener('click', () => {
       panel.replaceChildren();
-      importLabel.focus();
+      importButton.focus();
     });
     return button;
   };
 
-  const runImport = (parsed: Extract<ParsedBackup, { ok: true }>, mode: 'merge' | 'replace') => {
+  /** Says how an operation went, and moves focus there: the buttons it came from are gone. */
+  const report = (text: string, ok: boolean) => {
+    const line = h('p', {
+      class: ok ? 'status status-ok' : 'status status-bad',
+      attrs: { tabindex: -1 },
+      text,
+    });
+    panel.replaceChildren(line);
+    line.focus();
+  };
+
+  /** Why an operation failed: a reload when the store can't reach its data, else `fallback`. */
+  const failed = (fallback: string) =>
+    app.state().store?.needsReload ? settings().messages['data.reload'] : fallback;
+
+  const runImport = (
+    parsed: Extract<ParsedBackup, { ok: true }>,
+    mode: 'merge' | 'replace',
+    buttons: HTMLButtonElement[],
+  ) => {
+    // Once is enough: a double click must not run it twice.
+    for (const b of buttons) b.disabled = true;
     app
       .importBackup(parsed, mode)
       .then((result) => {
@@ -132,13 +164,11 @@ export function mountData(
               unchanged: n(result.unchanged),
             })
           : s.messages['data.replaced'](count(parsed.weighIns.length, s.messages['word.weighIn'], s));
-        panel.replaceChildren(h('p', { class: 'status status-ok', text }));
+        report(text, true);
       })
       .catch((error: unknown) => {
         console.error(error);
-        panel.replaceChildren(
-          h('p', { class: 'status status-bad', text: settings().messages['data.importFailed'] }),
-        );
+        report(failed(settings().messages['data.importFailed']), false);
       });
   };
 
@@ -152,7 +182,7 @@ export function mountData(
       text: m['data.replace'],
     });
     merge.addEventListener('click', () => {
-      runImport(parsed, 'merge');
+      runImport(parsed, 'merge', [merge, replace]);
     });
     replace.addEventListener('click', () => {
       const now = settings();
@@ -161,8 +191,9 @@ export function mountData(
         attrs: { type: 'button' },
         text: now.messages['data.replaceConfirm'],
       });
+      const cancel = cancelButton();
       confirm.addEventListener('click', () => {
-        runImport(parsed, 'replace');
+        runImport(parsed, 'replace', [confirm, cancel]);
       });
       panel.replaceChildren(
         h('p', {
@@ -172,11 +203,12 @@ export function mountData(
             count(parsed.weighIns.length, now.messages['word.weighIn'], now),
           ),
         }),
-        h('div', { class: 'actions' }, backupFirst(), confirm, cancelButton()),
+        h('div', { class: 'actions' }, backupFirst(), confirm, cancel),
       );
-      confirm.focus();
+      // Not the destructive button: a second Enter must not replace everything.
+      cancel.focus();
     });
-    const skipped = parsed.skipped > 0 ? count(parsed.skipped, m['paste.word.line'], s) : null;
+    const skipped = parsed.skipped > 0 ? count(parsed.skipped, m['word.record'], s) : null;
     panel.replaceChildren(
       h('p', { text: m['data.read'](count(parsed.weighIns.length, m['word.weighIn'], s), skipped) }),
       h('div', { class: 'actions' }, merge, replace, cancelButton()),
@@ -218,38 +250,39 @@ export function mountData(
       attrs: { type: 'button' },
       text: m['data.eraseConfirm'],
     });
+    const cancel = cancelButton();
     confirm.addEventListener('click', () => {
       confirm.disabled = true;
+      cancel.disabled = true;
       app
         .erase()
         .then((gone) => {
           // The saved choices went with everything else: back to automatic here too.
           choose({ lang: null, weightUnit: null, heightUnit: null });
           const after = settings().messages;
-          panel.replaceChildren(
-            h('p', {
-              class: gone ? 'status status-ok' : 'status status-bad',
-              text: gone ? after['data.erased'] : after['data.eraseFailed'],
-            }),
-          );
+          report(gone ? after['data.erased'] : after['data.eraseFailed'], gone);
         })
         .catch((error: unknown) => {
           console.error(error);
-          panel.replaceChildren(
-            h('p', { class: 'status status-bad', text: settings().messages['data.eraseFailed'] }),
-          );
+          report(failed(settings().messages['data.eraseFailed']), false);
         });
     });
     panel.replaceChildren(
       h('p', { class: 'status status-bad', text: m['data.eraseWarning'] }),
-      h('div', { class: 'actions' }, backupFirst(), confirm, cancelButton()),
+      h('div', { class: 'actions' }, backupFirst(), confirm, cancel),
     );
-    confirm.focus();
+    // Not the destructive button: a second Enter must not erase everything.
+    cancel.focus();
   });
 
+  /** The notice shown, so it is redrawn (and announced again) only when it changes. */
+  let shownNotice = '';
   const renderNotice = (state: State, s: Settings) => {
     const m = s.messages;
     const notice = noticeFor(state, lastBackupAt.read(), localToday());
+    const key = `${s.locale.tag}:${JSON.stringify(notice)}`;
+    if (key === shownNotice) return;
+    shownNotice = key;
     if (notice === null) {
       noticeBox.replaceChildren();
       noticeBox.hidden = true;
@@ -294,7 +327,8 @@ export function mountData(
         : m['data.lastBackup'](s.format.day(localToday(new Date(when)), 'medium'));
     exportButton.textContent = m['data.export'];
     exportButton.disabled = state.status === 'loading';
-    importLabel.textContent = m['data.import'];
+    importButton.textContent = m['data.import'];
+    importButton.disabled = state.status === 'loading';
     eraseButton.textContent = m['data.erase'];
     renderNotice(state, s);
   };

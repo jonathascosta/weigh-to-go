@@ -264,6 +264,11 @@ main {
 
 /* ---------- The diary ---------- */
 
+/* Hidden means hidden, whatever display a class gives the element. */
+[hidden] {
+  display: none !important;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -666,6 +671,9 @@ main {
 
 .chart-svg {
   display: block;
+  max-width: 100%;
+  /* A finger dragged sideways reads the days; up and down still scrolls the page. */
+  touch-action: pan-y;
   overflow: visible;
   font-family: var(--f-num);
 }
@@ -808,6 +816,8 @@ main {
 .surface {
   fill: transparent;
   cursor: crosshair;
+  /* A finger dragged sideways reads the days; up and down still scrolls the page. */
+  touch-action: pan-y;
 }
 
 .tip {
@@ -909,4 +919,35 @@ main {
 
 .data-panel p {
   margin: 8px 0 0;
+}
+
+.day-short {
+  display: none;
+}
+
+.log-more {
+  margin-top: 8px;
+}
+
+/* On a phone the log keeps what matters in view: a short date, the weight, its change, delete. */
+@media (max-width: 520px) {
+  .day-long,
+  .col-avg7 {
+    display: none;
+  }
+
+  .day-short {
+    display: inline;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 6px;
+  }
+
+  .actions-cell .confirm {
+    display: block;
+    margin-bottom: 4px;
+    white-space: normal;
+  }
 }

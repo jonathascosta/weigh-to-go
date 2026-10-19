@@ -80,6 +80,10 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    whose day/month order nothing settles is shown first, read one way, and saved only on a yes (or
    read the other way): a misread can't overwrite real days. The goal and BMI layers draw once the
    profile has a goal or a height; their inputs come with the Goal and BMI cards in story 7.
+   A paste that would give logged days another weight asks first and then says how many days were
+   new and how many replaced. Replace and erase put focus on Cancel. The log shows the newest 100
+   weigh-ins, more on request. The backup reminder counts from the moment an export starts (the
+   browser doesn't say whether the file was then saved). DOM tests run in happy-dom.
 
 6. **Dashboard II.** Percentage loss (KPIs, chart, weekly rate, milestones table), compound daily
    rate (KPIs, daily rate chart, constant % vs constant kg, simulator) and hiccups (rules, KPIs,

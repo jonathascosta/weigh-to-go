@@ -5,13 +5,14 @@
 import { isIsoDay, parseDay } from '../analysis/dates';
 import { fromKg, toFeetInches, type HeightUnit, type WeightUnit } from '../units';
 
-export type DayStyle = 'short' | 'medium' | 'long' | 'dayMonth' | 'weekday';
+export type DayStyle = 'short' | 'medium' | 'long' | 'dayMonth' | 'monthYear' | 'weekday';
 
 const DAY_OPTIONS: Record<DayStyle, Intl.DateTimeFormatOptions> = {
   short: { day: '2-digit', month: '2-digit', year: 'numeric' },
   medium: { day: 'numeric', month: 'short', year: 'numeric' },
   long: { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' },
   dayMonth: { day: '2-digit', month: '2-digit' },
+  monthYear: { month: 'short', year: 'numeric' },
   weekday: { weekday: 'short' },
 };
 
@@ -21,6 +22,10 @@ export interface Formatter {
   number(value: number, digits?: number): string;
   /** A weight given in kg, in `unit`, with the unit: "108.2 kg", "238.6 lb". */
   weight(kg: number, unit: WeightUnit, digits?: number): string;
+  /** A weight given in kg, in `unit`, as a bare number: "108.2", "238.6". */
+  weightValue(kg: number, unit: WeightUnit, digits?: number): string;
+  /** A change in weight in `unit`, signed, as a bare number: "−0.4". */
+  changeValue(kg: number, unit: WeightUnit, digits?: number): string;
   /** A change in weight, with its sign (none for zero): "−0.4 kg", "+1.1 lb". */
   weightChange(kg: number, unit: WeightUnit, digits?: number): string;
   /** A share (0.052 is 5.2%). */
@@ -83,6 +88,8 @@ export function formatter(tag: string, signNegative = SIGN_NEGATIVE): Formatter 
   return {
     tag,
     number: (value, digits = 1) => minus(num(digits, false)(value)),
+    weightValue: (kg, unit, digits = 1) => minus(num(digits, false, 'weight')(fromKg(kg, unit))),
+    changeValue: (kg, unit, digits = 1) => minus(num(digits, true, 'weight')(fromKg(kg, unit))),
     weight: (kg, unit, digits = 1) => `${minus(num(digits, false, 'weight')(fromKg(kg, unit)))} ${unit}`,
     weightChange: (kg, unit, digits = 1) => `${minus(num(digits, true, 'weight')(fromKg(kg, unit)))} ${unit}`,
     percent: (share, digits = 1) => minus(num(digits, false, 'percent')(share)),

@@ -9,7 +9,7 @@ import { eraseEverything } from '../data/erase';
 import { requestPersistence } from '../data/persist';
 import { pref } from '../data/prefs';
 import { EMPTY_PROFILE, type Profile, type StoredWeighIn } from '../data/records';
-import { openStore, type MergeResult, type Store } from '../data/store';
+import { memoryStore, openStore, type MergeResult, type Store } from '../data/store';
 
 export interface State {
   /** 'loading' until the store has been opened and read. */
@@ -56,21 +56,43 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
     }
   };
 
-  /** Reads everything again from the store, after a change here or in another tab. */
+  /** Tells every listener again, without a change: after a failed write, so notices can show. */
+  const notify = () => {
+    set({});
+  };
+
+  /**
+   * Reads everything again from the store, after a change here or in another tab. Reads can
+   * finish out of order (a save while another tab's change is being read), so only the latest one
+   * started is applied. A failed read is logged, and the listeners are told anyway: the write
+   * before it did happen, and the store may now say it needs a reload.
+   */
+  let generation = 0;
   const reload = async () => {
     const { store } = state;
     if (!store) return;
-    const [weighIns, profile] = await Promise.all([store.weighIns(), store.profile()]);
-    set({ status: 'ready', weighIns, profile, analysis: analyze(weighIns) });
+    const mine = ++generation;
+    try {
+      const [weighIns, profile] = await Promise.all([store.weighIns(), store.profile()]);
+      if (mine === generation) set({ status: 'ready', weighIns, profile, analysis: analyze(weighIns) });
+    } catch (error) {
+      console.error(error);
+      if (mine === generation) set({ status: 'ready' });
+    }
   };
 
   const ready = (async () => {
-    const store = await open();
+    let store: Store;
+    try {
+      store = await open();
+    } catch (error) {
+      // openStore falls back on its own; anything else that fails to open gets the same fallback.
+      console.error(error);
+      store = memoryStore('error');
+    }
     set({ store });
     store.onChange(() => {
-      void reload().catch((error: unknown) => {
-        console.error(error);
-      });
+      void reload();
     });
     await reload();
   })();
@@ -88,9 +110,18 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
     void requestPersistence();
   };
 
-  ready.catch((error: unknown) => {
-    console.error(error);
-  });
+  /** Runs a write, then reads again; a failed write tells the listeners and rejects. */
+  const write = async <T>(work: (store: Store) => Promise<T>): Promise<T> => {
+    let result: T;
+    try {
+      result = await work(await store());
+    } catch (error) {
+      notify();
+      throw error;
+    }
+    await reload();
+    return result;
+  };
 
   return {
     state: () => state,
@@ -101,31 +132,20 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
         listeners.delete(listener);
       };
     },
-    save: async (rows) => {
-      const s = await store();
-      const savedAt = new Date().toISOString();
-      await s.put(rows.map((r) => ({ date: r.date, kg: r.kg, savedAt })));
-      askPersistence();
-      await reload();
-    },
-    remove: async (date) => {
-      await (await store()).remove(date);
-      await reload();
-    },
-    setProfile: async (profile) => {
-      await (await store()).setProfile(profile);
-      await reload();
-    },
-    importBackup: async (parsed, mode) => {
-      const result = await importBackup(await store(), parsed, mode);
-      askPersistence();
-      await reload();
-      return result;
-    },
-    erase: async () => {
-      const gone = await eraseEverything(await store());
-      await reload();
-      return gone;
-    },
+    save: (rows) =>
+      write(async (s) => {
+        const savedAt = new Date().toISOString();
+        await s.put(rows.map((r) => ({ date: r.date, kg: r.kg, savedAt })));
+        askPersistence();
+      }),
+    remove: (date) => write((s) => s.remove(date)),
+    setProfile: (profile) => write((s) => s.setProfile(profile)),
+    importBackup: (parsed, mode) =>
+      write(async (s) => {
+        const result = await importBackup(s, parsed, mode);
+        askPersistence();
+        return result;
+      }),
+    erase: () => write((s) => eraseEverything(s)),
   };
 }

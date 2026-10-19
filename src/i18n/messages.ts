@@ -117,6 +117,7 @@ export const en = {
   'summary.start':
     'Log your first weigh-in to begin. The trend shows from the second, projections from the third.',
   'summary.period': (from: string, to: string, count: string) => `${from} to ${to} · ${count}`,
+  'summary.periodOne': (day: string, count: string) => `${day} · ${count}`,
   'summary.first': (weight: string) =>
     `First weigh-in logged: **${weight}**. Keep logging to see your trend and projections.`,
   'summary.take': enSummary,
@@ -133,7 +134,7 @@ export const en = {
   'kpi.vsPrevious': 'vs. previous',
   'kpi.lossOf': (share: string, start: string) => `${share} of the starting ${start}`,
   'kpi.recentPace': 'Last 3 weeks:',
-  'kpi.wholePeriod': 'a week, over the whole period',
+  'kpi.wholePeriod': 'over the whole period',
   'kpi.needsThree': 'needs 3 weigh-ins',
   'kpi.vsWeekBefore': 'vs. 7 days before',
   'kpi.window': 'over a 7-day window',
@@ -153,6 +154,7 @@ export const en = {
   'entry.futureDate': "That day hasn't come yet. Choose today or an earlier day.",
   'entry.badWeight': (unit: string, example: string) => `Type the weight in ${unit}, for example ${example}.`,
   'entry.failed': "Couldn't save the weigh-in. Try again.",
+  'entry.reload': "Couldn't save: the diary can't reach its data. Reload the page.",
   'entry.full': "Couldn't save: this device is out of storage space.",
 
   'paste.open': 'Paste several days at once',
@@ -160,12 +162,16 @@ export const en = {
     `One weigh-in per line, a date and a weight, like “${example}”. Weights are read in ${unit} unless a line says kg or lb. Days already logged are replaced.`,
   'paste.label': 'Weigh-ins to import',
   'paste.button': 'Import lines',
+  'paste.confirm': 'Yes, import',
+  'paste.overwrites': (days: string) =>
+    `${days} already logged will get the weight from the paste instead. Import anyway?`,
+  'paste.changed': (added: string, replaced: string) => `New: ${added}. Replaced with a different weight: ${replaced}.`,
   'paste.empty': 'Paste at least one line first.',
   'paste.none': (example: string) => `No line was recognised. Use “${example}”, one per line.`,
   'paste.done': (saved: string) => `Imported ${saved}.`,
   'paste.repeated': (lines: string) => `${lines} repeated a day, so the last of each was kept.`,
   'paste.bad': (count: string) => `Lines not recognised (${count}):`,
-  'paste.readAs': (example: string, day: string) => `“${example}” was read as ${day}.`,
+  'paste.readAs': (line: string, day: string) => `The line “${line}” was read as ${day}. Is that right?`,
   'paste.swap': 'Read day and month the other way',
   'paste.word.line': { one: 'line', other: 'lines' },
 
@@ -182,7 +188,9 @@ export const en = {
   'chart.lastWeighIn': 'last weigh-in',
   'chart.max': (weight: string) => `high ${weight}`,
   'chart.min': (weight: string) => `low ${weight}`,
-  'chart.inOneDay': (change: string) => `${change} in 1 day`,
+  'chart.inDays': (change: string, days: string) => `${change} in ${days}`,
+  'chart.roleDescription': 'chart',
+  'chart.keys': 'Use the left and right arrow keys, Home and End to read each day.',
   'chart.goal': (weight: string) => `Goal ${weight}`,
   'chart.bmi': (bmi: string, weight: string) => `BMI ${bmi} · ${weight}`,
   'chart.aria': (from: string, to: string, first: string, last: string) =>
@@ -192,8 +200,6 @@ export const en = {
   'chart.footNone': 'The projection appears from the third weigh-in.',
   'chart.footFallback':
     'The last 3 weeks hold fewer than 5 weigh-ins, so this projection uses the whole period.',
-  'chart.needsHeight': 'BMI lines need your height, in the profile.',
-  'chart.needsGoal': 'The goal line needs a goal, in the profile.',
 
   'layer.points': 'Weigh-ins',
   'layer.line': 'Daily line',
@@ -244,6 +250,8 @@ export const en = {
   'log.deleted': (day: string) => `Deleted the weigh-in of ${day}.`,
   'log.failed': "Couldn't delete the weigh-in. Try again.",
   'log.empty': 'No weigh-ins yet.',
+  'log.more': (shown: string, total: string) => `Showing the latest ${shown} of ${total}.`,
+  'log.showMore': 'Show more',
 
   'data.title': 'Your data',
   'data.note':
@@ -255,19 +263,21 @@ export const en = {
   'data.neverBackedUp': 'No backup exported yet.',
   'data.exported': (file: string) => `Saved ${file}.`,
   'data.read': (count: string, skipped: string | null) =>
-    `The file holds ${count}${skipped ? ` (${skipped} left out)` : ''}. Add it to what is here, or replace everything?`,
+    `The file holds ${count}${skipped ? ` (${skipped} skipped)` : ''}. Add it to what is here, or replace everything?`,
+  'word.record': { one: 'record', other: 'records' },
   'data.merge': 'Add to what is here',
   'data.replace': 'Replace everything',
   'data.cancel': 'Cancel',
   'data.replaceWarning': (here: string, file: string) =>
-    `Replacing removes what is here (${here}) and keeps only what is in the file (${file}). Export a backup first if you might want today's back.`,
+    `Replacing removes what is here (${here}) and keeps only what is in the file (${file}). Export a backup first if you may want the current data back.`,
   'data.replaceConfirm': 'Replace',
   'data.merged': (p: MergeParts) =>
     `Done. Days added: ${p.added}; updated: ${p.updated}; kept because they were newer here: ${p.kept}; already the same: ${p.unchanged}.`,
   'data.replaced': (count: string) => `Done: the diary now holds what was in the file (${count}).`,
   'data.importFailed': "Couldn't import the file. Nothing was changed.",
+  'data.reload': "The diary can't reach its data. Reload the page, then try again.",
   'data.eraseWarning':
-    "This erases every weigh-in, your goal, height and settings from this browser, and can't be undone. Export a backup first if you might want them back.",
+    "This erases every weigh-in, your goal, height and settings from this browser, and can't be undone. Export a backup first if you may want them back.",
   'data.eraseConfirm': 'Erase',
   'data.erased': 'Everything was erased.',
   'data.eraseFailed': "Couldn't erase everything. Reload the page and try again.",
@@ -332,6 +342,7 @@ export const pt: Messages = {
   'summary.start':
     'Registre sua primeira pesagem para começar. A tendência aparece a partir da segunda, as projeções a partir da terceira.',
   'summary.period': (from: string, to: string, count: string) => `${from} a ${to} · ${count}`,
+  'summary.periodOne': (day: string, count: string) => `${day} · ${count}`,
   'summary.first': (weight: string) =>
     `Primeira pesagem registrada: **${weight}**. Continue registrando para ver sua tendência e projeções.`,
   'summary.take': ptSummary,
@@ -348,7 +359,7 @@ export const pt: Messages = {
   'kpi.vsPrevious': 'vs. anterior',
   'kpi.lossOf': (share: string, start: string) => `${share} dos ${start} iniciais`,
   'kpi.recentPace': 'Últimas 3 semanas:',
-  'kpi.wholePeriod': 'por semana, no período todo',
+  'kpi.wholePeriod': 'no período todo',
   'kpi.needsThree': 'precisa de 3 pesagens',
   'kpi.vsWeekBefore': 'vs. 7 dias antes',
   'kpi.window': 'em uma janela de 7 dias',
@@ -368,6 +379,7 @@ export const pt: Messages = {
   'entry.futureDate': 'Esse dia ainda não chegou. Escolha hoje ou um dia anterior.',
   'entry.badWeight': (unit: string, example: string) => `Digite o peso em ${unit}, por exemplo ${example}.`,
   'entry.failed': 'Não foi possível salvar a pesagem. Tente de novo.',
+  'entry.reload': 'Não foi possível salvar: o diário não está conseguindo acessar seus dados. Recarregue a página.',
   'entry.full': 'Não foi possível salvar: o aparelho está sem espaço de armazenamento.',
 
   'paste.open': 'Colar vários dias de uma vez',
@@ -375,12 +387,16 @@ export const pt: Messages = {
     `Uma pesagem por linha, com a data e o peso, como “${example}”. Os pesos são lidos em ${unit}, a menos que a linha diga kg ou lb. Dias já registrados são substituídos.`,
   'paste.label': 'Pesagens para importar',
   'paste.button': 'Importar linhas',
+  'paste.confirm': 'Sim, importar',
+  'paste.overwrites': (days: string) =>
+    `${days} já registrados vão ficar com o peso da colagem. Importar mesmo assim?`,
+  'paste.changed': (added: string, replaced: string) => `Novos: ${added}. Substituídos por outro peso: ${replaced}.`,
   'paste.empty': 'Cole ao menos uma linha antes.',
   'paste.none': (example: string) => `Nenhuma linha reconhecida. Use “${example}”, uma por linha.`,
   'paste.done': (saved: string) => `Importação concluída: ${saved}.`,
-  'paste.repeated': (lines: string) => `Dias repetidos em ${lines}: ficou a última de cada.`,
+  'paste.repeated': (lines: string) => `Algumas datas apareciam mais de uma vez (${lines}): ficou a última de cada.`,
   'paste.bad': (count: string) => `Linhas não reconhecidas (${count}):`,
-  'paste.readAs': (example: string, day: string) => `“${example}” foi lido como ${day}.`,
+  'paste.readAs': (line: string, day: string) => `A linha “${line}” foi lida como ${day}. Está certo?`,
   'paste.swap': 'Ler dia e mês ao contrário',
   'paste.word.line': { one: 'linha', other: 'linhas' },
 
@@ -397,7 +413,9 @@ export const pt: Messages = {
   'chart.lastWeighIn': 'último registro',
   'chart.max': (weight: string) => `máx. ${weight}`,
   'chart.min': (weight: string) => `mín. ${weight}`,
-  'chart.inOneDay': (change: string) => `${change} em 1 dia`,
+  'chart.inDays': (change: string, days: string) => `${change} em ${days}`,
+  'chart.roleDescription': 'gráfico',
+  'chart.keys': 'Use as setas para a esquerda e a direita, Home e End para ler cada dia.',
   'chart.goal': (weight: string) => `Meta ${weight}`,
   'chart.bmi': (bmi: string, weight: string) => `IMC ${bmi} · ${weight}`,
   'chart.aria': (from: string, to: string, first: string, last: string) =>
@@ -407,8 +425,6 @@ export const pt: Messages = {
   'chart.footNone': 'A projeção aparece a partir da terceira pesagem.',
   'chart.footFallback':
     'As últimas 3 semanas têm menos de 5 pesagens, então esta projeção usa o período todo.',
-  'chart.needsHeight': 'As linhas de IMC precisam da sua altura, no perfil.',
-  'chart.needsGoal': 'A linha da meta precisa de uma meta, no perfil.',
 
   'layer.points': 'Pesagens',
   'layer.line': 'Linha diária',
@@ -460,6 +476,8 @@ export const pt: Messages = {
   'log.deleted': (day: string) => `Pesagem de ${day} apagada.`,
   'log.failed': 'Não foi possível apagar a pesagem. Tente de novo.',
   'log.empty': 'Nenhuma pesagem ainda.',
+  'log.more': (shown: string, total: string) => `Mostrando as ${shown} mais recentes de ${total}.`,
+  'log.showMore': 'Mostrar mais',
 
   'data.title': 'Seus dados',
   'data.note':
@@ -471,19 +489,21 @@ export const pt: Messages = {
   'data.neverBackedUp': 'Nenhum backup exportado ainda.',
   'data.exported': (file: string) => `${file} salvo.`,
   'data.read': (count: string, skipped: string | null) =>
-    `O arquivo tem ${count}${skipped ? ` (${skipped} de fora)` : ''}. Juntar ao que já está aqui, ou substituir tudo?`,
+    `O arquivo tem ${count}${skipped ? ` (${skipped} ignorados)` : ''}. Juntar ao que já está aqui, ou substituir tudo?`,
+  'word.record': { one: 'registro', other: 'registros' },
   'data.merge': 'Juntar ao que está aqui',
   'data.replace': 'Substituir tudo',
   'data.cancel': 'Cancelar',
   'data.replaceWarning': (here: string, file: string) =>
-    `Substituir remove o que está aqui (${here}) e deixa só o que está no arquivo (${file}). Exporte um backup antes se puder querer os dados de agora de volta.`,
+    `Substituir remove o que está aqui (${here}) e deixa só o que está no arquivo (${file}). Exporte um backup antes, caso queira recuperar os dados atuais.`,
   'data.replaceConfirm': 'Substituir',
   'data.merged': (p: MergeParts) =>
     `Pronto. Dias adicionados: ${p.added}; atualizados: ${p.updated}; mantidos por serem mais novos aqui: ${p.kept}; já iguais: ${p.unchanged}.`,
   'data.replaced': (count: string) => `Pronto: o diário agora tem o que estava no arquivo (${count}).`,
   'data.importFailed': 'Não foi possível importar o arquivo. Nada foi alterado.',
+  'data.reload': 'O diário não está conseguindo acessar seus dados. Recarregue a página e tente de novo.',
   'data.eraseWarning':
-    'Isto apaga todas as pesagens, sua meta, altura e configurações deste navegador, e não pode ser desfeito. Exporte um backup antes se puder querer tudo de volta.',
+    'Isto apaga todas as pesagens, sua meta, altura e configurações deste navegador, e não pode ser desfeito. Exporte um backup antes, caso queira recuperar tudo.',
   'data.eraseConfirm': 'Apagar',
   'data.erased': 'Tudo foi apagado.',
   'data.eraseFailed': 'Não foi possível apagar tudo. Recarregue a página e tente de novo.',
@@ -500,7 +520,7 @@ export const pt: Messages = {
     'O diário não está conseguindo acessar seus dados agora, talvez porque uma versão mais nova está aberta em outra aba. Recarregue a página.',
   'notice.reloadButton': 'Recarregar',
   'notice.noBackup':
-    'Suas pesagens vivem só neste navegador. Exporte um backup, para que fiquem seguras se ele apagar seus dados.',
+    'Suas pesagens ficam guardadas só neste navegador. Exporte um backup, para que fiquem seguras se ele apagar seus dados.',
   'notice.oldBackup': (days: string) =>
     `Seu último backup foi há ${days}. Exporte um novo, para que as pesagens recentes também fiquem seguras.`,
 };

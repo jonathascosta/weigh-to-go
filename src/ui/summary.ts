@@ -7,17 +7,25 @@ import type { State } from '../app/app';
 import { count, type Settings } from '../i18n';
 import { h, rich, tone } from './dom';
 
+/**
+ * A day as short as it can be read: day and month when the data all falls in the year of `last`,
+ * and that year is this one; with the year otherwise ("11/01" twice in a long series won't do).
+ */
+export function dayShort(date: string, analysis: Analysis, s: Settings, today = new Date()): string {
+  const year = analysis.first.date.slice(0, 4);
+  const sameYear = year === analysis.last.date.slice(0, 4) && year === String(today.getFullYear());
+  return s.format.day(date, sameYear ? 'dayMonth' : 'short');
+}
+
 /** The line above the sentence: the period and how many weigh-ins. */
 export function periodLine(state: State, s: Settings): string {
   const { analysis } = state;
   if (state.status === 'loading') return s.messages['home.placeholder'];
   if (!analysis) return s.messages['summary.none'];
   const { first, last, summary } = analysis;
-  return s.messages['summary.period'](
-    s.format.day(first.date, 'short'),
-    s.format.day(last.date, 'short'),
-    count(summary.n, s.messages['word.weighIn'], s),
-  );
+  const n = count(summary.n, s.messages['word.weighIn'], s);
+  if (first.date === last.date) return s.messages['summary.periodOne'](s.format.day(first.date, 'short'), n);
+  return s.messages['summary.period'](s.format.day(first.date, 'short'), s.format.day(last.date, 'short'), n);
 }
 
 /** The sentence that says where the reader stands, with **bold** parts. */
@@ -32,7 +40,7 @@ export function takeLine(state: State, s: Settings): string {
   const recent = recentIsFallback ? null : models.recent;
   const weekly = (slope: number) => f.weight(Math.abs(slope * 7), unit, 2);
   return s.messages['summary.take']({
-    from: f.day(summary.first.date, 'dayMonth'),
+    from: dayShort(summary.first.date, analysis, s),
     change: f.weight(Math.abs(summary.loss), unit),
     share: f.percent(Math.abs(summary.lossShare)),
     days: count(summary.days, s.messages['word.day'], s),
@@ -48,11 +56,17 @@ export function takeLine(state: State, s: Settings): string {
   });
 }
 
+/** The tone of a change: good when it falls by more than `flat`, bad when it rises. */
+const toneOf = (change: number, flat: number): 'good' | 'bad' | null =>
+  Math.abs(change) <= flat ? null : change < 0 ? 'good' : 'bad';
+
 /** One key figure: its label, value, unit and the line under it. */
 export interface Kpi {
   readonly label: string;
   readonly value: string;
   readonly unit: string | null;
+  /** The value's tone: a loss is good, a gain bad; null for none (or too small to matter). */
+  readonly tone: 'good' | 'bad' | null;
   /** The line under the value: text, and changes shown with their tone. */
   readonly sub: readonly (string | { readonly text: string; readonly change: number })[];
 }
@@ -62,11 +76,11 @@ export function kpis(analysis: Analysis | null, s: Settings): Kpi[] {
   const m = s.messages;
   const { format: f, weightUnit: unit } = s;
   const labels = [m['kpi.current'], m['kpi.loss'], m['kpi.pace'], m['kpi.avg7'], m['kpi.min'], m['kpi.max']];
-  if (!analysis) return labels.map((label) => ({ label, value: '—', unit: null, sub: [] }));
+  if (!analysis) return labels.map((label) => ({ label, value: '—', unit: null, tone: null, sub: [] }));
   const { summary: r, models, recentIsFallback, last } = analysis;
-  const num = (kg: number, digits = 1) => f.weight(kg, unit, digits).replace(` ${unit}`, '');
-  const signed = (kg: number, digits = 1) => f.weightChange(kg, unit, digits).replace(` ${unit}`, '');
-  const on = (date: string) => m['kpi.on'](f.day(date, 'dayMonth'));
+  const num = (kg: number, digits = 1) => f.weightValue(kg, unit, digits);
+  const signed = (kg: number, digits = 1) => f.changeValue(kg, unit, digits);
+  const on = (date: string) => m['kpi.on'](dayShort(date, analysis, s));
   const linear = models.linear;
   const recent = recentIsFallback ? null : models.recent;
   const sinceMin = last.index - r.min.index;
@@ -75,6 +89,7 @@ export function kpis(analysis: Analysis | null, s: Settings): Kpi[] {
       label: labels[0] ?? '',
       value: num(last.kg),
       unit,
+      tone: null,
       sub:
         last.change === null
           ? [on(last.date)]
@@ -88,6 +103,7 @@ export function kpis(analysis: Analysis | null, s: Settings): Kpi[] {
       label: labels[1] ?? '',
       value: num(r.loss),
       unit,
+      tone: toneOf(-r.loss, FLAT_KG),
       sub: [m['kpi.lossOf'](f.percent(r.lossShare), f.weight(r.first.kg, unit))],
     },
     linear
@@ -95,17 +111,22 @@ export function kpis(analysis: Analysis | null, s: Settings): Kpi[] {
           label: labels[2] ?? '',
           value: signed(linear.slope * 7, 2),
           unit: m['kpi.perWeek'](unit),
+          tone: toneOf(linear.slope * 7, STABLE_KG_PER_WEEK),
           sub: recent
-            ? [`${m['kpi.recentPace']} `, { text: signed(recent.slope * 7, 2), change: recent.slope }]
+            ? [
+                `${m['kpi.recentPace']} `,
+                { text: `${signed(recent.slope * 7, 2)} ${m['kpi.perWeek'](unit)}`, change: recent.slope },
+              ]
             : [m['kpi.wholePeriod']],
         }
-      : { label: labels[2] ?? '', value: '—', unit: null, sub: [m['kpi.needsThree']] },
+      : { label: labels[2] ?? '', value: '—', unit: null, tone: null, sub: [m['kpi.needsThree']] },
     last.avg7 === null
-      ? { label: labels[3] ?? '', value: '—', unit: null, sub: [m['kpi.needsWeek']] }
+      ? { label: labels[3] ?? '', value: '—', unit: null, tone: null, sub: [m['kpi.needsWeek']] }
       : {
           label: labels[3] ?? '',
           value: num(last.avg7),
           unit,
+          tone: null,
           sub:
             r.avg7WeekBefore === null
               ? [m['kpi.window']]
@@ -121,11 +142,12 @@ export function kpis(analysis: Analysis | null, s: Settings): Kpi[] {
       label: labels[4] ?? '',
       value: num(r.min.kg),
       unit,
+      tone: null,
       sub: [
         `${on(r.min.date)} · ${sinceMin === 0 ? m['kpi.today'] : m['kpi.ago'](count(sinceMin, m['word.day'], s))}`,
       ],
     },
-    { label: labels[5] ?? '', value: num(r.max.kg), unit, sub: [on(r.max.date)] },
+    { label: labels[5] ?? '', value: num(r.max.kg), unit, tone: null, sub: [on(r.max.date)] },
   ];
 }
 
@@ -143,7 +165,9 @@ export function renderSummary(target: { period: HTMLElement; take: HTMLElement; 
           h('span', { class: 'kpi-label', text: k.label }),
           h(
             'span',
-            { class: 'kpi-value' },
+            {
+              class: k.tone ? `kpi-value tone-${k.tone}` : 'kpi-value',
+            },
             k.value,
             k.unit ? h('span', { class: 'kpi-unit', text: ` ${k.unit}` }) : null,
           ),
