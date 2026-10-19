@@ -23,8 +23,16 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    in localStorage; persistent-storage request; JSON backup export and import (validated, merge or
    replace); erase everything. Weights are stored in kg unrounded (a pound reading as lb ×
    0.45359237), and imports are validated with `KG_RANGE` from `src/analysis/analyze.ts`. Bulk paste
-   and import also let the owner bring his own history from
-   the original dashboard. Works without storage too (private windows), with a clear message.
+   and import also let the owner bring his own history from the original dashboard (its
+   `{ "data", "peso" }` rows). Works without storage too (private windows), with a clear message.
+
+   The data layer lives in `src/data/`; the screens that use it (the form, the backup buttons, the
+   "nothing will be kept" message) arrive with the dashboard in story 5. A backup file holds
+   `app: "weigh-to-go"`, `format: 1`, `exportedAt`, the `weighIns` (`date`, `kg`, `savedAt`) and the
+   `profile` (`goalKg`, `heightCm`). Import skips, and counts, rows with a bad date, a weight out of
+   range or a date more than a day ahead; it merges (the file wins on shared days) or replaces, in
+   one transaction.
+
 4. **Two languages and units.** English and Portuguese dictionaries, language from the browser and a
    switcher; numbers, dates and decimal input per locale; bulk paste in both date orders; kg or lb
    and cm or ft/in, stored in metric. Everything the page shows is translated, including the static
