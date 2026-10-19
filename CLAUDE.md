@@ -14,7 +14,13 @@ version of a dashboard the owner first built as a claude.ai artifact.
 - **Two languages.** English and Portuguese, chosen by the browser and switchable; numbers, dates and
   decimal input follow the chosen locale. Every user-facing string goes through the dictionary.
 - **No personal data in the repository.** Tests use made-up series only.
-- **New dependencies wait a week** after release: install with `npm install --before=<date 7 days ago>`.
+- **New dependencies wait a week** after release: install with
+  `npm install --before="$(date -u -d '-7 days' +%FT%TZ)" <package>`; Dependabot applies the same
+  cooldown.
+- **The diary needs scripts, and nothing works without them**: the frame gate (`src/frame.ts`) relies
+  on it, so never add a form or action that works with scripts off.
+- **No HTML from strings.** Trusted Types allow no policy: build the DOM from nodes and text; with
+  d3, `.text()`, `.style()` and SVG elements, never `.html()` or `.attr('style', …)`.
 - Same quality bar as json2types: TypeScript strict, ESLint strictTypeChecked, Prettier, Vitest, and
   (from Sprint 1, story 8) Playwright, axe and Lighthouse in CI.
 

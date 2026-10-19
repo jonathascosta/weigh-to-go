@@ -6,19 +6,21 @@
 // canonical and in the sitemap, the 404 page kept out of search.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { contentSecurityPolicy } from './csp.mjs';
 
 export const SITE = 'https://weightogo.jonathas.net/';
 
 const textFile = /\.(html|css|js|mjs|svg|txt|xml|json|webmanifest)$/;
-const dataUri = /(?:\b(?:src|href|srcset)\s*=\s*["']?\s*|url\(\s*["']?\s*)data:/i;
+const dataUri =
+  /(?:\b(?:src|href|srcset)\s*=\s*["']?\s*|url\(\s*["']?\s*)data:|\bsrcset\s*=\s*["'][^"']*,\s*data:/i;
+const javascriptUrl = /\b(?:href|src|action|formaction)\s*=\s*["']?\s*javascript:/i;
 const policyAfterCharset = new RegExp(
   `<meta\\s+charset=["']?utf-8["']?\\s*/?>\\s*<meta http-equiv="Content-Security-Policy" content="${contentSecurityPolicy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`,
   'i',
 );
 // Script types that hold data, not code: the policy doesn't block them and they're safe inline.
-const dataScriptType = /\btype\s*=\s*["']?application\/(?:ld\+)?json/i;
+const dataScriptType = /(?:^|\s)type\s*=\s*["']?application\/(?:ld\+)?json["']?(?=\s|$)/i;
 const frameGate = /body:not\(\.frame-checked\)\s*>\s*\*\s*\{[^}]*visibility:\s*hidden/;
 
 /**
@@ -38,7 +40,7 @@ export function findProblems(files) {
     if (!policyAfterCharset.test(text)) {
       problems.push(`${name}: the CSP is missing, changed or not right after the charset`);
     }
-    for (const [, attributes, body] of text.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    for (const [, attributes, body] of text.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
       if (dataScriptType.test(attributes)) continue;
       if (!/\bsrc\s*=/i.test(attributes) || body.trim() !== '')
         problems.push(`${name}: has an inline script`);
@@ -47,6 +49,7 @@ export function findProblems(files) {
     if (/<style[\s>]/i.test(text)) problems.push(`${name}: has an inline <style> block`);
     if (/<[a-z][^>]*\sstyle\s*=/i.test(text)) problems.push(`${name}: has an inline style attribute`);
     if (/<[a-z][^>]*\son[a-z]+\s*=/i.test(text)) problems.push(`${name}: has an inline event handler`);
+    if (javascriptUrl.test(text)) problems.push(`${name}: has a javascript: URL`);
     if (!/<noscript>\s*<link rel="stylesheet" href="\/noscript\.css"/.test(text)) {
       problems.push(`${name}: lacks the frame gate's no-script stylesheet`);
     }
@@ -127,7 +130,7 @@ function readSite(dist) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const files = readSite('dist');
+  const files = readSite(fileURLToPath(new URL('../dist', import.meta.url)));
   const problems = [...findProblems(files), ...findMissingPages(files)];
   if (problems.length > 0) {
     console.error(problems.join('\n'));

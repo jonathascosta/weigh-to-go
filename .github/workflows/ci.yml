@@ -56,8 +56,7 @@ jobs:
         with:
           path: dist
 
-  # The built site in a real browser: end-to-end tests (Playwright), accessibility checks (axe) and
-  # Lighthouse scores, each against `vite preview` of the build, as GitHub Pages will serve it.
+  # A quality job (Playwright end-to-end tests, axe, Lighthouse) arrives in Sprint 1, story 8.
   deploy:
     name: Deploy to GitHub Pages
     if: github.ref == 'refs/heads/main'

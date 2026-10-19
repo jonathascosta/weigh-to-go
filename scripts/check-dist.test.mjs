@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { findMissingPages, findProblems, SITE } from './check-dist.mjs';
-import { injectPolicy } from './csp.mjs';
+import { contentSecurityPolicy, devPolicy, injectPolicy } from './csp.mjs';
 
 /** @typedef {{ name: string, text: string }} SiteFile */
 
@@ -65,7 +65,31 @@ describe('findProblems', () => {
 
   it('reports a missing frame gate', () => {
     const files = site().map((file) => (file.name.endsWith('.css') ? { ...file, text: 'a{}' } : file));
-    expect(findProblems(files)).toHaveLength(1);
+    expect(findProblems(files)).toEqual([
+      'no stylesheet hides the page until the frame check passes (body:not(.frame-checked) > *)',
+    ]);
+  });
+
+  it('reports a page without the no-script stylesheet', () => {
+    const html = page().replace(/<noscript>.*<\/noscript>/, '');
+    expect(findProblems(site(html))).toEqual(["index.html: lacks the frame gate's no-script stylesheet"]);
+  });
+
+  it('is not fooled by look-alike data types, spaced closing tags or javascript: URLs', () => {
+    const html = page(
+      '<script data-type="application/json">alert(1)</script>' +
+        '<script type="application/jsonp">alert(2)</script>' +
+        '<script src="/a.js">alert(3)</script >' +
+        '<a href="javascript:alert(4)">x</a>' +
+        '<img srcset="a.png 1x, data:image/png;base64,AA 2x">',
+    );
+    expect(findProblems(site(html))).toEqual([
+      'index.html: contains a data: URI',
+      'index.html: has an inline script',
+      'index.html: has an inline script',
+      'index.html: has an inline script',
+      'index.html: has a javascript: URL',
+    ]);
   });
 });
 
@@ -86,6 +110,22 @@ describe('findMissingPages', () => {
     expect(findMissingPages(all())).toEqual([]);
   });
 
+  it('reports a missing header, a wrong canonical, an indexable 404 and a garbled robots.txt', () => {
+    const files = all();
+    files[0] = {
+      name: 'index.html',
+      text: home.replace('site-header', 'top').replace(`href="${SITE}"`, 'href="/"'),
+    };
+    files[1] = { name: '404.html', text: page() };
+    files[2] = { name: 'robots.txt', text: `${robots}this is not a field\n` };
+    expect(findMissingPages(files)).toEqual([
+      'robots.txt: has a line crawlers would not understand',
+      'index.html: lacks the site header or footer',
+      `index.html: its canonical isn't ${SITE}`,
+      "404.html: isn't kept out of search",
+    ]);
+  });
+
   it('reports a missing page, sitemap entry and robots problems', () => {
     const files = all().filter((file) => file.name !== '404.html');
     files[1] = { name: 'robots.txt', text: 'User-agent: *\nDisallow: /\n' };
@@ -96,5 +136,25 @@ describe('findMissingPages', () => {
       `index.html: ${SITE} isn't in sitemap.xml`,
       '404.html: missing',
     ]);
+  });
+});
+
+describe('injectPolicy', () => {
+  it('writes the policy once, right after the charset', () => {
+    const html = injectPolicy('<head><meta charset="utf-8" /><title>x</title></head>');
+    expect(html).toBe(
+      `<head><meta charset="utf-8" />\n    <meta http-equiv="Content-Security-Policy" content="${contentSecurityPolicy}" /><title>x</title></head>`,
+    );
+  });
+
+  it('refuses a page without a charset', () => {
+    expect(() => injectPolicy('<head><title>x</title></head>')).toThrow(/charset/);
+  });
+
+  it('gives the dev server the same policy, except a connection for live reload', () => {
+    expect(devPolicy).toBe(
+      contentSecurityPolicy.replace("connect-src 'none'", "connect-src 'self' ws: wss:"),
+    );
+    expect(devPolicy).toContain("trusted-types 'none'");
   });
 });

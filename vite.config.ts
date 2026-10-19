@@ -1,16 +1,19 @@
 /// <reference types="vitest/config" />
 import { readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
-import { injectPolicy } from './scripts/csp.mjs';
+import { devPolicy, injectPolicy } from './scripts/csp.mjs';
 
 const { version } = JSON.parse(readFileSync(new URL('package.json', import.meta.url), 'utf8')) as {
   version: string;
 };
 
-// The policy goes into the built pages only: the dev server's live reload needs a WebSocket, which
-// connect-src 'none' would block. Check policy-sensitive changes with `npm run build && npm run preview`.
+// The policy goes into every page, built or served: the dev server gets the same one except that its
+// live reload may open a WebSocket, so Trusted Types and style mistakes show up while developing.
 function securityPolicy(): Plugin {
-  return { name: 'content-security-policy', apply: 'build', transformIndexHtml: injectPolicy };
+  return {
+    name: 'content-security-policy',
+    transformIndexHtml: (html, context) => injectPolicy(html, context.server ? devPolicy : undefined),
+  };
 }
 
 export default defineConfig({

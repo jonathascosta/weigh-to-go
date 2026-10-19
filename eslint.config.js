@@ -4,8 +4,7 @@ import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  // design/ holds scripts run by hand outside the build, with tools the project doesn't install.
-  { ignores: ['dist', 'node_modules', 'design'] },
+  { ignores: ['dist', 'node_modules'] },
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
   {
