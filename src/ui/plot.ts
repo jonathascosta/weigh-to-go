@@ -32,6 +32,8 @@ export interface Stop {
   readonly key: number;
   /** The dot's class; null for no dot (a bar, a band). */
   readonly dot: string | null;
+  /** A box to outline instead (a calendar's square), if any. */
+  readonly box?: { readonly x: number; readonly y: number; readonly size: number };
 }
 
 export interface CursorSpec {
@@ -43,8 +45,15 @@ export interface CursorSpec {
   readonly count: number;
   stop(i: number): Stop;
   tip(i: number): TipContent;
-  /** The stop under the pointer at `px` (in the chart's own pixels), or -1. */
-  near(px: number): number;
+  /** The stop under the pointer at `px`, `py` (in the chart's own pixels), or -1. */
+  near(px: number, py: number): number;
+  /** Whether a vertical rule marks the stop (not for rows or a calendar); true unless said. */
+  readonly rule?: boolean;
+  /**
+   * The stop a key moves to from `i`, for keys beyond the left and right arrows, Home and End (the
+   * calendar's up and down), or null to leave the key alone.
+   */
+  keys?(key: string, i: number): number | null;
   /** Where the arrow keys start when nothing is picked (where the reader's eye is). */
   readonly from: number;
 }
@@ -158,10 +167,12 @@ function attachCursor(
   const width = Number(root.getAttribute('width'));
   const rule = svg('line', { class: 'hoverline', y1: spec.top, y2: spec.bottom, visibility: 'hidden' });
   const dot = svg('circle', { class: 'hoverdot', r: 5.5, visibility: 'hidden' });
+  const outline = svg('rect', { class: 'hoverbox', rx: 3, visibility: 'hidden' });
   let cursor = -1;
   const hide = () => {
     rule.setAttribute('visibility', 'hidden');
     dot.setAttribute('visibility', 'hidden');
+    outline.setAttribute('visibility', 'hidden');
     tip.hidden = true;
   };
   /** Shows the stop `i`; `announce` reads it out (keyboard only: the pointer would chatter). */
@@ -174,7 +185,14 @@ function attachCursor(
     const at = spec.stop(i);
     rule.setAttribute('x1', String(at.x));
     rule.setAttribute('x2', String(at.x));
-    rule.setAttribute('visibility', 'visible');
+    rule.setAttribute('visibility', spec.rule === false ? 'hidden' : 'visible');
+    if (at.box) {
+      outline.setAttribute('x', String(at.box.x - 1.5));
+      outline.setAttribute('y', String(at.box.y - 1.5));
+      outline.setAttribute('width', String(at.box.size + 3));
+      outline.setAttribute('height', String(at.box.size + 3));
+      outline.setAttribute('visibility', 'visible');
+    } else outline.setAttribute('visibility', 'hidden');
     if (at.dot === null) dot.setAttribute('visibility', 'hidden');
     else {
       dot.setAttribute('cx', String(at.x));
@@ -206,8 +224,10 @@ function attachCursor(
   };
   const point = (event: PointerEvent) => {
     const rect = root.getBoundingClientRect();
+    const height = Number(root.getAttribute('height'));
     const px = rect.width > 0 ? ((event.clientX - rect.left) / rect.width) * width : event.clientX;
-    show(spec.near(px));
+    const py = rect.height > 0 ? ((event.clientY - rect.top) / rect.height) * height : event.clientY;
+    show(spec.near(px, py));
   };
   // On the whole chart, not just the plot area: a finger lands on a label or a line as often as
   // on the space between. A tap shows the day too (touch has no hover); a drag across scrubs.
@@ -222,17 +242,20 @@ function attachCursor(
       hide();
       return;
     }
-    const step = key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : 0;
-    const jump = key === 'Home' ? 0 : key === 'End' ? spec.count - 1 : null;
-    if ((step === 0 && jump === null) || spec.count === 0) return;
-    event.preventDefault();
+    if (spec.count === 0) return;
     const from = cursor < 0 ? spec.from : cursor;
-    show(jump ?? Math.min(spec.count - 1, Math.max(0, from + step)), true);
+    const own = spec.keys?.(key, from) ?? null;
+    const step = key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : 0;
+    const jump = own ?? (key === 'Home' ? 0 : key === 'End' ? spec.count - 1 : null);
+    if (step === 0 && jump === null) return;
+    event.preventDefault();
+    show(Math.min(spec.count - 1, Math.max(0, jump ?? from + step)), true);
   });
   root.addEventListener('blur', hide);
   root.append(
     rule,
     dot,
+    outline,
     svg('rect', {
       x: spec.area.left,
       y: 0,

@@ -5,7 +5,8 @@
 import { isIsoDay, parseDay } from '../analysis/dates';
 import { fromKg, toFeetInches, type HeightUnit, type WeightUnit } from '../units';
 
-export type DayStyle = 'short' | 'medium' | 'long' | 'dayMonth' | 'monthYear' | 'weekday';
+export type DayStyle =
+  'short' | 'medium' | 'long' | 'dayMonth' | 'monthYear' | 'weekday' | 'weekdayLong' | 'weekdayNarrow';
 
 const DAY_OPTIONS: Record<DayStyle, Intl.DateTimeFormatOptions> = {
   short: { day: '2-digit', month: '2-digit', year: 'numeric' },
@@ -14,6 +15,8 @@ const DAY_OPTIONS: Record<DayStyle, Intl.DateTimeFormatOptions> = {
   dayMonth: { day: '2-digit', month: '2-digit' },
   monthYear: { month: 'short', year: 'numeric' },
   weekday: { weekday: 'short' },
+  weekdayLong: { weekday: 'long' },
+  weekdayNarrow: { weekday: 'narrow' },
 };
 
 export interface Formatter {

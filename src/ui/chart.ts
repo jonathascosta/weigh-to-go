@@ -93,6 +93,8 @@ export function projection(analysis: Analysis, method: Method, horizon: number):
 export function mountChart(
   container: HTMLElement,
   app: { state(): State },
+  /** Told when the period changes: the daily variation follows it. */
+  onPeriod: () => void = () => undefined,
 ): (state: State, s: Settings) => void {
   const layers = chartLayers;
   const on = (layer: Layer) => layers.has(layer);
@@ -169,7 +171,10 @@ export function mountChart(
               label: p === 'all' ? m['period.all'] : count(p, m['word.day'], s),
             })),
             chartPeriod,
-            redraw,
+            () => {
+              redraw();
+              onPeriod();
+            },
           ),
         ),
       ),
