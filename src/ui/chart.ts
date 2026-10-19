@@ -188,10 +188,10 @@ export function mountChart(
   let lastLang = '';
 
   /** The chart drawn last, to keep the reader's place when it is drawn again. */
-  let current: { root: SVGSVGElement; cursor: () => number } | null = null;
+  let current: { root: SVGSVGElement; day: () => number | null } | null = null;
 
   const draw = (state: State, s: Settings) => {
-    const keep = current && document.activeElement === current.root ? { cursor: current.cursor() } : null;
+    const keep = current && document.activeElement === current.root ? { day: current.day() } : null;
     current = null;
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
@@ -515,7 +515,7 @@ export function mountChart(
       ...visible.map((d) => ({ t: d.t, day: d, p: null })),
       ...pj.filter((p) => p.h > 0).map((p) => ({ t: p.t, day: null, p })),
     ];
-    let cursor = keep?.cursor ?? -1;
+    let cursor = -1;
     const hide = () => {
       rule.setAttribute('visibility', 'hidden');
       dot.setAttribute('visibility', 'hidden');
@@ -629,9 +629,11 @@ export function mountChart(
     // place and their focus.
     if (keep) {
       root.focus();
-      if (keep.cursor >= 0 && keep.cursor < days.length) show(keep.cursor);
+      // The same day, not the same position: a day added before it moves it along.
+      const again = keep.day === null ? -1 : days.findIndex((d) => +d.t === keep.day);
+      if (again >= 0) show(again);
     }
-    current = { root, cursor: () => cursor };
+    current = { root, day: () => days[cursor]?.t.getTime() ?? null };
 
     // The line under the chart: what the projection says, and what a layer needs to show.
     if (model) {

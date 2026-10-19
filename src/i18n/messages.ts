@@ -163,6 +163,7 @@ export const en = {
   'paste.label': 'Weigh-ins to import',
   'paste.button': 'Import lines',
   'paste.confirm': 'Yes, import',
+  'paste.cancel': 'Cancel',
   'paste.overwrites': (days: string) =>
     `${days} already logged will get the weight from the paste instead. Import anyway?`,
   'paste.changed': (added: string, replaced: string) =>
@@ -390,8 +391,9 @@ export const pt: Messages = {
   'paste.label': 'Pesagens para importar',
   'paste.button': 'Importar linhas',
   'paste.confirm': 'Sim, importar',
+  'paste.cancel': 'Cancelar',
   'paste.overwrites': (days: string) =>
-    `${days} já registrados vão ficar com o peso da colagem. Importar mesmo assim?`,
+    `Dias já registrados que vão ficar com o peso do texto colado: ${days}. Importar mesmo assim?`,
   'paste.changed': (added: string, replaced: string) =>
     `Novos: ${added}. Substituídos por outro peso: ${replaced}.`,
   'paste.empty': 'Cole ao menos uma linha antes.',
@@ -493,7 +495,7 @@ export const pt: Messages = {
   'data.neverBackedUp': 'Nenhum backup exportado ainda.',
   'data.exported': (file: string) => `${file} salvo.`,
   'data.read': (count: string, skipped: string | null) =>
-    `O arquivo tem ${count}${skipped ? ` (${skipped} ignorados)` : ''}. Juntar ao que já está aqui, ou substituir tudo?`,
+    `O arquivo tem ${count}${skipped ? ` (ignorados: ${skipped})` : ''}. Juntar ao que já está aqui, ou substituir tudo?`,
   'word.record': { one: 'registro', other: 'registros' },
   'data.merge': 'Juntar ao que está aqui',
   'data.replace': 'Substituir tudo',

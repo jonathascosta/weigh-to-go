@@ -795,10 +795,9 @@ main {
 }
 .point {
   fill: var(--c-weight);
-  stroke: var(--panel);
-  stroke-width: 1;
 }
 .point-last {
+  stroke: var(--panel);
   stroke-width: 2;
 }
 .hoverline {
@@ -949,5 +948,11 @@ main {
     display: block;
     margin-bottom: 4px;
     white-space: normal;
+  }
+
+  .confirm-buttons {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
   }
 }

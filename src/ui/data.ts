@@ -176,13 +176,14 @@ export function mountData(
     const s = settings();
     const m = s.messages;
     const merge = h('button', { class: 'button', attrs: { type: 'button' }, text: m['data.merge'] });
+    const cancel = cancelButton();
     const replace = h('button', {
       class: 'button button-ghost',
       attrs: { type: 'button' },
       text: m['data.replace'],
     });
     merge.addEventListener('click', () => {
-      runImport(parsed, 'merge', [merge, replace]);
+      runImport(parsed, 'merge', [merge, replace, cancel]);
     });
     replace.addEventListener('click', () => {
       const now = settings();
@@ -211,7 +212,7 @@ export function mountData(
     const skipped = parsed.skipped > 0 ? count(parsed.skipped, m['word.record'], s) : null;
     panel.replaceChildren(
       h('p', { text: m['data.read'](count(parsed.weighIns.length, m['word.weighIn'], s), skipped) }),
-      h('div', { class: 'actions' }, merge, replace, cancelButton()),
+      h('div', { class: 'actions' }, merge, replace, cancel),
     );
     merge.focus();
   };

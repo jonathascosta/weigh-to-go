@@ -11,6 +11,8 @@ import { h, say } from './dom';
 
 /** Lines of the paste box's bad list shown at most; the count says how many there were. */
 const BAD_SHOWN = 5;
+/** How long a yes waits before it can be pressed, so a double-click can't answer two questions. */
+const CONFIRM_DELAY_MS = 400;
 /** The example weight, in kg (shown in the reader's unit). */
 const EXAMPLE_KG = 108.4;
 
@@ -196,14 +198,29 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
   const ask = (question: string, result: PasteResult, others: HTMLButtonElement[] = []) => {
     const m = settings().messages;
     const yes = h('button', { class: 'button', attrs: { type: 'button' }, text: m['paste.confirm'] });
+    const no = h('button', {
+      class: 'button button-ghost',
+      attrs: { type: 'button' },
+      text: m['paste.cancel'],
+    });
     yes.addEventListener('click', () => {
-      savePaste(result, [yes, pasteButton, ...others]);
+      savePaste(result, [yes, no, pasteButton, ...others]);
+    });
+    no.addEventListener('click', () => {
+      pasteStatus.replaceChildren();
+      pasteText.focus();
     });
     pasteStatus.replaceChildren(
       h('p', { class: 'note', text: question }),
-      h('div', { class: 'actions' }, yes, ...others),
+      h('div', { class: 'actions' }, yes, no, ...others),
     );
-    yes.focus();
+    // Not the yes: a second Enter on "Import lines" must not overwrite logged days. And the yes
+    // waits a moment, so the second click of a double-click on the button before can't land on it.
+    no.focus();
+    yes.disabled = true;
+    setTimeout(() => {
+      yes.disabled = false;
+    }, CONFIRM_DELAY_MS);
   };
 
   /**
@@ -233,6 +250,7 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
         text: m['paste.swap'],
       });
       swap.addEventListener('click', () => {
+        swap.disabled = true;
         readPaste(order === 'dmy' ? 'mdy' : 'dmy', false);
       });
       const confirmOrder = h('button', {
@@ -241,6 +259,8 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
         text: m['paste.confirm'],
       });
       confirmOrder.addEventListener('click', () => {
+        confirmOrder.disabled = true;
+        swap.disabled = true;
         // Read as shown; if it also overwrites days, that is asked next.
         afterOrder(result);
       });

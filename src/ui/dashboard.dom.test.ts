@@ -77,6 +77,10 @@ describe('bulk paste', () => {
     await paste('2026-09-20 98\n2026-09-21 97');
     expect(days()).toEqual(['2026-09-20 100']);
     expect(root.querySelector('.paste-result')!.textContent).toContain('1 day already logged');
+    // The yes waits a moment, so a double-click can't answer this question unseen.
+    expect(button('Yes, import').disabled).toBe(true);
+    expect(document.activeElement?.textContent).toBe('Cancel');
+    await new Promise((resolve) => setTimeout(resolve, 450));
     button('Yes, import').click();
     await settle();
     expect(days()).toEqual(['2026-09-20 98', '2026-09-21 97']);

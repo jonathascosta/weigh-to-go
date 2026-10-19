@@ -115,7 +115,16 @@ export function mountLog(container: HTMLElement, app: App): (state: State, s: Se
               .querySelector<HTMLButtonElement>(`button[data-day="${d.date}"][data-role="delete"]`)
               ?.focus();
           });
-          actions.append(h('span', { class: 'confirm', text: m['log.confirm'](dayText) }), ' ', yes, ' ', no);
+          actions.append(
+            h(
+              'span',
+              { class: 'confirm' },
+              h('span', { class: 'day-long', text: m['log.confirm'](dayText) }),
+              h('span', { class: 'day-short', text: m['log.confirm'](f.day(d.date, 'short')) }),
+            ),
+            ' ',
+            h('span', { class: 'confirm-buttons' }, yes, ' ', no),
+          );
           if (focusConfirm) {
             focusConfirm = false;
             queueMicrotask(() => {
@@ -161,10 +170,17 @@ export function mountLog(container: HTMLElement, app: App): (state: State, s: Se
       }),
     );
     if (days.length > shown) {
-      const button = h('button', { class: 'link', attrs: { type: 'button' }, text: m['log.showMore'] });
+      const button = h('button', {
+        class: 'link',
+        attrs: { type: 'button', 'data-role': 'more' },
+        text: m['log.showMore'],
+      });
       button.addEventListener('click', () => {
+        const first = shown;
         shown += PAGE;
         render(app.state(), settings());
+        // Keyboard readers go on from the first row that just appeared.
+        body.querySelectorAll<HTMLButtonElement>('button[data-role="delete"]')[first]?.focus();
       });
       more.replaceChildren(
         h('span', { class: 'note', text: m['log.more'](f.number(shown, 0), f.number(days.length, 0)) }),
