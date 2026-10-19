@@ -28,7 +28,9 @@ npm run check:dist   # check the built site keeps its protections
 
 Requires Node 22 (22.19 or later), 24, or 26 and later; CI tests all three and deploys from Node 24,
 the `.nvmrc` line. The dev server applies the same Content Security Policy as the build, except that live
-reload may connect; `vite preview` answers unknown paths with an empty 404, where GitHub Pages serves
+reload may connect and Vite may add `<style>` elements (the build turns them into files); `style=""`
+attributes and Trusted Types stay enforced, and `npm run check:dist` catches any inline style that
+reaches the build; `vite preview` answers unknown paths with an empty 404, where GitHub Pages serves
 `404.html`.
 
 New dependencies wait a week after their release, as a buffer against a compromised version:

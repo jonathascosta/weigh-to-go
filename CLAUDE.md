@@ -20,7 +20,8 @@ version of a dashboard the owner first built as a claude.ai artifact.
 - **With scripts off, the page only shows text**: no forms or controls that do anything, since the
   frame gate (`src/frame.ts`) doesn't run then (and `form-action 'none'` blocks forms anyway).
 - **No HTML from strings.** Trusted Types allow no policy (story 8 adds one, for the service worker's
-  URL only): build the DOM from nodes and text; with d3, `.text()`, `.style()` and SVG elements, never `.html()` or `.attr('style', …)`.
+  URL only): build the DOM from nodes and text; with d3, `.text()`, `.style()` and SVG elements,
+  never `.html()` or `.attr('style', …)`.
 - Same quality bar as json2types: TypeScript strict, ESLint strictTypeChecked, Prettier, Vitest, and
   (from Sprint 1, story 8) Playwright, axe and Lighthouse in CI.
 

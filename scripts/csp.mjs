@@ -27,7 +27,9 @@ export const contentSecurityPolicy = [
 /**
  * The policy for the dev server. Live reload needs a WebSocket to the local server, and Vite injects
  * CSS imported from modules (and its error overlay) as <style> elements, which the build turns into
- * files. style="" attributes stay blocked, so .attr('style', …) mistakes still show while developing.
+ * files. style="" attributes stay blocked, so .attr('style', …) mistakes still show while developing;
+ * a literal <style> block in a page is caught by check-dist instead. The localhost entries keep live
+ * reload working if Vite's HMR ever runs on a port of its own.
  */
 export const devPolicy = `${contentSecurityPolicy.replace(
   "connect-src 'none'",

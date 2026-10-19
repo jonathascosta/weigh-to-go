@@ -93,6 +93,13 @@ body:not(.frame-checked) > * {
   animation: reveal 0s 3s forwards;
 }
 
+/* Vite's dev error overlay is added to <body> when a script fails, so the check never runs: show
+   it at once. (No such element exists in the build.) */
+body:not(.frame-checked) > vite-error-overlay {
+  visibility: visible;
+  animation: none;
+}
+
 @keyframes reveal {
   to {
     visibility: visible;
