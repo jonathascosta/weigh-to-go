@@ -189,9 +189,11 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    (`check:dist` checks robots.txt instead). The `quality` job runs all of this in CI, and deploy
    waits for it.
 
-   After review: a page that takes more than 3 seconds comes from the cache (the network's answer
-   still refreshes it), a failed install leaves no cache, a failing cache falls back to the
-   network, and `/pt` maps to the Portuguese page. The Reload button always ends in a reload: in a
+   After review: a page that takes more than 3 seconds comes from the worker's own precache, and
+   nothing is written to the cache at run time (a page from the network may be a newer deploy's,
+   whose hashed scripts this version's cache lacks, or a captive portal's; each deploy brings a new
+   worker with its own precache instead); pages are looked up in the worker's own cache only; a
+   failed install leaves no cache, a failing cache falls back to the network, and `/pt` maps to the Portuguese page. The Reload button always ends in a reload: in a
    tab where another tab already switched, or when nothing is waiting any more, it simply reloads
    (and a first worker claiming a page is not an update). An installed app with an empty diary
    suggests importing a backup, as iPhone apps don't share Safari's storage. Playwright is pinned

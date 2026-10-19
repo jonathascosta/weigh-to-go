@@ -78,9 +78,10 @@ HTTPS**. The DNS record is a CNAME from `weightogo` to `jonathascosta.github.io`
 deployments the domain in Settings is the one that counts; `public/CNAME` only records it in the
 repository.
 
-If a deployed service worker ever misbehaves, ship a kill switch: replace the plugin's output with a
-`sw.js` that unregisters itself and empties its caches, deploy it, and keep it for a few weeks so
-every installed copy picks it up (browsers check for a new worker on each visit, and at least daily):
+If a deployed service worker ever misbehaves, ship a kill switch: take `serviceWorker()` out of the
+plugins in `vite.config.ts` (it would write over `dist/sw.js`), put a `public/sw.js` that unregisters
+itself and empties its caches, deploy it, and keep it for a few weeks so every installed copy picks
+it up (browsers check for a new worker on each visit, and at least daily):
 
 ```js
 self.addEventListener('install', () => self.skipWaiting());

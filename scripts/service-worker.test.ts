@@ -82,6 +82,8 @@ function runWorker(network: Network, urls = ['/', '/pt/', '/404.html', '/assets/
         store.set(key(r), response);
       }
     },
+    match: (request: string | Requestish) =>
+      broken ? Promise.reject(new Error('cache broken')) : Promise.resolve(store.get(key(request))),
     put: (request: string | Requestish, response: Body) => {
       store.set(key(request), response);
       return Promise.resolve();
@@ -152,7 +154,7 @@ const response = (body: string): Body => ({ ok: true, body, clone: () => ({ ok: 
 const ok = (body: string) => Promise.resolve(response(body));
 
 describe('the worker', () => {
-  it('serves pages from the network and keeps the cached copy fresh', async () => {
+  it('serves pages from the network, and keeps its own precached copy as it was', async () => {
     let version = 'old';
     const w = runWorker((url) => ok(`${url} ${version}`));
     await w.install();
@@ -160,7 +162,8 @@ describe('the worker', () => {
     const { answer, settled } = w.navigate('/');
     expect((await answer()).body).toBe('/ new');
     await settled();
-    expect(w.store.get('/')?.body).toBe('/ new');
+    // A page from the network may be a newer deploy's: this version's cache keeps its own.
+    expect(w.store.get('/')?.body).toBe('/ old');
   });
 
   it('serves the cached page offline, the Portuguese one for /pt with or without a slash', async () => {
@@ -173,7 +176,7 @@ describe('the worker', () => {
     expect((await w.navigate('/somewhere').answer()).body).toBe('/ cached');
   });
 
-  it('shows the cached page when the network is slow, and still refreshes it', async () => {
+  it('shows the cached page when the network is slow, and doesn’t store the late answer', async () => {
     vi.useFakeTimers();
     try {
       let arrive: () => void = () => undefined;
@@ -194,7 +197,38 @@ describe('the worker', () => {
       expect((await answer()).body).toBe('/ cached');
       arrive();
       await settled();
-      expect(w.store.get('/')?.body).toBe('/ late');
+      expect(w.store.get('/')?.body).toBe('/ cached');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('waits for a slow network when the cache has no page to show', async () => {
+    vi.useFakeTimers();
+    try {
+      let arrive: () => void = () => undefined;
+      let slow = false;
+      const w = runWorker((url) =>
+        slow
+          ? new Promise<Body>((resolve) => {
+              arrive = () => {
+                resolve(response(`${url} late`));
+              };
+            })
+          : ok(`${url} cached`),
+      );
+      await w.install();
+      // No page cached at all: nothing to show at the timeout.
+      w.store.clear();
+      slow = true;
+      const { answer } = w.navigate('/');
+      let answered = false;
+      void answer().then(() => (answered = true));
+      await vi.advanceTimersByTimeAsync(NETWORK_TIMEOUT_MS * 2);
+      expect(answered).toBe(false);
+      arrive();
+      expect((await answer()).body).toBe('/ late');
+      expect(w.store.size).toBe(0);
     } finally {
       vi.useRealTimers();
     }

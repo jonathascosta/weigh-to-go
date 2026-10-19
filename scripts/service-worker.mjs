@@ -4,8 +4,8 @@
 // isn't under the page's policy, so this file is where that promise is kept).
 //
 // - Pages: the network first, so a deploy shows at once; offline, or after 3 seconds without an
-//   answer, the cached page (the Portuguese one for /pt paths, else the English one). A page that
-//   arrives later still refreshes the cache.
+//   answer, this version's precached page (the Portuguese one for /pt paths, else the English
+//   one). Nothing is cached at run time: each deploy brings a new worker with its own precache.
 // - Everything else it precached (hashed names never change): the cache first, the network if the
 //   cache has nothing or fails.
 // - A failed install deletes the cache it was filling.
@@ -89,12 +89,19 @@ self.addEventListener('activate', (event) => {
 /** How long a page may take from the network before the cached one is shown instead. */
 const NETWORK_TIMEOUT_MS = ${String(NETWORK_TIMEOUT_MS)};
 
-/** The cached page for a navigation: its own, else the diary in its language. */
+/**
+ * The cached page for a navigation: its own, else the diary in its language. From this version's
+ * cache only, never another version's: a page must match this version's code.
+ */
 function cachedPage(request, url) {
   const page = url.pathname === '/pt' || url.pathname.startsWith('/pt/') ? '/pt/' : '/';
   return caches
-    .match(request, { ignoreSearch: true, ignoreVary: true })
-    .then((hit) => hit || caches.match(page, { ignoreVary: true }));
+    .open(CACHE)
+    .then((cache) =>
+      cache
+        .match(request, { ignoreSearch: true, ignoreVary: true })
+        .then((hit) => hit || cache.match(page, { ignoreVary: true })),
+    );
 }
 
 self.addEventListener('fetch', (event) => {
@@ -103,17 +110,10 @@ self.addEventListener('fetch', (event) => {
   // Only this site's own GETs; anything else goes on untouched.
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
   if (request.mode === 'navigate') {
+    // Nothing is written at run time: the cached pages are this version's own precache, which
+    // matches its cached code. A page from the network may belong to a newer deploy (or be a
+    // captive portal's); storing it here would pair new HTML with this version's old assets.
     const network = fetch(request);
-    // A page that comes in, even after the cached one was shown, refreshes the cache.
-    event.waitUntil(
-      network
-        .then((response) => {
-          if (!response.ok || !PRECACHE.includes(url.pathname)) return undefined;
-          const copy = response.clone();
-          return caches.open(CACHE).then((cache) => cache.put(url.pathname, copy));
-        })
-        .catch(() => undefined),
-    );
     event.respondWith(
       new Promise((resolve, reject) => {
         let done = false;
