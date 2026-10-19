@@ -87,6 +87,18 @@ describe.each(kinds)('%s store', (kind, open) => {
     expect(await store.profile()).toEqual({ goalKg: 85, heightCm: 180 });
   });
 
+  it('changes only the profile fields given, so two saves close together both land', async () => {
+    const store = await open();
+    await store.setProfile({ goalKg: 90, heightCm: null });
+    // Sent together, as a goal saved and a height saved a moment later.
+    await Promise.all([store.updateProfile({ goalKg: 85 }), store.updateProfile({ heightCm: 178 })]);
+    expect(await store.profile()).toEqual({ goalKg: 85, heightCm: 178 });
+    await store.updateProfile({ goalKg: null });
+    expect(await store.profile()).toEqual({ goalKg: null, heightCm: 178 });
+    await expect(store.updateProfile({ heightCm: 20 })).rejects.toThrow(TypeError);
+    expect(await store.profile()).toEqual({ goalKg: null, heightCm: 178 });
+  });
+
   it('replaces everything at once, keeping the profile unless one is given', async () => {
     const store = await open();
     await store.put([w('2026-10-17', 109)], { goalKg: 85, heightCm: 180 });

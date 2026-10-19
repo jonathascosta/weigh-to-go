@@ -205,22 +205,33 @@ const pluralRules = new Map<string, Intl.PluralRules>();
 
 /**
  * Picks a form by `n`'s plural category ("1 weigh-in", "2 weigh-ins"). Pass the number as shown
- * (rounded), since that is what the reader sees the form agree with.
+ * (rounded), and the decimals it is shown with: "1.0 point" is plural in English, singular in
+ * Portuguese ("1,0 ponto").
  */
 export function plural(
   n: number,
   forms: { one: string; other: string },
   tag = settings().locale.tag,
+  digits = 0,
 ): string {
-  let rules = pluralRules.get(tag);
+  const key = `${tag}/${String(digits)}`;
+  let rules = pluralRules.get(key);
   if (rules === undefined) {
-    rules = new Intl.PluralRules(tag);
-    pluralRules.set(tag, rules);
+    rules = new Intl.PluralRules(tag, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    pluralRules.set(key, rules);
   }
   return rules.select(n) === 'one' ? forms.one : forms.other;
 }
 
-/** A count with its word, in the current language and locale: "1 weigh-in", "1.204 pesagens". */
-export function count(n: number, word: { one: string; other: string }, s: Settings = settings()): string {
-  return `${s.format.number(n, 0)} ${plural(n, word, s.locale.tag)}`;
+/**
+ * A count with its word, in the current language and locale: "1 weigh-in", "1.204 pesagens"; with
+ * `digits` decimals, "5.1 points".
+ */
+export function count(
+  n: number,
+  word: { one: string; other: string },
+  s: Settings = settings(),
+  digits = 0,
+): string {
+  return `${s.format.number(n, digits)} ${plural(n, word, s.locale.tag, digits)}`;
 }

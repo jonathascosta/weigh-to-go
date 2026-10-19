@@ -73,6 +73,11 @@ export interface Store {
   remove(date: string): Promise<void>;
   profile(): Promise<Profile>;
   setProfile(profile: Profile): Promise<void>;
+  /**
+   * Changes the profile fields given (null removes one) and keeps the others, reading and writing
+   * at once: two changes made close together both land.
+   */
+  updateProfile(change: Partial<Profile>): Promise<void>;
   /** Replaces every weigh-in, and the profile if given (else it stays), all at once. */
   replace(weighIns: readonly StoredWeighIn[], profile?: Profile): Promise<void>;
   /** Erases everything. */
@@ -203,6 +208,12 @@ export function memoryStore(reason: MemoryReason = 'unsupported'): Store {
     profile: () => Promise.resolve(profile),
     setProfile: (next) =>
       run(() => {
+        check([], next);
+        profile = next;
+      }),
+    updateProfile: (change) =>
+      run(() => {
+        const next = { ...profile, ...change };
         check([], next);
         profile = next;
       }),
@@ -445,6 +456,17 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
       check([], profile);
       await write([PROFILE], (tx) => {
         putProfile(tx, profile);
+      });
+    },
+    updateProfile: async (change) => {
+      // Checked with the other fields at their defaults; each field is checked on its own.
+      check([], { ...EMPTY_PROFILE, ...change });
+      await write([PROFILE], (tx) => {
+        // The read and the write are queued in one transaction: nothing can land in between.
+        const get = tx.objectStore(PROFILE).get(PROFILE_KEY);
+        get.onsuccess = () => {
+          putProfile(tx, { ...toProfile(get.result), ...change });
+        };
       });
     },
     replace: async (weighIns, profile) => {

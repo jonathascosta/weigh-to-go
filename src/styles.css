@@ -29,6 +29,16 @@
   --ref: #85929a;
   --tip: #ffffff;
   --shadow: 0 8px 28px rgb(20 32 42 / 0.14);
+  /* The calendar: blue falls and orange rises (safe for red-green colour blindness), four
+     strengths each, every one at least 3:1 against the panel. */
+  --cal-d1: #6e94c4;
+  --cal-d2: #4a78b3;
+  --cal-d3: #2c5d9a;
+  --cal-d4: #173f73;
+  --cal-u1: #c4762e;
+  --cal-u2: #a95d17;
+  --cal-u3: #8a4609;
+  --cal-u4: #622f00;
   --f-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --f-num: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
   --r: 10px;
@@ -58,6 +68,14 @@
     --ref: #7c8992;
     --tip: #1f292f;
     --shadow: 0 8px 28px rgb(0 0 0 / 0.5);
+    --cal-d1: #4f7fb8;
+    --cal-d2: #6f9ad0;
+    --cal-d3: #94b8e4;
+    --cal-d4: #c3daf5;
+    --cal-u1: #a8661f;
+    --cal-u2: #c98236;
+    --cal-u3: #e3a35e;
+    --cal-u4: #f5c993;
     color-scheme: dark;
   }
 }
@@ -1159,4 +1177,304 @@ main {
   stroke: var(--panel);
   stroke-width: 3px;
   stroke-linejoin: round;
+}
+
+/* Dashboard III: sections bar, goal, BMI, facts, variation, weeks, weekdays, calendar */
+
+.sections {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+/* Two columns where there is room: the half cards side by side, the wide ones across. */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid > .wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.profile-body {
+  margin-top: 8px;
+}
+
+.big {
+  margin: 4px 0 10px;
+  font-family: var(--f-num);
+  font-size: 2.25rem;
+  font-weight: 500;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.big-unit {
+  font-family: var(--f-body);
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.scale {
+  position: relative;
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--soft);
+  overflow: hidden;
+}
+
+.scale-done {
+  background: var(--ok);
+}
+
+.scale-bands {
+  overflow: visible;
+}
+
+.scale-bands > span:not(.scale-mark) {
+  opacity: 0.55;
+}
+
+.scale-bands > span:first-child {
+  border-radius: 5px 0 0 5px;
+}
+
+.scale-bands > span:nth-last-child(2) {
+  border-radius: 0 5px 5px 0;
+}
+
+.scale-mark {
+  position: absolute;
+  top: -4px;
+  width: 3px;
+  height: 18px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--fg);
+}
+
+.scale-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.scale-ticks {
+  position: relative;
+  height: 1.4em;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.scale-ticks > span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.scale-ticks > span:first-child {
+  transform: none;
+}
+
+.scale-ticks > span:last-child {
+  transform: translateX(-100%);
+}
+
+.bmi-under {
+  background: var(--c-weight);
+}
+.bmi-normal {
+  background: var(--ok);
+}
+.bmi-over {
+  background: var(--c-avg7);
+}
+.bmi-obese1 {
+  background: var(--bad);
+}
+.bmi-obese2 {
+  background: var(--c-proj);
+}
+.bmi-obese3 {
+  background: var(--c-trend);
+}
+.big-unit[class*='bmi-'] {
+  background: none;
+}
+
+.rows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  margin: 14px 0 0;
+}
+
+.rows dt {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.rows dd {
+  margin: 0;
+  text-align: right;
+}
+
+.rows-sub {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.facts li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.fact-label,
+.fact-detail {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.fact-value {
+  font-family: var(--f-num);
+  font-size: 1.375rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.week-bar-cell {
+  width: 30%;
+  min-width: 70px;
+}
+
+.week-bar {
+  position: relative;
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--soft);
+}
+
+.week-bar-range {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--c-week);
+  opacity: 0.55;
+}
+
+.week-bar-mean {
+  position: absolute;
+  top: -3px;
+  width: 3px;
+  height: 14px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--c-week);
+}
+
+/* The calendar's squares and their legend swatches. */
+.cal-down1 {
+  fill: var(--cal-d1);
+  background: var(--cal-d1);
+}
+.cal-down2 {
+  fill: var(--cal-d2);
+  background: var(--cal-d2);
+}
+.cal-down3 {
+  fill: var(--cal-d3);
+  background: var(--cal-d3);
+}
+.cal-down4 {
+  fill: var(--cal-d4);
+  background: var(--cal-d4);
+}
+.cal-up1 {
+  fill: var(--cal-u1);
+  background: var(--cal-u1);
+}
+.cal-up2 {
+  fill: var(--cal-u2);
+  background: var(--cal-u2);
+}
+.cal-up3 {
+  fill: var(--cal-u3);
+  background: var(--cal-u3);
+}
+.cal-up4 {
+  fill: var(--cal-u4);
+  background: var(--cal-u4);
+}
+.cal-flat {
+  fill: var(--soft);
+  /* The edge carries it: a flat day's fill is close to the panel. */
+  stroke: var(--ref);
+  stroke-width: 1;
+}
+.cal-none {
+  fill: none;
+  stroke: var(--line);
+  stroke-dasharray: 2 2;
+}
+.cal-month {
+  fill: var(--fg);
+  font-size: 13px;
+  font-weight: 600;
+}
+.cal-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+span.cal-flat {
+  background: var(--soft);
+  border: 1px solid var(--ref);
+}
+.cal-ramp {
+  display: inline-flex;
+  gap: 2px;
+}
+span.cal-none {
+  border: 1px dashed var(--ref);
+}
+.hoverbox {
+  fill: none;
+  stroke: var(--fg);
+  stroke-width: 2;
+}
+
+/* Three-letter weekday headings over a square: a little smaller. */
+.cal-weekday {
+  font-size: 9px;
 }

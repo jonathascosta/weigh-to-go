@@ -271,3 +271,31 @@ export function hiccupRules(): HiccupRules {
   const { basis, minDays, minGain, tolerance } = hiccupChoice.get();
   return { ...DEFAULT_RULES, basis, minDays, minGain, tolerance };
 }
+
+// ---------- Sections and Dashboard III ----------
+
+/** Every section the bar shows and hides, in page order (the original's `SECS`). */
+export const SECTIONS = [
+  'kpis',
+  'chart',
+  'percent',
+  'rate',
+  'hiccups',
+  'goal',
+  'bmi',
+  'facts',
+  'variation',
+  'weeks',
+  'weekdays',
+  'calendar',
+  'log',
+] as const;
+export type Section = (typeof SECTIONS)[number];
+export const sectionsPref = pref('sections', someOf<Section>(SECTIONS), [...SECTIONS]);
+export const sections = many(sectionsPref);
+
+/** How many months the calendar shows: the last 3, the last 12, or all. */
+export const CALENDAR_SPANS = [3, 12, 'all'] as const;
+export type CalendarSpan = (typeof CALENDAR_SPANS)[number];
+export const calendarSpanPref = pref('calendar.span', oneOf<CalendarSpan>(CALENDAR_SPANS), 12);
+export const calendarSpan = one(calendarSpanPref);

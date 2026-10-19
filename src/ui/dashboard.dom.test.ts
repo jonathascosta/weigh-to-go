@@ -350,3 +350,210 @@ describe('Dashboard II', () => {
     errors.mockRestore();
   });
 });
+
+describe('Dashboard III', () => {
+  const section = (id: string) => root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!;
+  const submit = (id: string) => {
+    root
+      .querySelector(`#${id}`)!
+      .closest('form')!
+      .dispatchEvent(new Event('submit', { cancelable: true }));
+  };
+  const type = (id: string, value: string) => {
+    root.querySelector<HTMLInputElement>(`#${id}`)!.value = value;
+  };
+  const sectionChip = (text: string) =>
+    [...root.querySelectorAll<HTMLButtonElement>('nav.sections button.chip')].find(
+      (b) => b.textContent === text,
+    )!;
+  const saveDays = async (weights: readonly number[]) => {
+    await app.save(weights.map((kg, i) => ({ date: `2026-09-${String(i + 1).padStart(2, '0')}`, kg })));
+    await settle();
+  };
+
+  it('saves a goal typed in kg or lb, and removes it when the field is cleared', async () => {
+    await saveDays([100, 99.6, 99.1, 98.9]);
+    type('goal-weight', '90,5');
+    submit('goal-weight');
+    await settle();
+    expect(app.state().profile.goalKg).toBe(90.5);
+    expect(section('goal-title').textContent).toContain('kg to go to 90.5 kg');
+    // The main chart's goal layer now has a goal to draw.
+    expect(section('chart-title').querySelector('.goal')).not.toBeNull();
+    choose({ weightUnit: 'lb' });
+    expect(root.querySelector<HTMLInputElement>('#goal-weight')!.value).toBe('199.5');
+    expect(root.querySelector('#goal-weight-unit')!.textContent).toBe('lb');
+    type('goal-weight', '200');
+    submit('goal-weight');
+    await settle();
+    expect(app.state().profile.goalKg).toBeCloseTo(90.718474, 6);
+    type('goal-weight', '5');
+    submit('goal-weight');
+    await settle();
+    expect(app.state().profile.goalKg).toBeCloseTo(90.718474, 6);
+    expect(section('goal-title').textContent).toContain('Type the goal in lb');
+    type('goal-weight', '');
+    submit('goal-weight');
+    await settle();
+    expect(app.state().profile.goalKg).toBeNull();
+    expect(section('goal-title').textContent).toContain('Goal removed.');
+  });
+
+  it('saves a height in cm or in feet and inches, and shows the BMI', async () => {
+    await saveDays([100, 99.6, 99.1]);
+    const unitChip = (text: string) =>
+      [...section('bmi-title').querySelectorAll<HTMLButtonElement>('button.chip')].find(
+        (b) => b.textContent === text,
+      )!;
+    // A reader in the US starts in feet and inches; the card's chips switch.
+    expect(root.querySelector('#height-cm')).toBeNull();
+    unitChip('cm').click();
+    type('height-cm', '175');
+    submit('height-cm');
+    await settle();
+    expect(app.state().profile.heightCm).toBe(175);
+    expect(section('bmi-title').textContent).toContain('32.4');
+    expect(section('bmi-title').textContent).toContain('BMI is a rough');
+    unitChip('ft and in').click();
+    expect(root.querySelector('#height-cm')).toBeNull();
+    // 175 cm is 5 ft 9 in (to the half inch).
+    expect(root.querySelector<HTMLInputElement>('#height-ft')!.value).toBe('5');
+    expect(root.querySelector<HTMLInputElement>('#height-in')!.value).toBe('9');
+    type('height-ft', '6');
+    type('height-in', '0');
+    submit('height-ft');
+    await settle();
+    expect(app.state().profile.heightCm).toBeCloseTo(182.88, 6);
+    type('height-in', '13');
+    submit('height-ft');
+    await settle();
+    expect(section('bmi-title').textContent).toContain('under 12');
+    expect(app.state().profile.heightCm).toBeCloseTo(182.88, 6);
+  });
+
+  it('shows and hides every section from the bar', async () => {
+    await saveDays([100, 99.6, 99.1, 98.9]);
+    for (const [chip, id] of [
+      ['Key figures', null],
+      ['Main chart', 'chart-title'],
+      ['Calendar', 'calendar-title'],
+      ['Weigh-ins', 'log-title'],
+    ] as const) {
+      sectionChip(chip).click();
+      const el = id ? section(id) : root.querySelector<HTMLElement>('section.kpis')!;
+      expect(el.hidden).toBe(true);
+      expect(sectionChip(chip).getAttribute('aria-pressed')).toBe('false');
+    }
+    expect(JSON.parse(localStorage.getItem('weigh-to-go:sections')!)).not.toContain('calendar');
+    // Shown again, and drawn with what changed meanwhile.
+    await app.save([{ date: '2026-09-05', kg: 98.5 }]);
+    await settle();
+    sectionChip('Calendar').click();
+    expect(section('calendar-title').hidden).toBe(false);
+    expect(section('calendar-title').querySelector('svg')!.textContent).toContain('Sep 2026');
+  });
+
+  it('keeps a goal and a height saved one right after the other', async () => {
+    await saveDays([100, 99.6, 99.1]);
+    choose({ heightUnit: 'cm' });
+    type('goal-weight', '90');
+    submit('goal-weight');
+    // No wait: the height is saved while the goal's save is still on its way.
+    type('height-cm', '180');
+    submit('height-cm');
+    await settle();
+    expect(app.state().profile).toEqual({ goalKg: 90, heightCm: 180 });
+  });
+
+  it('can put the height unit back to automatic', async () => {
+    await saveDays([100, 99.6, 99.1]);
+    const chip = (text: string) =>
+      [...section('bmi-title').querySelectorAll<HTMLButtonElement>('button.chip')].find(
+        (b) => b.textContent === text,
+      )!;
+    // In the US, automatic is feet and inches.
+    expect(chip('Automatic (ft and in)').getAttribute('aria-pressed')).toBe('true');
+    chip('cm').click();
+    expect(chip('cm').getAttribute('aria-pressed')).toBe('true');
+    chip('Automatic (ft and in)').click();
+    expect(chip('Automatic (ft and in)').getAttribute('aria-pressed')).toBe('true');
+    expect(root.querySelector('#height-ft')).not.toBeNull();
+  });
+
+  it('moves focus to the first week shown by "Show more"', async () => {
+    // 60 weeks of weigh-ins, one a week.
+    await app.save(
+      Array.from({ length: 60 }, (_, i) => ({
+        date: new Date(Date.UTC(2025, 7, 4) + i * 7 * 86_400_000).toISOString().slice(0, 10),
+        kg: 100 - i * 0.1,
+      })),
+    );
+    await settle();
+    const more = [...section('weeks-title').querySelectorAll<HTMLButtonElement>('button')].find(
+      (b) => b.textContent === 'Show more',
+    )!;
+    more.click();
+    const focused = document.activeElement as HTMLElement;
+    expect(focused.tagName).toBe('TH');
+    // The 53rd week from the newest.
+    expect(focused.closest('tr')!.dataset.key).toBe('2025-09-22');
+  });
+
+  it('shows "All" of a long calendar a page of months at a time', async () => {
+    await app.save(
+      Array.from({ length: 100 }, (_, i) => ({
+        date: new Date(Date.UTC(2023, 0, 1) + i * 12 * 86_400_000).toISOString().slice(0, 10),
+        kg: 100 - i * 0.05,
+      })),
+    );
+    await settle();
+    const chip = [...section('calendar-title').querySelectorAll<HTMLButtonElement>('button.chip')].find(
+      (b) => b.textContent === 'All',
+    )!;
+    chip.click();
+    const months = () => section('calendar-title').querySelectorAll('svg text.cal-month').length;
+    expect(months()).toBe(24);
+    const earlier = [...section('calendar-title').querySelectorAll<HTMLButtonElement>('button.link')][0]!;
+    expect(earlier.textContent).toBe('Show 16 months earlier');
+    expect(section('calendar-title').textContent).toContain('Showing the latest 24 months (of 40).');
+    earlier.click();
+    expect(months()).toBe(40);
+    expect(section('calendar-title').querySelector('button.link')).toBeNull();
+  });
+
+  it('draws only the section a toggle shows, and none on a hide', async () => {
+    await saveDays([100, 99.6, 99.1, 98.9]);
+    const charts = () =>
+      ['chart-title', 'pct-title', 'rate-title', 'hiccups-title', 'variation-title', 'calendar-title'].map(
+        (id) => section(id).querySelector('svg'),
+      );
+    const before = charts();
+    sectionChip('Calendar').click();
+    const same = (now: (SVGSVGElement | null)[]) => now.map((svg, i) => svg !== null && svg === before[i]);
+    // Hiding draws nothing: every chart is the very one drawn before.
+    expect(same(charts())).toEqual([true, true, true, true, true, true]);
+    sectionChip('Calendar').click();
+    // Showing draws the calendar again, and only it.
+    expect(same(charts())).toEqual([true, true, true, true, true, false]);
+    expect(section('calendar-title').hidden).toBe(false);
+  });
+
+  it('says what each card needs with 0 to 3 weigh-ins, without errors', async () => {
+    const errors = vi.spyOn(console, 'error');
+    const text = (id: string) => section(id).textContent;
+    expect(text('facts-title')).toContain('Log your first weigh-in to see the facts.');
+    expect(text('calendar-title')).toContain('Log your first weigh-in to see the calendar.');
+    expect(text('goal-title')).toContain('Set a goal');
+    for (const n of [1, 2, 3]) {
+      await saveDays([100, 99.6, 99.1].slice(0, n));
+      if (n === 1) {
+        expect(text('variation-title')).toContain('The variation appears from the second weigh-in.');
+        expect(text('weekdays-title')).toContain('Appears once there are weigh-ins on consecutive days.');
+      }
+    }
+    expect(section('weekdays-title').querySelector('svg')).not.toBeNull();
+    expect(section('weeks-title').querySelectorAll('tbody tr')).toHaveLength(1);
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
+  });
+});

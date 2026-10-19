@@ -126,6 +126,40 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
 
 7. **Dashboard III.** Goal, BMI, facts, daily variation, weekly averages, weekdays, calendar, and the
    section toggles.
+
+   The goal and BMI cards hold the profile's two inputs, saved with `app.setProfile`: the goal in
+   the reader's unit (an empty field removes it, a weight outside `KG_RANGE` is refused), the
+   height in cm or in whole feet and inches under 12 (`fromFeetInches`, `HEIGHT_RANGE`). The height
+   unit is chosen on the BMI card, with the height, through `choose({ heightUnit })`; with both set,
+   the main chart's goal and BMI layers and the % chart's goal line have something to draw. The
+   goal plan says what a pace needs instead of "never" when there is no projection, as story 6
+   does. The BMI card says plainly that BMI is a rough, population-level measure.
+
+   Facts, the weekly table and the weekday and variation charts port the original's, from the
+   engine (`facts()`, `analysis.weeks`, `analysis.weekdays`, the series' `change` and `gap`). The
+   variation follows the main chart's period, as in the original, and fades a change over more
+   than a day; the weekly table shows the newest 52 weeks, more on request, and on a phone keeps
+   the week's Monday, its average, the range bar (with its low and high in words) and the change.
+   The calendar is laid out as months side by side, a square a day from Monday, so it fits a phone
+   (the original's single row of weeks doesn't), over the last 3 or 12 months or all; its colours
+   are four strengths each way mixed from the theme's tokens, so dark mode follows. The keys move
+   by a day or a week and read the day out; every weigh-in is also in the log. The shared cursor
+   gained an outlined box, rows (the weekdays) and extra keys for this.
+
+   A bar of chips under the summary shows and hides every section (the original's `SECS`), kept
+   like the other choices; a hidden section isn't drawn until it shows again.
+
+   The profile's fields are saved one at a time (`store.updateProfile`, a read and a write in one
+   transaction), so a goal and a height saved moments apart both land. A goal not below the
+   starting weight is said to be so, not "reached". The height unit can go back to Automatic. The
+   calendar's colours are blue for a fall and orange for a rise (not red and green), four strengths
+   each, every one at least 3:1 against the card in both themes; days after today stay blank; on
+   "All" it shows the newest 24 months, earlier ones on request, so years of data don't make a
+   page-tall card. Its weekday headings are letters in English and short names in Portuguese,
+   whose letters repeat. BMI changes are counted in points with CLDR's plural rules ("1,9 ponto"
+   in Portuguese, where the whole part decides). The calendar stays a focusable group with a
+   cursor, not an ARIA grid: that is valid as it is, and the log holds every weigh-in.
+
 8. **Installable, offline, and quality gates.** Web app manifest and icons, a service worker for
    offline use, Playwright end-to-end tests, axe in light and dark on desktop and phone, Lighthouse
    in CI. Registering the worker needs one narrow Trusted Types policy (its own URL only), from our
