@@ -124,7 +124,8 @@ export function pctKpis(analysis: Analysis, method: Method, goalKg: number | nul
   const { first, last, summary, models } = analysis;
   const F = first.kg;
   const lin = models.linear;
-  const model = models[method];
+  // A "recent" model that is only the whole period again says nothing about recent weeks.
+  const model = method === 'recent' && analysis.recentIsFallback ? null : models[method];
   const lossPct = summary.lossShare * 100;
   const currentWeekLossPct = model ? ((-model.slope * 7) / last.kg) * 100 : null;
   let band: PaceBand | null = null;
@@ -147,7 +148,7 @@ export function pctKpis(analysis: Analysis, method: Method, goalKg: number | nul
     // The next round milestone above the loss so far (5% when nothing is lost yet); the epsilon
     // keeps an exact hit, stored as 9.999999999999995, from pointing at the one just reached.
     const pct = (Math.floor(Math.max(0, lossPct) / MILESTONE_STEP + 1e-9) + 1) * MILESTONE_STEP;
-    next = { pct, days: daysTo(model, last.kg, milestoneKg(F, pct)) };
+    next = pct > 95 ? null : { pct, days: daysTo(model, last.kg, milestoneKg(F, pct)) };
   }
   return {
     lossPct,
@@ -185,7 +186,10 @@ export interface GoalPlan {
   readonly byMethod: Readonly<Record<Method, MethodPlan | null>>;
 }
 
-/** The plan for a goal, or null for a goal that isn't a weight. */
+/**
+ * The plan for a goal, or null for a goal that isn't a weight. A goal at or above the current weight
+ * counts as reached (a "stay under" goal), whatever the first weight was.
+ */
 export function goalPlan(analysis: Analysis, goalKg: number | null): GoalPlan | null {
   if (!isGoal(goalKg)) return null;
   const { last, models } = analysis;

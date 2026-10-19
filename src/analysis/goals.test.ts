@@ -104,6 +104,7 @@ describe('pctKpis', () => {
     const up = analyze(daily([80, 80.2, 80.4]))!;
     expect(pctKpis(up, 'linear', null).band).toBe('rising');
     expect(pctKpis(up, 'linear', null).recentWeekLossPct).toBeNull();
+    expect(pctKpis(up, 'recent', null).band).toBeNull();
     expect(pctKpis(analyze(daily([80, 80, 80, 80]))!, 'linear', null).band).toBe('flat');
     // 0.045 kg a week: stable here and in the header alike.
     const slight = analyze(daily(Array.from({ length: 8 }, (_, i) => 80 - (0.045 / 7) * i)))!;

@@ -22,7 +22,8 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
 3. **Local data.** IndexedDB store for weigh-ins and the profile (goal, height); screen preferences
    in localStorage; persistent-storage request; JSON backup export and import (validated, merge or
    replace); erase everything. Weights are stored in kg unrounded (a pound reading as lb ×
-   0.45359237), and imports are validated with `KG_RANGE` from `src/analysis/analyze.ts`. Bulk paste and import also let the owner bring his own history from
+   0.45359237), and imports are validated with `KG_RANGE` from `src/analysis/analyze.ts`. Bulk paste
+   and import also let the owner bring his own history from
    the original dashboard. Works without storage too (private windows), with a clear message.
 4. **Two languages and units.** English and Portuguese dictionaries, language from the browser and a
    switcher; numbers, dates and decimal input per locale; bulk paste in both date orders; kg or lb
