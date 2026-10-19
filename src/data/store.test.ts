@@ -269,6 +269,28 @@ describe('the IndexedDB store', () => {
     expect(store.needsReload).toBe(false);
   });
 
+  it('opens again, once, when a lost connection makes transaction() throw', async () => {
+    const { factory, connections } = spied();
+    const store = track(await openStore(factory));
+    await store.put([w('2026-10-17', 109)]);
+    const lost = connections[0]!;
+    lost.transaction = () => {
+      throw new DOMException('Connection to Indexed Database server lost', 'UnknownError');
+    };
+    expect(await store.weighIns()).toEqual([w('2026-10-17', 109)]);
+    expect(connections).toHaveLength(2);
+  });
+
+  it('does not open again for other errors', async () => {
+    const { factory, connections } = spied();
+    const store = track(await openStore(factory));
+    connections[0]!.transaction = () => {
+      throw new DOMException('no such store', 'NotFoundError');
+    };
+    await expect(store.weighIns()).rejects.toThrow('no such store');
+    expect(connections).toHaveLength(1);
+  });
+
   it('asks for a reload once another tab moves to a newer version, and still erases', async () => {
     const factory = new IDBFactory();
     const store = track(await openStore(factory));

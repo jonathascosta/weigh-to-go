@@ -118,9 +118,16 @@ describe('createBackup and parseBackup', () => {
     expect(parsed.profile).toEqual({ goalKg: 90, heightCm: null });
   });
 
-  it('leaves the profile alone when the file has none', () => {
-    const text = JSON.stringify({ app: 'weigh-to-go', format: 1, weighIns: [w('2026-10-17', 100)] });
-    expect(ok(text).profile).toBeNull();
+  it('leaves the profile alone when the file has none, or nothing valid in it', () => {
+    for (const profile of [undefined, null, {}, { goalKg: 5 }]) {
+      const text = JSON.stringify({
+        app: 'weigh-to-go',
+        format: 1,
+        weighIns: [w('2026-10-17', 100)],
+        profile,
+      });
+      expect(ok(text).profile).toBeNull();
+    }
   });
 
   it('counts no profile when the original has nothing valid in it', () => {

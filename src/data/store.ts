@@ -56,7 +56,8 @@ export interface Store {
   /**
    * Whether the page should be reloaded: the data may be on disk but this store can't reach it (a
    * memory store for 'version' or 'error', or an IndexedDB store whose connection could not be
-   * opened again, after another tab moved to a newer version of the page).
+   * opened again, after another tab moved to a newer version of the page). It changes only when an
+   * operation fails, so read it from the store after one does, not from a copy.
    */
   readonly needsReload: boolean;
   /** Every weigh-in, by date. */
@@ -303,8 +304,7 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
   let unreachable = false;
 
   /** Keeps track of the connection: the browser may close it, or a newer page may need it. */
-  const adopt = (db: IDBDatabase): IDBDatabase => {
-    const mine = current;
+  const adopt = (db: IDBDatabase, mine: Promise<IDBDatabase>): IDBDatabase => {
     // Forget this connection, unless a newer one has taken its place already.
     const drop = () => {
       if (current === mine) current = null;
@@ -319,16 +319,16 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
     return db;
   };
   current = Promise.resolve(first);
-  adopt(first);
+  adopt(first, current);
 
   /** The open connection, opened again if it was closed in the meantime. */
   const connection = (): Promise<IDBDatabase> => {
     if (closed) return Promise.reject(new Error('The store is closed'));
     if (current === null) {
-      const opening = openDb(factory, timeoutMs).then(
+      const opening: Promise<IDBDatabase> = openDb(factory, timeoutMs).then(
         (db) => {
           unreachable = false;
-          return adopt(db);
+          return adopt(db, opening);
         },
         (error: unknown) => {
           if (current === opening) current = null;
@@ -347,11 +347,18 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
    */
   const transaction = async (stores: string[], mode: IDBTransactionMode): Promise<IDBTransaction> => {
     const options = { durability: 'strict' } as const;
+    const used = connection();
+    const db = await used;
     try {
-      return (await connection()).transaction(stores, mode, options);
+      return db.transaction(stores, mode, options);
     } catch (error) {
-      if (!(error instanceof DOMException) || closed) throw error;
-      current = null;
+      const lost =
+        error instanceof DOMException &&
+        (error.name === 'InvalidStateError' || error.name === 'UnknownError');
+      if (!lost || closed) throw error;
+      // Let go of the lost connection, unless another operation has already replaced it.
+      if (current === used) current = null;
+      db.close();
       return (await connection()).transaction(stores, mode, options);
     }
   };

@@ -25,13 +25,18 @@ describe('eraseEverything', () => {
     store.close();
   });
 
+  it('reports success without storage, where nothing ever reached the disk', async () => {
+    vi.stubGlobal('localStorage', fakeStorage());
+    expect(await eraseEverything(memoryStore('unsupported'), null)).toBe(true);
+  });
+
   it('deletes the database on disk when the page runs in memory', async () => {
     vi.stubGlobal('localStorage', fakeStorage());
     const factory = new IDBFactory();
     const disk = await openStore(factory);
     await disk.put([{ date: '2026-10-17', kg: 100, savedAt: at }]);
     disk.close();
-    await eraseEverything(memoryStore('error'), factory);
+    expect(await eraseEverything(memoryStore('error'), factory)).toBe(true);
     const again = await openStore(factory);
     expect(await again.weighIns()).toEqual([]);
     again.close();

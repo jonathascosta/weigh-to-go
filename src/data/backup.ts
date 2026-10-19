@@ -159,8 +159,9 @@ export function parseBackup(text: string, today: string, now: Date = new Date())
       return { ok: false, error: 'not-a-backup' };
     if (format > BACKUP_FORMAT) return { ok: false, error: 'newer-format' };
     rows = value.weighIns;
-    // A file without a profile leaves the one here alone, as the original's rows do.
-    profile = 'profile' in value ? toProfile(value.profile) : null;
+    // A file without a usable profile leaves the one here alone, as the original's data does.
+    const found = toProfile(value.profile);
+    profile = hasValue(found) ? found : null;
     source = 'backup';
   } else {
     const found = original(value);
