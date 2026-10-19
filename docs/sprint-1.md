@@ -72,6 +72,19 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    the locale; show the unit a weight is read in next to every weight input and the paste box (a
    unitless 80 read as lb is 36 kg, still a valid weight); format everything through
    `settings().format`; read `needsReload` after a failed operation.
+
+   Built as plain DOM from nodes (`src/ui/`) over one app state (`src/app/app.ts`), with the d3
+   scale, shape, array and time modules for the chart (no d3-selection: SVG is built by hand, and
+   colours are CSS classes, so dark mode follows the tokens). The chart takes the pointer and the
+   keyboard (arrows, Home, End, Escape), and a hidden live line reads the day's figures. A paste
+   whose day/month order nothing settles is shown first, read one way, and saved only on a yes (or
+   read the other way): a misread can't overwrite real days. The goal and BMI layers draw once the
+   profile has a goal or a height; their inputs come with the Goal and BMI cards in story 7.
+   A paste that would give logged days another weight asks first and then says how many days were
+   new and how many replaced. Replace and erase put focus on Cancel. The log shows the newest 100
+   weigh-ins, more on request. The backup reminder counts from the moment an export starts (the
+   browser doesn't say whether the file was then saved). DOM tests run in happy-dom.
+
 6. **Dashboard II.** Percentage loss (KPIs, chart, weekly rate, milestones table), compound daily
    rate (KPIs, daily rate chart, constant % vs constant kg, simulator) and hiccups (rules, KPIs,
    chart, table).

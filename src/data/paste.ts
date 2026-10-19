@@ -37,6 +37,11 @@ export interface PasteResult {
    * so it came from the language: the page can say how "05/10" was read.
    */
   readonly orderGuessed: boolean;
+  /**
+   * The first line whose day and month could be read either way (both up to 12 and different), as
+   * pasted, with the day it was read as: to show the reader how their dates were read.
+   */
+  readonly sample: { readonly line: string; readonly date: string } | null;
 }
 
 // The separator and the weight share no character a match could trade back and forth (a comma
@@ -124,6 +129,7 @@ export function parsePaste(text: string, options: PasteOptions): PasteResult {
   const byDay = new Map<string, number>();
   const bad: string[] = [];
   let repeated = 0;
+  let sample: PasteResult['sample'] = null;
   for (const line of lines) {
     const read = readLine(line, order, options);
     const kg = read && toKg(read.weight, read.unit);
@@ -131,9 +137,15 @@ export function parsePaste(text: string, options: PasteOptions): PasteResult {
       bad.push(line);
       continue;
     }
+    if (sample === null && line.length <= MAX_LINE) {
+      const m = SHORT_LINE.exec(line);
+      const a = Number(m?.[1]);
+      const b = Number(m?.[3]);
+      if (m && a <= 12 && b <= 12 && a !== b) sample = { line, date: read.date };
+    }
     if (byDay.has(read.date)) repeated++;
     byDay.set(read.date, kg);
   }
   const rows = [...byDay].map(([date, kg]) => ({ date, kg })).sort(byDate);
-  return { rows, bad, repeated, order, orderGuessed: found.short && found.order === null };
+  return { rows, bad, repeated, order, orderGuessed: found.short && found.order === null, sample };
 }

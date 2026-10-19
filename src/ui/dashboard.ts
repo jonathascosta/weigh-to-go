@@ -1,0 +1,54 @@
+/**
+ * The diary: its parts laid out in the page, each drawn again when the data or the settings change.
+ */
+import type { App, State } from '../app/app';
+import { onSettingsChange, settings, type Settings } from '../i18n';
+import { mountChart } from './chart';
+import { mountData } from './data';
+import { h } from './dom';
+import { mountEntry } from './entry';
+import { mountLog } from './log';
+import { renderSummary } from './summary';
+
+export function mountDashboard(root: HTMLElement, app: App): void {
+  const notice = h('div', { class: 'notice', attrs: { role: 'status', hidden: true } });
+  const period = h('p', { class: 'eyebrow' });
+  const take = h('p', { class: 'take' });
+  const entry = h('section', { class: 'card entry', attrs: { 'aria-labelledby': 'entry-title' } });
+  const kpis = h('section', { class: 'kpis' });
+  const chart = h('section', { class: 'card', attrs: { 'aria-labelledby': 'chart-title' } });
+  const log = h('section', { class: 'card', attrs: { 'aria-labelledby': 'log-title' } });
+  const data = h('section', { class: 'card', attrs: { 'aria-labelledby': 'data-title' } });
+  root.replaceChildren(
+    notice,
+    h('div', { class: 'top' }, h('div', { class: 'summary' }, period, take), entry),
+    kpis,
+    chart,
+    log,
+    data,
+  );
+
+  const parts: ((state: State, s: Settings) => void)[] = [
+    renderSummary({ period, take, kpis }),
+    mountEntry(entry, app),
+    mountChart(chart, app),
+    mountLog(log, app),
+    mountData(data, notice, app),
+  ];
+  const render = (state: State, s: Settings) => {
+    for (const part of parts) {
+      // One part failing must not leave the others stale.
+      try {
+        part(state, s);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  };
+  app.subscribe((state) => {
+    render(state, settings());
+  });
+  onSettingsChange((s) => {
+    render(app.state(), s);
+  });
+}

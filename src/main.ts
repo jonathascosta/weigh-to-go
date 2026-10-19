@@ -2,7 +2,9 @@ import { checkFrame } from './frame';
 import { onSettingsChange, setPageLang, t, translatePage, watchSettings } from './i18n';
 import { isLang } from './i18n/locale';
 import { en } from './i18n/messages';
+import { createApp } from './app/app';
 import { mountSettings } from './settings-ui';
+import { mountDashboard } from './ui/dashboard';
 
 // The page's text goes into the reader's language before the frame check reveals it; if that
 // fails, the page is revealed as written, never left hidden or skipping the frame check.
@@ -30,4 +32,6 @@ if (checkFrame(openLabel)) {
     });
     watchSettings(window);
   }
+  const appBox = document.getElementById('app');
+  if (appBox) mountDashboard(appBox, createApp());
 }

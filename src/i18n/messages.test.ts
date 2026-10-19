@@ -13,7 +13,15 @@ describe('the dictionaries', () => {
   it('have the same keys, none empty', () => {
     expect(Object.keys(pt).sort()).toEqual(Object.keys(en).sort());
     for (const dictionary of [en, pt])
-      for (const [key, text] of Object.entries(dictionary)) expect(text.trim(), key).not.toBe('');
+      for (const [key, message] of Object.entries(dictionary)) {
+        // The same kind of message in both: text, plural forms, or a function of the same values.
+        const english: unknown = en[key as keyof typeof en];
+        expect(typeof message, key).toBe(typeof english);
+        if (typeof message === 'string') expect(message.trim(), key).not.toBe('');
+        else if (typeof message === 'function')
+          expect(message.length, key).toBe((english as () => string).length);
+        else for (const form of Object.values(message)) expect(form.trim(), key).not.toBe('');
+      }
   });
 
   it("cover every key the pages use, each page's text matching its language's dictionary", () => {

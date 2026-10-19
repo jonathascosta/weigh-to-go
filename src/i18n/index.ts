@@ -184,13 +184,18 @@ const isKey = (key: string | null, messages: Messages): key is MessageKey =>
  */
 export function translatePage(doc: TranslatableDocument, { locale, messages }: Settings = settings()): void {
   doc.documentElement.lang = locale.tag;
+  // Only plain-text messages: a page's own text has no values to fill in.
+  const text = (key: string | null): string | null => {
+    const message = isKey(key, messages) ? messages[key] : null;
+    return typeof message === 'string' ? message : null;
+  };
   for (const element of doc.querySelectorAll('[data-i18n]')) {
-    const key = element.getAttribute('data-i18n');
-    if (isKey(key, messages)) element.textContent = messages[key];
+    const value = text(element.getAttribute('data-i18n'));
+    if (value !== null) element.textContent = value;
   }
   for (const element of doc.querySelectorAll('[data-i18n-content]')) {
-    const key = element.getAttribute('data-i18n-content');
-    if (isKey(key, messages)) element.setAttribute('content', messages[key]);
+    const value = text(element.getAttribute('data-i18n-content'));
+    if (value !== null) element.setAttribute('content', value);
   }
 }
 
@@ -211,4 +216,9 @@ export function plural(
     pluralRules.set(tag, rules);
   }
   return rules.select(n) === 'one' ? forms.one : forms.other;
+}
+
+/** A count with its word, in the current language and locale: "1 weigh-in", "1.204 pesagens". */
+export function count(n: number, word: { one: string; other: string }, s: Settings = settings()): string {
+  return `${s.format.number(n, 0)} ${plural(n, word, s.locale.tag)}`;
 }
