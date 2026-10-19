@@ -88,6 +88,29 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
 6. **Dashboard II.** Percentage loss (KPIs, chart, weekly rate, milestones table), compound daily
    rate (KPIs, daily rate chart, constant % vs constant kg, simulator) and hiccups (rules, KPIs,
    chart, table).
+
+   Three cards under the main chart, each with the original's blocks and chips, saved as screen
+   preferences (`src/app/view.ts`) with the original's defaults: 60 days for the % projection, a
+   14-day window, 180 days for the curve, a rate of 0.1% a day, the trend line and the simulation
+   off. What every chart shares moved out of `chart.ts` into `src/ui/plot.ts`: the focusable group
+   with its keys in a `desc`, the axes, the cursor (pointer, touch and keys, read out only from the
+   keys), the tooltip, and focus and day kept across redraws. Time axes give days their year when
+   the span crosses a year or isn't this year. Points and bars are drawn as one path per class, so
+   3,000 weigh-ins redraw a section in about 100 ms. The figures come from the engine; a figure it
+   can't work out yet shows a dash and what it needs (3 weigh-ins, 2 weeks, 5 weigh-ins in the
+   last 3 weeks), and a "recent" model that only repeats the whole period is not shown as recent.
+
+   The hiccup rules are one saved preference, taken only from the fixed lists (the 7-day gap rule
+   stays the engine's), and the main chart's hiccups layer uses them too: changing a rule redraws
+   it. Gain and tolerance chips show in the reader's unit but store the list's kg values. The
+   simulator keeps the original's starting weight (empty: the last weigh-in) and adds a target
+   weight (empty: the goal); weights are read with `toKg` in the reader's unit, a rate with a comma
+   or a point, and something that isn't a weight is said, not saved. Tables drop secondary columns
+   on a phone (the milestones keep the chosen method's column). Deviations: the weekly % chart
+   compares only consecutive weeks (the engine's `weeklyPct`), the milestones table leaves the
+   "last 3 weeks" column empty while that model is the whole period, and the "rate today" figures
+   appear only while the fitted rate is a loss, as in the original.
+
 7. **Dashboard III.** Goal, BMI, facts, daily variation, weekly averages, weekdays, calendar, and the
    section toggles.
 8. **Installable, offline, and quality gates.** Web app manifest and icons, a service worker for
