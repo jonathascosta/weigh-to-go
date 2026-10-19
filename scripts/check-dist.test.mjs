@@ -100,12 +100,24 @@ describe('findProblems', () => {
 
 describe('findMissingPages', () => {
   const robots = `User-agent: *\nAllow: /\n\nSitemap: ${SITE}sitemap.xml\n`;
-  const sitemap = `<urlset><url><loc>${SITE}</loc></url></urlset>`;
-  const home = page().replace('<head>', `<head><link rel="canonical" href="${SITE}" />`);
-  const notFound = page().replace('<head>', '<head><meta name="robots" content="noindex" />');
+  const sitemap = `<urlset><url><loc>${SITE}</loc></url><url><loc>${SITE}pt/</loc></url></urlset>`;
+  const alternates = [
+    `<link rel="alternate" hreflang="en" href="${SITE}" />`,
+    `<link rel="alternate" hreflang="pt-BR" href="${SITE}pt/" />`,
+    `<link rel="alternate" hreflang="x-default" href="${SITE}" />`,
+  ].join('');
+  /** @param {string} url @param {string} html */
+  const home = (url = SITE, html = '<html lang="en">') =>
+    page()
+      .replace('<html>', html)
+      .replace('<head>', `<head><link rel="canonical" href="${url}" />${alternates}`);
+  const notFound = page()
+    .replace('<html>', '<html lang="en">')
+    .replace('<head>', '<head><meta name="robots" content="noindex" />');
   /** @returns {SiteFile[]} */
   const all = () => [
-    { name: 'index.html', text: home },
+    { name: 'index.html', text: home() },
+    { name: 'pt/index.html', text: home(`${SITE}pt/`, '<html lang="pt-BR" data-lang="pt">') },
     { name: '404.html', text: notFound },
     { name: 'robots.txt', text: robots },
     { name: 'sitemap.xml', text: sitemap },
@@ -119,26 +131,38 @@ describe('findMissingPages', () => {
     const files = all();
     files[0] = {
       name: 'index.html',
-      text: home.replace('site-header', 'top').replace(`href="${SITE}"`, 'href="/"'),
+      text: home()
+        .replace('site-header', 'top')
+        .replace(`rel="canonical" href="${SITE}"`, 'rel="canonical" href="/"'),
     };
-    files[1] = { name: '404.html', text: page() };
-    files[2] = { name: 'robots.txt', text: `${robots}this is not a field\n` };
+    files[1] = {
+      name: 'pt/index.html',
+      text: home(`${SITE}pt/`, '<html lang="pt-BR">').replace(
+        /<link rel="alternate" hreflang="en"[^>]*>/,
+        '',
+      ),
+    };
+    files[2] = { name: '404.html', text: page().replace('<html>', '<html lang="en">') };
+    files[3] = { name: 'robots.txt', text: `${robots}this is not a field\n` };
     expect(findMissingPages(files)).toEqual([
       'robots.txt: has a line crawlers would not understand',
       'index.html: lacks the site header or footer',
       `index.html: its canonical isn't ${SITE}`,
+      'pt/index.html: isn\'t marked as <html lang="pt-BR" data-lang="pt">',
+      "pt/index.html: doesn't point to its en version",
       "404.html: isn't kept out of search",
     ]);
   });
 
   it('reports a missing page, sitemap entry and robots problems', () => {
-    const files = all().filter((file) => file.name !== '404.html');
+    const files = all().filter((file) => file.name !== '404.html' && file.name !== 'pt/index.html');
     files[1] = { name: 'robots.txt', text: 'User-agent: *\nDisallow: /\n' };
     files[2] = { name: 'sitemap.xml', text: '<urlset></urlset>' };
     expect(findMissingPages(files)).toEqual([
       'robots.txt: closes the site to crawlers',
       "robots.txt: doesn't point to the sitemap",
       `index.html: ${SITE} isn't in sitemap.xml`,
+      'pt/index.html: missing',
       '404.html: missing',
     ]);
   });

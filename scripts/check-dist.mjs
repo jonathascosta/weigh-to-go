@@ -2,8 +2,9 @@
 // Every page: the Content Security Policy, exactly as in csp.mjs, right after the charset; no inline
 // scripts, styles or event handlers; the no-script stylesheet of the frame gate. The stylesheets:
 // the frame gate's hiding rule. Every text file: no data: URIs, which the policy doesn't allow.
-// And the site's pages and crawler files: each page with its header and footer, the home page
-// canonical and in the sitemap, the 404 page kept out of search.
+// And the site's pages and crawler files: each page with its header and footer, the home pages
+// (English and Portuguese) canonical, in the sitemap and pointing to each other for search engines,
+// the 404 page kept out of search.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -64,8 +65,9 @@ export function findProblems(files) {
 
 /** The pages the site must have; `url` is null for the one kept out of search. */
 const PAGES = [
-  { name: 'index.html', url: SITE },
-  { name: '404.html', url: null },
+  { name: 'index.html', url: SITE, hreflang: 'en', html: '<html lang="en">' },
+  { name: 'pt/index.html', url: `${SITE}pt/`, hreflang: 'pt-BR', html: '<html lang="pt-BR" data-lang="pt">' },
+  { name: '404.html', url: null, hreflang: null, html: '<html lang="en">' },
 ];
 
 /**
@@ -101,12 +103,14 @@ export function findMissingPages(files) {
       .map((field) => field?.[2]);
     if (!sitemaps.includes(`${SITE}sitemap.xml`)) problems.push("robots.txt: doesn't point to the sitemap");
   }
-  for (const { name, url } of PAGES) {
+  for (const { name, url, html } of PAGES) {
     const text = files.find((file) => file.name === name)?.text;
     if (text === undefined) {
       problems.push(`${name}: missing`);
       continue;
     }
+    // The page's language, which the script reads to keep a page made for one language in it.
+    if (!text.includes(html)) problems.push(`${name}: isn't marked as ${html}`);
     if (!text.includes('class="site-header"') || !text.includes('class="site-footer"')) {
       problems.push(`${name}: lacks the site header or footer`);
     }
@@ -117,6 +121,14 @@ export function findMissingPages(files) {
       if (!text.includes(`<link rel="canonical" href="${url}"`))
         problems.push(`${name}: its canonical isn't ${url}`);
       if (!sitemap.includes(`<loc>${url}</loc>`)) problems.push(`${name}: ${url} isn't in sitemap.xml`);
+      // Each language's page names every one, itself included, and the default for other languages.
+      for (const other of PAGES) {
+        if (other.url === null) continue;
+        if (!text.includes(`<link rel="alternate" hreflang="${other.hreflang}" href="${other.url}"`))
+          problems.push(`${name}: doesn't point to its ${other.hreflang} version`);
+      }
+      if (!text.includes(`<link rel="alternate" hreflang="x-default" href="${SITE}"`))
+        problems.push(`${name}: doesn't name the default version`);
     }
   }
   return problems;

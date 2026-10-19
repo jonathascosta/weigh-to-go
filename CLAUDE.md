@@ -11,8 +11,9 @@ version of a dashboard the owner first built as a claude.ai artifact.
   localStorage for screen preferences). No server, no analytics, no requests to other origins: the
   Content Security Policy (`scripts/csp.mjs`) has `connect-src 'none'`. Everyone starts from zero;
   a JSON backup (export and import) is the only way data moves between devices.
-- **Two languages.** English and Portuguese, chosen by the browser and switchable; numbers, dates and
-  decimal input follow the chosen locale. Every user-facing string goes through the dictionary.
+- **Two languages.** English and Portuguese, chosen by the browser and switchable; numbers and dates
+  follow the reader's locale, and typed decimals take a comma or a point in either language. Every
+  user-facing string goes through the dictionary.
 - **No personal data in the repository.** Tests use made-up series only.
 - **New dependencies wait a week** after release: install with
   `npm install --before="$(date -u -d '-7 days' +%FT%TZ)" <package>`; Dependabot applies the same

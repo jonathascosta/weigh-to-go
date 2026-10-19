@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR" data-lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title data-i18n="page.home.title">Weigh to Go · Um diário de peso que fica no seu aparelho</title>
+    <meta
+      name="description"
+      data-i18n-content="page.home.description"
+      content="Registre suas pesagens e veja sua tendência, projeções, médias semanais e mais. O Weigh to Go funciona inteiramente no seu navegador: seus dados nunca saem do seu aparelho."
+    />
+    <link rel="canonical" href="https://weightogo.jonathas.net/pt/" />
+    <link rel="alternate" hreflang="en" href="https://weightogo.jonathas.net/" />
+    <link rel="alternate" hreflang="pt-BR" href="https://weightogo.jonathas.net/pt/" />
+    <link rel="alternate" hreflang="x-default" href="https://weightogo.jonathas.net/" />
+    <meta name="author" content="Jonathas Costa" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#F2F5F6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0F1417" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Weigh to Go" />
+    <meta
+      property="og:title"
+      data-i18n-content="page.home.title"
+      content="Weigh to Go · Um diário de peso que fica no seu aparelho"
+    />
+    <meta
+      property="og:description"
+      data-i18n-content="page.home.ogDescription"
+      content="Registre suas pesagens e veja sua tendência, projeções, médias semanais e mais, inteiramente no seu navegador."
+    />
+    <meta property="og:url" content="https://weightogo.jonathas.net/pt/" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <noscript><link rel="stylesheet" href="/noscript.css" /></noscript>
+  </head>
+  <body>
+    <a class="skip-link" href="#main" data-i18n="skip">Ir para o conteúdo</a>
+    <header class="site-header">
+      <a class="brand" href="/pt/"><img src="/favicon.svg" alt="" width="28" height="28" /> Weigh to Go</a>
+      <div class="settings" id="settings"></div>
+    </header>
+    <main id="main" tabindex="-1">
+      <section class="intro">
+        <h1 data-i18n="home.heading">Seu diário de peso, no seu aparelho</h1>
+        <p data-i18n="home.lede">
+          Registre uma pesagem por dia e o Weigh to Go mostra para onde você está indo: a tendência por trás
+          do sobe e desce diário, projeções, médias semanais, os dias em que o peso volta a subir e mais.
+        </p>
+        <p class="privacy" data-i18n="home.privacy">
+          Tudo funciona no seu navegador: suas pesagens ficam guardadas só neste aparelho.
+        </p>
+      </section>
+      <noscript
+        ><p class="error" data-i18n="home.noscript">
+          O Weigh to Go precisa de JavaScript, que está desativado.
+        </p></noscript
+      >
+      <section class="app" id="app">
+        <p class="placeholder" data-i18n="home.placeholder">O diário está a caminho.</p>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <p>
+        <span data-i18n="footer.madeBy">Feito por</span> <a href="https://www.jonathas.net">Jonathas Costa</a>
+        <span class="version" id="version"></span>
+      </p>
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
