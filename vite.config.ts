@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
 import { devPolicy, injectPolicy } from './scripts/csp.mjs';
+import { serviceWorker } from './scripts/service-worker.mjs';
 
 const { version } = JSON.parse(readFileSync(new URL('package.json', import.meta.url), 'utf8')) as {
   version: string;
@@ -20,7 +21,7 @@ function securityPolicy(): Plugin {
 export default defineConfig({
   // Like GitHub Pages: each page is its own file, and an unknown path is no page (not the home one).
   appType: 'mpa',
-  plugins: [securityPolicy()],
+  plugins: [securityPolicy(), serviceWorker()],
   build: {
     // Keep every asset a file of its own: the policy above has no data: sources.
     assetsInlineLimit: 0,

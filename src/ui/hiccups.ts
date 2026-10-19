@@ -244,7 +244,7 @@ export function mountHiccups(
     legend,
     h(
       'div',
-      { class: 'table-box', attrs: { tabindex: 0, role: 'region', 'aria-labelledby': 'hiccups-title' } },
+      { class: 'table-box', attrs: { tabindex: 0, role: 'region', id: 'hiccups-table-box' } },
       h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'hiccups-title' } }, head, body),
     ),
   );
@@ -445,6 +445,10 @@ export function mountHiccups(
   const render = (state: State, s: Settings) => {
     const m = s.messages;
     title.textContent = m['hiccups.title'];
+    // The table's region has a name of its own: its section already has the heading's.
+    container
+      .querySelector('#hiccups-table-box')
+      ?.setAttribute('aria-label', m['table.label'](m['hiccups.title']));
     note.textContent = m['hiccups.note'];
     const key = `${s.locale.tag}|${s.weightUnit}|${String(viewGeneration())}`;
     if (built !== key) {

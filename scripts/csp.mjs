@@ -3,12 +3,13 @@
 // beacon). It can't stop a script navigating away with data in the URL, so the promise also rests
 // on our own code and on there being no injected script, which Trusted Types help with.
 //
-// Trusted Types make any string written into the DOM as HTML or script an error, and no policy is
-// allowed, so every chart and table is built from DOM nodes and text: with d3, use .text(), .style()
-// and SVG elements, never .html() or .attr('style', …). Registering the service worker (story 8)
-// will need one narrow policy whose createScriptURL accepts only the worker's own URL, as
-// json2types does for its worker; the worker itself isn't covered by this page policy, so it must
-// stay same-origin cache and fetch.
+// Trusted Types make any string written into the DOM as HTML or script an error, so every chart and
+// table is built from DOM nodes and text: with d3, use .text(), .style() and SVG elements, never
+// .html() or .attr('style', …). One policy is allowed, `sw-url` (src/worker.ts): its
+// createScriptURL accepts the service worker's own URL, /sw.js, and throws for anything else, and it
+// has no createHTML or createScript at all. The worker itself isn't covered by this page policy, so
+// it stays same-origin cache and fetch (scripts/service-worker.mjs). Registering it needs no other
+// directive: worker-src falls back to script-src and then to default-src 'self'.
 //
 // Shared by the Vite build, which writes it into every page, by the dev server (devPolicy), and by
 // check-dist, which checks it is still there.
@@ -21,7 +22,7 @@ export const contentSecurityPolicy = [
   "base-uri 'none'",
   "form-action 'none'",
   "require-trusted-types-for 'script'",
-  "trusted-types 'none'",
+  'trusted-types sw-url',
 ].join('; ');
 
 /**

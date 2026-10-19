@@ -20,11 +20,7 @@ export function mountLog(container: HTMLElement, app: App): (state: State, s: Se
   container.replaceChildren(
     h('div', { class: 'card-head' }, h('div', {}, title, note)),
     status,
-    h(
-      'div',
-      { class: 'table-box', attrs: { tabindex: 0, role: 'region', 'aria-labelledby': 'log-title' } },
-      table,
-    ),
+    h('div', { class: 'table-box', attrs: { tabindex: 0, role: 'region', id: 'log-table-box' } }, table),
   );
 
   const more = h('div', { class: 'log-more' });
@@ -45,6 +41,8 @@ export function mountLog(container: HTMLElement, app: App): (state: State, s: Se
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
     title.textContent = m['log.title'];
+    // The table's region has a name of its own: its section already has the heading's.
+    container.querySelector('#log-table-box')?.setAttribute('aria-label', m['table.label'](m['log.title']));
     note.textContent = m['log.note'];
     head.replaceChildren(
       h(

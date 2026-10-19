@@ -60,7 +60,7 @@ export function mountWeeks(
     h('div', { class: 'card-head' }, h('div', {}, title, note)),
     h(
       'div',
-      { class: 'table-box', attrs: { tabindex: 0, role: 'region', 'aria-labelledby': 'weeks-title' } },
+      { class: 'table-box', attrs: { tabindex: 0, role: 'region', id: 'weeks-table-box' } },
       h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'weeks-title' } }, head, body),
     ),
     more,
@@ -71,6 +71,10 @@ export function mountWeeks(
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
     title.textContent = m['weeks.title'];
+    // The table's region has a name of its own: its section already has the heading's.
+    container
+      .querySelector('#weeks-table-box')
+      ?.setAttribute('aria-label', m['table.label'](m['weeks.title']));
     note.textContent = m['weeks.note'];
     head.replaceChildren(
       h(

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findMissingPages, findProblems, SITE } from './check-dist.mjs';
+import { findAppProblems, findMissingPages, findProblems, SITE } from './check-dist.mjs';
 import { contentSecurityPolicy, devPolicy, injectPolicy } from './csp.mjs';
 
 /** @typedef {{ name: string, text: string }} SiteFile */
@@ -187,7 +187,84 @@ describe('injectPolicy', () => {
         "connect-src 'self' ws://localhost:* ws://127.0.0.1:*",
       ) + "; style-src-elem 'self' 'unsafe-inline'",
     );
-    expect(devPolicy).toContain("trusted-types 'none'");
+    expect(devPolicy).toContain('trusted-types sw-url');
     expect(devPolicy).not.toContain('style-src-attr');
+  });
+});
+
+describe('findAppProblems', () => {
+  /** @param {string} start */
+  const manifest = (start) =>
+    JSON.stringify({
+      name: 'Weigh to Go',
+      start_url: start,
+      scope: '/',
+      display: 'standalone',
+      icons: [
+        { src: '/icons/icon-192.png', sizes: '192x192', purpose: 'any' },
+        { src: '/icons/icon-512.png', sizes: '512x512', purpose: 'any' },
+        { src: '/icons/icon-maskable-512.png', sizes: '512x512', purpose: 'maskable' },
+      ],
+    });
+  /** @param {string} m */
+  const head = (m) =>
+    `<link rel="manifest" href="/${m}" /><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />`;
+  /** @param {string} worker */
+  const site = (worker) => [
+    { name: 'index.html', text: head('manifest.webmanifest') },
+    { name: '404.html', text: head('manifest.webmanifest') },
+    { name: 'pt/index.html', text: head('manifest-pt.webmanifest') },
+    { name: 'manifest.webmanifest', text: manifest('/') },
+    { name: 'manifest-pt.webmanifest', text: manifest('/pt/') },
+    { name: 'sw.js', text: worker },
+  ];
+  const present = new Set([
+    'index.html',
+    '404.html',
+    'pt/index.html',
+    'icons/icon-192.png',
+    'icons/icon-512.png',
+    'icons/icon-maskable-512.png',
+    'icons/apple-touch-icon.png',
+    'assets/barlow-latin-400-normal-a1.woff2',
+  ]);
+  /** @param {string} name */
+  const exists = (name) => present.has(name);
+  /** @param {string[]} urls */
+  const worker = (urls) => `const PRECACHE = ${JSON.stringify(urls)};`;
+
+  it('passes a site that links its manifests and precaches what it has', () => {
+    expect(
+      findAppProblems(
+        site(worker(['/', '/404.html', '/pt/', '/assets/barlow-latin-400-normal-a1.woff2'])),
+        exists,
+      ),
+    ).toEqual([]);
+  });
+
+  it('reports a missing link, icon, page or font out of place', () => {
+    const files = site(
+      worker([
+        '/',
+        '/pt/',
+        '/assets/barlow-cyrillic-400-normal-z.woff2',
+        '/gone.js',
+        'https://cdn.example/x.js',
+      ]),
+    );
+    files[2] = { name: 'pt/index.html', text: '' };
+    const problems = findAppProblems(files, (name) => name !== 'icons/icon-512.png' && exists(name));
+    expect(problems).toEqual(
+      expect.arrayContaining([
+        "pt/index.html: doesn't link /manifest-pt.webmanifest",
+        'manifest.webmanifest: /icons/icon-512.png is missing',
+        "sw.js: precaches /assets/barlow-cyrillic-400-normal-z.woff2, which isn't in dist/",
+        'sw.js: precaches /assets/barlow-cyrillic-400-normal-z.woff2, not a Latin woff2 font',
+        "sw.js: precaches /gone.js, which isn't in dist/",
+        'sw.js: precaches https://cdn.example/x.js, not on this site',
+        "sw.js: doesn't precache /404.html",
+        'sw.js: names another site',
+      ]),
+    );
   });
 });

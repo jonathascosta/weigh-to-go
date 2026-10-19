@@ -5,6 +5,8 @@ import { en } from './i18n/messages';
 import { createApp } from './app/app';
 import { mountSettings } from './settings-ui';
 import { mountDashboard } from './ui/dashboard';
+import { mountUpdateNotice } from './ui/update';
+import { registerWorker } from './worker';
 
 // The page's text goes into the reader's language before the frame check reveals it; if that
 // fails, the page is revealed as written, never left hidden or skipping the frame check.
@@ -34,4 +36,12 @@ if (checkFrame(openLabel)) {
   }
   const appBox = document.getElementById('app');
   if (appBox) mountDashboard(appBox, createApp());
+  // Offline use, in the built site only (the dev server's files change under it all the time).
+  if (import.meta.env.PROD && 'serviceWorker' in navigator && appBox) {
+    const offerUpdate = mountUpdateNotice(appBox);
+    registerWorker(navigator.serviceWorker, offerUpdate).catch((error: unknown) => {
+      // Without a worker the site works the same, online.
+      console.warn(error);
+    });
+  }
 }
