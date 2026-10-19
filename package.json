@@ -11,13 +11,18 @@
     "test": "vitest run",
     "check": "tsc -b",
     "lint": "eslint . && prettier --check .",
-    "check:dist": "node scripts/check-dist.mjs"
+    "check:dist": "node scripts/check-dist.mjs",
+    "e2e": "npm run build && playwright test",
+    "icons": "node scripts/icons.mjs",
+    "lighthouse": "npm ci --prefix tools/lhci && tools/lhci/node_modules/.bin/lhci autorun"
   },
   "engines": {
     "node": "^22.19.0 || ^24.0.0 || >=26.0.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.63.0",
     "@types/d3-array": "^3.2.2",
     "@types/d3-scale": "^4.0.9",
     "@types/d3-shape": "^3.2.0",
@@ -39,5 +44,8 @@
     "d3-scale": "^4.0.2",
     "d3-shape": "^3.2.0",
     "d3-time": "^3.1.0"
+  },
+  "overrides": {
+    "playwright-core": "1.63.0"
   }
 }

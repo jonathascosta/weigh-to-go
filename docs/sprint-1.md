@@ -164,4 +164,44 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    offline use, Playwright end-to-end tests, axe in light and dark on desktop and phone, Lighthouse
    in CI. Registering the worker needs one narrow Trusted Types policy (its own URL only), from our
    own code; the worker stays same-origin cache and fetch, and precaches only the Latin font files.
+
+   A manifest per language (`manifest.webmanifest`, and `manifest-pt.webmanifest` for `/pt/`, so a
+   Portuguese install opens in Portuguese: the page's own language decides before the browser's),
+   standalone, with icons at 192 and 512, a maskable 512 and an apple-touch-icon, all drawn from
+   `public/favicon.svg` by `npm run icons` (Playwright's Chromium) and committed. The service worker
+   is written by a Vite plugin (`scripts/service-worker.mjs`) once the build is out, with the hashed
+   names and a version from every file's contents: it precaches the pages, code, manifests, icons
+   and the Latin woff2 fonts; pages come from the network first and from the cache offline (an
+   unknown path falls back to the diary in its language); everything else from the cache first,
+   matched without `Vary` (a server may vary on Origin, and module scripts send one); old caches go
+   on activate; a new version waits until the reader presses Reload on the notice. Registering it
+   takes the one Trusted Types policy the CSP now allows, `trusted-types sw-url`, which accepts
+   `/sw.js` and throws for anything else; no other directive changed (`worker-src` falls back to
+   `default-src 'self'`). `check:dist` checks the manifests, icons, links and the precache list.
+
+   Playwright runs the end-to-end tests and axe against `vite preview` of the build; the offline
+   test starts a server of its own and stops it, since Playwright's offline mode doesn't reach the
+   worker's own requests. axe found only that the three tables' scrolling regions shared their
+   section's name; they are named "Table: …" now. Lighthouse CI runs at a pinned version through
+   npx (its CLI brings dependencies with known advisories the project doesn't need) and asserts
+   performance ≥ 0.9, accessibility 1, best practices and SEO ≥ 0.95; its `robots-txt` audit is
+   skipped, as Lighthouse fetches the file from inside the page, which `connect-src 'none'` forbids
+   (`check:dist` checks robots.txt instead). The `quality` job runs all of this in CI, and deploy
+   waits for it.
+
+   After review: a page that takes more than 3 seconds comes from the worker's own precache, and
+   nothing is written to the cache at run time (a page from the network may be a newer deploy's,
+   whose hashed scripts this version's cache lacks, or a captive portal's; each deploy brings a new
+   worker with its own precache instead); pages are looked up in the worker's own cache only; a
+   failed install leaves no cache, a failing cache falls back to the network, and `/pt` maps to the Portuguese page. The Reload button always ends in a reload: in a
+   tab where another tab already switched, or when nothing is waiting any more, it simply reloads
+   (and a first worker claiming a page is not an update). An installed app with an empty diary
+   suggests importing a backup, as iPhone apps don't share Safari's storage. Playwright is pinned
+   at 1.63.0 (axe's `playwright-core` overridden to match); Lighthouse CI lives in `tools/lhci/`
+   with its own lockfile; performance is a warning on the median of three runs, so a slow CI runner
+   doesn't block a deploy, while accessibility, best practices and SEO stay errors. The end-to-end
+   tests cover a weigh-in saved offline and the update flow (a copy of the build whose worker
+   changes). The README holds the kill switch for a misbehaving worker. Left as notes: the
+   manifests' light theme colour in dark mode, and Lighthouse measuring the empty diary only.
+
 9. **Launch on jonathas.net.** Project card, cover and an article.

@@ -5,7 +5,7 @@
 // And the site's pages and crawler files: each page with its header and footer, the home pages
 // (English and Portuguese) canonical, in the sitemap and pointing to each other for search engines,
 // the 404 page kept out of search.
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { contentSecurityPolicy } from './csp.mjs';
@@ -134,6 +134,97 @@ export function findMissingPages(files) {
   return problems;
 }
 
+/**
+ * JSON as a value of unknown shape, to be checked.
+ * @param {string} text
+ * @returns {unknown}
+ */
+const parseJson = (text) => JSON.parse(text);
+
+/**
+ * @typedef {{ name?: unknown, start_url?: unknown, scope?: unknown, display?: unknown,
+ *   icons?: { src: string, sizes: string, purpose?: string }[] }} Manifest
+ */
+
+/** Each page's manifest: the English one, or the Portuguese one for the Portuguese page. */
+const MANIFESTS = [
+  { page: 'index.html', manifest: 'manifest.webmanifest', start: '/' },
+  { page: '404.html', manifest: 'manifest.webmanifest', start: '/' },
+  { page: 'pt/index.html', manifest: 'manifest-pt.webmanifest', start: '/pt/' },
+];
+
+/**
+ * The installable, offline site: each page links its manifest and the touch icon; each manifest
+ * reads as one, opens its page standalone and lists icons that exist (192, 512 and a maskable
+ * 512); the service worker exists, precaches only files that exist, all on this site, and of the
+ * fonts only the Latin ones.
+ * @param {{ name: string, text: string }[]} files The text files, as for findProblems.
+ * @param {(name: string) => boolean} exists Whether dist/ has a file (binaries included).
+ * @returns {string[]}
+ */
+export function findAppProblems(files, exists) {
+  const problems = [];
+  /** @param {string} name */
+  const text = (name) => files.find((file) => file.name === name)?.text;
+  for (const { page, manifest, start } of MANIFESTS) {
+    const html = text(page) ?? '';
+    if (!html.includes(`<link rel="manifest" href="/${manifest}"`))
+      problems.push(`${page}: doesn't link /${manifest}`);
+    if (!html.includes('<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"'))
+      problems.push(`${page}: doesn't link the apple-touch-icon`);
+    const source = text(manifest);
+    if (source === undefined) {
+      problems.push(`${manifest}: missing`);
+      continue;
+    }
+    /** @type {Manifest} */
+    let parsed;
+    try {
+      parsed = /** @type {Manifest} */ (parseJson(source));
+    } catch {
+      problems.push(`${manifest}: isn't JSON`);
+      continue;
+    }
+    if (typeof parsed.name !== 'string' || parsed.name === '') problems.push(`${manifest}: has no name`);
+    if (parsed.start_url !== start) problems.push(`${manifest}: doesn't start at ${start}`);
+    if (parsed.scope !== '/') problems.push(`${manifest}: its scope isn't /`);
+    if (parsed.display !== 'standalone') problems.push(`${manifest}: isn't standalone`);
+    const icons = Array.isArray(parsed.icons) ? parsed.icons : [];
+    for (const [sizes, purpose] of [
+      ['192x192', 'any'],
+      ['512x512', 'any'],
+      ['512x512', 'maskable'],
+    ]) {
+      if (!icons.some((icon) => icon.sizes === sizes && (icon.purpose ?? 'any') === purpose))
+        problems.push(`${manifest}: has no ${sizes} ${purpose} icon`);
+    }
+    for (const icon of icons)
+      if (!exists(icon.src.replace(/^\//, ''))) problems.push(`${manifest}: ${icon.src} is missing`);
+  }
+  if (!exists('icons/apple-touch-icon.png')) problems.push('icons/apple-touch-icon.png: missing');
+  const worker = text('sw.js');
+  if (worker === undefined) problems.push('sw.js: missing');
+  else {
+    const list = /const PRECACHE = (\[.*\]);/.exec(worker)?.[1];
+    /** @type {string[]} */
+    const urls = list ? /** @type {string[]} */ (parseJson(list)) : [];
+    if (urls.length === 0) problems.push('sw.js: precaches nothing');
+    for (const url of urls) {
+      const file =
+        url === '/' ? 'index.html' : url.endsWith('/') ? `${url.slice(1)}index.html` : url.slice(1);
+      if (!url.startsWith('/') || url.startsWith('//'))
+        problems.push(`sw.js: precaches ${url}, not on this site`);
+      else if (!exists(file)) problems.push(`sw.js: precaches ${url}, which isn't in dist/`);
+      if (/\.woff2?$/.test(url) && !/-(latin|latin-ext)-\d{3}-normal-[\w-]+\.woff2$/.test(url))
+        problems.push(`sw.js: precaches ${url}, not a Latin woff2 font`);
+    }
+    for (const page of ['/', '/pt/', '/404.html'])
+      if (!urls.includes(page)) problems.push(`sw.js: doesn't precache ${page}`);
+    if (/https?:\/\//.test(worker)) problems.push('sw.js: names another site');
+  }
+  return problems;
+}
+
 /** @param {string} dist */
 function readSite(dist) {
   return readdirSync(dist, { recursive: true, encoding: 'utf8' })
@@ -142,8 +233,13 @@ function readSite(dist) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const files = readSite(fileURLToPath(new URL('../dist', import.meta.url)));
-  const problems = [...findProblems(files), ...findMissingPages(files)];
+  const dist = fileURLToPath(new URL('../dist', import.meta.url));
+  const files = readSite(dist);
+  const problems = [
+    ...findProblems(files),
+    ...findMissingPages(files),
+    ...findAppProblems(files, (name) => existsSync(join(dist, name))),
+  ];
   if (problems.length > 0) {
     console.error(problems.join('\n'));
     process.exit(1);
