@@ -1,6 +1,6 @@
 /** Percentage loss, milestones, the goal, and BMI. */
-import { FLAT_KG, type Analysis, type Day, type Method, type Week } from './analyze';
-import { DAY } from './dates';
+import { FLAT_KG, KG_RANGE, type Analysis, type Day, type Method, type Week } from './analyze';
+import { addDays } from './dates';
 import { daysTo } from './fit';
 
 export const METHODS: readonly Method[] = ['linear', 'recent', 'smoothed'];
@@ -17,17 +17,31 @@ export interface Milestone {
   readonly goal: boolean;
   /** The first weigh-in at or below it, or null if not reached yet. */
   readonly reached: Day | null;
-  /** Days from the last weigh-in until each projection reaches it (null: never; 0: reached). */
+  /**
+   * Days from the last weigh-in until each projection reaches it: null never, 0 already reached or
+   * the projection is already there today (check `reached` to tell them apart).
+   */
   readonly daysBy: Readonly<Record<Method, number | null>>;
 }
 
 /** The weight that is `pct` % below the first weigh-in. */
 export const milestoneKg = (first: number, pct: number): number => first * (1 - pct / 100);
 
-/** The goal as a percentage of the first weight, or null if it isn't below it. */
+/** Whether `goalKg` is a goal weight at all (a number in the plausible range). */
+export const isGoal = (goalKg: number | null): goalKg is number =>
+  goalKg !== null && Number.isFinite(goalKg) && goalKg >= KG_RANGE[0] && goalKg <= KG_RANGE[1];
+
+/** The goal as a percentage of the first weight, or null if there is none below it. */
 export function goalPct(analysis: Analysis, goalKg: number | null): number | null {
   const first = analysis.first.kg;
-  return goalKg !== null && goalKg < first ? ((first - goalKg) / first) * 100 : null;
+  return isGoal(goalKg) && goalKg < first ? ((first - goalKg) / first) * 100 : null;
+}
+
+/** Share of the way from the first weight to the goal, clamped to 0–1, or null without one below it. */
+export function goalProgress(analysis: Analysis, goalKg: number | null): number | null {
+  if (!isGoal(goalKg)) return null;
+  const total = analysis.first.kg - goalKg;
+  return total > 0 ? Math.max(0, Math.min(1, (analysis.first.kg - analysis.last.kg) / total)) : null;
 }
 
 const byMethod = (f: (method: Method) => number | null): Record<Method, number | null> => ({
@@ -76,22 +90,23 @@ export const MONTH_DAYS = 30.44;
 /** The weekly loss often cited as sustainable, in % of current weight. */
 export const SUSTAINABLE_WEEKLY_PCT = [0.5, 1] as const;
 
-export type PaceBand = 'rising' | 'below' | 'within' | 'above';
+export type PaceBand = 'rising' | 'flat' | 'below' | 'within' | 'above';
 
+/** Every pace here is a loss: positive when losing, negative when gaining. */
 export interface PctKpis {
   /** Lost so far, in % of the first weight. */
   readonly lossPct: number;
-  /** The linear model's pace in % of the first weight, per week and per month (negative = losing). */
-  readonly weekPct: number | null;
-  readonly monthPct: number | null;
-  /** The recent model's pace, per week; null when it only repeats the linear one. */
-  readonly recentWeekPct: number | null;
-  /** The 7-day average against the one a week earlier, in %. */
-  readonly last7Pct: number | null;
-  /** The chosen model's weekly loss in % of the current weight, and where that falls. */
-  readonly currentWeekPct: number | null;
+  /** The linear model's loss in % of the first weight, per week and per month. */
+  readonly weekLossPct: number | null;
+  readonly monthLossPct: number | null;
+  /** The recent model's weekly loss; null when it only repeats the linear one. */
+  readonly recentWeekLossPct: number | null;
+  /** How much the 7-day average fell against the one a week earlier, in %. */
+  readonly last7LossPct: number | null;
+  /** The chosen model's weekly loss in % of the current weight, and its band. */
+  readonly currentWeekLossPct: number | null;
   readonly band: PaceBand | null;
-  /** The goal in % and how much of the way is covered, when a goal below the start is set. */
+  /** The goal in % and how much of the way is covered (0–1), when a goal below the start is set. */
   readonly goal: { readonly pct: number; readonly progress: number } | null;
   /** Otherwise the next round milestone and the days to it by the chosen model (null: never). */
   readonly next: { readonly pct: number; readonly days: number | null } | null;
@@ -103,37 +118,42 @@ export function pctKpis(analysis: Analysis, method: Method, goalKg: number | nul
   const lin = models.linear;
   const model = models[method];
   const lossPct = summary.lossShare * 100;
-  const currentWeekPct = model ? ((-model.slope * 7) / last.kg) * 100 : null;
+  const currentWeekLossPct = model ? ((-model.slope * 7) / last.kg) * 100 : null;
   let band: PaceBand | null = null;
-  if (currentWeekPct !== null) {
+  if (model !== null && currentWeekLossPct !== null) {
     const [lo, hi] = SUSTAINABLE_WEEKLY_PCT;
-    band =
-      currentWeekPct <= 0
+    const flat = Math.abs(model.slope * 7) <= FLAT_KG;
+    band = flat
+      ? 'flat'
+      : currentWeekLossPct < 0
         ? 'rising'
-        : currentWeekPct < lo
+        : currentWeekLossPct < lo
           ? 'below'
-          : currentWeekPct <= hi
+          : currentWeekLossPct <= hi
             ? 'within'
             : 'above';
   }
   const gp = goalPct(analysis, goalKg);
   let next: PctKpis['next'] = null;
   if (gp === null) {
-    const pct = Math.floor(lossPct / MILESTONE_STEP) * MILESTONE_STEP + MILESTONE_STEP;
+    // The next round milestone above the loss so far (5% when nothing is lost yet); the epsilon
+    // keeps an exact hit, stored as 9.999999999999995, from pointing at the one just reached.
+    const pct = (Math.floor(Math.max(0, lossPct) / MILESTONE_STEP + 1e-9) + 1) * MILESTONE_STEP;
     next = { pct, days: daysTo(model, last.kg, milestoneKg(F, pct)) };
   }
   return {
     lossPct,
-    weekPct: lin ? ((lin.slope * 7) / F) * 100 : null,
-    monthPct: lin ? ((lin.slope * MONTH_DAYS) / F) * 100 : null,
-    recentWeekPct: models.recent && !analysis.recentIsFallback ? ((models.recent.slope * 7) / F) * 100 : null,
-    last7Pct:
+    weekLossPct: lin ? ((-lin.slope * 7) / F) * 100 : null,
+    monthLossPct: lin ? ((-lin.slope * MONTH_DAYS) / F) * 100 : null,
+    recentWeekLossPct:
+      models.recent && !analysis.recentIsFallback ? ((-models.recent.slope * 7) / F) * 100 : null,
+    last7LossPct:
       last.avg7 !== null && summary.avg7WeekBefore !== null
-        ? ((last.avg7 - summary.avg7WeekBefore) / summary.avg7WeekBefore) * 100
+        ? ((summary.avg7WeekBefore - last.avg7) / summary.avg7WeekBefore) * 100
         : null,
-    currentWeekPct,
+    currentWeekLossPct,
     band,
-    goal: gp === null ? null : { pct: gp, progress: Math.max(0, lossPct / gp) },
+    goal: gp === null ? null : { pct: gp, progress: goalProgress(analysis, goalKg) ?? 0 },
     next,
   };
 }
@@ -157,9 +177,10 @@ export interface GoalPlan {
   readonly byMethod: Readonly<Record<Method, MethodPlan | null>>;
 }
 
-export function goalPlan(analysis: Analysis, goalKg: number): GoalPlan {
-  const { first, last, models } = analysis;
-  const total = first.kg - goalKg;
+/** The plan for a goal, or null for a goal that isn't a weight. */
+export function goalPlan(analysis: Analysis, goalKg: number | null): GoalPlan | null {
+  if (!isGoal(goalKg)) return null;
+  const { last, models } = analysis;
   const plan = (m: Method): MethodPlan | null => {
     const model = models[m];
     return model ? { days: daysTo(model, last.kg, goalKg), kgPerWeek: Math.abs(model.slope * 7) } : null;
@@ -168,14 +189,14 @@ export function goalPlan(analysis: Analysis, goalKg: number): GoalPlan {
     remaining: Math.max(0, last.kg - goalKg),
     reached: last.kg <= goalKg,
     below: Math.max(0, goalKg - last.kg),
-    progress: total > 0 ? Math.max(0, Math.min(1, (first.kg - last.kg) / total)) : null,
+    progress: goalProgress(analysis, goalKg),
     byMethod: { linear: plan('linear'), recent: plan('recent'), smoothed: plan('smoothed') },
   };
 }
 
 /** The date `days` after the last weigh-in. */
 export function dateAfterLast(analysis: Analysis, days: number): Date {
-  return new Date(analysis.last.t.getTime() + days * DAY);
+  return addDays(analysis.last.t, days);
 }
 
 export interface WeeklyPct {

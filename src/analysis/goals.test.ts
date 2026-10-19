@@ -48,23 +48,28 @@ describe('goalPlan', () => {
   it('measures the way covered and when each projection gets there', () => {
     const a = analyze(daily(Array.from({ length: 30 }, (_, i) => 100 - 0.2 * i)))!;
     const plan = goalPlan(a, 90);
-    expect(plan.remaining).toBeCloseTo(4.2, 10);
-    expect(plan.reached).toBe(false);
-    expect(plan.progress).toBeCloseTo(5.8 / 10, 10);
-    expect(plan.byMethod.linear?.days).toBe(21);
-    expect(plan.byMethod.linear?.kgPerWeek).toBeCloseTo(1.4, 10);
+    expect(plan?.remaining).toBeCloseTo(4.2, 10);
+    expect(plan?.reached).toBe(false);
+    expect(plan?.progress).toBeCloseTo(5.8 / 10, 10);
+    expect(plan?.byMethod.linear?.days).toBe(21);
+    expect(plan?.byMethod.linear?.kgPerWeek).toBeCloseTo(1.4, 10);
   });
 
   it('reports a reached goal and how far below it the weight is', () => {
     const plan = goalPlan(analyze(daily([100, 95]))!, 96);
-    expect([plan.reached, plan.remaining, plan.below, plan.progress]).toEqual([true, 0, 1, 1]);
+    expect([plan?.reached, plan?.remaining, plan?.below, plan?.progress]).toEqual([true, 0, 1, 1]);
   });
 
   it('still plans a goal above the first weight when the weight is above it', () => {
     const plan = goalPlan(analyze(daily([100, 104, 106]))!, 103);
-    expect(plan.remaining).toBeCloseTo(3, 10);
-    expect(plan.progress).toBeNull();
-    expect(plan.byMethod.linear?.days).toBeNull();
+    expect(plan?.remaining).toBeCloseTo(3, 10);
+    expect(plan?.progress).toBeNull();
+    expect(plan?.byMethod.linear?.days).toBeNull();
+  });
+
+  it('refuses a goal that isn’t a weight', () => {
+    expect(goalPlan(analyze(daily([100, 95]))!, 0)).toBeNull();
+    expect(goalPlan(analyze(daily([100, 95]))!, Number.NaN)).toBeNull();
   });
 });
 
@@ -75,11 +80,11 @@ describe('pctKpis', () => {
   it('gives the pace in % of the first and of the current weight, with its band', () => {
     const k = pctKpis(a, 'linear', null);
     expect(k.lossPct).toBeCloseTo(5.8, 10);
-    expect(k.weekPct).toBeCloseTo(-1.4, 10);
-    expect(k.monthPct).toBeCloseTo(-0.2 * 30.44, 10);
-    expect(k.currentWeekPct).toBeCloseTo((1.4 / 94.2) * 100, 10);
+    expect(k.weekLossPct).toBeCloseTo(1.4, 10);
+    expect(k.monthLossPct).toBeCloseTo(0.2 * 30.44, 10);
+    expect(k.currentWeekLossPct).toBeCloseTo((1.4 / 94.2) * 100, 10);
     expect(k.band).toBe('above');
-    expect(k.last7Pct).toBeCloseTo((-1.4 / 96.2) * 100, 8);
+    expect(k.last7LossPct).toBeCloseTo((1.4 / 96.2) * 100, 8);
     expect(k.next).toEqual({ pct: 10, days: 21 });
     expect(k.goal).toBeNull();
   });
@@ -89,6 +94,8 @@ describe('pctKpis', () => {
     expect(k.next).toBeNull();
     expect(k.goal?.pct).toBeCloseTo(12, 10);
     expect(k.goal?.progress).toBeCloseTo(5.8 / 12, 10);
+    expect(pctKpis(a, 'linear', 99)?.goal?.progress).toBe(1);
+    expect(pctKpis(a, 'linear', -5).goal).toBeNull();
   });
 
   it('bands the pace and hides a recent model that is only a fallback', () => {
@@ -96,7 +103,14 @@ describe('pctKpis', () => {
     expect(pctKpis(slow, 'linear', null).band).toBe('within');
     const up = analyze(daily([80, 80.2, 80.4]))!;
     expect(pctKpis(up, 'linear', null).band).toBe('rising');
-    expect(pctKpis(up, 'linear', null).recentWeekPct).toBeNull();
+    expect(pctKpis(up, 'linear', null).recentWeekLossPct).toBeNull();
+    expect(pctKpis(analyze(daily([80, 80, 80, 80]))!, 'linear', null).band).toBe('flat');
+  });
+
+  it('points at 5% after a gain, and past a milestone hit exactly', () => {
+    expect(pctKpis(analyze(daily([100, 100.5, 100.8, 101]))!, 'linear', null).next?.pct).toBe(5);
+    // 63 kg to 56.7 kg is exactly 10%, which floats store as 9.999999999999995.
+    expect(pctKpis(analyze(daily([63, 60, 58, 56.7]))!, 'linear', null).next?.pct).toBe(15);
   });
 });
 

@@ -276,10 +276,11 @@ describe('prediction bands', () => {
     expect(model.error).toBeCloseTo(0.408248290463863, 12);
     // R: predict(lm(y ~ x), data.frame(x = 3), interval = "prediction")
     const band = projectBand(model, 1)!;
-    expect(band.lo).toBeCloseTo(-4.13716, 2);
-    expect(band.hi).toBeCloseTo(14.80383, 2);
-    expect(t975(1)).toBe(12.706);
-    expect(t975(200)).toBe(1.96);
+    expect(band.lo).toBeCloseTo(-4.13723, 3);
+    expect(band.hi).toBeCloseTo(14.8039, 3);
+    expect(t975(30)).toBe(2.042);
+    expect(t975(31)).toBeCloseTo(2.036, 3);
+    expect(t975(10_000)).toBeCloseTo(1.96, 3);
   });
 });
 

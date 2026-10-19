@@ -39,13 +39,15 @@ const mean = (values: readonly number[]): number => values.reduce((sum, v) => su
  * 1.96 is close enough. Small samples need the wider band: with 3 weigh-ins it is 6.5 times wider.
  */
 const T975 = [
-  12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228, 2.201, 2.179, 2.16, 2.145, 2.131,
+  12.7062, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228, 2.201, 2.179, 2.16, 2.145, 2.131,
   2.12, 2.11, 2.101, 2.093, 2.086, 2.08, 2.074, 2.069, 2.064, 2.06, 2.056, 2.052, 2.048, 2.045, 2.042,
 ];
 
 /** The t quantile for a 95% two-sided interval with `df` degrees of freedom. */
 export function t975(df: number): number {
-  return T975[df - 1] ?? 1.96;
+  const z = 1.959964;
+  // Past the table, the first Cornish-Fisher term (2.036 at df 31; exact 2.040), so there's no jump.
+  return T975[df - 1] ?? z + (z ** 3 + z) / (4 * df);
 }
 
 /** The line through `points`, with days counted from `lastIndex`; null below three points. */

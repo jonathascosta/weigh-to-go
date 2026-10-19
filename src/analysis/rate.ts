@@ -37,9 +37,15 @@ export interface Rates {
   readonly full: RateModel | null;
   /** Fitted over the last 3 weeks, when they hold at least 5 weigh-ins. */
   readonly recent: RateModel | null;
-  /** The geometric mean rate from the first weigh-in to the last. */
+  /** The geometric mean rate from the first weigh-in to the last, from RATE_MIN_WEIGHINS on. */
   readonly mean: number | null;
 }
+
+/** The simulator accepts rates up to this, in % per day; anything higher is surely a typo. */
+export const SIM_RATE_MAX = 5;
+
+/** Rates need this many weigh-ins before they mean anything (two readings make a wild 'rate'). */
+export const RATE_MIN_WEIGHINS = 3;
 
 /** The percentage lost in `days` days at `rate` % per day (rates of 100% or more are capped). */
 export function compound(rate: number, days: number): number {
@@ -77,21 +83,26 @@ export function rates(analysis: Analysis): Rates {
     daily,
     full: fitRate(series, last.index),
     recent: recent && recent.n >= RECENT_MIN ? recent : null,
-    mean: last.index > 0 ? (1 - (last.kg / first.kg) ** (1 / last.index)) * 100 : null,
+    mean:
+      series.length >= RATE_MIN_WEIGHINS && last.index > 0
+        ? (1 - (last.kg / first.kg) ** (1 / last.index)) * 100
+        : null,
   };
 }
 
 /**
  * The rate fitted over the `window` days up to each weigh-in, once the window holds enough
- * weigh-ins (60% of its days, and at least 4); null before that. One pass over the series.
+ * weigh-ins (60% of its days, and at least 4); null before that. One value per day of the series
+ * (out[i] belongs to series[i], so rates().daily[k] pairs with out[k + 1]). One pass.
  */
 export function rollingRates(analysis: Analysis, window: number): (number | null)[] {
   const { series } = analysis;
+  if (!(window >= 1)) return series.map(() => null);
   const min = Math.max(4, Math.ceil(window * 0.6));
   const out: (number | null)[] = [];
   let start = 0;
   series.forEach((day, i) => {
-    while ((series[start]?.index ?? day.index) <= day.index - window) start++;
+    while (start < i && (series[start]?.index ?? day.index) <= day.index - window) start++;
     const inWindow = series.slice(start, i + 1);
     out.push(inWindow.length >= min ? (fitRate(inWindow, day.index)?.rate ?? null) : null);
   });
@@ -112,8 +123,14 @@ export interface SimulationRow {
 /** The days the simulator lists. */
 export const SIMULATION_DAYS = [1, 2, 3, 4, 5, 6, 7, 14, 21, 30, 60, 90, 180, 365] as const;
 
-/** Weight day by day at a constant `rate` % per day from `start` kg (0 < rate < SIM_RATE_MAX). */
+/** Whether the simulator can run: a rate above 0 and up to SIM_RATE_MAX, and a starting weight. */
+export function canSimulate(rate: number, start: number): boolean {
+  return Number.isFinite(rate) && rate > 0 && rate <= SIM_RATE_MAX && Number.isFinite(start) && start > 0;
+}
+
+/** Weight day by day at a constant `rate` % per day from `start` kg; empty if it can't simulate. */
 export function simulate(rate: number, start: number): SimulationRow[] {
+  if (!canSimulate(rate, start)) return [];
   return SIMULATION_DAYS.map((day) => {
     const kg = start * (1 - rate / 100) ** day;
     const before = start * (1 - rate / 100) ** (day - 1);
@@ -129,9 +146,6 @@ export function daysAtRate(rate: number, start: number, target: number): number 
   return ceilDays(Math.log(target / start) / Math.log(1 - rate / 100));
 }
 
-/** The simulator accepts rates up to this, in % per day; anything higher is surely a typo. */
-export const SIM_RATE_MAX = 5;
-
 export interface SimulationSummary {
   readonly week: number;
   readonly month: number;
@@ -143,7 +157,12 @@ export interface SimulationSummary {
   readonly daysToGoal: number | null;
 }
 
-export function simulationSummary(rate: number, start: number, goalKg: number | null): SimulationSummary {
+export function simulationSummary(
+  rate: number,
+  start: number,
+  goalKg: number | null,
+): SimulationSummary | null {
+  if (!canSimulate(rate, start)) return null;
   return {
     week: compound(rate, 7),
     month: compound(rate, 30),

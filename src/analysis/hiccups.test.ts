@@ -98,3 +98,21 @@ describe('hiccups across gaps', () => {
     );
   });
 });
+
+describe('hiccups on the smoothed lines', () => {
+  it('can measure the trend, and the 7-day average across a gap stops the climb', () => {
+    const climb = [90, 89, 88, 88.5, 89.5, 90.5, 91.5, 92, 92.5];
+    expect(hiccups(climb, { basis: 'trend', minDays: 3, minGain: 0.3 })).toHaveLength(1);
+    const before = Array.from({ length: 10 }, (_, i) => ({
+      date: isoDay(addDays(parseDay('2026-01-01'), i)),
+      kg: 90 + i * 0.1,
+    }));
+    const after = Array.from({ length: 10 }, (_, i) => ({
+      date: isoDay(addDays(parseDay('2026-05-01'), i)),
+      kg: 92 + i * 0.1,
+    }));
+    const a = analyze([...before, ...after])!;
+    const found = detectHiccups(a, { ...DEFAULT_RULES, basis: 'avg7', minDays: 1, minGain: 0.1 });
+    expect(found.every((h) => h.peak.index - h.start.index < 30)).toBe(true);
+  });
+});

@@ -125,6 +125,8 @@ export const KG_RANGE = [20, 500] as const;
 /** The "recent" model: the last 3 weeks, when they hold at least 5 weigh-ins. */
 export const RECENT_DAYS = 21;
 export const RECENT_MIN = 5;
+/** How far from exactly a week before the "7-day average a week ago" may come from. */
+export const WEEK_BEFORE_SLACK_DAYS = 2;
 
 const mean = (values: readonly number[]): number => values.reduce((sum, v) => sum + v, 0) / values.length;
 /** Rounds away floating-point noise, so 108.3 - 108.1 is 0.2, not 0.20000000000000284. */
@@ -279,7 +281,10 @@ function summarize(series: readonly Day[], weeks: readonly Week[]): Summary {
   const changeMean = changes.length ? mean(changes) : 0;
   const weekBefore = [...series]
     .reverse()
-    .find((d) => d.index <= last.index - 7 && d.index >= last.index - 9 && d.avg7 !== null);
+    .find(
+      (d) =>
+        d.index <= last.index - 7 && d.index >= last.index - 7 - WEEK_BEFORE_SLACK_DAYS && d.avg7 !== null,
+    );
   const loss = first.kg - last.kg;
   const days = last.index + 1;
   let bestWeek: Week | null = null;

@@ -46,6 +46,8 @@ describe('rates', () => {
     expect(r.daily[0]?.rate).toBeCloseTo(1, 10);
     expect(r.daily[0]?.kg).toBeCloseTo(1.99, 10);
     expect(r.full).toBeNull();
+    // Two readings make no rate.
+    expect(r.mean).toBeNull();
   });
 
   it('computes a rolling rate once the window is filled enough', () => {
@@ -55,6 +57,8 @@ describe('rates', () => {
     expect(r[7]).toBeNull();
     expect(r[8]).toBeCloseTo(0.3, 10);
     expect(r[19]).toBeCloseTo(0.3, 10);
+    // A window that isn't one gives no rates instead of looping forever.
+    for (const w of [0, -1, Number.NaN]) expect(rollingRates(a, w).every((v) => v === null)).toBe(true);
   });
 });
 
@@ -86,12 +90,14 @@ describe('simulate and daysAtRate', () => {
   });
 
   it('summarises a simulation', () => {
-    const s = simulationSummary(1, 100, 98);
+    const s = simulationSummary(1, 100, 98)!;
     expect(s.week).toBeCloseTo(compound(1, 7), 12);
     expect(s.kgFirstDay).toBe(1);
     expect(s.kgDay90).toBeCloseTo(0.99 ** 89, 10);
     expect(s.daysToGoal).toBe(3);
-    expect(simulationSummary(1, 100, 120).daysToGoal).toBeNull();
+    expect(simulationSummary(1, 100, 120)?.daysToGoal).toBeNull();
+    expect(simulationSummary(150, 100, 80)).toBeNull();
+    expect(simulate(Number.NaN, 100)).toEqual([]);
   });
 });
 
