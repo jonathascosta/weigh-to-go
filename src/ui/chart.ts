@@ -447,7 +447,9 @@ export function mountChart(
     }
     if (on('points')) {
       // One path of dots, not an element each: years of weigh-ins stay light to draw.
-      const r0 = width < 560 ? 2.5 : 3.2;
+      // Smaller when crowded, so a year of dots doesn't hide the lines drawn under them.
+      const spacing = visible.length > 1 ? (width - left - right) / visible.length : Infinity;
+      const r0 = Math.max(1, Math.min(width < 560 ? 2.5 : 3.2, spacing / 2));
       const dots = visible
         .map((d) => {
           const cx = Math.round(x(d.t) * 10) / 10;

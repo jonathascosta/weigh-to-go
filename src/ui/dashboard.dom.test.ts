@@ -65,11 +65,19 @@ describe('bulk paste', () => {
     expect(root.querySelector('.paste-result')!.textContent).toContain(
       'The line “10/05/2026 100” was read as',
     );
+    // Focus on the other reading, and a yes pressed at once does nothing.
+    expect(document.activeElement?.textContent).toBe('Read day and month the other way');
+    button('Yes, import').click();
+    await settle();
+    expect(days()).toEqual([]);
     button('Read day and month the other way').click();
     await settle();
+    await new Promise((resolve) => setTimeout(resolve, 450));
     button('Yes, import').click();
     await settle();
     expect(days()).toEqual(['2026-05-10 100', '2026-06-10 99']);
+    // The buttons are gone: focus is on what happened.
+    expect(document.activeElement?.textContent).toBe('Imported 2 weigh-ins.');
   });
 
   it('asks before giving days already logged another weight', async () => {
@@ -78,8 +86,10 @@ describe('bulk paste', () => {
     expect(days()).toEqual(['2026-09-20 100']);
     expect(root.querySelector('.paste-result')!.textContent).toContain('1 day already logged');
     // The yes waits a moment, so a double-click can't answer this question unseen.
-    expect(button('Yes, import').disabled).toBe(true);
     expect(document.activeElement?.textContent).toBe('Cancel');
+    button('Yes, import').click();
+    await settle();
+    expect(days()).toEqual(['2026-09-20 100']);
     await new Promise((resolve) => setTimeout(resolve, 450));
     button('Yes, import').click();
     await settle();

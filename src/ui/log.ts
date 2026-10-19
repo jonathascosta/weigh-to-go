@@ -176,11 +176,14 @@ export function mountLog(container: HTMLElement, app: App): (state: State, s: Se
         text: m['log.showMore'],
       });
       button.addEventListener('click', () => {
-        const first = shown;
+        const firstNew = [...days].reverse()[shown]?.date;
         shown += PAGE;
         render(app.state(), settings());
         // Keyboard readers go on from the first row that just appeared.
-        body.querySelectorAll<HTMLButtonElement>('button[data-role="delete"]')[first]?.focus();
+        if (firstNew)
+          body
+            .querySelector<HTMLButtonElement>(`button[data-day="${firstNew}"][data-role="delete"]`)
+            ?.focus();
       });
       more.replaceChildren(
         h('span', { class: 'note', text: m['log.more'](f.number(shown, 0), f.number(days.length, 0)) }),

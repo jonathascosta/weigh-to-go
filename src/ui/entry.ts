@@ -13,6 +13,12 @@ import { h, say } from './dom';
 const BAD_SHOWN = 5;
 /** How long a yes waits before it can be pressed, so a double-click can't answer two questions. */
 const CONFIRM_DELAY_MS = 400;
+
+/**
+ * Whether a yes shown at `shownAt` may be pressed yet. Clicks before then are ignored rather than
+ * the button disabled: a disabled button that is clicked sends focus away from the question.
+ */
+const armed = (shownAt: number): boolean => performance.now() - shownAt >= CONFIRM_DELAY_MS;
 /** The example weight, in kg (shown in the reader's unit). */
 const EXAMPLE_KG = 108.4;
 
@@ -203,7 +209,9 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
       attrs: { type: 'button' },
       text: m['paste.cancel'],
     });
+    const shownAt = performance.now();
     yes.addEventListener('click', () => {
+      if (!armed(shownAt)) return;
       savePaste(result, [yes, no, pasteButton, ...others]);
     });
     no.addEventListener('click', () => {
@@ -217,10 +225,6 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
     // Not the yes: a second Enter on "Import lines" must not overwrite logged days. And the yes
     // waits a moment, so the second click of a double-click on the button before can't land on it.
     no.focus();
-    yes.disabled = true;
-    setTimeout(() => {
-      yes.disabled = false;
-    }, CONFIRM_DELAY_MS);
   };
 
   /**
@@ -258,7 +262,9 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
         attrs: { type: 'button' },
         text: m['paste.confirm'],
       });
+      const shownAt = performance.now();
       confirmOrder.addEventListener('click', () => {
+        if (!armed(shownAt)) return;
         confirmOrder.disabled = true;
         swap.disabled = true;
         // Read as shown; if it also overwrites days, that is asked next.
@@ -271,7 +277,9 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
         }),
         h('div', { class: 'actions' }, confirmOrder, swap),
       );
-      confirmOrder.focus();
+      // As with the overwrite question: focus on the other reading, and a yes that waits, so a
+      // second Enter or click can't accept a guessed order unseen.
+      swap.focus();
       return;
     }
     afterOrder(result);
@@ -294,6 +302,7 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
     const parts: Node[] = [
       h('p', {
         class: 'status status-ok',
+        attrs: { tabindex: -1 },
         text: m['paste.done'](count(result.rows.length, m['word.weighIn'], s)),
       }),
       h('p', {
@@ -317,6 +326,8 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
       );
     }
     pasteStatus.replaceChildren(...parts);
+    // The buttons that ran the paste may be gone: focus moves to what happened.
+    (parts[0] as HTMLElement).focus();
   };
 
   pasteButton.addEventListener('click', () => {
