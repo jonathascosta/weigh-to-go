@@ -4,14 +4,17 @@
 // it without a click. Best effort: a sandboxed frame without scripts skips it, but then the diary,
 // which needs scripts, doesn't work there either.
 
-/** Checks the page isn't framed and reveals it; returns whether the page may go on. */
-export function checkFrame(): boolean {
+/**
+ * Checks the page isn't framed and reveals it; returns whether the page may go on. `openLabel` is
+ * the link's text, in the reader's language.
+ */
+export function checkFrame(openLabel: string): boolean {
   const framed = window.top !== window.self;
   if (framed) {
     const link = document.createElement('a');
     link.href = window.location.href;
     link.target = '_top';
-    link.textContent = 'Open Weigh to Go in its own tab';
+    link.textContent = openLabel;
     document.body.replaceChildren(link);
   }
   document.body.classList.add('frame-checked');

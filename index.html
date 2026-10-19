@@ -3,9 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Weigh to Go · A weight diary that stays on your device</title>
+    <title data-i18n="page.home.title">Weigh to Go · A weight diary that stays on your device</title>
     <meta
       name="description"
+      data-i18n-content="page.home.description"
       content="Log your weigh-ins and see your trend, projections, weekly averages and more. Weigh to Go runs entirely in your browser: your data never leaves your device."
     />
     <link rel="canonical" href="https://weightogo.jonathas.net/" />
@@ -26,27 +27,34 @@
     <noscript><link rel="stylesheet" href="/noscript.css" /></noscript>
   </head>
   <body>
-    <a class="skip-link" href="#main">Skip to content</a>
+    <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
     <header class="site-header">
       <a class="brand" href="/"><img src="/favicon.svg" alt="" width="28" height="28" /> Weigh to Go</a>
+      <div class="settings" id="settings" role="group"></div>
     </header>
     <main id="main" tabindex="-1">
       <section class="intro">
-        <h1>Your weight diary, on your device</h1>
-        <p>
+        <h1 data-i18n="home.heading">Your weight diary, on your device</h1>
+        <p data-i18n="home.lede">
           Log a weigh-in a day and Weigh to Go shows where you're heading: the trend under the daily noise,
           projections, weekly averages, the days you climb back up, and more.
         </p>
-        <p class="privacy">Everything runs in your browser: your weigh-ins are stored on this device only.</p>
+        <p class="privacy" data-i18n="home.privacy">
+          Everything runs in your browser: your weigh-ins are stored on this device only.
+        </p>
       </section>
-      <noscript><p class="error">Weigh to Go needs JavaScript, which is turned off.</p></noscript>
+      <noscript
+        ><p class="error" data-i18n="home.noscript">
+          Weigh to Go needs JavaScript, which is turned off.
+        </p></noscript
+      >
       <section class="app" id="app">
-        <p class="placeholder">The diary is on its way.</p>
+        <p class="placeholder" data-i18n="home.placeholder">The diary is on its way.</p>
       </section>
     </main>
     <footer class="site-footer">
       <p>
-        Made by <a href="https://www.jonathas.net">Jonathas Costa</a>
+        <span data-i18n="footer.madeBy">Made by</span> <a href="https://www.jonathas.net">Jonathas Costa</a>
         <span class="version" id="version"></span>
       </p>
     </footer>

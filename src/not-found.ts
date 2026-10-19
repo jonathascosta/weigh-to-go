@@ -1,3 +1,5 @@
 import { checkFrame } from './frame';
+import { t, translatePage } from './i18n';
 
-checkFrame();
+translatePage(document);
+checkFrame(t('frame.open'));

@@ -5,10 +5,10 @@
  * after it (kg, lb, lbs) or else the unit chosen on the page.
  */
 import { isIsoDay } from '../analysis/dates';
+import type { WeightUnit } from '../units';
 import { byDate, isWeight, isWeighInDay, LB_KG } from './records';
 
 export type DateOrder = 'dmy' | 'mdy';
-export type WeightUnit = 'kg' | 'lb';
 
 export interface PasteOptions {
   /** The order of the person's language, used when the paste itself doesn't settle it. */

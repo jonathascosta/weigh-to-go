@@ -148,8 +148,9 @@ main,
 
 .site-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   padding-top: max(16px, env(safe-area-inset-top, 0px));
   padding-bottom: 8px;
 }
@@ -163,6 +164,7 @@ main,
   font-weight: 600;
   color: var(--fg);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 main {
@@ -225,4 +227,29 @@ main {
 .version {
   margin-left: 6px;
   font-variant-numeric: tabular-nums;
+}
+
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-left: auto;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.setting select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 6px;
+  min-height: 32px;
 }

@@ -47,6 +47,16 @@ Portuguese, published at weightogo.jonathas.net. Each story becomes an issue in 
    and cm or ft/in, stored in metric. Everything the page shows is translated, including the static
    text of index.html and 404.html, the page title and description, the frame-gate link and
    `<html lang>`.
+
+   The language picks the dictionary (`src/i18n/messages.ts`, Portuguese typed against English);
+   the browser's locale for that language (en-GB, pt-PT…) shapes numbers and dates, through
+   `Intl`, with days formatted in UTC. Units follow where the reader is (the browser's first
+   language tag), not the language they read in, and the reader's choices are kept as
+   preferences. Typed decimals take a comma or a point whatever the language. The page is written
+   in English, so without scripts it reads in English. Story 5 uses `dateOrder` for bulk paste and
+   the formatter for everything it shows; the height inputs (cm, or feet and inches) come with the
+   profile.
+
 5. **Dashboard I.** Header summary, weigh-in form, bulk paste, KPIs, the main chart with all its
    layers, projection methods, horizons and periods, and the log with delete and confirmation.
    From story 3: ask for persistent storage after the first save, not on load; say when the store
