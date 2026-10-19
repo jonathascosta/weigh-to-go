@@ -152,3 +152,102 @@ describe('notices', () => {
     expect(notice.textContent).toContain('Export a backup');
   });
 });
+
+describe('Dashboard II', () => {
+  const section = (id: string) => root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!;
+  const chip = (id: string, text: string) =>
+    [...section(id).querySelectorAll<HTMLButtonElement>('button.chip')].find((b) => b.textContent === text)!;
+  // Down to 98, a 4-day climb to 99.2 and back, then a climb of 0.9 still going on.
+  const climbs = [
+    100, 99.5, 99, 98.5, 98, 98.3, 98.6, 98.9, 99.2, 98.8, 98.4, 98.1, 97.9, 97.5, 97.8, 98.1, 98.4,
+  ];
+  const saveDays = async (weights: readonly number[]) => {
+    await app.save(weights.map((kg, i) => ({ date: `2026-09-${String(i + 1).padStart(2, '0')}`, kg })));
+    await settle();
+  };
+
+  it('lets the hiccup rules change the table and the main chart’s hiccups alike', async () => {
+    await saveDays(climbs);
+    const rows = () => section('hiccups-title').querySelectorAll('tbody tr[data-key]').length;
+    const bands = () => section('chart-title').querySelectorAll('rect.hiccup').length;
+    expect([rows(), bands()]).toEqual([2, 2]);
+    chip('hiccups-title', '1 kg').click();
+    expect([rows(), bands()]).toEqual([1, 1]);
+    expect(chip('hiccups-title', '1 kg').getAttribute('aria-pressed')).toBe('true');
+    expect(section('hiccups-title').querySelector('.rules')!.textContent).toContain('1 kg or more');
+    chip('hiccups-title', '1.5 kg').click();
+    expect([rows(), bands()]).toEqual([0, 0]);
+    expect(section('hiccups-title').querySelector('tbody')!.textContent).toContain(
+      'No hiccup with the chosen rules',
+    );
+    // Kept for the next visit.
+    expect(JSON.parse(localStorage.getItem('weigh-to-go:hiccups.rules')!)).toMatchObject({ minGain: 1.5 });
+  });
+
+  it('shows the gain chips in lb, keeping kg values', () => {
+    choose({ weightUnit: 'lb' });
+    chip('hiccups-title', '2.2 lb').click();
+    expect(JSON.parse(localStorage.getItem('weigh-to-go:hiccups.rules')!)).toMatchObject({ minGain: 1 });
+  });
+
+  it('reads the simulator’s weights in lb', async () => {
+    await saveDays(climbs);
+    choose({ weightUnit: 'lb' });
+    expect(root.querySelector('#sim-target-unit')!.textContent).toBe('lb');
+    const target = root.querySelector<HTMLInputElement>('#sim-target')!;
+    target.value = '200';
+    target.dispatchEvent(new Event('input'));
+    expect(JSON.parse(localStorage.getItem('weigh-to-go:sim.target')!)).toBeCloseTo(90.718474, 6);
+    expect(section('rate-title').textContent).toContain('the target of 200.0 lb');
+    target.value = '2x';
+    target.dispatchEvent(new Event('input'));
+    expect(section('rate-title').textContent).toContain('Type the target weight in lb');
+    const rate = root.querySelector<HTMLInputElement>('#sim-rate')!;
+    rate.value = '0,5';
+    rate.dispatchEvent(new Event('input'));
+    expect(JSON.parse(localStorage.getItem('weigh-to-go:sim.rate')!)).toBe(0.5);
+  });
+
+  it('hides the blocks turned off', async () => {
+    await saveDays(climbs);
+    const chartSvg = () => section('pct-title').querySelector('svg[aria-labelledby="pct-title"]');
+    expect(chartSvg()).not.toBeNull();
+    chip('pct-title', 'Chart').click();
+    expect(chartSvg()!.closest<HTMLElement>('.block')!.hidden).toBe(true);
+    chip('rate-title', 'Simulator').click();
+    expect(root.querySelector('#sim-rate')!.closest<HTMLElement>('.block')!.hidden).toBe(true);
+    chip('pct-title', 'Chart').click();
+    expect(chartSvg()!.closest<HTMLElement>('.block')!.hidden).toBe(false);
+  });
+
+  it('keeps focus and the day on a chart drawn again', async () => {
+    await saveDays(climbs);
+    const svg = () => section('pct-title').querySelector<SVGSVGElement>('svg[aria-labelledby="pct-title"]')!;
+    expect(svg().getAttribute('role')).toBe('group');
+    expect(svg().getAttribute('aria-roledescription')).toBe('chart');
+    svg().focus();
+    svg().dispatchEvent(new KeyboardEvent('keydown', { key: 'Home' }));
+    const live = section('pct-title').querySelector('[aria-live]')!;
+    expect(live.textContent).toMatch(/^Tuesday, September 1, 2026: Lost so far 0.00%/);
+    await app.save([{ date: '2026-09-18', kg: 98 }]);
+    await settle();
+    expect(document.activeElement).toBe(svg());
+    expect(section('pct-title').querySelector<HTMLElement>('.tip')!.hidden).toBe(false);
+  });
+
+  it('works, and says what is missing, with 0 to 3 weigh-ins', async () => {
+    const errors = vi.spyOn(console, 'error');
+    const text = () =>
+      ['pct-title', 'rate-title', 'hiccups-title'].map((id) => section(id).textContent).join(' ');
+    expect(text()).toContain('The % chart appears from the second weigh-in.');
+    for (const n of [1, 2, 3]) {
+      await saveDays(climbs.slice(0, n));
+      if (n < 3) expect(text()).toContain('Appears from the third weigh-in.');
+      if (n < 3) expect(text()).toContain('Hiccups show from the third weigh-in.');
+    }
+    expect(text()).toContain('needs 2 weeks of weigh-ins');
+    expect(section('rate-title').querySelector('svg')).not.toBeNull();
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
+  });
+});

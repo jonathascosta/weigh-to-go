@@ -7,15 +7,15 @@
 import { extent, range } from 'd3-array';
 import { scaleLinear, scaleUtc } from 'd3-scale';
 import { area, line } from 'd3-shape';
-import { utcDay } from 'd3-time';
 import type { Analysis, Day, Method } from '../analysis/analyze';
 import { addDays, DAY } from '../analysis/dates';
 import { project, projectBand } from '../analysis/fit';
 import { weightForBmi } from '../analysis/goals';
-import { DEFAULT_RULES, detectHiccups } from '../analysis/hiccups';
+import { detectHiccups } from '../analysis/hiccups';
 import type { State } from '../app/app';
 import {
   ESSENTIAL_LAYERS,
+  hiccupRules,
   HORIZONS,
   horizonPref,
   LAYERS,
@@ -30,6 +30,17 @@ import {
 import { count, settings, type Settings } from '../i18n';
 import { fromKg } from '../units';
 import { chips, h, rich, s as svg } from './dom';
+import {
+  createPlot,
+  dotsPath,
+  leftFor,
+  nearDay,
+  plotGroups,
+  textWidth,
+  timeAxis,
+  yGrid,
+  type TipRow,
+} from './plot';
 
 const METHOD_KEYS: readonly Method[] = ['linear', 'recent', 'smoothed'];
 const BMI_LINES = [25, 30, 35, 40] as const;
@@ -77,9 +88,6 @@ export function projection(analysis: Analysis, method: Method, horizon: number):
   });
 }
 
-/** A rough width of a label in the chart's 12px condensed font, to leave room for it. */
-const textWidth = (text: string): number => text.length * 6.6;
-
 export function mountChart(
   container: HTMLElement,
   app: { state(): State },
@@ -93,21 +101,18 @@ export function mountChart(
   const title = h('h2', { attrs: { id: 'chart-title' } });
   const note = h('p', { class: 'note' });
   const controls = h('div', { class: 'controls' });
-  const box = h('div', { class: 'chart' });
-  const tip = h('div', { class: 'tip', attrs: { hidden: true, 'aria-hidden': 'true' } });
-  const live = h('p', { class: 'visually-hidden', attrs: { 'aria-live': 'polite' } });
   const foot = h('p', { class: 'foot' });
-  container.replaceChildren(
-    h('div', { class: 'card-head' }, h('div', {}, title, note)),
-    controls,
-    h('div', { class: 'chart-wrap' }, box, tip),
-    live,
-    foot,
-  );
-
   const redraw = () => {
     draw(app.state(), settings());
   };
+  const plot = createPlot(redraw);
+  container.replaceChildren(
+    h('div', { class: 'card-head' }, h('div', {}, title, note)),
+    controls,
+    plot.element,
+    plot.live,
+    foot,
+  );
 
   const buildControls = (s: Settings) => {
     const m = s.messages;
@@ -187,30 +192,18 @@ export function mountChart(
 
   let lastLang = '';
 
-  /** The chart drawn last, to keep the reader's place when it is drawn again. */
-  let current: { root: SVGSVGElement; day: () => number | null } | null = null;
-
   const draw = (state: State, s: Settings) => {
-    const keep = current && document.activeElement === current.root ? { day: current.day() } : null;
-    current = null;
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
     const u = (kg: number) => fromKg(kg, unit);
     const w = (kg: number) => f.weight(kg, unit);
-    tip.hidden = true;
     const { analysis, profile } = state;
     // The SVG is drawn at the box's own width, so its pixels are the page's (no scaling).
-    const width = box.clientWidth || 640;
+    const width = plot.width();
     const height = width < 560 ? 300 : 410;
-    box.style.minHeight = `${String(height)}px`;
     foot.replaceChildren();
     if (!analysis) {
-      box.replaceChildren(
-        h('p', {
-          class: 'empty',
-          text: state.status === 'loading' ? m['home.placeholder'] : m['chart.empty'],
-        }),
-      );
+      plot.empty(state.status === 'loading' ? m['home.placeholder'] : m['chart.empty'], height);
       return;
     }
 
@@ -227,7 +220,7 @@ export function mountChart(
     const goal = profile.goalKg;
     const heightCm = profile.heightCm;
     const hiccups = on('hiccups')
-      ? detectHiccups(analysis, DEFAULT_RULES).filter((x) => x.peak.t >= start)
+      ? detectHiccups(analysis, hiccupRules()).filter((x) => x.peak.t >= start)
       : [];
 
     // The y range: everything shown, in the reader's unit.
@@ -252,7 +245,7 @@ export function mountChart(
     const yTicks = y.ticks(height < 340 ? 5 : 7);
     const tickStep = Math.abs((yTicks[1] ?? 1) - (yTicks[0] ?? 0));
     const tick = (v: number) => f.number(v, tickStep < 1 ? 1 : 0);
-    const left = Math.ceil(Math.max(...yTicks.map((v) => textWidth(tick(v))))) + 12;
+    const left = leftFor(yTicks.map(tick));
     const endText = f.number(u(pj[pj.length - 1]?.v ?? last.kg));
     const right = Math.ceil(textWidth(endText)) + 16;
     const x = scaleUtc(
@@ -260,62 +253,24 @@ export function mountChart(
       [left, width - right],
     );
 
-    // A focusable group the keyboard moves through, not an image: it says how to use it.
-    const root = svg('svg', {
+    const root = plot.root({
       width,
       height,
-      viewBox: `0 0 ${String(width)} ${String(height)}`,
-      role: 'group',
-      'aria-roledescription': m['chart.roleDescription'],
-      'aria-labelledby': 'chart-title',
-      'aria-describedby': 'chart-desc',
-      tabindex: 0,
-      class: 'chart-svg',
+      labelledBy: 'chart-title',
+      descId: 'chart-desc',
+      roleDescription: m['chart.roleDescription'],
+      desc: `${m['chart.aria'](
+        f.day(visible[0]?.date ?? last.date, 'medium'),
+        f.day(last.date, 'medium'),
+        w(visible[0]?.kg ?? last.kg),
+        w(last.kg),
+      )} ${m['chart.keys']}`,
     });
-    root.append(
-      svg(
-        'desc',
-        { id: 'chart-desc' },
-        `${m['chart.aria'](
-          f.day(visible[0]?.date ?? last.date, 'medium'),
-          f.day(last.date, 'medium'),
-          w(visible[0]?.kg ?? last.kg),
-          w(last.kg),
-        )} ${m['chart.keys']}`,
-      ),
-    );
     const grid = svg('g');
-    for (const v of yTicks) {
-      grid.append(
-        svg('line', { class: 'gridline', x1: left, x2: width - right, y1: y(v), y2: y(v) }),
-        svg('text', { class: 'tick', x: left - 8, y: y(v), dy: '0.32em', 'text-anchor': 'end' }, tick(v)),
-      );
-    }
-    grid.append(svg('line', { class: 'axisline', x1: left, x2: width - right, y1: bottom, y2: bottom }));
-    const xTicks = x
-      .ticks(Math.max(2, Math.floor((width - left - right) / 74)))
-      .filter((t) => +t === +utcDay.floor(t));
-    // Over months, ticks fall on the 1st and read as months with their year ("Jan 2026"); over
-    // weeks, as days, which the period line above dates.
-    const monthly = xTicks.length > 1 && xTicks.every((t) => t.getUTCDate() === 1);
-    for (const t of xTicks) {
-      const iso = t.toISOString().slice(0, 10);
-      grid.append(
-        svg(
-          'text',
-          { class: 'tick', x: x(t), y: height - 9, 'text-anchor': 'middle' },
-          f.day(iso, monthly ? 'monthYear' : 'dayMonth'),
-        ),
-      );
-    }
-    const clip = svg('clipPath', { id: 'chart-clip' });
-    clip.append(svg('rect', { x: left, y: 0, width: Math.max(0, width - right - left), height: bottom }));
-    const defs = svg('defs');
-    defs.append(clip);
-    root.append(grid, defs);
-    const g = svg('g', { 'clip-path': 'url(#chart-clip)' });
-    const labels = svg('g');
-    root.append(g, labels);
+    yGrid(grid, y, yTicks, tick, { left, right: width - right });
+    timeAxis(grid, x, f, { left, right: width - right, bottom, height });
+    root.append(grid);
+    const { g, labels } = plotGroups(root, 'chart-clip', { left, right: width - right, bottom });
 
     if (on('bmi') && heightCm !== null) {
       for (const k of BMI_LINES) {
@@ -446,18 +401,18 @@ export function mountChart(
       );
     }
     if (on('points')) {
-      // One path of dots, not an element each: years of weigh-ins stay light to draw.
       // Smaller when crowded, so a year of dots doesn't hide the lines drawn under them.
       const spacing = visible.length > 1 ? (width - left - right) / visible.length : Infinity;
       const r0 = Math.max(1, Math.min(width < 560 ? 2.5 : 3.2, spacing / 2));
-      const dots = visible
-        .map((d) => {
-          const cx = Math.round(x(d.t) * 10) / 10;
-          const cy = Math.round(y(u(d.kg)) * 10) / 10;
-          return `M${String(cx - r0)} ${String(cy)}a${String(r0)} ${String(r0)} 0 1 0 ${String(2 * r0)} 0a${String(r0)} ${String(r0)} 0 1 0 ${String(-2 * r0)} 0`;
-        })
-        .join('');
-      g.append(svg('path', { class: 'point', d: dots }));
+      g.append(
+        svg('path', {
+          class: 'point',
+          d: dotsPath(
+            visible.map((d) => ({ x: x(d.t), y: y(u(d.kg)) })),
+            r0,
+          ),
+        }),
+      );
     }
     const anchorAt = (px: number) => (px < left + 40 ? 'start' : px > width - right - 40 ? 'end' : 'middle');
     const annotate = (d: Day, text: string, above: boolean, kind = '') => {
@@ -510,132 +465,62 @@ export function mountChart(
       );
 
     // The cursor: a rule and a dot on the day under the pointer, or picked with the arrow keys.
-    const rule = svg('line', { class: 'hoverline', y1: top, y2: bottom, visibility: 'hidden' });
-    const dot = svg('circle', { class: 'hoverdot', r: 5.5, visibility: 'hidden' });
-    root.append(rule, dot);
     const days: { t: Date; day: Day | null; p: ProjectionPoint | null }[] = [
       ...visible.map((d) => ({ t: d.t, day: d, p: null })),
       ...pj.filter((p) => p.h > 0).map((p) => ({ t: p.t, day: null, p })),
     ];
-    let cursor = -1;
-    const hide = () => {
-      rule.setAttribute('visibility', 'hidden');
-      dot.setAttribute('visibility', 'hidden');
-      tip.hidden = true;
-    };
-    /** Shows the day `i`; `announce` reads it out (keyboard only: the pointer would chatter). */
-    const show = (i: number, announce = false) => {
-      const item = days[i];
-      if (!item) {
-        hide();
-        return;
-      }
-      cursor = i;
-      const value = item.day ? item.day.kg : (item.p?.v ?? 0);
-      const px = x(item.t);
-      const py = y(u(value));
-      rule.setAttribute('x1', String(px));
-      rule.setAttribute('x2', String(px));
-      rule.setAttribute('visibility', 'visible');
-      dot.setAttribute('cx', String(px));
-      dot.setAttribute('cy', String(py));
-      dot.setAttribute('class', item.day ? 'hoverdot' : 'hoverdot hoverdot-proj');
-      dot.setAttribute('visibility', 'visible');
-      const rows: [string, string, string?][] = [];
-      let heading: string;
-      if (item.day) {
-        const d = item.day;
-        heading = f.day(d.date, 'long');
-        rows.push([m['tip.weight'], w(d.kg), 'sw-weight']);
-        if (d.change !== null)
-          rows.push([d.gap === 1 ? m['tip.vsDay'] : m['tip.vsPrevious'], f.weightChange(d.change, unit)]);
-        if (on('avg7') && d.avg7 !== null) rows.push([m['tip.avg7'], w(d.avg7), 'sw-avg7']);
-        if (on('trend')) rows.push([m['tip.trend'], w(d.trend), 'sw-trend']);
-        const reg = regression(d.t);
-        if (on('regression') && reg !== null) rows.push([m['tip.regression'], w(reg), 'sw-reg']);
-      } else {
-        const p = item.p;
-        if (!p) return;
-        heading = m['tip.projectionOn'](f.day(p.t.toISOString().slice(0, 10), 'long'));
-        rows.push([m['tip.projection'], w(p.v), 'sw-proj']);
-        if (band && p.lo !== null && p.hi !== null)
-          rows.push([m['tip.band'], m['tip.range'](w(p.lo), w(p.hi))]);
-        rows.push([m['tip.in'], count(p.h, m['word.day'], s)]);
-      }
-      tip.replaceChildren(
-        h('div', { class: 'tip-title', text: heading }),
-        ...rows.map(([name, value, sw]) =>
-          h(
-            'div',
-            { class: 'tip-row' },
-            sw ? h('span', { class: `swatch ${sw}` }) : null,
-            h('span', { class: 'tip-name', text: name }),
-            h('span', { class: 'tip-value', text: value }),
-          ),
+    const at = (i: number) => days[i] ?? { t: last.t, day: last, p: null };
+    plot.show(
+      root,
+      {
+        top,
+        bottom,
+        area: { left, right: width - right },
+        count: days.length,
+        stop: (i) => {
+          const item = at(i);
+          return {
+            x: x(item.t),
+            y: y(u(item.day ? item.day.kg : (item.p?.v ?? last.kg))),
+            key: item.t.getTime(),
+            dot: item.day ? 'hoverdot' : 'hoverdot hoverdot-proj',
+          };
+        },
+        tip: (i) => {
+          const item = at(i);
+          const rows: TipRow[] = [];
+          if (item.day) {
+            const d = item.day;
+            rows.push({ name: m['tip.weight'], value: w(d.kg), swatch: 'sw-weight' });
+            if (d.change !== null)
+              rows.push({
+                name: d.gap === 1 ? m['tip.vsDay'] : m['tip.vsPrevious'],
+                value: f.weightChange(d.change, unit),
+              });
+            if (on('avg7') && d.avg7 !== null)
+              rows.push({ name: m['tip.avg7'], value: w(d.avg7), swatch: 'sw-avg7' });
+            if (on('trend')) rows.push({ name: m['tip.trend'], value: w(d.trend), swatch: 'sw-trend' });
+            const reg = regression(d.t);
+            if (on('regression') && reg !== null)
+              rows.push({ name: m['tip.regression'], value: w(reg), swatch: 'sw-reg' });
+            return { heading: f.day(d.date, 'long'), rows };
+          }
+          const p = item.p ?? { t: last.t, v: last.kg, lo: null, hi: null, h: 0 };
+          rows.push({ name: m['tip.projection'], value: w(p.v), swatch: 'sw-proj' });
+          if (band && p.lo !== null && p.hi !== null)
+            rows.push({ name: m['tip.band'], value: m['tip.range'](w(p.lo), w(p.hi)) });
+          rows.push({ name: m['tip.in'], value: count(p.h, m['word.day'], s) });
+          return { heading: m['tip.projectionOn'](f.day(p.t.toISOString().slice(0, 10), 'long')), rows };
+        },
+        near: nearDay(
+          x,
+          days.map((d) => d.t),
         ),
-      );
-      tip.hidden = false;
-      const boxX = px;
-      const boxY = py;
-      let tipLeft = boxX + 14;
-      if (tipLeft + tip.offsetWidth > box.clientWidth) tipLeft = Math.max(0, boxX - 14 - tip.offsetWidth);
-      let tipTop = boxY - tip.offsetHeight - 12;
-      if (tipTop < 0) tipTop = boxY + 16;
-      tip.style.left = `${String(tipLeft)}px`;
-      tip.style.top = `${String(tipTop)}px`;
-      if (announce) live.textContent = `${heading}: ${rows.map(([n, v]) => `${n} ${v}`).join(', ')}`;
-    };
-    const nearest = (clientX: number) => {
-      const rect = root.getBoundingClientRect();
-      const px = ((clientX - rect.left) / rect.width) * width;
-      const t = utcDay.round(x.invert(px));
-      return days.findIndex((d) => +d.t === +t);
-    };
-    const surface = svg('rect', {
-      x: left,
-      y: 0,
-      width: Math.max(0, width - right - left),
-      height: bottom,
-      class: 'surface',
-    });
-    const point = (event: PointerEvent) => {
-      const i = nearest(event.clientX);
-      if (i < 0) hide();
-      else show(i);
-    };
-    // On the whole chart, not just the plot area: a finger lands on a label or a line as often as
-    // on the space between. A tap shows the day too (touch has no hover); a drag across scrubs.
-    root.addEventListener('pointermove', point);
-    root.addEventListener('pointerdown', point);
-    root.addEventListener('pointerleave', (event) => {
-      if (event.pointerType === 'mouse') hide();
-    });
-    root.append(surface);
-    root.addEventListener('keydown', (event) => {
-      const key = event.key;
-      if (key === 'Escape') {
-        hide();
-        return;
-      }
-      const step = key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : 0;
-      const jump = key === 'Home' ? 0 : key === 'End' ? days.length - 1 : null;
-      if (step === 0 && jump === null) return;
-      event.preventDefault();
-      // Start from the last weigh-in, where the reader's eye is.
-      const from = cursor < 0 ? visible.length - 1 : cursor;
-      show(jump ?? Math.min(days.length - 1, Math.max(0, from + step)), true);
-    });
-    root.addEventListener('blur', hide);
-    box.replaceChildren(root);
-    // Drawn again under a reader using it (another tab saved, the window resized): keep their
-    // place and their focus.
-    if (keep) {
-      root.focus();
-      // The same day, not the same position: a day added before it moves it along.
-      const again = keep.day === null ? -1 : days.findIndex((d) => +d.t === keep.day);
-      if (again >= 0) show(again);
-    }
-    current = { root, day: () => days[cursor]?.t.getTime() ?? null };
+        // Start from the last weigh-in, where the reader's eye is.
+        from: visible.length - 1,
+      },
+      height,
+    );
 
     // The line under the chart: what the projection says, and what a layer needs to show.
     if (model) {
@@ -655,17 +540,6 @@ export function mountChart(
       if (method === 'recent' && analysis.recentIsFallback) foot.append(' ', m['chart.footFallback']);
     } else foot.append(m['chart.footNone']);
   };
-
-  // Drawn again when the box changes width (a rotated phone, a resized window).
-  let lastWidth = 0;
-  let frame = 0;
-  new ResizeObserver(() => {
-    const widthNow = box.clientWidth;
-    if (widthNow === lastWidth) return;
-    lastWidth = widthNow;
-    cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(redraw);
-  }).observe(box);
 
   return (state, s) => {
     const m = s.messages;

@@ -20,6 +20,8 @@ export interface Formatter {
   readonly tag: string;
   /** A number with exactly `digits` decimals. */
   number(value: number, digits?: number): string;
+  /** A number with its sign (none for zero): "+0.12", "−1.5". */
+  signedNumber(value: number, digits?: number): string;
   /** A weight given in kg, in `unit`, with the unit: "108.2 kg", "238.6 lb". */
   weight(kg: number, unit: WeightUnit, digits?: number): string;
   /** A weight given in kg, in `unit`, as a bare number: "108.2", "238.6". */
@@ -88,6 +90,7 @@ export function formatter(tag: string, signNegative = SIGN_NEGATIVE): Formatter 
   return {
     tag,
     number: (value, digits = 1) => minus(num(digits, false)(value)),
+    signedNumber: (value, digits = 1) => minus(num(digits, true)(value)),
     weightValue: (kg, unit, digits = 1) => minus(num(digits, false, 'weight')(fromKg(kg, unit))),
     changeValue: (kg, unit, digits = 1) => minus(num(digits, true, 'weight')(fromKg(kg, unit))),
     weight: (kg, unit, digits = 1) => `${minus(num(digits, false, 'weight')(fromKg(kg, unit)))} ${unit}`,

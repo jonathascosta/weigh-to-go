@@ -45,6 +45,107 @@ export interface MergeParts {
   readonly unchanged: string;
 }
 
+/** The parts of the line under the % chart, formatted. */
+export interface PctFootParts {
+  readonly method: string;
+  /** The share lost by the horizon. */
+  readonly pct: string;
+  readonly day: string;
+  readonly weight: string;
+  /** The starting weight the shares are of. */
+  readonly start: string;
+}
+
+/** The parts of the line under the constant-rate chart, formatted. */
+export interface CurveFootParts {
+  readonly rate: string;
+  readonly r2: string;
+  /** The straight line, when there is one. */
+  readonly line: {
+    readonly perDay: string;
+    readonly r2: string;
+    readonly horizon: string;
+    readonly curveEnd: string;
+    readonly lineEnd: string;
+  } | null;
+  /** Whether both explain the weigh-ins about equally well. */
+  readonly close: boolean;
+}
+
+/** The parts of the simulator's summary, formatted. */
+export interface SimParts {
+  readonly rate: string;
+  readonly week: string;
+  readonly month: string;
+  readonly year: string;
+  readonly firstDay: string;
+  readonly day90: string;
+  /** When it reaches the target (typed) or the goal; day is null without weigh-ins to count from. */
+  readonly reach: {
+    readonly typed: boolean;
+    readonly weight: string;
+    readonly days: string;
+    readonly day: string | null;
+  } | null;
+  /** Whether the target typed is not below the starting weight. */
+  readonly targetAbove: boolean;
+}
+
+/** The parts of the hiccup rule, formatted. */
+export interface RulesParts {
+  /** "in the daily weigh-ins". */
+  readonly basis: string;
+  /** "3 days". */
+  readonly days: string;
+  readonly gain: string;
+  /** The dip allowed, or null when any dip ends a climb. */
+  readonly tolerance: string | null;
+}
+
+const enSim = (p: SimParts): string => {
+  let text = `**${p.rate} a day** is ${p.week} a week, ${p.month} in 30 days and ${p.year} in a year. On the first day that is ${p.firstDay}; after 90 days the same rate means ${p.day90} a day.`;
+  if (p.reach) {
+    const what = p.reach.typed ? 'the target' : 'your goal';
+    text += p.reach.day
+      ? ` It would reach ${what} of ${p.reach.weight} in ${p.reach.days} (${p.reach.day}).`
+      : ` It would reach ${what} of ${p.reach.weight} in ${p.reach.days}.`;
+  } else if (p.targetAbove) text += ' The target is not below the starting weight.';
+  return text;
+};
+
+const ptSim = (p: SimParts): string => {
+  let text = `**${p.rate} ao dia** equivale a ${p.week} por semana, ${p.month} em 30 dias e ${p.year} em um ano. No primeiro dia são ${p.firstDay}; depois de 90 dias, a mesma taxa representa ${p.day90} por dia.`;
+  if (p.reach) {
+    const what = p.reach.typed ? 'ao peso-alvo' : 'à meta';
+    text += p.reach.day
+      ? ` Chegaria ${what} de ${p.reach.weight} em ${p.reach.days} (${p.reach.day}).`
+      : ` Chegaria ${what} de ${p.reach.weight} em ${p.reach.days}.`;
+  } else if (p.targetAbove) text += ' O peso-alvo não está abaixo do peso de partida.';
+  return text;
+};
+
+const enCurveFoot = (p: CurveFootParts): string => {
+  let text = `Fitted curve: **${p.rate} a day** (R² ${p.r2})`;
+  if (p.line)
+    text += `; line: **${p.line.perDay} a day** (R² ${p.line.r2}). In ${p.line.horizon}, the curve reaches ${p.line.curveEnd} and the line ${p.line.lineEnd}.`;
+  else text += '.';
+  if (p.close)
+    text +=
+      ' With the data so far, both models explain your weight almost equally well; the difference only shows with time.';
+  return text;
+};
+
+const ptCurveFoot = (p: CurveFootParts): string => {
+  let text = `Curva ajustada: **${p.rate} ao dia** (R² ${p.r2})`;
+  if (p.line)
+    text += `; reta: **${p.line.perDay} por dia** (R² ${p.line.r2}). Em ${p.line.horizon}, a curva chega a ${p.line.curveEnd} e a reta a ${p.line.lineEnd}.`;
+  else text += '.';
+  if (p.close)
+    text +=
+      ' Com os dados até agora, os dois modelos explicam o seu peso quase igualmente bem; a diferença só aparece com o tempo.';
+  return text;
+};
+
 const enSummary = (p: SummaryParts): string => {
   let text = `Since ${p.from} you have ${p.lost ? 'lost' : 'gained'} **${p.change}** (${p.share} of your starting weight) in ${p.days}`;
   if (p.pace !== null)
@@ -237,6 +338,213 @@ export const en = {
   'tip.range': (lo: string, hi: string) => `${lo} to ${hi}`,
   'tip.in': 'In',
   'tip.projectionOn': (day: string) => `Projection · ${day}`,
+
+  'word.week': { one: 'week', other: 'weeks' },
+  'unit.aWeek': 'a week',
+  'unit.aDay': 'a day',
+  'section.blocks': 'Blocks',
+  'layer.milestones': (a: string, b: string, c: string) => `Milestones ${a}, ${b}, ${c}…`,
+
+  'pct.title': 'Percentage loss',
+  'pct.note':
+    'How much of your starting weight you have lost, in %. Paces, projections and milestones are in % too, so you can compare them with references like 5% or 10% of your weight.',
+  'pct.block.kpis': 'Figures in %',
+  'pct.block.chart': 'Chart',
+  'pct.block.weekly': 'Weekly pace in %',
+  'pct.block.milestones': 'Milestones table',
+  'pct.kpisEmpty': 'The figures in % appear from the second weigh-in.',
+  'pct.kpi.loss': 'Lost so far',
+  'pct.kpi.lossOf': (start: string) => `of the starting weight of ${start}`,
+  'pct.kpi.pace': 'Pace over the period',
+  'pct.kpi.aMonth': (pct: string) => `about ${pct} a month`,
+  'pct.kpi.recent': 'Last 3 weeks',
+  'pct.kpi.vsStart': 'against the starting weight',
+  'pct.kpi.last7': 'Last 7 days',
+  'pct.kpi.last7Sub': '7-day average vs. 7 days before',
+  'pct.kpi.vsCurrent': 'Pace vs. current weight',
+  'pct.kpi.method': (method: string) => `${method}: `,
+  'pct.kpi.goal': 'Goal in %',
+  'pct.kpi.goalReached': 'goal reached',
+  'pct.kpi.progress': (share: string) => `${share} of the way covered`,
+  'pct.kpi.next': 'Next milestone',
+  'pct.kpi.nextOn': (day: string) => `expected on ${day}`,
+  'pct.kpi.nextNever': 'not reached at the chosen pace',
+  'pct.needsRecent': 'needs 5 weigh-ins in the last 3 weeks',
+  'pct.needsTwoWeeks': 'needs 2 weeks of weigh-ins',
+  'pct.band.rising': 'weight rising at this pace',
+  'pct.band.flat': 'weight about stable',
+  'pct.band.below': (lo: string, hi: string) => `below the ${lo} to ${hi} range`,
+  'pct.band.within': (lo: string, hi: string) => `within the ${lo} to ${hi} range`,
+  'pct.band.above': (hi: string) => `above ${hi} a week`,
+  'pct.chartEmpty': 'The % chart appears from the second weigh-in.',
+  'pct.aria': (from: string, to: string, lost: string) =>
+    `Chart of the share of your starting weight lost, from ${from} to ${to}, now ${lost}.`,
+  'pct.milestoneLine': (pct: string, weight: string) => `${pct} · ${weight}`,
+  'pct.tip.loss': 'Lost so far',
+  'pct.tip.weight': 'Projected weight',
+  'pct.pp': (points: string) => `${points} pp`,
+  'pct.foot': (p: PctFootParts) =>
+    `Projection ${p.method}: **${p.pct}** lost by ${p.day} (${p.weight}). Percentages are of the starting weight of ${p.start}.`,
+  'pct.weekly.title': 'Weekly pace in %',
+  'pct.weekly.note': (lo: string, hi: string) =>
+    `How much each week's average fell from the week before, in % of the weight. The shaded band marks ${lo} to ${hi} a week, a pace often cited as sustainable.`,
+  'pct.weekly.empty': 'Appears from the second week of weigh-ins.',
+  'pct.weekly.band': (lo: string, hi: string) => `${lo} to ${hi} a week`,
+  'pct.weekly.aria': (weeks: string) => `Bar chart of the weekly change of the average, ${weeks}.`,
+  'pct.weekly.keys': 'Use the left and right arrow keys, Home and End to read each week.',
+  'pct.weekly.week': (from: string, to: string) => `Week of ${from} to ${to}`,
+  'pct.weekly.drop': 'Drop',
+  'pct.weekly.rise': 'Rise',
+  'pct.weekly.mean': "Week's average",
+  'pct.weekly.previous': 'Week before',
+  'pct.weekly.noteName': 'Note',
+  'pct.weekly.partial': 'a week with missing days',
+  'pct.ms.title': 'Loss milestones',
+  'pct.ms.note': 'When each milestone was reached, or would be, at each projection pace.',
+  'pct.ms.milestone': 'Milestone',
+  'pct.ms.target': 'Target weight',
+  'pct.ms.status': 'Status',
+  'pct.ms.goal': (pct: string) => `Goal (${pct})`,
+  'pct.ms.reached': (day: string) => `reached on ${day}`,
+  'pct.ms.toGo': (weight: string) => `${weight} to go`,
+  'pct.ms.never': 'not reached',
+  'pct.ms.empty': 'The milestones appear from the first weigh-in.',
+  'pct.ms.fallback': 'The last 3 weeks hold fewer than 5 weigh-ins, so that column waits for more.',
+
+  'rate.title': 'Compound daily rate',
+  'rate.note': (unit: string) =>
+    `Each day's loss as a % of the weight the day before, like compound interest in reverse. At the same rate, the loss in ${unit} gets a little smaller each day, because the weight it applies to shrinks too.`,
+  'rate.block.kpis': 'Rate figures',
+  'rate.block.days': "Each day's rate",
+  'rate.block.curve': (unit: string) => `Constant % or constant ${unit}`,
+  'rate.block.simulator': 'Simulator',
+  'rate.empty': 'Appears from the third weigh-in.',
+  'rate.perDay': (unit: string) => `${unit}/day`,
+  'rate.kpi.mean': 'Mean rate over the period',
+  'rate.kpi.meanSub': (week: string) => `≈ ${week} a week, compounded`,
+  'rate.kpi.fitted': 'Fitted rate',
+  'rate.kpi.fittedSub': (r2: string) => `regression over every day · R² ${r2}`,
+  'rate.kpi.recent': 'Last 3 weeks',
+  'rate.kpi.recentSub': (week: string) => `≈ ${week} a week`,
+  'rate.kpi.today': (unit: string) => `The rate in ${unit} today`,
+  'rate.kpi.todaySub': (weight: string) => `at the start, the same rate meant ${weight} a day`,
+  'rate.kpi.lose10': (pct: string) => `To lose ${pct} of today's weight`,
+  'rate.kpi.lose10Sub': (weight: string) => `at the fitted rate, down to ${weight}`,
+  'rate.kpi.diff': (days: string) => `Difference in ${days}`,
+  'rate.kpi.diffSub': (pct: string, weight: string, unit: string) =>
+    `constant %: ${pct} · constant ${unit}: ${weight}`,
+  'rate.window': 'Window',
+  'rate.layer.bars': 'Daily rate',
+  'rate.layer.rolling': 'Rolling average of the rate',
+  'rate.layer.mean': 'Mean rate over the period',
+  'rate.days.note':
+    "Bars: each day's loss in % of the weight the day before (above zero, a loss). Line: the rolling window's average rate. Dashed: the period's mean rate. When the line stays near the dashes, the rate is constant.",
+  'rate.days.mean': (rate: string) => `mean ${rate} a day`,
+  'rate.days.aria': (count: string) => `Bar chart of the daily rate between consecutive weigh-ins, ${count}.`,
+  'rate.days.keys': 'Use the left and right arrow keys, Home and End to read each weigh-in.',
+  'rate.tip.loss': 'Loss that day',
+  'rate.tip.gain': 'Gain that day',
+  'rate.tip.perDay': (rate: string) => `${rate} a day`,
+  'rate.tip.change': 'Change',
+  'rate.tip.previous': 'Previous weigh-in',
+  'rate.tip.rolling': (days: string) => `Rolling average over ${days}`,
+  'rate.oneYear': '1 year',
+  'rate.curve.title': (unit: string) => `Constant rate or constant ${unit}?`,
+  'rate.curve.note': (unit: string) =>
+    `The curve assumes the same % of your weight a day; the line, the same ${unit} a day. They nearly match at first and drift apart with time.`,
+  'rate.curve.constantPct': 'Constant % curve',
+  'rate.curve.constantKg': (unit: string) => `Constant ${unit} line`,
+  'rate.curve.simulation': 'Simulation',
+  'rate.curve.aria': (from: string, to: string) =>
+    `Chart of your weigh-ins from ${from}, with the constant-rate curve and the straight line projected to ${to}.`,
+  'rate.curve.foot': enCurveFoot,
+  'rate.tip.weighIn': 'Weigh-in',
+  'rate.tip.constantPct': 'Constant %',
+  'rate.tip.constantKg': (unit: string) => `Constant ${unit}`,
+  'sim.title': 'Constant rate simulator',
+  'sim.note': (unit: string) => `Pick a rate a day and see, day by day, what it means in ${unit}.`,
+  'sim.rate': 'Rate a day',
+  'sim.start': 'Starting weight',
+  'sim.target': 'Target weight',
+  'sim.current': 'last weigh-in',
+  'sim.goal': 'your goal',
+  'sim.optional': 'optional',
+  'sim.mine': 'Use my current rate',
+  'sim.needs': (lo: string, hi: string) =>
+    `Type a rate between ${lo} and ${hi} a day, and a starting weight (or log a weigh-in).`,
+  'sim.badStart': (unit: string, example: string) =>
+    `Type the starting weight in ${unit}, for example ${example}, or leave it empty for the last weigh-in.`,
+  'sim.badTarget': (unit: string, example: string) =>
+    `Type the target weight in ${unit}, for example ${example}, or leave it empty.`,
+  'sim.summary': enSim,
+  'sim.col.day': 'Day',
+  'sim.col.date': 'Date',
+  'sim.col.weight': 'Weight',
+  'sim.col.lossDay': 'Lost that day',
+  'sim.col.lossTotal': 'Lost in total',
+  'sim.col.pct': '% lost',
+
+  'hiccups.title': 'Hiccups',
+  'hiccups.note':
+    'Stretches when your weight climbed for several days in a row and interrupted the descent. Set below what counts as a hiccup.',
+  'hiccups.basis': 'Measure on',
+  'hiccups.minDays': 'Climbing for at least',
+  'hiccups.minGain': 'Minimum gain',
+  'hiccups.tolerance': 'Dips allowed in between',
+  'hiccups.basis.kg': 'Daily weigh-ins',
+  'hiccups.basis.avg7': '7-day average',
+  'hiccups.basis.trend': 'Smoothed trend',
+  'hiccups.basisIn.kg': 'in the daily weigh-ins',
+  'hiccups.basisIn.avg7': 'in the 7-day average',
+  'hiccups.basisIn.trend': 'in the smoothed trend',
+  'hiccups.none': 'none',
+  'hiccups.upTo': (weight: string) => `up to ${weight}`,
+  'hiccups.rules': (p: RulesParts) =>
+    `A hiccup is a climb **${p.basis}** that lasts **${p.days} or more** from the low point to the peak and adds up to **${p.gain} or more**. ${p.tolerance === null ? 'Any dip interrupts the climb.' : `Dips of up to ${p.tolerance} in between don't interrupt it.`}`,
+  'hiccups.kpis': 'Hiccup figures',
+  'hiccups.empty': 'Hiccups show from the third weigh-in.',
+  'hiccups.kpi.count': 'Hiccups found',
+  'hiccups.kpi.countSub': (days: string) => `in ${days} of records`,
+  'hiccups.kpi.countNone': 'none with the chosen rules',
+  'hiccups.kpi.climbing': 'Days climbing',
+  'hiccups.kpi.climbingSub': (share: string) => `${share} of the period`,
+  'hiccups.kpi.regained': 'Weight regained',
+  'hiccups.kpi.regainedSub': (share: string) => `sum of the climbs; ${share} of the net loss`,
+  'hiccups.kpi.regainedNoLoss': 'sum of the climbs; there is no net loss to compare',
+  'hiccups.kpi.biggest': 'Biggest hiccup',
+  'hiccups.kpi.biggestSub': (from: string, to: string, days: string) => `${from} to ${to}, in ${days}`,
+  'hiccups.kpi.back': 'Back to the weight before',
+  'hiccups.kpi.backSub': (recovered: string, total: string) =>
+    `on average, after the peak (recovered: ${recovered} of ${total})`,
+  'hiccups.kpi.backNone': 'no hiccup recovered yet',
+  'hiccups.kpi.noHiccups': 'no hiccups',
+  'hiccups.kpi.now': 'Now',
+  'hiccups.now.ongoing': 'In a hiccup',
+  'hiccups.now.ongoingSub': (day: string, gain: string) => `since ${day}, ${gain} so far`,
+  'hiccups.now.returning': 'Returning',
+  'hiccups.now.returningSub': (weight: string, day: string) => `${weight} to go to the weight of ${day}`,
+  'hiccups.now.none': 'No hiccup',
+  'hiccups.now.recoveredOn': (day: string) => `the last one was recovered on ${day}`,
+  'hiccups.now.never': 'no long climb so far',
+  'hiccups.aria': (from: string, to: string, count: string) =>
+    `Chart of your weight from ${from} to ${to}, with the hiccups found marked (${count}). They are also in the table below.`,
+  'hiccups.legend.band': 'hiccup (from the low point to the peak)',
+  'hiccups.legend.back': 'way back to the weight before the hiccup',
+  'hiccups.tip.hiccup': 'Hiccup',
+  'hiccups.tip.gain': 'Gain in the hiccup',
+  'hiccups.col.start': 'Start',
+  'hiccups.col.peak': 'Peak',
+  'hiccups.col.days': 'Days climbing',
+  'hiccups.col.weight': 'Weight',
+  'hiccups.col.gain': 'Gain',
+  'hiccups.col.gainPct': 'Gain %',
+  'hiccups.col.back': 'Back to the weight before',
+  'hiccups.fromTo': (from: string, to: string) => `${from} → ${to}`,
+  'hiccups.backOn': (day: string, days: string) => `on ${day}, ${days} after the peak`,
+  'hiccups.ongoing': 'ongoing',
+  'hiccups.notYet': 'not yet',
+  'hiccups.tableEmpty':
+    'No hiccup with the chosen rules. Try a shorter minimum length or a smaller minimum gain.',
 
   'log.title': 'Weigh-ins',
   'log.note': 'Every weigh-in saved, newest first. To correct one, log the same day again.',
@@ -466,6 +774,215 @@ export const pt: Messages = {
   'tip.range': (lo: string, hi: string) => `${lo} a ${hi}`,
   'tip.in': 'Daqui a',
   'tip.projectionOn': (day: string) => `Projeção · ${day}`,
+
+  'word.week': { one: 'semana', other: 'semanas' },
+  'unit.aWeek': 'por semana',
+  'unit.aDay': 'ao dia',
+  'section.blocks': 'Blocos',
+  'layer.milestones': (a: string, b: string, c: string) => `Marcos ${a}, ${b}, ${c}…`,
+
+  'pct.title': 'Perda percentual',
+  'pct.note':
+    'Quanto do peso inicial você já perdeu, em %. Ritmos, projeções e marcos também em %, o que permite comparar com referências como 5% ou 10% do peso.',
+  'pct.block.kpis': 'Métricas em %',
+  'pct.block.chart': 'Gráfico',
+  'pct.block.weekly': 'Ritmo semanal em %',
+  'pct.block.milestones': 'Tabela de marcos',
+  'pct.kpisEmpty': 'As métricas em % aparecem a partir da segunda pesagem.',
+  'pct.kpi.loss': 'Perda acumulada',
+  'pct.kpi.lossOf': (start: string) => `do peso inicial de ${start}`,
+  'pct.kpi.pace': 'Ritmo do período',
+  'pct.kpi.aMonth': (pct: string) => `cerca de ${pct} por mês`,
+  'pct.kpi.recent': 'Últimas 3 semanas',
+  'pct.kpi.vsStart': 'em relação ao peso inicial',
+  'pct.kpi.last7': 'Últimos 7 dias',
+  'pct.kpi.last7Sub': 'média de 7 dias vs. 7 dias antes',
+  'pct.kpi.vsCurrent': 'Ritmo vs. peso atual',
+  'pct.kpi.method': (method: string) => `${method}: `,
+  'pct.kpi.goal': 'Meta em %',
+  'pct.kpi.goalReached': 'meta atingida',
+  'pct.kpi.progress': (share: string) => `${share} do caminho percorrido`,
+  'pct.kpi.next': 'Próximo marco',
+  'pct.kpi.nextOn': (day: string) => `previsto para ${day}`,
+  'pct.kpi.nextNever': 'não chega no ritmo escolhido',
+  'pct.needsRecent': 'precisa de 5 pesagens nas últimas 3 semanas',
+  'pct.needsTwoWeeks': 'precisa de 2 semanas de registros',
+  'pct.band.rising': 'peso subindo neste ritmo',
+  'pct.band.flat': 'peso praticamente estável',
+  'pct.band.below': (lo: string, hi: string) => `abaixo da faixa de ${lo} a ${hi}`,
+  'pct.band.within': (lo: string, hi: string) => `dentro da faixa de ${lo} a ${hi}`,
+  'pct.band.above': (hi: string) => `acima de ${hi} por semana`,
+  'pct.chartEmpty': 'O gráfico em % aparece a partir da segunda pesagem.',
+  'pct.aria': (from: string, to: string, lost: string) =>
+    `Gráfico da parte do peso inicial já perdida, de ${from} a ${to}, agora em ${lost}.`,
+  'pct.milestoneLine': (pct: string, weight: string) => `${pct} · ${weight}`,
+  'pct.tip.loss': 'Perda acumulada',
+  'pct.tip.weight': 'Peso projetado',
+  'pct.pp': (points: string) => `${points} p.p.`,
+  'pct.foot': (p: PctFootParts) =>
+    `Projeção ${p.method}: **${p.pct}** de perda em ${p.day} (${p.weight}). Percentuais calculados sobre o peso inicial de ${p.start}.`,
+  'pct.weekly.title': 'Ritmo semanal em %',
+  'pct.weekly.note': (lo: string, hi: string) =>
+    `Queda da média de cada semana em relação à semana anterior, em % do peso. A faixa sombreada marca de ${lo} a ${hi} por semana, ritmo muitas vezes citado como sustentável.`,
+  'pct.weekly.empty': 'Aparece a partir da segunda semana de registros.',
+  'pct.weekly.band': (lo: string, hi: string) => `${lo} a ${hi} por semana`,
+  'pct.weekly.aria': (weeks: string) => `Gráfico de barras da variação semanal da média, ${weeks}.`,
+  'pct.weekly.keys': 'Use as setas para a esquerda e a direita, Home e End para ler cada semana.',
+  'pct.weekly.week': (from: string, to: string) => `Semana de ${from} a ${to}`,
+  'pct.weekly.drop': 'Queda',
+  'pct.weekly.rise': 'Alta',
+  'pct.weekly.mean': 'Média da semana',
+  'pct.weekly.previous': 'Semana anterior',
+  'pct.weekly.noteName': 'Obs.',
+  'pct.weekly.partial': 'semana com dias sem registro',
+  'pct.ms.title': 'Marcos de perda',
+  'pct.ms.note': 'Quando cada marco foi ou seria atingido, em cada ritmo de projeção.',
+  'pct.ms.milestone': 'Marco',
+  'pct.ms.target': 'Peso-alvo',
+  'pct.ms.status': 'Situação',
+  'pct.ms.goal': (pct: string) => `Meta (${pct})`,
+  'pct.ms.reached': (day: string) => `atingido em ${day}`,
+  'pct.ms.toGo': (weight: string) => `faltam ${weight}`,
+  'pct.ms.never': 'não chega',
+  'pct.ms.empty': 'Os marcos aparecem a partir da primeira pesagem.',
+  'pct.ms.fallback':
+    'As últimas 3 semanas têm menos de 5 pesagens, então essa coluna espera por mais registros.',
+
+  'rate.title': 'Taxa diária composta',
+  'rate.note': (unit: string) =>
+    `A perda de cada dia em % do peso do dia anterior, como juros compostos ao contrário. Com a mesma taxa, a perda em ${unit} fica um pouco menor a cada dia, porque o peso de referência também diminui.`,
+  'rate.block.kpis': 'Métricas da taxa',
+  'rate.block.days': 'Taxa de cada dia',
+  'rate.block.curve': (unit: string) => `% constante ou ${unit} constantes`,
+  'rate.block.simulator': 'Simulador',
+  'rate.empty': 'Aparece a partir da terceira pesagem.',
+  'rate.perDay': (unit: string) => `${unit}/dia`,
+  'rate.kpi.mean': 'Taxa média do período',
+  'rate.kpi.meanSub': (week: string) => `≈ ${week} por semana, composto`,
+  'rate.kpi.fitted': 'Taxa ajustada',
+  'rate.kpi.fittedSub': (r2: string) => `regressão sobre todos os dias · R² ${r2}`,
+  'rate.kpi.recent': 'Últimas 3 semanas',
+  'rate.kpi.recentSub': (week: string) => `≈ ${week} por semana`,
+  'rate.kpi.today': (unit: string) => `A taxa em ${unit} hoje`,
+  'rate.kpi.todaySub': (weight: string) => `no início, a mesma taxa dava ${weight} por dia`,
+  'rate.kpi.lose10': (pct: string) => `Para perder ${pct} do atual`,
+  'rate.kpi.lose10Sub': (weight: string) => `mantendo a taxa ajustada, até ${weight}`,
+  'rate.kpi.diff': (days: string) => `Diferença em ${days}`,
+  'rate.kpi.diffSub': (pct: string, weight: string, unit: string) =>
+    `% constante: ${pct} · ${unit} constantes: ${weight}`,
+  'rate.window': 'Janela',
+  'rate.layer.bars': 'Taxa diária',
+  'rate.layer.rolling': 'Média móvel da taxa',
+  'rate.layer.mean': 'Taxa média do período',
+  'rate.days.note':
+    'Barras: perda do dia em % do peso do dia anterior (acima de zero, perdeu). Linha: taxa média da janela móvel. Tracejado: taxa média do período. Se a linha anda perto do tracejado, a taxa está constante.',
+  'rate.days.mean': (rate: string) => `média ${rate} ao dia`,
+  'rate.days.aria': (count: string) => `Gráfico de barras da taxa diária entre pesagens seguidas, ${count}.`,
+  'rate.days.keys': 'Use as setas para a esquerda e a direita, Home e End para ler cada pesagem.',
+  'rate.tip.loss': 'Perda do dia',
+  'rate.tip.gain': 'Ganho do dia',
+  'rate.tip.perDay': (rate: string) => `${rate} ao dia`,
+  'rate.tip.change': 'Variação',
+  'rate.tip.previous': 'Pesagem anterior',
+  'rate.tip.rolling': (days: string) => `Média móvel de ${days}`,
+  'rate.oneYear': '1 ano',
+  'rate.curve.title': (unit: string) => `Taxa constante ou ${unit} constantes?`,
+  'rate.curve.note': (unit: string) =>
+    `A curva supõe a mesma % do peso por dia; a reta supõe os mesmos ${unit} por dia. No começo quase coincidem e se afastam com o tempo.`,
+  'rate.curve.constantPct': 'Curva de % constante',
+  'rate.curve.constantKg': (unit: string) => `Reta de ${unit} constantes`,
+  'rate.curve.simulation': 'Simulação',
+  'rate.curve.aria': (from: string, to: string) =>
+    `Gráfico das suas pesagens desde ${from}, com a curva de taxa constante e a reta projetadas até ${to}.`,
+  'rate.curve.foot': ptCurveFoot,
+  'rate.tip.weighIn': 'Pesagem',
+  'rate.tip.constantPct': '% constante',
+  'rate.tip.constantKg': (unit: string) => `${unit} constantes`,
+  'sim.title': 'Simulador de taxa constante',
+  'sim.note': (unit: string) =>
+    `Escolha uma taxa por dia e veja, dia a dia, quanto ela representa em ${unit}.`,
+  'sim.rate': 'Taxa por dia',
+  'sim.start': 'Peso de partida',
+  'sim.target': 'Peso-alvo',
+  'sim.current': 'última pesagem',
+  'sim.goal': 'sua meta',
+  'sim.optional': 'opcional',
+  'sim.mine': 'Usar minha taxa atual',
+  'sim.needs': (lo: string, hi: string) =>
+    `Informe uma taxa entre ${lo} e ${hi} ao dia e um peso de partida (ou registre uma pesagem).`,
+  'sim.badStart': (unit: string, example: string) =>
+    `Digite o peso de partida em ${unit}, por exemplo ${example}, ou deixe em branco para usar a última pesagem.`,
+  'sim.badTarget': (unit: string, example: string) =>
+    `Digite o peso-alvo em ${unit}, por exemplo ${example}, ou deixe em branco.`,
+  'sim.summary': ptSim,
+  'sim.col.day': 'Dia',
+  'sim.col.date': 'Data',
+  'sim.col.weight': 'Peso',
+  'sim.col.lossDay': 'Perda no dia',
+  'sim.col.lossTotal': 'Perda acumulada',
+  'sim.col.pct': '% acumulado',
+
+  'hiccups.title': 'Soluços',
+  'hiccups.note':
+    'Períodos em que o peso subiu por vários dias seguidos e interrompeu a descida. Ajuste abaixo o que conta como soluço.',
+  'hiccups.basis': 'Medir em',
+  'hiccups.minDays': 'Subindo por pelo menos',
+  'hiccups.minGain': 'Ganho mínimo',
+  'hiccups.tolerance': 'Quedas toleradas no meio',
+  'hiccups.basis.kg': 'Pesagens diárias',
+  'hiccups.basis.avg7': 'Média de 7 dias',
+  'hiccups.basis.trend': 'Tendência suavizada',
+  'hiccups.basisIn.kg': 'nas pesagens diárias',
+  'hiccups.basisIn.avg7': 'na média de 7 dias',
+  'hiccups.basisIn.trend': 'na tendência suavizada',
+  'hiccups.none': 'nenhuma',
+  'hiccups.upTo': (weight: string) => `até ${weight}`,
+  'hiccups.rules': (p: RulesParts) =>
+    `Conta como soluço uma subida **${p.basis}** que dura **${p.days} ou mais** do ponto mais baixo até o pico e soma **${p.gain} ou mais**. ${p.tolerance === null ? 'Qualquer queda interrompe a subida.' : `Quedas de até ${p.tolerance} no meio não interrompem a subida.`}`,
+  'hiccups.kpis': 'Métricas dos soluços',
+  'hiccups.empty': 'Os soluços aparecem a partir da terceira pesagem.',
+  'hiccups.kpi.count': 'Soluços encontrados',
+  'hiccups.kpi.countSub': (days: string) => `em ${days} de registros`,
+  'hiccups.kpi.countNone': 'nenhum com as regras escolhidas',
+  'hiccups.kpi.climbing': 'Dias subindo',
+  'hiccups.kpi.climbingSub': (share: string) => `${share} do período`,
+  'hiccups.kpi.regained': 'Peso devolvido',
+  'hiccups.kpi.regainedSub': (share: string) => `soma das subidas; equivale a ${share} da perda líquida`,
+  'hiccups.kpi.regainedNoLoss': 'soma das subidas; não há perda líquida para comparar',
+  'hiccups.kpi.biggest': 'Maior soluço',
+  'hiccups.kpi.biggestSub': (from: string, to: string, days: string) => `${from} a ${to}, em ${days}`,
+  'hiccups.kpi.back': 'Volta ao peso de antes',
+  'hiccups.kpi.backSub': (recovered: string, total: string) =>
+    `em média, depois do pico (recuperados: ${recovered} de ${total})`,
+  'hiccups.kpi.backNone': 'nenhum soluço recuperado ainda',
+  'hiccups.kpi.noHiccups': 'sem soluços',
+  'hiccups.kpi.now': 'Agora',
+  'hiccups.now.ongoing': 'Em soluço',
+  'hiccups.now.ongoingSub': (day: string, gain: string) => `desde ${day}, ${gain} até aqui`,
+  'hiccups.now.returning': 'Voltando',
+  'hiccups.now.returningSub': (weight: string, day: string) => `faltam ${weight} para o peso de ${day}`,
+  'hiccups.now.none': 'Sem soluço',
+  'hiccups.now.recoveredOn': (day: string) => `o último foi recuperado em ${day}`,
+  'hiccups.now.never': 'nenhuma subida longa até aqui',
+  'hiccups.aria': (from: string, to: string, count: string) =>
+    `Gráfico do seu peso de ${from} a ${to}, com os soluços encontrados marcados (total: ${count}). Eles também estão na tabela abaixo.`,
+  'hiccups.legend.band': 'soluço (do ponto mais baixo ao pico)',
+  'hiccups.legend.back': 'caminho de volta ao peso de antes do soluço',
+  'hiccups.tip.hiccup': 'Soluço',
+  'hiccups.tip.gain': 'Ganho no soluço',
+  'hiccups.col.start': 'Início',
+  'hiccups.col.peak': 'Pico',
+  'hiccups.col.days': 'Dias subindo',
+  'hiccups.col.weight': 'Peso',
+  'hiccups.col.gain': 'Ganho',
+  'hiccups.col.gainPct': 'Ganho %',
+  'hiccups.col.back': 'Voltou ao peso de antes',
+  'hiccups.fromTo': (from: string, to: string) => `${from} → ${to}`,
+  'hiccups.backOn': (day: string, days: string) => `em ${day}, ${days} após o pico`,
+  'hiccups.ongoing': 'em andamento',
+  'hiccups.notYet': 'ainda não',
+  'hiccups.tableEmpty':
+    'Nenhum soluço com as regras escolhidas. Tente reduzir a duração mínima ou o ganho mínimo.',
 
   'log.title': 'Registros',
   'log.note':

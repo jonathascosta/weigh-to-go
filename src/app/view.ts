@@ -1,10 +1,21 @@
 /**
- * How the reader likes the main chart: its layers, projection method, horizon and period. Kept as
- * screen preferences; a saved value that no longer makes sense falls back to the default.
+ * How the reader likes the charts and sections: layers, projection methods, horizons, periods,
+ * which blocks show, the simulator's figures and the hiccup rules. Kept as screen preferences; a
+ * saved value that no longer makes sense falls back to the default, as in the original dashboard.
  */
 import type { Method } from '../analysis/analyze';
 import { METHODS } from '../analysis/goals';
+import { DEFAULT_RULES, type HiccupBasis, type HiccupRules } from '../analysis/hiccups';
+import { isWeight } from '../data/records';
 import { oneOf, pref } from '../data/prefs';
+
+/** A guard for a list of values from a fixed set (each at most once), for `pref`. */
+const someOf =
+  <T>(values: readonly T[]) =>
+  (value: unknown): value is T[] =>
+    Array.isArray(value) &&
+    new Set(value).size === value.length &&
+    value.every((v) => values.includes(v as T));
 
 export const LAYERS = [
   'points',
@@ -43,10 +54,102 @@ export type Horizon = (typeof HORIZONS)[number];
 export const PERIODS = ['all', 60, 30, 14] as const;
 export type Period = (typeof PERIODS)[number];
 
-const isLayerList = (v: unknown): v is Layer[] =>
-  Array.isArray(v) && v.every((layer) => (LAYERS as readonly unknown[]).includes(layer));
-
-export const layersPref = pref('chart.layers', isLayerList, [...DEFAULT_LAYERS]);
+export const layersPref = pref('chart.layers', someOf<Layer>(LAYERS), [...DEFAULT_LAYERS]);
 export const methodPref = pref('chart.method', oneOf<Method>(METHODS), 'linear');
 export const horizonPref = pref('chart.horizon', oneOf<Horizon>(HORIZONS), 30);
 export const periodPref = pref('chart.period', oneOf<Period>(PERIODS), 'all');
+
+// ---------- Percentage loss ----------
+
+export const PCT_BLOCKS = ['kpis', 'chart', 'weekly', 'milestones'] as const;
+export type PctBlock = (typeof PCT_BLOCKS)[number];
+export const PCT_LAYERS = [
+  'points',
+  'avg7',
+  'regression',
+  'projection',
+  'band',
+  'milestones',
+  'goal',
+] as const;
+export type PctLayer = (typeof PCT_LAYERS)[number];
+
+export const pctBlocksPref = pref('pct.blocks', someOf<PctBlock>(PCT_BLOCKS), [...PCT_BLOCKS]);
+export const pctLayersPref = pref(
+  'pct.layers',
+  someOf<PctLayer>(PCT_LAYERS),
+  PCT_LAYERS.filter((layer) => layer !== 'regression'),
+);
+export const pctMethodPref = pref('pct.method', oneOf<Method>(METHODS), 'linear');
+export const pctHorizonPref = pref('pct.horizon', oneOf<Horizon>(HORIZONS), 60);
+
+// ---------- Compound daily rate ----------
+
+export const RATE_BLOCKS = ['kpis', 'days', 'curve', 'simulator'] as const;
+export type RateBlock = (typeof RATE_BLOCKS)[number];
+/** The daily-rate chart's layers: the bars, the rolling rate, the period's mean. */
+export const RATE_LAYERS = ['bars', 'rolling', 'mean'] as const;
+export type RateLayer = (typeof RATE_LAYERS)[number];
+/** The curve chart's layers. */
+export const CURVE_LAYERS = ['points', 'constantPct', 'constantKg', 'simulation', 'goal'] as const;
+export type CurveLayer = (typeof CURVE_LAYERS)[number];
+export const RATE_WINDOWS = [7, 14, 21] as const;
+export type RateWindow = (typeof RATE_WINDOWS)[number];
+export const CURVE_HORIZONS = [30, 90, 180, 365] as const;
+export type CurveHorizon = (typeof CURVE_HORIZONS)[number];
+
+export const rateBlocksPref = pref('rate.blocks', someOf<RateBlock>(RATE_BLOCKS), [...RATE_BLOCKS]);
+export const rateLayersPref = pref('rate.layers', someOf<RateLayer>(RATE_LAYERS), [...RATE_LAYERS]);
+export const curveLayersPref = pref(
+  'rate.curveLayers',
+  someOf<CurveLayer>(CURVE_LAYERS),
+  CURVE_LAYERS.filter((layer) => layer !== 'simulation'),
+);
+export const rateWindowPref = pref('rate.window', oneOf<RateWindow>(RATE_WINDOWS), 14);
+export const curveHorizonPref = pref('rate.curveHorizon', oneOf<CurveHorizon>(CURVE_HORIZONS), 180);
+
+const isRate = (v: unknown): v is number | null =>
+  v === null || (typeof v === 'number' && Number.isFinite(v));
+const isKg = (v: unknown): v is number | null => v === null || (typeof v === 'number' && isWeight(v));
+/** The simulator's rate, in % a day as typed (null: none, or not a number). */
+export const simRatePref = pref('sim.rate', isRate, 0.1);
+/** Its starting weight in kg; null starts from the last weigh-in. */
+export const simStartPref = pref('sim.start', isKg, null);
+/** Its target weight in kg; null aims at the goal, if there is one. */
+export const simTargetPref = pref('sim.target', isKg, null);
+
+// ---------- Hiccups ----------
+
+export const HICCUP_BASES = ['kg', 'avg7', 'trend'] as const satisfies readonly HiccupBasis[];
+export const HICCUP_DAYS = [2, 3, 4, 5, 7] as const;
+/** In kg, whatever unit they are shown in: a reader in lb sees the same rules converted. */
+export const HICCUP_GAINS = [0.3, 0.5, 1, 1.5] as const;
+export const HICCUP_TOLERANCES = [0, 0.2, 0.3, 0.5, 1] as const;
+
+/** The rules the reader picks: every hiccup rule but the gap, which stays the engine's. */
+export type HiccupChoice = Pick<HiccupRules, 'basis' | 'minDays' | 'minGain' | 'tolerance'>;
+
+const isChoice = (v: unknown): v is HiccupChoice => {
+  if (typeof v !== 'object' || v === null) return false;
+  const c = v as Record<string, unknown>;
+  return (
+    oneOf<HiccupBasis>(HICCUP_BASES)(c.basis) &&
+    oneOf<number>(HICCUP_DAYS)(c.minDays) &&
+    oneOf<number>(HICCUP_GAINS)(c.minGain) &&
+    oneOf<number>(HICCUP_TOLERANCES)(c.tolerance)
+  );
+};
+
+export const hiccupRulesPref = pref<HiccupChoice>('hiccups.rules', isChoice, {
+  basis: DEFAULT_RULES.basis,
+  minDays: DEFAULT_RULES.minDays,
+  minGain: DEFAULT_RULES.minGain,
+  tolerance: DEFAULT_RULES.tolerance,
+});
+
+/** The hiccup rules the reader chose, for every part that finds hiccups (the main chart too). */
+export function hiccupRules(): HiccupRules {
+  // Field by field: a saved object with more in it (a hand-edited maxGap) changes nothing else.
+  const { basis, minDays, minGain, tolerance } = hiccupRulesPref.read();
+  return { ...DEFAULT_RULES, basis, minDays, minGain, tolerance };
+}
