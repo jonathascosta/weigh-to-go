@@ -88,7 +88,9 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
 8. **The listing.** First save the version's App Review Information once in App Store Connect (no
    sign-in required, the contact, the notes of step 11): without it the listing workflow fails with
    "No data". Then run the **App Store listing** workflow: it sends the text and screenshots of both
-   languages and submits nothing.
+   languages and submits nothing. Until you decide on a contact and the support pages (decision 63
+   in [decisions.md](decisions.md)), the Support URL in App Information is the project's issues
+   page, <https://github.com/jonathascosta/weigh-to-go/issues>, in both languages.
 9. **App Privacy.** Answer for Google's ad SDK, following Google's guide
    (<https://developers.google.com/admob/ios/privacy/data-disclosure>), for non-personalised ads
    without tracking. What the person types and what the app reads from Apple Health stay on the phone

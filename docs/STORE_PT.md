@@ -9,7 +9,7 @@ feito assim está em [decisions.md](decisions.md); o trabalho está planejado no
 
 ## O que já pode começar
 
-Os passos 1 a 3 e o 6 não dependem do código, e alguns levam dias para a Apple ou a Google
+Os passos 1 a 3 e o 6 não dependem do código, e alguns levam dias para a Apple ou o Google
 processarem: o nome, o acordo de apps pagos, os dados bancários e fiscais, o app no AdMob e a mensagem
 de consentimento.
 
@@ -60,7 +60,7 @@ de consentimento.
 6. **AdMob.**
    - Adicione um app iOS, Weigh to Go, e um bloco de anúncio **banner**; ponha-os nos secrets
      `ADMOB_APP_ID` e `ADMOB_BANNER_ID` do environment `app-store`. Os builds do TestFlight mostram
-     os anúncios de teste da Google de qualquer jeito; um build para a App Store precisa dos dois.
+     os anúncios de teste do Google de qualquer jeito; um build para a App Store precisa dos dois.
    - Adicione o seu iPhone como dispositivo de teste (Settings, Test devices), como no Arrows.
    - Em Privacy & messaging, inclua o app numa mensagem de regulamentos europeus (GDPR) e numa
      mensagem de regulamentos de estados dos EUA (US state regulations), e publique as duas: a
@@ -72,7 +72,7 @@ de consentimento.
      outras, onde existirem).
    - O `app-ads.txt` já está no jonathas.net para a conta. Quando o app estiver publicado, ligue-o à
      listagem nas configurações do app.
-   - Cole numa sessão a lista atual de SKAdNetwork da Google
+   - Cole numa sessão a lista atual de SKAdNetwork do Google
      (<https://developers.google.com/admob/ios/3p-skadnetworks>): a sessão não consegue abrir essa
      página e não deve digitar os ids de memória.
 7. **As páginas no jonathas.net.** A política de privacidade fica no site, em
@@ -91,8 +91,10 @@ de consentimento.
 8. **A listagem.** Primeiro, grave uma vez a App Review Information da versão no App Store Connect
    (sem login necessário, o contato, as notas do passo 11): sem isso o workflow da listagem falha com
    "No data". Depois rode o workflow **App Store listing**: ele envia os textos e as capturas dos dois
-   idiomas e não submete nada.
-9. **App Privacy.** Responda pelo SDK de anúncios da Google, seguindo o guia da Google
+   idiomas e não submete nada. Até você decidir um contato e as páginas de suporte (decisão 63 em
+   [decisions.md](decisions.md)), a Support URL em App Information é a página de issues do projeto,
+   <https://github.com/jonathascosta/weigh-to-go/issues>, nos dois idiomas.
+9. **App Privacy.** Responda pelo SDK de anúncios do Google, seguindo o guia do Google
    (<https://developers.google.com/admob/ios/privacy/data-disclosure>), para anúncios não
    personalizados sem rastreamento. O que a pessoa digita e o que o app lê do app Saúde ficam no
    iPhone e não chegam a ninguém, o que as definições da Apple não contam como coletado; as compras
@@ -136,5 +138,5 @@ de consentimento.
 - Se uma tela das capturas mudou, rode `npm run store:screenshots` e faça commit delas.
 - Se o que o app faz com os dados mudou: a política de privacidade (e a data dela), o manifesto de
   privacidade e as respostas do App Privacy, juntos.
-- Confira se a lista de SKAdNetwork da Google tem data mais nova que a do `Info.plist`.
+- Confira se a lista de SKAdNetwork do Google tem data mais nova que a do `Info.plist`.
 - Rode o workflow da listagem, depois o do TestFlight, confira o build contra o `main` e submeta.

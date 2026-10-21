@@ -35,6 +35,9 @@ both change together, in the same pull request.
          the app sends Google nothing, with a unit test.
    - [ ] The native banner is hidden whenever the web view leaves the diary (the static pages:
          the privacy policy and the 404 page), with a check.
+   - [ ] Where the law asks for consent, the SDK starts only once consent is given (or when it
+         isn't required); on a refusal the app shows no ads and never starts the SDK (no limited
+         ads), with a unit test of the refusal (decision 64).
 
 2. **Remove ads, once and for good.** A non-consumable in-app purchase,
    `net.jonathas.weightogo.removeads`, at the price the owner sets in App Store Connect. Checked on
@@ -46,7 +49,9 @@ both change together, in the same pull request.
    configuration file in an XCTest (`SKTestSession`) on the macOS runner's simulator, and by the
    owner on TestFlight's sandbox. The plugin must support Capacitor 8 and Swift Package Manager.
    Once the purchase is held, neither the Mobile Ads SDK nor UMP is started at launch or after the
-   purchase, with a unit test, as the privacy policy says (story 3).
+   purchase, with a unit test, as the privacy policy says (story 3). So at launch the app waits for
+   StoreKit's current-entitlements answer before starting UMP or the SDK, with a test that a held
+   purchase found then starts neither.
 
 3. **Privacy.** The privacy policy in both languages, in the app and on jonathas.net: what stays on
    the phone (everything typed), what Apple holds (Health, backups, purchases), what Google's ad SDK
@@ -67,18 +72,23 @@ both change together, in the same pull request.
    end-to-end tests open the policy from each footer in both languages, offline too.
 
    Its sections: In short (four bullets), The website, The iPhone app, Apple Health, The daily
-   reminder, Ads in the app, The purchase and ratings, Children, Deleting everything, Your rights,
-   Changes, Who we are and contact. The contact is the project's GitHub issues, with a warning that
-   they are public, until the owner decides on a private contact and the support pages (decision 63
-   in [decisions.md](decisions.md)); the policy names Jonathas Costa as responsible for it and gives
-   the ad SDK's legal bases (decision 64).
+   reminder, Ads in the app, The purchase and ratings, Children, Deleting everything, Legal bases and
+   your rights, Changes, Who we are and contact. The contact is the project's GitHub issues, with a
+   warning that they are public, until the owner decides on a private contact and the support pages
+   (decision 63 in [decisions.md](decisions.md)); the policy names Jonathas Costa as the controller,
+   gives the legal bases, the rights as the owner can deliver them, and what a refusal of consent
+   means: no ads, and Google's ad software not started (decision 64).
 
    It describes the ads and the purchase as they ship in the same release, so stories 1 and 2 must
    match it, or change it and its date: a banner in the app only, only non-personalised ads, no
-   tracking prompt and no IDFA; Google's consent message in the EEA, the UK and Switzerland, and
-   **Privacy choices** (**Opções de privacidade**) in settings there and in US states whose laws give
-   choices; once Remove ads is bought, Google's SDK is no longer started; the purchase checked on the
-   device. Story 1's checklist covers the data Google's SDK collects (the policy's list follows what
+   tracking prompt and no IDFA; Google's consent message in the EEA, the UK and Switzerland, the SDK
+   started only after consent there, and no ads and no SDK on a refusal; **Privacy choices**
+   (**Opções de privacidade**) in settings there and in US states whose laws give choices; once
+   Remove ads is bought, neither Google's SDK nor its consent tool is started; the purchase checked
+   on the device. The links between the diary and the policy are root-absolute, because the app
+   serves any path without an extension as the root `index.html` (the diary can sit at
+   `capacitor://localhost/pt/`); `scripts/app-links.test.ts` follows them under the app's rule and
+   GitHub Pages'. Story 1's checklist covers the data Google's SDK collects (the policy's list follows what
    this story was given: IP address, device model and system, IDFV, advertising data and ad
    interactions, an approximate location from the IP address, crash and performance data; this
    session couldn't open Google's page). The privacy manifest agrees with what is built today (no
