@@ -254,8 +254,6 @@ export function createPlot(redraw: () => void): Plot {
   const tip = h('div', { class: 'tip', attrs: { hidden: true, 'aria-hidden': 'true' } });
   const live = h('p', { class: 'visually-hidden', attrs: { 'aria-live': 'polite' } });
   const element = h('div', { class: 'plot' }, strip, h('div', { class: 'chart-wrap' }, box, tip));
-  redraws.add(redraw);
-
   /** The chart shown last, to keep the reader's place when it is drawn again. */
   let current: {
     root: SVGSVGElement;
@@ -269,12 +267,19 @@ export function createPlot(redraw: () => void): Plot {
 
   let lastWidth = 0;
   let frame = 0;
+  /** Measured with another text size or font while hidden: drawn again when it shows. */
+  let stale = false;
+  redraws.add(() => {
+    if (box.isConnected && box.clientWidth > 0 && box.closest('[hidden]') === null) redraw();
+    else stale = true;
+  });
   new ResizeObserver(() => {
     const widthNow = box.clientWidth;
     // A hidden section (or one off the page) has nothing to fit: it is drawn when it shows again.
     if (widthNow === 0 || !box.isConnected || box.closest('[hidden]') !== null) return;
-    if (widthNow === lastWidth) return;
+    if (widthNow === lastWidth && !stale) return;
     lastWidth = widthNow;
+    stale = false;
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(redraw);
   }).observe(box);
