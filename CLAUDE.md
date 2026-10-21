@@ -11,6 +11,10 @@ version of a dashboard the owner first built as a claude.ai artifact.
   localStorage for screen preferences). No server, no analytics, no requests to other origins: the
   Content Security Policy (`scripts/csp.mjs`) has `connect-src 'none'`. Everyone starts from zero;
   a JSON backup (export and import) is the only way data moves between devices.
+- **No server of ours.** Weights and dates are never sent to or kept by us. The iOS app (Sprint 3
+  on) may talk to Apple (Health, StoreKit) and, for ads, to Google AdMob, never with weigh-in data;
+  the website keeps `connect-src 'none'`. What changes this is decided by the owner and recorded in
+  `docs/decisions.md`.
 - **Two languages.** English and Portuguese, chosen by the browser and switchable; numbers and dates
   follow the reader's locale, and typed decimals take a comma or a point in either language. Every
   user-facing string goes through the dictionary.
@@ -25,6 +29,12 @@ version of a dashboard the owner first built as a claude.ai artifact.
   never `.html()` or `.attr('style', …)`.
 - Same quality bar as json2types: TypeScript strict, ESLint strictTypeChecked, Prettier, Vitest, and
   (from Sprint 1, story 8) Playwright, axe and Lighthouse in CI.
+
+## Plans
+
+What comes next is in `docs/sprint-N.md` (Sprint 2: mobile first; 3: the iOS app; 4: store and
+revenue; 5: Health insights), why in `docs/decisions.md`, and the owner's App Store steps in
+`docs/STORE.md` and `docs/STORE_PT.md`, which change together.
 
 ## Workflow for every task
 
@@ -47,6 +57,8 @@ of the owner's.
    | Priority | Short description | Resolved | How to resolve |
    | -------- | ----------------- | -------- | -------------- |
    | P0 to P4 | …                 | Yes / No | …              |
+   - **DaVinci** (`.claude/agents/davinci.md`), the user-experience specialist, reviews every task
+     that changes what people see, as a third reviewer, against `docs/ux/` once it exists.
 
    After presenting the table, if any P0, P1 or P2 finding is still unresolved, go back to step 1.
    P3 and P4 findings that don't matter yet may instead be recorded as issues for later (the table

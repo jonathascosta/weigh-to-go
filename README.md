@@ -29,6 +29,11 @@ an empty diary. If you have logged weigh-ins in Safari, export a backup there fi
 Export backup), then open the installed app and import it (Your data → Import backup). The app says
 so while its diary is empty.
 
+## What comes next
+
+An iPhone app built from the same code, mobile first: the plan is in [docs/decisions.md](docs/decisions.md)
+and `docs/sprint-2.md` to `docs/sprint-5.md`.
+
 ## Development
 
 ```bash
