@@ -7,7 +7,7 @@
 import { extent, range } from 'd3-array';
 import { scaleBand, scaleLinear, scaleUtc } from 'd3-scale';
 import { area, line } from 'd3-shape';
-import type { Analysis, Day, Method } from '../analysis/analyze';
+import { lostPct, type Analysis, type Day, type Method } from '../analysis/analyze';
 import { addDays, DAY, isoDay } from '../analysis/dates';
 import { project, projectBand } from '../analysis/fit';
 import {
@@ -52,7 +52,7 @@ import {
 import { kpiTiles, missing, toneOf, type Kpi, type Tone } from './summary';
 
 /** The share of `first` that `kg` is below it, in % (5 is 5%). */
-export const lostPct = (kg: number, first: number): number => ((first - kg) / first) * 100;
+export { lostPct };
 
 const BAND_TONE: Record<PaceBand, Tone> = {
   rising: 'bad',

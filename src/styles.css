@@ -388,6 +388,7 @@ main {
 }
 
 .field input,
+.field select,
 .paste textarea {
   font: inherit;
   font-size: max(1rem, 16px);

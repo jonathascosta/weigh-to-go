@@ -138,6 +138,9 @@ const clean = (v: number): number => Math.round(v * 1e6) / 1e6;
  * Analyses the weigh-ins. Invalid entries (bad dates, non-finite weights) are skipped and, for a day
  * with several, the last one wins. Returns null when there is nothing to analyse.
  */
+/** The % of the first weight lost by `kg` (a gain is negative). */
+export const lostPct = (kg: number, first: number): number => ((first - kg) / first) * 100;
+
 export function analyze(input: readonly WeighIn[]): Analysis | null {
   const byDate = new Map<string, number>();
   for (const w of input) {
