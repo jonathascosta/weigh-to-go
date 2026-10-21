@@ -79,6 +79,12 @@ export interface Store {
    */
   merge(weighIns: readonly StoredWeighIn[], profile: Profile | null): Promise<MergeResult>;
   remove(date: string): Promise<void>;
+  /**
+   * Puts a day back as it was before a write: `previous` exactly (null: no weigh-in). Only stores
+   * that keep more than the weigh-ins (Apple Health's layer) need it; without it, the app writes
+   * `previous` back with `put`, or removes the day.
+   */
+  restore?(date: string, previous: StoredWeighIn | null): Promise<void>;
   profile(): Promise<Profile>;
   setProfile(profile: Profile): Promise<void>;
   /**

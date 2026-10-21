@@ -29,12 +29,34 @@ const persistenceAsked = pref(
   false,
 );
 
+/** What a save did to one day: the weigh-in it replaced (null for a new day), and the one it wrote. */
+export interface Saved {
+  readonly date: string;
+  readonly previous: StoredWeighIn | null;
+  readonly written: StoredWeighIn;
+}
+
+/** Whether two weigh-ins are the same record: the same weight, saved at the same moment. */
+const sameRecord = (a: StoredWeighIn, b: StoredWeighIn): boolean =>
+  a.kg === b.kg && Date.parse(a.savedAt) === Date.parse(b.savedAt);
+
 export interface App {
   state(): State;
   /** Calls `listener` now and on every change; returns the unsubscribe. */
   subscribe(listener: (state: State) => void): () => void;
-  /** Saves weigh-ins (replacing any on the same days); rejects if the store refuses. */
-  save(rows: readonly { date: string; kg: number }[]): Promise<void>;
+  /**
+   * Saves weigh-ins (replacing any on the same days); rejects if the store refuses. Resolves what it
+   * did to each day, so that it can be undone exactly (`restore`): none when what the days held
+   * couldn't be read first.
+   */
+  save(rows: readonly { date: string; kg: number }[]): Promise<Saved[]>;
+  /**
+   * Puts a day back as it was before a save: `previous` written back as it was, `savedAt` included
+   * (null: the day is removed), so backup reminders and Apple Health see the old record, not a new
+   * save. Only if the day still holds `expected`, the record that save wrote: resolves false, and
+   * changes nothing, when something else (another tab, Apple Health) wrote the day since.
+   */
+  restore(date: string, previous: StoredWeighIn | null, expected: StoredWeighIn): Promise<boolean>;
   remove(date: string): Promise<void>;
   setProfile(profile: Profile): Promise<void>;
   /** Changes only the profile fields given (null removes one): saves made close together all land. */
@@ -144,8 +166,29 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
     save: (rows) =>
       write(async (s) => {
         const savedAt = new Date().toISOString();
-        await s.put(rows.map((r) => ({ date: r.date, kg: r.kg, savedAt })));
+        const written = rows.map((r) => ({ date: r.date, kg: r.kg, savedAt }));
+        // What each day held, read just before the write: what an undo puts back. If that read
+        // fails, the save goes ahead all the same, with nothing to undo it by.
+        const before = await s.weighIns().then(
+          (list) => new Map(list.map((w) => [w.date, w])),
+          (error: unknown) => {
+            console.error(error);
+            return null;
+          },
+        );
+        await s.put(written);
         askPersistence();
+        if (before === null) return [];
+        return written.map((w) => ({ date: w.date, previous: before.get(w.date) ?? null, written: w }));
+      }),
+    restore: (date, previous, expected) =>
+      write(async (s) => {
+        const now = (await s.weighIns()).find((w) => w.date === date);
+        if (now === undefined || !sameRecord(now, expected)) return false;
+        if (s.restore) await s.restore(date, previous);
+        else if (previous === null) await s.remove(date);
+        else await s.put([previous]);
+        return true;
       }),
     remove: (date) => write((s) => s.remove(date)),
     setProfile: (profile) => write((s) => s.setProfile(profile)),

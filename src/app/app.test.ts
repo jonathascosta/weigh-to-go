@@ -125,7 +125,8 @@ describe('createApp, when things go wrong', () => {
     await settle();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     failReads = true;
-    await expect(app.save([{ date: '2026-10-17', kg: 100 }])).resolves.toBeUndefined();
+    // Done, with nothing to undo it by: what the day held couldn't be read first.
+    await expect(app.save([{ date: '2026-10-17', kg: 100 }])).resolves.toEqual([]);
     expect(await store.weighIns()).toHaveLength(1);
   });
 
