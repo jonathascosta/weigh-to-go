@@ -256,8 +256,8 @@ main {
   min-width: 44px;
 }
 
-/* The language the page is shown in: marked, not a link. */
-.policy .langs a:not([href]) {
+/* The language the page is shown in: marked as current, not styled as a link. */
+.policy .langs a[aria-current] {
   font-weight: 600;
   color: var(--fg);
   text-decoration: none;
