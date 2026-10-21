@@ -32,8 +32,8 @@ vi.mock('@capacitor/local-notifications', () => ({
       return Promise.resolve();
     },
     getDeliveredNotifications: () => Promise.resolve({ notifications: ln.delivered }),
-    removeDeliveredNotifications: (o: { notifications: { id: number }[] }) => {
-      ln.delivered = ln.delivered.filter((d) => !o.notifications.some((n) => n.id === d.id));
+    removeDeliveredNotificationsById: (o: { ids: number[] }) => {
+      ln.delivered = ln.delivered.filter((d) => !o.ids.includes(d.id));
       return Promise.resolve();
     },
     addListener: (_: string, listener: (action: { actionId: string }) => void) => {

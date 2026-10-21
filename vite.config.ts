@@ -41,5 +41,8 @@ export default defineConfig(({ mode }) => ({
   },
   test: {
     include: ['src/**/*.test.ts', 'scripts/**/*.test.mjs', 'scripts/**/*.test.ts'],
+    // Each test file in a process of its own: a time zone set in a test (the reminders' change of
+    // clocks) takes effect there, and not in worker threads.
+    pool: 'forks',
   },
 }));

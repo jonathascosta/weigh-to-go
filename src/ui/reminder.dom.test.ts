@@ -79,7 +79,7 @@ describe('the reminder card', () => {
     const fake = fakeNotifier('prompt', false);
     await mount(fake);
     await flip(true);
-    expect(toggle().checked).toBe(false);
+    expect(toggle().checked).toBe(true);
     expect(status()).toContain('Settings › Notifications');
     expect(fake.state.pending).toEqual([]);
     // The person turns notifications on in iOS's Settings and comes back.
@@ -88,6 +88,29 @@ describe('the reminder card', () => {
     expect(toggle().checked).toBe(true);
     expect(status()).toBe('');
     expect(fake.state.pending.length).toBeGreaterThan(0);
+  });
+
+  it('can be turned off while iOS has notifications off, and stays off', async () => {
+    const fake = fakeNotifier('denied');
+    fake.state.setting = { on: true, time: { hour: 8, minute: 0 } };
+    await mount(fake);
+    expect(toggle().checked).toBe(true);
+    expect(status()).toContain('Settings › Notifications');
+    await flip(false);
+    expect(fake.state.setting).toEqual({ on: false, time: { hour: 8, minute: 0 } });
+    expect(status()).toBe('');
+  });
+
+  it("works from the default when the setting can't be read, planning nothing until a change", async () => {
+    const fake = fakeNotifier('granted');
+    fake.state.pending = [{ id: 20261022, day: '2026-10-22', at: new Date(2026, 9, 22, 8) }];
+    fake.notifier.readSetting = () => Promise.reject(new Error('unreadable'));
+    await mount(fake);
+    expect(toggle().disabled).toBe(false);
+    expect(fake.state.pending).toHaveLength(1);
+    await flip(true);
+    expect(fake.state.setting?.on).toBe(true);
+    expect(fake.state.pending).toHaveLength(30);
   });
 
   it('shows the switch off, ready to ask, when iOS was never asked on this phone', async () => {
@@ -140,6 +163,19 @@ describe('the reminder card', () => {
     await app.erase();
     await settle();
     expect(fake.state.setting).toEqual({ on: false, time: { hour: 8, minute: 0 } });
+    expect(fake.state.pending).toEqual([]);
+  });
+
+  it("undoes a change that can't be saved, and still turns off when everything is erased", async () => {
+    const fake = fakeNotifier('granted');
+    fake.state.setting = { on: true, time: { hour: 8, minute: 0 } };
+    await mount(fake);
+    fake.notifier.writeSetting = () => Promise.reject(new Error('disk full'));
+    await flip(false);
+    expect(status()).toContain("Couldn't set the reminders");
+    expect(toggle().checked).toBe(true);
+    await app.erase();
+    await settle();
     expect(fake.state.pending).toEqual([]);
   });
 

@@ -56,6 +56,8 @@ export function mountReminder(
   let current: Settings | null = null;
   /** Whether iOS's question is on screen: the switch shows what the person did until it's answered. */
   let asking = false;
+  /** Whether the saved setting couldn't be read: nothing is planned from a default. */
+  let unread = false;
 
   const show = () => {
     const s = current;
@@ -63,10 +65,12 @@ export function mountReminder(
     const m = s.messages;
     toggle.disabled = setting === null;
     timeInput.disabled = setting === null;
-    if (!asking) toggle.checked = setting?.on === true && shown !== 'denied' && shown !== 'prompt';
+    // Denied, the switch still shows what is saved, so the person can turn it off; never asked on
+    // this phone, it shows off, ready to ask.
+    if (!asking) toggle.checked = setting?.on === true && shown !== 'prompt';
     if (setting && document.activeElement !== timeInput) timeInput.value = timeText(setting.time);
     const text = shown === 'denied' ? m['reminder.denied'] : shown === 'failed' ? m['reminder.failed'] : '';
-    status.className = text ? 'status status-bad' : 'status';
+    status.className = shown === 'failed' ? 'status status-bad' : 'status';
     if (status.textContent !== text) status.textContent = text;
   };
   /** Says it again: a screen reader announces a status only when its text changes. */
@@ -78,7 +82,7 @@ export function mountReminder(
   /** Plans the reminders again and shows how that went. */
   const sync = async () => {
     const s = current;
-    if (!s || !setting || app.state().status !== 'ready') return;
+    if (!s || !setting || unread || app.state().status !== 'ready') return;
     const logged = new Set(app.state().weighIns.map((w) => w.date));
     const text = {
       title: s.messages['reminder.notificationTitle'],
@@ -92,12 +96,16 @@ export function mountReminder(
     }
     show();
   };
+  /** Saves a change; one that can't be written is undone, so the screen says what the file holds. */
   const save = async (next: ReminderSetting) => {
+    const before = setting;
     setting = next;
+    unread = false;
     try {
       await notifier.writeSetting(next);
     } catch (error) {
       console.error(error);
+      setting = before;
       shown = 'failed';
       show();
       return;
@@ -105,14 +113,22 @@ export function mountReminder(
     await sync();
   };
 
+  /** Set by erasing: a setting read after it is no longer the person's. */
+  let erased = false;
   notifier.readSetting().then(
     (saved) => {
+      if (erased) return;
       setting = saved ?? REMINDER_OFF;
       void sync();
       show();
     },
     (error: unknown) => {
+      if (erased) return;
+      // Unreadable: the card works from the default, and plans nothing (so the reminders pending
+      // stay) until the person changes something, which writes the file anew.
       console.error(error);
+      setting = REMINDER_OFF;
+      unread = true;
       shown = 'failed';
       show();
     },
@@ -132,6 +148,7 @@ export function mountReminder(
         if (!toggle.checked) return;
         if (!allowed) {
           setting = { ...setting, on: true };
+          unread = false;
           await notifier.writeSetting(setting).catch((error: unknown) => {
             console.error(error);
           });
@@ -162,8 +179,15 @@ export function mountReminder(
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') void sync();
   });
+  // Erasing turns it off whatever the file does: nothing stays pending.
   app.onErase(async () => {
-    await save(REMINDER_OFF);
+    erased = true;
+    setting = REMINDER_OFF;
+    unread = false;
+    await notifier.writeSetting(REMINDER_OFF).catch((error: unknown) => {
+      console.error(error);
+    });
+    await sync();
   });
 
   /** What the plan depends on: the setting, the days logged and the language. */

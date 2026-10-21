@@ -34,6 +34,13 @@ describe('reminderKeeper', () => {
     expect(state.delivered).toEqual([20261022]);
   });
 
+  it('still plans when the shown reminders cannot be read', async () => {
+    const { state, notifier } = fakeNotifier('granted');
+    notifier.delivered = () => Promise.reject(new Error('busy'));
+    expect(await reminderKeeper(notifier, now).sync(on, new Set(), text)).toBe('on');
+    expect(state.pending).toHaveLength(REMINDER_DAYS);
+  });
+
   it("never asks itself, and keeps nothing pending while iOS hasn't allowed it", async () => {
     for (const permission of ['denied', 'prompt'] as const) {
       const { state, notifier } = fakeNotifier(permission);

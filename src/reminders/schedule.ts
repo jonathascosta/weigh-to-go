@@ -60,8 +60,6 @@ export const dayOfId = (id: number): string => {
   return `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}`;
 };
 
-const DAY_MS = 86_400_000;
-
 /**
  * The notifications to have pending from `now`: at `time` on each day of the next `days` days (today
  * included while its time is still ahead), leaving out the days in `logged` (YYYY-MM-DD). Built in
@@ -74,7 +72,16 @@ export function planReminders(
   days = REMINDER_DAYS,
 ): PlannedReminder[] {
   const planned: PlannedReminder[] = [];
-  const last = now.getTime() + days * DAY_MS;
+  // The same moment `days` local days on: a change of clocks inside the window moves nothing.
+  const last = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + days,
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds(),
+    now.getMilliseconds(),
+  ).getTime();
   for (let i = 0; i <= days; i++) {
     const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, time.hour, time.minute);
     const day = localDay(at);

@@ -85,7 +85,9 @@ to rename.
    (Capacitor's scene lifecycle may drop it: if so, hand `connectionOptions.notificationResponse` to
    the bridge in `SceneDelegate`); the time picker; notifications turned off and on again in
    Settings; the banner while the app is open; a change of time zone (reminders follow the old one
-   until the app is opened again).
+   until the app is opened again); a reminder already shown leaving the Notification Centre once the
+   day is logged; erasing everything cancelling what is pending; a restore to a new phone (the
+   switch shows off, then asks).
 
 5. **Apple Health: weight both ways.** Read the body mass HealthKit holds and write each weigh-in
    to it, after the person turns it on (the permission sheet names exactly what is read and

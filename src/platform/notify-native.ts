@@ -34,9 +34,7 @@ export const phoneNotifier: Notifier = {
   delivered: async () =>
     (await LocalNotifications.getDeliveredNotifications()).notifications.map(({ id }) => id),
   removeDelivered: async (ids) => {
-    const { notifications } = await LocalNotifications.getDeliveredNotifications();
-    const gone = notifications.filter(({ id }) => ids.includes(id));
-    if (gone.length > 0) await LocalNotifications.removeDeliveredNotifications({ notifications: gone });
+    if (ids.length > 0) await LocalNotifications.removeDeliveredNotificationsById({ ids: [...ids] });
   },
   onOpen: (listener) => {
     void LocalNotifications.addListener('localNotificationActionPerformed', ({ actionId }) => {
@@ -46,7 +44,13 @@ export const phoneNotifier: Notifier = {
   readSetting: async () => {
     try {
       const { data } = await Filesystem.readFile({ ...SETTING, encoding: Encoding.UTF8 });
-      const value: unknown = JSON.parse(typeof data === 'string' ? data : await data.text());
+      const text = typeof data === 'string' ? data : await data.text();
+      let value: unknown = null;
+      try {
+        value = JSON.parse(text);
+      } catch {
+        // A broken file is no setting: the default, saved anew on the next change.
+      }
       return isReminderSetting(value) ? value : null;
     } catch (error) {
       if (isMissingFile(error)) return null;

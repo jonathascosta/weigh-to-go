@@ -52,13 +52,26 @@ export function reminderKeeper(notifier: Notifier, now: () => Date = () => new D
     logged: ReadonlySet<string>,
     text: { title: string; body: string },
   ): Promise<ReminderStatus> => {
-    const today = localDay(now());
-    // A reminder shown for a day since logged, or for a day gone, has said what it had to.
-    const stale = (await notifier.delivered()).filter((id) => {
-      const day = dayOfId(id);
-      return logged.has(day) || day < today;
-    });
-    if (stale.length > 0) await notifier.removeDelivered(stale);
+    const status = await planned(setting, logged, text);
+    // A reminder shown for a day since logged, or for a day gone, has said what it had to. Best
+    // effort: the plan matters more.
+    try {
+      const today = localDay(now());
+      const stale = (await notifier.delivered()).filter((id) => {
+        const day = dayOfId(id);
+        return logged.has(day) || day < today;
+      });
+      if (stale.length > 0) await notifier.removeDelivered(stale);
+    } catch (error) {
+      console.warn(error);
+    }
+    return status;
+  };
+  const planned = async (
+    setting: ReminderSetting,
+    logged: ReadonlySet<string>,
+    text: { title: string; body: string },
+  ): Promise<ReminderStatus> => {
     if (!setting.on) {
       await notifier.replace([], text);
       return 'off';

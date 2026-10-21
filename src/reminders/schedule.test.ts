@@ -52,6 +52,14 @@ describe('planReminders across a change of clocks (Europe/Lisbon)', () => {
     expect(new Set(spring.map((p) => p.id)).size).toBe(spring.length);
   });
 
+  it('plans 30 reminders through a change of clocks inside the window', () => {
+    // 21 October to 20 November crosses the change on 25 October.
+    const plan = planReminders({ hour: 7, minute: 30 }, new Set(), at(2026, 10, 21, 7, 30));
+    expect(plan).toHaveLength(REMINDER_DAYS);
+    expect(plan.at(-1)?.day).toBe('2026-11-20');
+    expect(planReminders({ hour: 7, minute: 30 }, new Set(), at(2026, 3, 20, 6))).toHaveLength(REMINDER_DAYS);
+  });
+
   it('moves a time that the change skips to the hour after, on the same day', () => {
     const plan = planReminders({ hour: 1, minute: 30 }, new Set(), at(2026, 3, 28, 9));
     const skipped = plan.find((p) => p.day === '2026-03-29');
