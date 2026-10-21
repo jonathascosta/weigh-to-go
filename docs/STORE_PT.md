@@ -46,8 +46,11 @@ de consentimento.
    não usa nenhum, e o workflow do TestFlight roda só no `main`, à mão.
 
 4. **O primeiro build.** Quando a primeira story do Sprint 3 estiver integrada, rode o workflow
-   **TestFlight** na aba Actions, instale o build pelo TestFlight no iPhone e use-o. Todo build
-   seguinte é igual: rodar o workflow, instalar, contar o que parece errado.
+   **TestFlight** na aba Actions. Um app novo ainda não tem testadores: quando o build aparecer no
+   App Store Connect (aba TestFlight do app, depois de alguns minutos de processamento), crie um grupo
+   de **Internal Testing**, ligue a distribuição automática e adicione-se. Depois instale o app
+   TestFlight da Apple no iPhone, aceite o convite, instale o build e use-o. Todo build seguinte é
+   igual: rodar o workflow, instalar pelo TestFlight, contar o que parece errado.
 5. **A compra dentro do app.** Em Monetization, In-App Purchases do app, crie um **Non-Consumable**
    com o product id `net.jonathas.weightogo.removeads`, um nome de referência ("Remove ads"), o preço
    que escolher, o nome e a descrição em inglês e português ("Remove ads" · "Pay once and never see

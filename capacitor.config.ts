@@ -10,9 +10,11 @@ const config: CapacitorConfig = {
   appName: 'Weigh to Go',
   webDir: 'dist-ios',
   ios: {
-    // iOS keeps the page clear of the status bar and the home indicator; the page's own colours
-    // fill the screen behind them.
-    contentInset: 'automatic',
+    // The page runs under the status bar and the home indicator and keeps clear of them with the
+    // CSS safe-area insets it already uses as an installed website (viewport-fit=cover), so its own
+    // colours fill the screen. The status bar's text follows the system's light or dark appearance,
+    // as the page's colours do.
+    contentInset: 'never',
     // The diary is a long page: the web view keeps its scrolling.
     scrollEnabled: true,
   },

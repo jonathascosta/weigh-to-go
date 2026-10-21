@@ -1,0 +1,4 @@
+source "https://rubygems.org"
+
+# fastlane signs and uploads the app (fastlane/Fastfile); the lockfile pins it and its dependencies.
+gem "fastlane", "2.241.0"

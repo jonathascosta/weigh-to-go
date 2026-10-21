@@ -1,10 +1,10 @@
 name: iOS
 
-# Builds the iPhone app for the simulator, unsigned and without any secret, runs it there and fails on
-# a script error or a policy violation in its web view (docs/sprint-3.md, story 1), when a change
-# touches the native side or how the app is built: on its pull request and again on main after the
-# merge. The owner has no Mac, so this run is the first place the app opens. A change to the web code
-# alone is left to CI (a macOS minute costs ten if the repository ever goes private).
+# Builds the iPhone app for the simulator, unsigned and without any secret, runs it there and fails
+# when its web view logs a script error, a policy violation or a promise nobody caught, or never
+# draws the diary (docs/sprint-3.md, story 1). The owner has no Mac, so this run is the first place
+# the app opens. It runs when a change touches the app or the pages it carries: on its pull request
+# and again on main after the merge (a macOS minute costs ten if the repository ever goes private).
 on:
   push:
     branches: [main]
@@ -14,7 +14,11 @@ on:
       - 'capacitor.config.ts'
       - 'vite.config.ts'
       - 'scripts/csp.mjs'
-      - 'src/main.ts'
+      - 'index.html'
+      - 'pt/**'
+      - 'public/**'
+      - 'src/**'
+      - 'tsconfig*.json'
       - 'package.json'
       - 'package-lock.json'
       - '.nvmrc'
@@ -25,7 +29,11 @@ on:
       - 'capacitor.config.ts'
       - 'vite.config.ts'
       - 'scripts/csp.mjs'
-      - 'src/main.ts'
+      - 'index.html'
+      - 'pt/**'
+      - 'public/**'
+      - 'src/**'
+      - 'tsconfig*.json'
       - 'package.json'
       - 'package-lock.json'
       - '.nvmrc'
@@ -61,17 +69,36 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
 
       # The app's pages into dist-ios/, then into the Xcode project with its Swift package list.
       - run: npm run ios:sync
 
-      - name: The app ships no service worker
-        run: test ! -e ios/App/App/public/sw.js
+      - name: The app's pages carry the policy and no service worker
+        run: |
+          test ! -e ios/App/App/public/sw.js
+          for page in ios/App/App/public/index.html ios/App/App/public/pt/index.html; do
+            grep -q 'http-equiv="Content-Security-Policy"' "$page" || { echo "::error::No policy in $page"; exit 1; }
+          done
 
       - run: xcodebuild -version
 
-      - name: Build the app for the simulator
+      # Release is what TestFlight gets; it is built here too, so a Release-only failure shows on
+      # the pull request rather than in the owner's TestFlight run.
+      - name: Build the app for the simulator (Release)
+        working-directory: ios/App
+        run: >-
+          xcodebuild build
+          -project App.xcodeproj
+          -scheme App
+          -configuration Release
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath build
+          CODE_SIGNING_ALLOWED=NO
+
+      # Debug is the one launched below: only a debug build prints the web view's console.
+      - name: Build the app for the simulator (Debug)
         working-directory: ios/App
         run: >-
           xcodebuild build
@@ -83,28 +110,33 @@ jobs:
           -derivedDataPath build
           CODE_SIGNING_ALLOWED=NO
 
-      # Opens the app in a simulator and reads what its web view logged (Capacitor prints the page's
-      # console in a debug build): a script error, a Content Security Policy or Trusted Types violation
-      # fails the job. A screenshot of the first screen is kept as an artifact.
+      # Opens the debug build on an iPhone of the newest iOS the runner has (Trusted Types and the
+      # rest of the web view as the app will meet them) and reads what the page logged: Capacitor
+      # prints the console in a debug build, and src/diagnostics.ts adds policy violations and
+      # promises nobody caught, then the ready line once the diary is drawn. A screenshot of the
+      # first screen is kept as an artifact.
       - name: Launch the app in the simulator
         run: |
           set -euo pipefail
           udid=$(xcrun simctl list devices available -j | python3 -c '
-          import json, sys
+          import json, re, sys
           devices = json.load(sys.stdin)["devices"]
-          phones = [d for runtime, ds in devices.items() if "iOS" in runtime for d in ds if d["name"].startswith("iPhone")]
-          print(phones[-1]["udid"])')
-          xcrun simctl boot "$udid"
+          def version(runtime):
+              return tuple(int(n) for n in re.findall(r"iOS-(\d+)-(\d+)", runtime)[0])
+          runtimes = sorted((r for r in devices if "iOS" in r and any(d["name"].startswith("iPhone") for d in devices[r])), key=version)
+          print([d for d in devices[runtimes[-1]] if d["name"].startswith("iPhone")][0]["udid"])')
           xcrun simctl bootstatus "$udid" -b
           xcrun simctl install "$udid" ios/App/build/Build/Products/Debug-iphonesimulator/App.app
-          # The page's own check: report policy violations to the console, where Capacitor logs them.
-          (xcrun simctl launch --console-pty "$udid" net.jonathas.weightogo > launch.log 2>&1 &)
+          xcrun simctl launch --console-pty "$udid" net.jonathas.weightogo > launch.log 2>&1 &
+          pid=$!
           sleep 30
           xcrun simctl io "$udid" screenshot first-screen.png
           xcrun simctl terminate "$udid" net.jonathas.weightogo || true
+          wait "$pid" || true
           cat launch.log
           grep -q 'WebView loaded' launch.log || { echo '::error::The web view did not load'; exit 1; }
-          if grep -E '\[error\]|Content Security Policy|TrustedHTML|TrustedScript|Refused to' launch.log; then
+          grep -q 'weigh-to-go: ready' launch.log || { echo '::error::The diary was never drawn'; exit 1; }
+          if grep -E '\[error\]|JS ERROR|Policy violation|Unhandled rejection' launch.log; then
             echo '::error::The app logged an error or a policy violation (above)'
             exit 1
           fi

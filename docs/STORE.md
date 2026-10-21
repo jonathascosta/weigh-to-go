@@ -45,8 +45,11 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    and the TestFlight workflow runs only on `main`, by hand.
 
 4. **The first build.** Once Sprint 3's first story is merged, run the **TestFlight** workflow from
-   the Actions tab, install the build from TestFlight on the iPhone and use it. Every later build is
-   the same: run the workflow, install, report what feels wrong.
+   the Actions tab. A new app has no testers yet: once the build shows in App Store Connect (the
+   app's TestFlight tab, after a few minutes of processing), create an **Internal Testing** group,
+   turn on automatic distribution, and add yourself. Then install Apple's TestFlight app on the
+   iPhone, accept the invitation, install the build and use it. Every later build is the same: run
+   the workflow, install it from TestFlight, report what feels wrong.
 5. **The in-app purchase.** In the app's Monetization, In-App Purchases, create a **Non-Consumable**
    with the product id `net.jonathas.weightogo.removeads`, a reference name ("Remove ads"), the price
    you choose, the display name and description in English and Portuguese ("Remove ads" · "Pay once

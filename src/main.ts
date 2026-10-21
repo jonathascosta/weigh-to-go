@@ -1,3 +1,4 @@
+import { ready, watchForProblems } from './diagnostics';
 import { checkFrame } from './frame';
 import { onSettingsChange, setPageLang, t, translatePage, watchSettings } from './i18n';
 import { isLang } from './i18n/locale';
@@ -7,6 +8,8 @@ import { mountSettings } from './settings-ui';
 import { mountDashboard } from './ui/dashboard';
 import { mountUpdateNotice } from './ui/update';
 import { registerWorker } from './worker';
+
+watchForProblems();
 
 // The page's text goes into the reader's language before the frame check reveals it; if that
 // fails, the page is revealed as written, never left hidden or skipping the frame check.
@@ -36,6 +39,7 @@ if (checkFrame(openLabel)) {
   }
   const appBox = document.getElementById('app');
   if (appBox) mountDashboard(appBox, createApp());
+  ready();
   // Offline use, in the built site only (the dev server's files change under it all the time, and
   // the iPhone app has its files on the phone and no service worker).
   if (import.meta.env.PROD && import.meta.env.MODE !== 'ios' && 'serviceWorker' in navigator && appBox) {
