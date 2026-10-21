@@ -7,6 +7,7 @@ import type { App, State } from '../app/app';
 import { parsePaste, toKg, type PasteResult } from '../data/paste';
 import { count, settings, type Settings } from '../i18n';
 import { dayMonthOrder, type DayMonthOrder } from '../i18n/locale';
+import { afterSave } from '../platform/feel';
 import { h, say } from './dom';
 
 /** Lines of the paste box's bad list shown at most; the count says how many there were. */
@@ -168,6 +169,7 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
         );
         say(status, text, 'ok');
         weightInput.value = '';
+        void afterSave(app.state().weighIns.length);
       })
       .catch((error: unknown) => {
         console.error(error);

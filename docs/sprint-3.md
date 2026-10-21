@@ -135,6 +135,17 @@ to rename.
    version after a few saved days (`@capacitor-community/in-app-review`, Arrows' rule); links that
    leave the app open in Safari.
 
+   _As built:_ a light haptic (`@capacitor/haptics`) after each weigh-in saved from the entry; Apple's
+   rating prompt (`@capacitor-community/in-app-review`) after a save once the diary holds 7
+   weigh-ins, at most once per minor version (iOS shows it at most three times a year), both in
+   `src/platform/feel.ts`, loaded only in the app. The decimal keypad (`inputmode="decimal"`) and
+   the move to today after midnight or a return to the app were already there (`src/ui/entry.ts`);
+   WKWebView's own bar above the keypad carries Done. Links to other sites open in Safari by
+   Capacitor's own rule (a top-level navigation outside the app goes to the system). To check on
+   TestFlight (story 7): the tap on saving; the prompt after the seventh weigh-in (in TestFlight it
+   shows but can't be submitted); the footer link opening Safari; the date moving to today after a
+   night.
+
 7. **The owner's rounds.** The owner uses each TestFlight build for a few days and reports what
    feels wrong; each report becomes a story here, one pull request each. Expect two or three rounds
    (Arrows had one after every build).
