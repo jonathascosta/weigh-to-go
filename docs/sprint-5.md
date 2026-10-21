@@ -4,7 +4,8 @@ After the launch: what Apple Health knows besides the weight, put beside the dia
 sees why the weight moves. Everything is computed on the phone; nothing leaves it. Each story
 becomes an issue in this milestone and one pull request; DaVinci designs each new view first.
 
-The why is in [decisions.md](decisions.md) (21 October 2026, 4 and 8). Estimate: 15 to 25 hours.
+The why is in [decisions.md](decisions.md) (21 October 2026, 4 and 8). Estimate: 15 to 25 hours,
+4 to 8 more for the Swift plugin of story 6.
 
 ## Rules for every story
 
@@ -49,5 +50,5 @@ Ideas the owner may pull into a sprint later, each as its own story:
 - **Siri and Shortcuts**: "log my weight" with App Intents.
 - **Face ID lock** for the app.
 - **Reference data in the app**, such as the WHO's BMI references, with no network.
-- **An outside service** only under decision 8 of 21 October 2026: opt-in, the least data, no
-  identifier, a stateless relay at most, and preferably no cost per call.
+- **An outside service** only under decision 8 of 21 October 2026: opt-in, called from the phone
+  directly, the least data, no identifier, and preferably no cost per call.

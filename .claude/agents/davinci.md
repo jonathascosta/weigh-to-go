@@ -52,8 +52,10 @@ design (`design.md`) and clickable HTML prototypes in `docs/ux/prototypes/`, wit
 844 and 320 × 640 (and the desktop where it changes), light and dark, made with Playwright and
 committed beside them. For anything that moves, a short MP4 from Playwright frames. In cloud sessions,
 use the Chromium at `/opt/pw-browsers/chromium` (set `PW_CHROMIUM_PATH`); never run
-`playwright install`. Say what you would need the owner to decide, each with options and your
-recommendation first.
+`playwright install`. Where a choice would be the owner's, give the options with your
+recommendation first and decide by it: Atlas and Spock review your proposal, the choice is recorded
+in `docs/decisions.md` as open to the owner, who can correct it later (decision 9 of 21 October
+2026). You never approve your own design.
 
 ## When you review
 
@@ -66,5 +68,6 @@ edit files or push when reviewing. Report every finding in the table `CLAUDE.md`
 | -------- | ----------------- | -------- | -------------- |
 
 with priorities P0 to P4 as `CLAUDE.md` defines them (a screen that can't be used on a phone is P1;
-an unreadable or unreachable control, P1 or P2). Attach the screenshots that show each finding. End
-with "Approved" or "Changes requested".
+an unreadable or unreachable control, P1 or P2). Save the screenshots that show each finding outside
+the repository (a scratch folder) and give their paths in the table. End with "Approved" or "Changes
+requested".

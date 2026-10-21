@@ -9,10 +9,12 @@ The why is in [decisions.md](decisions.md) (21 October 2026, 7). Estimate: 20 to
 
 ## How this sprint works
 
-- **DaVinci designs, the owner approves, then it is built.** DaVinci is the user-experience agent
+- **DaVinci designs, the reviews approve, then it is built.** DaVinci is the user-experience agent
   (`.claude/agents/davinci.md`). Stories 1 and 2 produce documents and prototypes, no product code;
-  stories 3 to 7 implement what the owner approved, and DaVinci reviews each of them beside Atlas
-  and Spock (CLAUDE.md, step 4).
+  stories 3 to 7 implement the approved design, and DaVinci reviews each of them beside Atlas and
+  Spock (CLAUDE.md, step 4). Approval follows [decisions.md](decisions.md), 9: Atlas and Spock
+  approve DaVinci's proposal, the choices are recorded as open to the owner, who gets the prototypes
+  and can correct them at any time.
 - **The owner sees it before it is merged.** Prototypes are HTML pages in `docs/ux/prototypes/`,
   with Playwright screenshots at phone sizes and, for anything that moves, a short MP4 made from
   Playwright frames (the way Arrows showed its splash before building it). Implementation pull
@@ -24,8 +26,7 @@ The why is in [decisions.md](decisions.md) (21 October 2026, 7). Estimate: 20 to
 
 ## Stories
 
-1. **DaVinci and the audit.** DaVinci's definition (in this sprint's planning pull request), then
-   an audit of the current site at 320, 375, 390 and 430 px wide and on the desktop, in light and
+1. **The audit.** With DaVinci defined (done in the planning pull request), an audit of the current site at 320, 375, 390 and 430 px wide and on the desktop, in light and
    dark, in English and Portuguese, with text at 100% and 150%, and with touch: what is hard to
    reach, read or tap; what each screen is for; how often each feature is used (the owner's own
    habits as the first user). Written as `docs/ux/audit.md`, with screenshots, and the principles
@@ -33,13 +34,14 @@ The why is in [decisions.md](decisions.md) (21 October 2026, 7). Estimate: 20 to
 
 2. **The phone experience, designed.** A proposal DaVinci writes and the owner approves before any
    code: the structure (what lives on which screen, and how to move between them: tabs at the
-   bottom or a single page with sections, decided with the owner), the first screen (today's weigh-in
+   bottom or a single page with sections), the first screen (today's weigh-in
    and the few figures that matter), how the many layers and chips become presets ("Essential",
    "Detailed", "Custom") behind a settings sheet, how each analysis card summarises itself in one
-   line and opens on demand, and how charts work under a finger. Delivered as
-   `docs/ux/design.md` and clickable HTML prototypes of the main flows, with screenshots at phone
-   sizes. The owner's corrections go into the design, round after round, until approved; the
-   approved version is the spec for stories 3 to 7.
+   line and opens on demand, how charts work under a finger, and the space the app's ad banner
+   will take (Sprint 4: a native view over the page, so the page keeps its height free). Delivered
+   as `docs/ux/design.md` and clickable HTML prototypes of the main flows, with screenshots at phone
+   sizes. Reviewed and approved as above; the approved version is the spec for stories 3 to 7, and
+   the owner's later corrections become stories of their own.
 
 3. **Logging a weigh-in in two taps.** The approved flow: the weigh-in field first, with the
    decimal keypad (`inputmode="decimal"`), today's date already in, a large Save in the thumb's

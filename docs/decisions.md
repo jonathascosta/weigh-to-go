@@ -18,8 +18,12 @@ Taken by the owner in conversation, from Claude's recommendations.
    account (their device backup, iCloud, Apple Health) is between them and Apple, and is fine.
 3. **Apple Health is the sync.** The app writes its weigh-ins to Apple Health and reads them back,
    so smart scales feed the diary and the person's devices share it through Health. There is no
-   iCloud sync of our own (Apple's guideline 5.1.3 also forbids putting data read from HealthKit in
-   iCloud). The iPhone's own backup keeps the app's data, as it does for any app.
+   iCloud sync of our own: Apple's guideline 5.1.3 forbids putting data read from HealthKit in
+   iCloud. So the weigh-ins typed in the app are kept in a file that the iPhone's backup includes, as
+   any app's data, while the weigh-ins read from Health are kept apart, in a file excluded from the
+   backup, and read again from Health when needed. Samples are matched by a sync identifier per day
+   (`HKMetadataKeySyncIdentifier`), not by which app wrote them, so a new phone or a second device
+   gets the whole diary back from Health (sprint 3, story 5).
 4. **More from Apple Health, later.** Body composition, sleep, activity, energy and cycle data can
    explain the weight's moves. Sprint 5, after the launch; 1.0 reads and writes weight only.
 5. **Ads in the app, never on the website for now.** Google AdMob, non-personalised ads only: no
@@ -27,7 +31,8 @@ Taken by the owner in conversation, from Claude's recommendations.
    the law asks for it, and never any weigh-in data given to the ad SDK. AdMob serves apps only; a
    website needs AdSense (or Ad Manager), which the owner doesn't have working yet. The website stays
    as it is, with no requests to other origins (`connect-src 'none'`); ads on it are in the backlog
-   until AdSense approves jonathas.net.
+   until AdSense approves jonathas.net. Every ad request says non-personalised (`npa`), checked by a
+   test; without tracking, an ad earns less than in Arrows, which is the price of the promise.
 6. **One payment removes the ads for good.** A non-consumable in-app purchase, at a price the owner
    sets later. With no servers there are no running costs, so no subscriptions. The purchase is
    checked on the device with StoreKit 2; no purchase service in between (RevenueCat and the like
@@ -36,18 +41,20 @@ Taken by the owner in conversation, from Claude's recommendations.
    designed before it is built, by a dedicated user-experience agent named **DaVinci**
    (`.claude/agents/davinci.md`), who also reviews every change to what people see. The new
    experience goes to the website first (Sprint 2), then into the app.
-8. **Outside services only on the person's say-so.** If a service ever helps (none is planned), it
-   gets the least it needs (rounded weights, relative days, no identifier, no IP kept), through a
-   stateless relay of ours at most, on an opt-in that shows what is sent, and preferably at no cost
-   per call, since a one-time price can't carry running costs. On-device first: Core ML, Apple's
-   on-device Foundation Models (iOS 26, Apple Intelligence devices) and reference data bundled in
-   the app come before any network.
-
+8. **Outside services only on the person's say-so.** If a service ever helps (none is planned), the
+   phone calls it directly, never through a server of ours; it gets the least it needs (rounded
+   weights, relative days, no identifier), on an opt-in that shows what is sent, and preferably at no
+   cost per call, since a one-time price can't carry running costs. On-device first: Core ML, Apple's
+   on-device Foundation Models (iOS 26, Apple Intelligence devices) and reference data bundled in the
+   app come before any network. A service that would need a key of ours, and so a server of ours to
+   hide it, is the owner's call.
 9. **The session goes on its own.** The owner asked (21 October 2026) for the iOS plan to be carried
-   out without waiting for the owner's approval or answers. Where a sprint says the owner approves (DaVinci's
-   design, the Apple Health rules), DaVinci's and Atlas's reviews approve instead, and the choice is
-   recorded here as open to the owner, who can correct it later. What only the owner can do (the
-   App Store steps, running the TestFlight workflow) stays the owner's, in [STORE.md](STORE.md).
+   out without waiting for the owner's approval or answers. Where a sprint asks for approval of a
+   design or a rule, Atlas and Spock review DaVinci's proposal (DaVinci never approves its own), the
+   choice is recorded here as open to the owner, and the owner gets the prototypes to correct later.
+   Pull requests merge once their reviews approve and CI is green, as `CLAUDE.md` already allows for
+   this project. What only the owner can do (the App Store steps, running the TestFlight workflow)
+   stays the owner's, in [STORE.md](STORE.md).
 
 ## The plan
 
@@ -58,7 +65,10 @@ Taken by the owner in conversation, from Claude's recommendations.
 | [4](sprint-4.md) · Store and revenue | Ads, the purchase, privacy, listing, review, release                   | 12 to 18 h         |
 | [5](sprint-5.md) · Health insights   | Body composition, sleep, activity, energy, on-device summaries         | 15 to 25 h         |
 
-Estimates are hours of work in sessions, before the owner's rounds on an iPhone and Apple's review
-(about ten days for Arrows' first release, with one "Information Needed" round). What only the owner
+Estimates are hours of work in sessions. They leave out the owner's rounds on an iPhone and Apple's
+review (about ten days for Arrows' first release, with one "Information Needed" round). Arrows had no
+Swift of its own; each Swift plugin of our own (Health if no plugin fits, the purchase if none fits,
+the weekly summary) adds 4 to 8 hours, since without a Mac every try is a CI run and often a
+TestFlight round. What only the owner
 can do for the App Store is in [STORE.md](STORE.md) ([STORE_PT.md](STORE_PT.md) in Portuguese); a
 few of its steps can start now.
