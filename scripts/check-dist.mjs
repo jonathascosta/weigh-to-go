@@ -2,9 +2,9 @@
 // Every page: the Content Security Policy, exactly as in csp.mjs, right after the charset; no inline
 // scripts, styles or event handlers; the no-script stylesheet of the frame gate. The stylesheets:
 // the frame gate's hiding rule. Every text file: no data: URIs, which the policy doesn't allow.
-// And the site's pages and crawler files: each page with its header and footer, the home pages
-// (English and Portuguese) canonical, in the sitemap and pointing to each other for search engines,
-// the 404 page kept out of search.
+// And the site's pages and crawler files: each page with its header and footer, the home pages and
+// the privacy policy (English and Portuguese) canonical, in the sitemap and each pointing to its
+// other language for search engines, the 404 page kept out of search.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -82,11 +82,34 @@ export function findTooNewCss(files) {
   return problems;
 }
 
-/** The pages the site must have; `url` is null for the one kept out of search. */
+/**
+ * The pages the site must have; `url` is null for the one kept out of search. Pages of one `group`
+ * are the same page in each language: each names all of them, and the English one as the default.
+ */
 const PAGES = [
-  { name: 'index.html', url: SITE, hreflang: 'en', html: '<html lang="en">' },
-  { name: 'pt/index.html', url: `${SITE}pt/`, hreflang: 'pt-BR', html: '<html lang="pt-BR" data-lang="pt">' },
-  { name: '404.html', url: null, hreflang: null, html: '<html lang="en">' },
+  { name: 'index.html', url: SITE, group: 'home', hreflang: 'en', html: '<html lang="en">' },
+  {
+    name: 'pt/index.html',
+    url: `${SITE}pt/`,
+    group: 'home',
+    hreflang: 'pt-BR',
+    html: '<html lang="pt-BR" data-lang="pt">',
+  },
+  { name: '404.html', url: null, group: null, hreflang: null, html: '<html lang="en">' },
+  {
+    name: 'privacy.html',
+    url: `${SITE}privacy.html`,
+    group: 'privacy',
+    hreflang: 'en',
+    html: '<html lang="en">',
+  },
+  {
+    name: 'pt/privacidade.html',
+    url: `${SITE}pt/privacidade.html`,
+    group: 'privacy',
+    hreflang: 'pt-BR',
+    html: '<html lang="pt-BR" data-lang="pt">',
+  },
 ];
 
 /**
@@ -122,7 +145,7 @@ export function findMissingPages(files) {
       .map((field) => field?.[2]);
     if (!sitemaps.includes(`${SITE}sitemap.xml`)) problems.push("robots.txt: doesn't point to the sitemap");
   }
-  for (const { name, url, html } of PAGES) {
+  for (const { name, url, group, html } of PAGES) {
     const text = files.find((file) => file.name === name)?.text;
     if (text === undefined) {
       problems.push(`${name}: missing`);
@@ -140,13 +163,16 @@ export function findMissingPages(files) {
       if (!text.includes(`<link rel="canonical" href="${url}"`))
         problems.push(`${name}: its canonical isn't ${url}`);
       if (!sitemap.includes(`<loc>${url}</loc>`)) problems.push(`${name}: ${url} isn't in sitemap.xml`);
-      // Each language's page names every one, itself included, and the default for other languages.
-      for (const other of PAGES) {
+      // Each language's page names every one, itself included, and the default for other languages:
+      // the English one.
+      const versions = PAGES.filter((other) => other.group === group);
+      for (const other of versions) {
         if (other.url === null) continue;
         if (!text.includes(`<link rel="alternate" hreflang="${other.hreflang}" href="${other.url}"`))
           problems.push(`${name}: doesn't point to its ${other.hreflang} version`);
       }
-      if (!text.includes(`<link rel="alternate" hreflang="x-default" href="${SITE}"`))
+      const fallback = versions.find((other) => other.hreflang === 'en')?.url;
+      if (!text.includes(`<link rel="alternate" hreflang="x-default" href="${fallback ?? ''}"`))
         problems.push(`${name}: doesn't name the default version`);
     }
   }
@@ -170,6 +196,8 @@ const MANIFESTS = [
   { page: 'index.html', manifest: 'manifest.webmanifest', start: '/' },
   { page: '404.html', manifest: 'manifest.webmanifest', start: '/' },
   { page: 'pt/index.html', manifest: 'manifest-pt.webmanifest', start: '/pt/' },
+  { page: 'privacy.html', manifest: 'manifest.webmanifest', start: '/' },
+  { page: 'pt/privacidade.html', manifest: 'manifest-pt.webmanifest', start: '/pt/' },
 ];
 
 /**
@@ -237,7 +265,7 @@ export function findAppProblems(files, exists) {
       if (/\.woff2?$/.test(url) && !/-(latin|latin-ext)-\d{3}-normal-[\w-]+\.woff2$/.test(url))
         problems.push(`sw.js: precaches ${url}, not a Latin woff2 font`);
     }
-    for (const page of ['/', '/pt/', '/404.html'])
+    for (const page of ['/', '/pt/', '/404.html', '/privacy.html', '/pt/privacidade.html'])
       if (!urls.includes(page)) problems.push(`sw.js: doesn't precache ${page}`);
     if (/https?:\/\//.test(worker)) problems.push('sw.js: names another site');
   }

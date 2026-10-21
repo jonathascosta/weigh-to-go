@@ -203,7 +203,8 @@ main {
   padding-block: 12px 48px;
 }
 
-.intro h1 {
+.intro h1,
+.policy h1 {
   margin: 0;
   font-family: var(--f-num);
   font-weight: 500;
@@ -217,6 +218,78 @@ main {
   margin: 10px 0 0;
   max-width: 62ch;
   font-size: 1.0625rem;
+}
+
+/* The privacy policy: a page of text, in short sections. */
+.policy {
+  max-width: 68ch;
+}
+
+.policy h2 {
+  margin: 28px 0 0;
+  font-family: var(--f-num);
+  font-weight: 600;
+  font-size: 1.375rem;
+  line-height: 1.2;
+}
+
+.policy p,
+.policy ul {
+  margin: 8px 0 0;
+  font-size: 1.0625rem;
+}
+
+.policy ul {
+  padding-left: 1.25em;
+}
+
+/* Links stand alone in lists and lines here: each a tap target of at least 44 px, apart. A link
+   that is a list item's whole text is a block as wide as its text, so the bullet sits by its first
+   line, however it wraps. */
+.policy .langs a,
+.policy .back a {
+  display: inline-block;
+  padding-block: 10px;
+}
+
+.policy li a {
+  display: block;
+  width: fit-content;
+  padding-block: 10px;
+}
+
+.policy li + li {
+  margin-top: 8px;
+}
+
+.policy .toc a {
+  min-width: 44px;
+}
+
+/* The language the page is shown in: marked as current, not styled as a link. */
+.policy .langs a[aria-current] {
+  font-weight: 600;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.policy .toc p {
+  margin-top: 20px;
+  font-weight: 600;
+}
+
+.policy .langs {
+  margin-top: 4px;
+}
+
+.policy .back {
+  margin-top: 28px;
+}
+
+.policy .updated {
+  margin-top: 10px;
+  font-size: 0.875rem;
+  color: var(--muted);
 }
 
 .intro .privacy {
@@ -241,7 +314,7 @@ main {
 }
 
 .site-footer {
-  padding-block: 16px max(24px, env(safe-area-inset-bottom, 0px));
+  padding-block: 4px max(12px, env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--line);
   font-size: 0.8125rem;
   color: var(--muted);
@@ -249,6 +322,18 @@ main {
 
 .site-footer p {
   margin: 0;
+}
+
+/* A separator stays with the link it introduces. */
+.nowrap {
+  white-space: nowrap;
+}
+
+/* Footer links are tap targets of at least 44 px. */
+.site-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 .version {

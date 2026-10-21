@@ -28,8 +28,8 @@ const FONT_SUBSETS = /-(latin|latin-ext)-\d{3}-normal-[\w-]+\.woff2$/;
 
 /**
  * The URLs to precache, from the built files' paths (relative to dist/, with forward slashes): the
- * pages as they are served, the scripts, styles, manifests and icons, and the Latin fonts as woff2
- * (every browser that runs a service worker reads woff2).
+ * pages as they are served (so the privacy policy opens offline too), the scripts, styles, manifests
+ * and icons, and the Latin fonts as woff2 (every browser that runs a service worker reads woff2).
  * @param {readonly string[]} files
  * @returns {string[]}
  */
@@ -38,7 +38,8 @@ export function precacheList(files) {
   for (const file of files) {
     if (file === 'index.html') urls.push('/');
     else if (file.endsWith('/index.html')) urls.push(`/${file.slice(0, -'index.html'.length)}`);
-    else if (file === '404.html') urls.push('/404.html');
+    // The other pages (the 404 page, the privacy policy) by their own names.
+    else if (/^[\w-]+(?:\/[\w-]+)*\.html$/.test(file)) urls.push(`/${file}`);
     else if (/^assets\/.+\.(js|css)$/.test(file)) urls.push(`/${file}`);
     else if (/^assets\/.+\.woff2$/.test(file) && FONT_SUBSETS.test(file)) urls.push(`/${file}`);
     else if (/\.webmanifest$/.test(file) || /^icons\/.+\.png$/.test(file) || file === 'favicon.svg')

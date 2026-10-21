@@ -44,7 +44,13 @@ export default defineConfig(({ mode }) => ({
     // site supports has native modulepreload.
     modulePreload: { polyfill: false },
     rolldownOptions: {
-      input: { home: 'index.html', homePt: 'pt/index.html', notFound: '404.html' },
+      input: {
+        home: 'index.html',
+        homePt: 'pt/index.html',
+        notFound: '404.html',
+        privacy: 'privacy.html',
+        privacyPt: 'pt/privacidade.html',
+      },
     },
   },
   define: {

@@ -2,11 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { dictionaries } from '.';
 import { en, enApp, pt, ptApp, type Messages } from './messages';
 
-const pages = import.meta.glob<string>(['/index.html', '/404.html', '/pt/index.html'], {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-});
+const pages = import.meta.glob<string>(
+  ['/index.html', '/404.html', '/pt/index.html', '/privacy.html', '/pt/privacidade.html'],
+  { query: '?raw', import: 'default', eager: true },
+);
 
 const squash = (text: string) => text.replace(/\s+/g, ' ').trim();
 
@@ -32,8 +31,9 @@ describe('the dictionaries', () => {
     expect(app.pt['notice.reload']).toBe(ptApp['notice.reload']);
     expect(dictionaries(false).en['data.note']).toBe(en['data.note']);
     // What the app never shows: the website's page descriptions, its 404 page, the frame check and
-    // the service worker's update notice.
-    const shown = (key: string) => !/^(page|notFound|frame|update)\./.test(key);
+    // the service worker's update notice. The privacy policy covers the website too, so it may name
+    // the browser and the page.
+    const shown = (key: string) => !/^(page|notFound|frame|update|privacy)\./.test(key);
     const texts = (message: unknown): string[] =>
       typeof message === 'string'
         ? [message]
@@ -49,10 +49,10 @@ describe('the dictionaries', () => {
   });
 
   it("cover every key the pages use, each page's text matching its language's dictionary", () => {
-    expect(Object.keys(pages)).toHaveLength(3);
+    expect(Object.keys(pages)).toHaveLength(5);
     for (const [page, html] of Object.entries(pages)) {
       const dictionary: Messages = html.includes('data-lang="pt"') ? pt : en;
-      const tagged = [...html.matchAll(/<(\w+)[^>]*\sdata-i18n="([^"]+)"[^>]*>([\s\S]*?)<\/\1>/g)];
+      const tagged = [...html.matchAll(/<(\w+)[^>]*\sdata-i18n="([^"]+)"[^>]*>([\s\S]*?)<\/\1\s*>/g)];
       expect(tagged.length, page).toBeGreaterThan(3);
       for (const [, , key = '', text = ''] of tagged) {
         expect(Object.hasOwn(en, key), `${page}: ${key}`).toBe(true);
@@ -63,5 +63,18 @@ describe('the dictionaries', () => {
       for (const [, key = '', content = ''] of contents)
         expect(content, `${page}: ${key}`).toBe(dictionary[key as keyof Messages]);
     }
+  });
+
+  it('have the whole privacy policy on both its pages, the same in each language', () => {
+    const policy = Object.keys(en).filter((key) => key.startsWith('privacy.'));
+    expect(policy.length).toBeGreaterThan(20);
+    for (const page of ['/privacy.html', '/pt/privacidade.html']) {
+      const html = pages[page] ?? '';
+      const used = new Set(
+        [...html.matchAll(/data-i18n(?:-content)?="(privacy\.[^"]+)"/g)].map(([, key = '']) => key),
+      );
+      expect([...used].sort(), page).toEqual(policy.sort());
+    }
+    expect(pages['/pt/privacidade.html']).toContain('<html lang="pt-BR" data-lang="pt">');
   });
 });

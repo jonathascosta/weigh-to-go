@@ -3,7 +3,12 @@
     "collect": {
       "startServerCommand": "npx vite preview --port 4175 --strictPort",
       "startServerReadyPattern": "localhost:4175",
-      "url": ["http://localhost:4175/", "http://localhost:4175/pt/"],
+      "url": [
+        "http://localhost:4175/",
+        "http://localhost:4175/pt/",
+        "http://localhost:4175/privacy.html",
+        "http://localhost:4175/pt/privacidade.html"
+      ],
       "numberOfRuns": 3,
       "settings": {
         "chromeFlags": "--no-sandbox --headless=new",

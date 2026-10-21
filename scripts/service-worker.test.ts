@@ -19,7 +19,9 @@ describe('precacheList', () => {
       'index.html',
       'manifest.webmanifest',
       'noscript.css',
+      'privacy.html',
       'pt/index.html',
+      'pt/privacidade.html',
       'robots.txt',
       'sitemap.xml',
     ];
@@ -33,7 +35,9 @@ describe('precacheList', () => {
       '/favicon.svg',
       '/icons/icon-192.png',
       '/manifest.webmanifest',
+      '/privacy.html',
       '/pt/',
+      '/pt/privacidade.html',
     ]);
   });
 });

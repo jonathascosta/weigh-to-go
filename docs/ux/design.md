@@ -815,8 +815,9 @@ Groups, in this order. Every row is at least 52 px tall and is one button, one l
        any ad request carries, such as the iPhone's model and network address. Removing the ads
        stops
        those requests."
-     - A link, **Privacy policy**, to `https://www.jonathas.net/weightogo/privacy.html`
-       (`privacidade.html` in Portuguese), the Sprint 4 policy.
+     - A link, **Privacy policy**, to the policy bundled with the pages, `privacy.html`
+       (`pt/privacidade.html` in Portuguese; Sprint 4, story 3), which opens offline and in the app,
+       not to a copy on jonathas.net.
      - In Portuguese: "Suas pesagens ficam neste app, no seu iPhone, e no backup do seu iPhone, se
        você usa o Backup do iCloud ou faz backup no computador. Nós não guardamos nada: sem conta,
        sem
@@ -1323,7 +1324,7 @@ working and tested.
 - **About.**
   - Website: `home.privacy` and the new `about.web`, the version and the author link.
   - App: the new `about.app.*`, with the backup clause of `data.note`, and the privacy policy link
-    (`about.policyUrl`, per language).
+    (the bundled `privacy.html` or `pt/privacidade.html`, per language).
   - On a phone the footer is hidden by CSS.
 - **The iPhone app group.** Story 6 lays out the group behind the app's `.app` class and platform
   check:

@@ -15,6 +15,7 @@ on:
       - 'vite.config.ts'
       - 'scripts/csp.mjs'
       - 'index.html'
+      - 'privacy.html'
       - 'pt/**'
       - 'public/**'
       - 'src/**'
@@ -30,6 +31,7 @@ on:
       - 'vite.config.ts'
       - 'scripts/csp.mjs'
       - 'index.html'
+      - 'privacy.html'
       - 'pt/**'
       - 'public/**'
       - 'src/**'
@@ -77,7 +79,8 @@ jobs:
       - name: The app's pages carry the policy and no service worker
         run: |
           test ! -e ios/App/App/public/sw.js
-          for page in ios/App/App/public/index.html ios/App/App/public/pt/index.html; do
+          for page in index.html pt/index.html privacy.html pt/privacidade.html; do
+            page="ios/App/App/public/$page"
             grep -q 'http-equiv="Content-Security-Policy"' "$page" || { echo "::error::No policy in $page"; exit 1; }
           done
 
