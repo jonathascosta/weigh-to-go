@@ -1,0 +1,3528 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Weigh to Go · prototype (Sprint 2 design)</title>
+    <!--
+  Prototype of docs/ux/design.md. Not shipped: inline styles, innerHTML and the ?query routing are
+  prototype shortcuts (design.md, section 16, lists what not to copy). Made-up data only.
+  Strings that the product already has are quoted word for word from src/i18n/messages.ts; new
+  strings are the design's proposals for new keys.
+  One responsive file: tabs below 960 px, one page at 960 px and wider.
+  Query parameters set a state for screenshots:
+    tab=today|progress|analysis|data   empty=1   lang=pt   unit=lb   theme=light|dark   text=150|200
+    saved=1 (just saved)   logged=1 (today already logged)   sheet=chart|pct|sections|day|paste|erase
+    open=pct,...   all=1   scrub=<days back>   finger=1
+    app=1 (iPhone app: root 17 px as Dynamic Type's default)   ad=1 (app with a banner)   dt=<px> (Dynamic Type size, capped at 34 px)
+    iap=ready|buying|pending|failed|offline|bought|restore-none   notif=denied   health=on|zero|readfail|denied|none   notif=failed   erased=nothealth   consent=1
+    aside=1 (diary kept aside)   reload=1 (the app's "Try again" notice)
+-->
+    <style>
+      @font-face {
+        font-family: 'Barlow';
+        font-weight: 400;
+        font-display: swap;
+        src: url(fonts/barlow-latin-400-normal.woff2) format('woff2');
+      }
+      @font-face {
+        font-family: 'Barlow';
+        font-weight: 500;
+        font-display: swap;
+        src: url(fonts/barlow-latin-500-normal.woff2) format('woff2');
+      }
+      @font-face {
+        font-family: 'Barlow';
+        font-weight: 600;
+        font-display: swap;
+        src: url(fonts/barlow-latin-600-normal.woff2) format('woff2');
+      }
+      @font-face {
+        font-family: 'Barlow Condensed';
+        font-weight: 500;
+        font-display: swap;
+        src: url(fonts/barlow-condensed-latin-500-normal.woff2) format('woff2');
+      }
+      @font-face {
+        font-family: 'Barlow Condensed';
+        font-weight: 600;
+        font-display: swap;
+        src: url(fonts/barlow-condensed-latin-600-normal.woff2) format('woff2');
+      }
+
+      /* ---------- Tokens: today's, plus the new ones marked NEW ---------- */
+      :root {
+        --bg: #f2f5f6;
+        --panel: #ffffff;
+        --fg: #1a2227;
+        --muted: #5b6870;
+        --line: #dae1e4;
+        --soft: #e8edef;
+        --accent: #2f6690;
+        --on-accent: #ffffff;
+        --ok: #2b7f4f;
+        --bad: #bf4038;
+        --c-weight: #2f6690;
+        --c-avg7: #cc7420;
+        --c-trend: #8253ac;
+        --c-week: #3b8686;
+        --c-reg: #6a7883;
+        --c-proj: #be3a73;
+        --grid: #e5eaec;
+        --axis: #b6c0c5;
+        --ref: #85929a;
+        --shadow: 0 8px 28px rgb(20 32 42 / 0.14);
+        --cal-d1: #6e94c4;
+        --cal-d2: #4a78b3;
+        --cal-d3: #2c5d9a;
+        --cal-u1: #c4762e;
+        --cal-u2: #a95d17;
+        --cal-u3: #8a4609;
+        /* NEW: direction, neutral (decision 7): a fall in blue, a rise in orange; red only for errors. */
+        --down: #2c5d9a;
+        --up: #9a5410;
+        --up-soft: rgb(196 118 46 / 0.16);
+        /* NEW: the shell. --tab-h is measured from the bar by a ResizeObserver; this is its first value. */
+        --tab-h: 56px;
+        --ad-h: 0px;
+        --scrim: rgb(15 20 23 / 0.42);
+        --sheet: #ffffff;
+        --f-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        --f-num: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+        --r: 10px;
+        color-scheme: light;
+      }
+      :root.dark {
+        --bg: #0f1417;
+        --panel: #172025;
+        --fg: #e3e9ec;
+        --muted: #92a0a8;
+        --line: #28333a;
+        --soft: #1f292f;
+        --accent: #74aad9;
+        --on-accent: #0f1417;
+        --ok: #57bf87;
+        --bad: #ea786e;
+        --c-weight: #74aad9;
+        --c-avg7: #efa15b;
+        --c-trend: #b58bdc;
+        --c-week: #6cc0be;
+        --c-reg: #98a6b0;
+        --c-proj: #eb71a7;
+        --grid: #222c32;
+        --axis: #3c484f;
+        --ref: #7c8992;
+        --shadow: 0 8px 28px rgb(0 0 0 / 0.5);
+        --cal-d1: #4f7fb8;
+        --cal-d2: #6f9ad0;
+        --cal-d3: #94b8e4;
+        --cal-u1: #a8661f;
+        --cal-u2: #c98236;
+        --cal-u3: #e3a35e;
+        --down: #94b8e4;
+        --up: #e3a35e;
+        --up-soft: rgb(227 163 94 / 0.16);
+        --scrim: rgb(0 0 0 / 0.6);
+        --sheet: #1b252b;
+        color-scheme: dark;
+      }
+      :root.ad {
+        --ad-h: 50px;
+      }
+      :root.text150 {
+        font-size: 150%;
+      }
+      /* The app's starting size, before the script reads Dynamic Type (the product: the probe of design §12). */
+      :root.app {
+        font-size: 17px;
+      }
+      :root.text200 {
+        font-size: 200%;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+        /* Focused controls never end up under the fixed bars (WCAG 2.4.11). */
+        scroll-padding-top: calc(env(safe-area-inset-top, 0px) + var(--ad-h) + 12px);
+        scroll-padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 12px);
+      }
+      body {
+        margin: 0;
+        min-height: 100svh;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--f-body);
+        font-size: 0.9375rem;
+        line-height: 1.45;
+        overflow-wrap: break-word;
+      }
+      /* In the app, the Keyboard plugin's resize: 'body' sets the body's height; a minimum would defeat it. */
+      :root.app body {
+        min-height: 0;
+      }
+      a {
+        color: var(--accent);
+        text-underline-offset: 3px;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+      }
+      .skip-link {
+        position: absolute;
+        left: 16px;
+        top: 8px;
+        transform: translateY(-200%);
+        padding: 8px 12px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        z-index: 50;
+      }
+      /* Below the status bar and the banner, never under them. */
+      .skip-link:focus {
+        transform: none;
+        top: calc(max(8px, env(safe-area-inset-top, 0px)) + var(--ad-h) + 8px);
+      }
+
+      /* ---------- The iPhone app: the status-bar band, and the banner's space (Sprint 4) ---------- */
+      /* The app's build writes class="app" on <html> in index.html, so CSS knows before the first paint. */
+      .ad-space {
+        position: fixed;
+        z-index: 40;
+        inset: 0 0 auto 0;
+        height: calc(env(safe-area-inset-top, 0px) + var(--ad-h));
+        padding-top: env(safe-area-inset-top, 0px);
+        background: var(--bg);
+        display: none;
+        justify-content: center;
+        align-items: stretch;
+      }
+      :root.app .ad-space {
+        display: flex;
+      }
+      .ad-slot {
+        width: min(320px, 100%);
+        border: 1px dashed var(--ref);
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        color: var(--muted);
+        background: repeating-linear-gradient(135deg, transparent 0 8px, var(--soft) 8px 16px);
+      }
+      :root:not(.ad) .ad-slot {
+        display: none;
+      }
+      /* The native banner is hidden while a sheet is open or the keypad is up; the band stays, empty. */
+      :root.sheet-open .ad-slot,
+      :root.typing .ad-slot {
+        visibility: hidden;
+      }
+
+      /* ---------- Header and the tab bar ---------- */
+      .appbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: calc(max(10px, env(safe-area-inset-top, 0px)) + var(--ad-h))
+          max(16px, env(safe-area-inset-right, 0px)) 2px max(16px, env(safe-area-inset-left, 0px));
+        min-height: 52px;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        font-family: var(--f-num);
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--fg);
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .brand svg {
+        width: 26px;
+        height: 26px;
+        flex: none;
+      }
+      /* Styled only once the script has filled it: with scripts off there is no empty bar. */
+      .tabs:empty {
+        display: none;
+      }
+      .tabs {
+        position: fixed;
+        z-index: 30;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        background: var(--panel);
+        border-top: 1px solid var(--line);
+        padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px)
+          env(safe-area-inset-left, 0px);
+      }
+      /* The bar's labels stop growing at 150% (19.5 px), as iOS's own tab bars do. */
+      .tabs a {
+        position: relative;
+        min-height: 56px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        padding: 6px 2px;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: min(0.8125rem, 19.5px);
+        line-height: 1.1;
+        text-align: center;
+        overflow-wrap: anywhere;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .tabs a svg {
+        width: 24px;
+        height: 24px;
+        flex: none;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .tabs a[aria-current] {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .tabs a[aria-current]::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 22%;
+        right: 22%;
+        height: 3px;
+        border-radius: 0 0 3px 3px;
+        background: var(--accent);
+      }
+      .tabs a[aria-current] svg {
+        stroke-width: 2.4;
+      }
+      .tabs .dot {
+        position: absolute;
+        top: 7px;
+        left: calc(50% + 8px);
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--c-avg7);
+        border: 2px solid var(--panel);
+      }
+      /* While a text field has focus (the keypad is up), the bar steps aside. */
+      :root.typing .tabs {
+        display: none;
+      }
+      /* Landscape phone: a lower bar, icon beside the label. */
+      @media (orientation: landscape) and (max-height: 500px) and (max-width: 959px) {
+        .tabs a {
+          flex-direction: row;
+          min-height: 44px;
+          gap: 6px;
+        }
+        .tabs a[aria-current]::before {
+          left: 10%;
+          right: 10%;
+        }
+      }
+
+      main {
+        padding: 4px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px));
+      }
+      :root.has-tabs main {
+        padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 24px);
+      }
+      .view {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .view:not(.current) {
+        display: none;
+      }
+      .view-title {
+        margin: 4px 0 0;
+        font-family: var(--f-num);
+        font-weight: 500;
+        font-size: 1.75rem;
+        line-height: 1.1;
+      }
+      .view-title:focus {
+        outline: none;
+      }
+      .lede {
+        margin: 0;
+        color: var(--muted);
+      }
+      .site-footer {
+        display: none;
+      }
+
+      /* ---------- Cards, figures, text ---------- */
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        padding: 16px;
+        min-width: 0;
+      }
+      .card h2 {
+        margin: 0;
+        font-family: var(--f-num);
+        font-weight: 500;
+        font-size: 1.375rem;
+        line-height: 1.15;
+      }
+      .eyebrow {
+        margin: 0;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .take {
+        margin: 4px 0 0;
+        font-size: 1.0625rem;
+      }
+      .take b {
+        font-weight: 600;
+      }
+      .note {
+        margin: 4px 0 0;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .down {
+        color: var(--down);
+      }
+      .up {
+        color: var(--up);
+      }
+      .notice {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        align-items: center;
+        padding: 12px 14px;
+        border: 1px solid var(--c-avg7);
+        border-radius: var(--r);
+        background: var(--panel);
+      }
+      .notice p {
+        margin: 0;
+        flex: 1 1 16rem;
+      }
+      .kpis {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .kpis-6 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .kpi {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+      }
+      .kpi-label {
+        font-size: 0.8125rem;
+        color: var(--muted);
+        line-height: 1.2;
+      }
+      .kpi-value {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 2px;
+        font-family: var(--f-num);
+        font-weight: 500;
+        font-size: 1.75rem;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+      }
+      .kpi-unit {
+        font-size: 0.9375rem;
+        color: var(--muted);
+        margin-left: 2px;
+      }
+      .kpi-sub {
+        font-size: 0.8125rem;
+        color: var(--muted);
+        line-height: 1.25;
+      }
+      .kpis-today .kpi {
+        padding: 10px;
+      }
+      .kpis-today .kpi-value {
+        font-size: 1.625rem;
+      }
+      /* Below 20 rem of row (320 px, or text at 150%), the three figures stack as rows of one list. */
+      .kpis-wrap {
+        container-type: inline-size;
+      }
+      @container (max-width: 20rem) {
+        .kpis-today {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 0;
+          background: var(--panel);
+          border: 1px solid var(--line);
+          border-radius: var(--r);
+        }
+        .kpis-today .kpi {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          column-gap: 10px;
+          border: 0;
+          border-radius: 0;
+          border-bottom: 1px solid var(--line);
+          background: none;
+          padding: 8px 12px;
+        }
+        .kpis-today .kpi:last-child {
+          border-bottom: 0;
+        }
+        .kpis-today .kpi-label {
+          grid-column: 1;
+          grid-row: 1;
+        }
+        .kpis-today .kpi-sub {
+          grid-column: 1;
+          grid-row: 2;
+        }
+        .kpis-today .kpi-value {
+          grid-column: 2;
+          grid-row: 1 / span 2;
+          align-self: center;
+          justify-content: flex-end;
+          font-size: 1.5rem;
+        }
+      }
+
+      /* ---------- Today: the sparkline and the weigh-in ---------- */
+      /* svh, not dvh: the layout doesn't jump when Safari's bars or the keypad come and go. */
+      #view-today {
+        min-height: calc(
+          100svh - 52px - var(--ad-h) - var(--tab-h) - env(safe-area-inset-bottom, 0px) -
+            env(safe-area-inset-top, 0px) - 36px
+        );
+      }
+      .spark {
+        flex: 1 1 auto;
+        min-height: 120px;
+        max-height: 280px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        gap: 2px 12px;
+        text-decoration: none;
+        color: inherit;
+        padding: 12px 14px 10px;
+      }
+      .spark-head {
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .spark-more {
+        font-size: 0.875rem;
+        color: var(--accent);
+        align-self: start;
+        white-space: nowrap;
+      }
+      .spark-plot {
+        grid-column: 1 / -1;
+        min-height: 64px;
+        position: relative;
+      }
+      .spark-plot svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .spark-legend {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0 12px;
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+      .spark-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      @media (max-height: 700px) and (max-width: 959px) {
+        .spark {
+          display: none;
+        }
+        #view-today {
+          min-height: 0;
+        }
+      }
+
+      .entry {
+        padding: 14px 16px 16px;
+      }
+      .entry-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .date-chip {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 44px;
+        padding: 0 12px 0 10px;
+        border: 1px solid var(--ref);
+        border-radius: 22px;
+        background: var(--bg);
+        font-size: 0.9375rem;
+        white-space: nowrap;
+      }
+      .date-chip svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+      }
+      /* Touch: the native date input covers the chip, invisible; a tap opens the system's picker. */
+      .date-chip input {
+        position: absolute;
+        inset: -1px;
+        opacity: 0;
+        width: calc(100% + 2px);
+        height: calc(100% + 2px);
+        border: 0;
+        font-size: 16px;
+      }
+      .date-chip:has(:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      /* Mouse and the desktop layout: a visible date field, as today. */
+      .date-field {
+        display: none;
+        flex-direction: column;
+        gap: 2px;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .date-field input {
+        font: inherit;
+        font-size: max(1rem, 16px);
+        color: var(--fg);
+        background: var(--bg);
+        border: 1px solid var(--ref);
+        border-radius: 8px;
+        padding: 6px 8px;
+        min-height: 40px;
+      }
+      @media (pointer: fine), (min-width: 960px) {
+        .date-chip {
+          display: none;
+        }
+        .date-field {
+          display: flex;
+        }
+      }
+      /* Save is half the card's inner width, beside the field, and never narrower than 120 px. */
+      .entry-form {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr);
+        gap: 10px;
+        align-items: end;
+      }
+      .entry-form > label {
+        grid-column: 1 / -1;
+        font-size: 0.875rem;
+        color: var(--muted);
+        margin-bottom: -6px;
+      }
+      .with-unit {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .with-unit input {
+        width: 100%;
+        min-height: 56px;
+        padding: 6px 44px 6px 12px;
+        font-family: var(--f-num);
+        font-size: 1.75rem;
+        font-weight: 500;
+        color: var(--fg);
+        background: var(--bg);
+        border: 1px solid var(--ref);
+        border-radius: 10px;
+      }
+      .with-unit .unit {
+        position: absolute;
+        right: 12px;
+        color: var(--muted);
+        font-size: 1rem;
+        pointer-events: none;
+      }
+      .button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 8px 16px;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        background: var(--accent);
+        color: var(--on-accent);
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        text-align: center;
+      }
+      .button:disabled,
+      .button[aria-disabled='true'] {
+        opacity: 0.55;
+        cursor: default;
+      }
+      .button-big {
+        min-height: 56px;
+        font-size: 1.125rem;
+      }
+      .button-ghost {
+        background: transparent;
+        color: var(--accent);
+        border-color: var(--ref);
+      }
+      .button-danger {
+        background: transparent;
+        color: var(--bad);
+        border-color: var(--bad);
+      }
+      .button-text {
+        background: none;
+        border: 0;
+        color: var(--accent);
+        font-weight: 600;
+        padding: 8px 6px;
+        min-height: 44px;
+        min-width: 44px;
+        cursor: pointer;
+      }
+      .hint {
+        grid-column: 1 / -1;
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .hint.bad {
+        color: var(--bad);
+      }
+      .saved {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 2px 10px;
+        align-items: center;
+        margin-top: 10px;
+        padding: 10px 10px 10px 12px;
+        border-radius: 10px;
+        background: var(--soft);
+        position: relative;
+        overflow: hidden;
+      }
+      .saved:focus {
+        outline: none;
+      }
+      .saved:focus-visible {
+        outline: 2px solid var(--accent);
+      }
+      .saved svg {
+        width: 24px;
+        height: 24px;
+        stroke: var(--ok);
+        fill: none;
+        stroke-width: 2.4;
+        grid-row: 1 / span 2;
+      }
+      .saved p {
+        margin: 0;
+      }
+      .saved .sub {
+        grid-column: 2;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .saved .button-ghost {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+        background: var(--panel);
+      }
+      .undo-bar {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        height: 3px;
+        background: var(--accent);
+        width: 100%;
+        transform-origin: left;
+        animation: undo 10s linear forwards;
+      }
+      .undo-bar.paused {
+        animation-play-state: paused;
+      }
+      @keyframes undo {
+        to {
+          transform: scaleX(0);
+        }
+      }
+      .after-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+      .after-row .button {
+        flex: 1 1 8rem;
+      }
+      .reminder {
+        margin: 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 0.875rem;
+        color: var(--muted);
+        padding: 0 4px;
+      }
+      .reminder .dot-inline {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--c-avg7);
+        flex: none;
+        margin-top: 0.45em;
+      }
+      .reminder a {
+        /* A link inside a sentence: at least 24 px tall (WCAG 2.5.8), so the lines stay together. */
+        display: inline-block;
+        padding-block: 3px;
+        font-weight: 600;
+      }
+      .intro-text {
+        margin: 0;
+        font-size: 1.0625rem;
+      }
+      .privacy {
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .empty-links {
+        display: flex;
+        flex-direction: column;
+      }
+      .empty-links a {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        font-weight: 600;
+      }
+
+      /* ---------- Charts ---------- */
+      .card-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .card-head > div {
+        min-width: 0;
+      }
+      .options-button {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 44px;
+        max-width: 100%;
+        padding: 0 12px;
+        border: 1px solid var(--ref);
+        border-radius: 22px;
+        background: var(--panel);
+        color: var(--fg);
+        font-size: 0.875rem;
+        cursor: pointer;
+      }
+      .options-button svg {
+        width: 18px;
+        height: 18px;
+        flex: none;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+      }
+      .options-button b {
+        font-weight: 600;
+      }
+      /* The readout strip: its height is set by script from its longest possible content, so it never moves. */
+      .readout {
+        margin-top: 10px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: var(--soft);
+        font-size: 0.875rem;
+        line-height: 1.35;
+        display: flex;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        gap: 0 12px;
+      }
+      .readout .r-day {
+        font-weight: 600;
+        width: 100%;
+      }
+      .readout .r-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .readout .r-item i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        flex: none;
+      }
+      .chart-box {
+        position: relative;
+        margin-top: 6px;
+        touch-action: pan-y;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+      }
+      .chart-box svg {
+        display: block;
+        width: 100%;
+        overflow: visible;
+      }
+      .chart-box svg:focus {
+        outline: none;
+      }
+      .chart-box svg:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+      .tick {
+        fill: var(--muted);
+        font-size: 0.75rem;
+        font-family: var(--f-num);
+      }
+      .gridline {
+        stroke: var(--grid);
+      }
+      .axisline {
+        stroke: var(--axis);
+      }
+      .reflabel {
+        fill: var(--muted);
+        font-size: 0.8125rem;
+        font-family: var(--f-num);
+      }
+      .goal-line {
+        stroke: var(--ok);
+        stroke-dasharray: 5 4;
+        stroke-width: 1.4;
+      }
+      .goal-label {
+        fill: var(--ok);
+        font-size: 0.8125rem;
+        font-family: var(--f-num);
+        font-weight: 600;
+      }
+      .bmi-line {
+        stroke: var(--ref);
+        stroke-dasharray: 2 4;
+      }
+      .l-points {
+        fill: var(--c-weight);
+      }
+      .l-line {
+        stroke: var(--c-weight);
+        fill: none;
+        stroke-width: 1;
+        opacity: 0.6;
+      }
+      .l-avg7 {
+        stroke: var(--c-avg7);
+        fill: none;
+        stroke-width: 2.2;
+      }
+      .l-trend {
+        stroke: var(--c-trend);
+        fill: none;
+        stroke-width: 2;
+        stroke-dasharray: 6 3;
+      }
+      .l-weekly {
+        stroke: var(--c-week);
+        fill: none;
+        stroke-width: 2;
+      }
+      .l-reg {
+        stroke: var(--c-reg);
+        fill: none;
+        stroke-width: 1.4;
+        stroke-dasharray: 8 4;
+      }
+      .l-proj {
+        stroke: var(--c-proj);
+        fill: none;
+        stroke-width: 2;
+        stroke-dasharray: 5 4;
+      }
+      .l-band {
+        fill: var(--c-proj);
+        opacity: 0.14;
+      }
+      .l-hiccup {
+        fill: var(--up-soft);
+      }
+      .endlabel {
+        font-family: var(--f-num);
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+      .end-proj {
+        fill: var(--c-proj);
+      }
+      .cursor-line {
+        stroke: var(--fg);
+        stroke-width: 1;
+        opacity: 0.5;
+      }
+      .cursor-dot {
+        fill: var(--c-weight);
+        stroke: var(--panel);
+        stroke-width: 2.5;
+      }
+      .cursor-dot.proj {
+        fill: var(--c-proj);
+      }
+      .finger {
+        position: absolute;
+        width: 46px;
+        height: 64px;
+        border-radius: 23px 23px 20px 20px;
+        background: rgb(214 168 140 / 0.55);
+        border: 2px solid rgb(150 100 70 / 0.7);
+        pointer-events: none;
+        transform: translate(-50%, -12px);
+      }
+      .finger::after {
+        content: 'finger';
+        position: absolute;
+        left: 50%;
+        bottom: -18px;
+        transform: translateX(-50%);
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 14px;
+        margin-top: 8px;
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .sw {
+        width: 16px;
+        height: 0;
+        border-top: 3px solid;
+        display: inline-block;
+        flex: none;
+      }
+      .sw.dash {
+        border-top-style: dashed;
+      }
+      .sw.dot {
+        width: 8px;
+        height: 8px;
+        border: 0;
+        border-radius: 50%;
+      }
+      .segmented {
+        display: flex;
+        margin-top: 10px;
+        border: 1px solid var(--ref);
+        border-radius: 10px;
+        padding: 2px;
+        gap: 2px;
+        background: var(--bg);
+      }
+      .segmented button {
+        flex: 1 1 0;
+        min-width: 0;
+        min-height: 44px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--fg);
+        font-size: 0.9375rem;
+        cursor: pointer;
+        padding: 4px 2px;
+        overflow-wrap: anywhere;
+      }
+      .segmented button[aria-pressed='true'] {
+        background: var(--panel);
+        font-weight: 600;
+        box-shadow:
+          0 0 0 1px var(--ref),
+          0 1px 3px rgb(0 0 0 / 0.12);
+      }
+      .foot {
+        margin: 10px 0 0;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .foot b {
+        color: var(--fg);
+        font-weight: 600;
+      }
+
+      /* ---------- Goal, tables ---------- */
+      .bar {
+        height: 10px;
+        border-radius: 5px;
+        background: var(--soft);
+        overflow: hidden;
+        margin-top: 10px;
+        border: 1px solid var(--line);
+      }
+      .bar > span {
+        display: block;
+        height: 100%;
+        background: var(--accent);
+        border-radius: 5px;
+      }
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+        font-size: 0.9375rem;
+      }
+      .table th,
+      .table td {
+        text-align: left;
+        padding: 9px 6px;
+        border-bottom: 1px solid var(--line);
+        overflow-wrap: anywhere;
+      }
+      /* At large text sizes the columns share the width and their text wraps, rather than the page scrolling sideways. */
+      @media (max-width: 959px) {
+        .table {
+          table-layout: fixed;
+        }
+      }
+      .table thead th {
+        font-size: 0.8125rem;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .table .n {
+        text-align: right;
+        font-family: var(--f-num);
+        font-size: 1rem;
+        font-variant-numeric: tabular-nums;
+      }
+      .more-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 4px;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+
+      /* ---------- Analysis: cards closed to one line ---------- */
+      .acard {
+        padding: 0;
+      }
+      /* The button is named by the title only; the summary describes it; its ::after makes the whole head the target. */
+      .acard-head {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 28px;
+        gap: 2px 8px;
+        align-items: center;
+        padding: 14px 14px 14px 16px;
+        min-height: 64px;
+        border-radius: var(--r);
+      }
+      .acard-head:has(:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+      .acard-head h2 {
+        margin: 0;
+        grid-column: 1;
+      }
+      .acard-toggle {
+        padding: 0;
+        background: none;
+        border: 0;
+        text-align: left;
+        cursor: pointer;
+        font-family: var(--f-num);
+        font-weight: 500;
+        font-size: 1.375rem;
+        line-height: 1.15;
+      }
+      .acard-toggle:focus-visible {
+        outline: none;
+      }
+      .acard-toggle::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: var(--r);
+      }
+      .acard-sum {
+        grid-column: 1;
+        margin: 0;
+        font-size: 0.9375rem;
+        line-height: 1.35;
+      }
+      .acard-sum b {
+        font-weight: 600;
+      }
+      .chev {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        width: 28px;
+        height: 28px;
+        fill: none;
+        stroke: var(--muted);
+        stroke-width: 2;
+        transition: transform 150ms ease-out;
+      }
+      .acard-head:has([aria-expanded='true']) .chev {
+        transform: rotate(180deg);
+      }
+      .acard-body {
+        padding: 0 16px 16px;
+        border-top: 1px solid var(--line);
+      }
+      .acard-body > :first-child {
+        margin-top: 12px;
+      }
+      .acard-tools {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 10px;
+      }
+      .mini-kpis {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 12px;
+      }
+      /* Every figure grid in a card, and Progress's six figures, follow their own width: one column
+         below 15 rem (two columns of 7.5 rem at least; Today's three need 20 rem). */
+      .acard-body,
+      #view-progress {
+        container-type: inline-size;
+      }
+      @container (max-width: 15rem) {
+        .mini-kpis,
+        .kpis-6 {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      .mini-kpis .kpi {
+        background: var(--bg);
+      }
+      .bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 4px;
+        height: 120px;
+        margin-top: 12px;
+      }
+      .bars div {
+        flex: 1;
+        /* The bars share the box; a label never widens its bar. */
+        min-width: 0;
+        overflow-wrap: anywhere;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        height: 100%;
+        gap: 4px;
+        font-size: min(0.75rem, 13px);
+        color: var(--muted);
+      }
+      .bars i {
+        display: block;
+        width: 100%;
+        border-radius: 3px 3px 0 0;
+        background: var(--c-weight);
+      }
+      .bars i.up {
+        background: var(--up);
+      }
+      .cal {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 3px;
+        margin-top: 6px;
+      }
+      .cal span {
+        aspect-ratio: 1;
+        border-radius: 3px;
+        background: var(--soft);
+      }
+      .cal .d1 {
+        background: var(--cal-d1);
+      }
+      .cal .d2 {
+        background: var(--cal-d2);
+      }
+      .cal .d3 {
+        background: var(--cal-d3);
+      }
+      .cal .u1 {
+        background: var(--cal-u1);
+      }
+      .cal .u2 {
+        background: var(--cal-u2);
+      }
+      .cal .u3 {
+        background: var(--cal-u3);
+      }
+      .cal-month {
+        margin: 12px 0 0;
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+      .cal-wrap {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 4px 16px;
+      }
+      .facts {
+        margin: 12px 0 0;
+        display: grid;
+      }
+      .facts div {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .facts dt {
+        color: var(--muted);
+      }
+      .facts dd {
+        margin: 0;
+        font-weight: 600;
+        text-align: right;
+      }
+      .bmi-scale {
+        display: grid;
+        grid-template-columns: 18.5fr 6.5fr 5fr 10fr;
+        height: 12px;
+        border-radius: 6px;
+        overflow: hidden;
+        margin-top: 12px;
+      }
+      .bmi-scale span:nth-child(1) {
+        background: var(--cal-d1);
+      }
+      .bmi-scale span:nth-child(2) {
+        background: var(--soft);
+      }
+      .bmi-scale span:nth-child(3) {
+        background: var(--cal-u1);
+      }
+      .bmi-scale span:nth-child(4) {
+        background: var(--cal-u3);
+      }
+
+      /* ---------- Your data ---------- */
+      .group {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        overflow: hidden;
+      }
+      .group-title {
+        margin: 8px 4px -4px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 52px;
+        padding: 8px 14px 8px 16px;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        background: none;
+        width: 100%;
+        text-align: left;
+        color: var(--fg);
+        text-decoration: none;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      .group > :last-child {
+        border-bottom: 0;
+      }
+      .row .grow {
+        flex: 1;
+        min-width: 0;
+      }
+      .row .sub {
+        display: block;
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+      .row .val {
+        color: var(--muted);
+      }
+      .row .val.n {
+        font-family: var(--f-num);
+        font-size: 1.125rem;
+        color: var(--fg);
+        white-space: nowrap;
+      }
+      .row svg.go {
+        width: 18px;
+        height: 18px;
+        flex: none;
+        fill: none;
+        stroke: var(--muted);
+        stroke-width: 2;
+      }
+      .row-log {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto 18px;
+      }
+      .row-log .chg {
+        font-size: 0.875rem;
+        min-width: 3.6em;
+        text-align: right;
+      }
+      .row-select {
+        position: relative;
+      }
+      .row-select .sub {
+        font-size: 0.9375rem;
+      }
+      /* The native select covers the row, invisible: a tap opens the system's picker; the value shows as text. */
+      .row-select select {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      .row-select:has(:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+      .row-plain {
+        cursor: default;
+      }
+      .group-pad {
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .group-pad p {
+        margin: 0;
+      }
+      .group-pad a {
+        display: inline-block;
+        padding-block: 4px;
+      }
+      .group-pad h3 {
+        margin: 0;
+        font-family: var(--f-num);
+        font-weight: 500;
+        font-size: 1.25rem;
+      }
+      .group-pad select,
+      .group-pad input[type='time'] {
+        font: inherit;
+        font-size: max(1rem, 16px);
+        min-height: 44px;
+        color: var(--fg);
+        background: var(--bg);
+        border: 1px solid var(--ref);
+        border-radius: 8px;
+        padding: 4px 8px;
+        width: 100%;
+      }
+      .field-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .danger-zone {
+        margin-top: 20px;
+        padding-top: 12px;
+      }
+      .danger-zone .button {
+        width: 100%;
+      }
+      .badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 10px;
+        background: var(--soft);
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .status-line {
+        font-size: 0.875rem;
+      }
+      .status-line.bad {
+        color: var(--bad);
+      }
+      .switch {
+        flex: none;
+        width: 46px;
+        height: 28px;
+        border-radius: 14px;
+        background: var(--soft);
+        border: 1px solid var(--ref);
+        position: relative;
+      }
+      .switch::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--panel);
+        box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+        transition: transform 150ms ease-out;
+      }
+      [aria-pressed='true'] > .switch,
+      [aria-checked='true'] > .switch {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      [aria-pressed='true'] > .switch::after,
+      [aria-checked='true'] > .switch::after {
+        transform: translateX(18px);
+      }
+      .switch-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        width: 100%;
+        padding: 0;
+        border: 0;
+        background: none;
+        text-align: left;
+        cursor: pointer;
+        font-size: 1rem;
+        color: var(--fg);
+      }
+      .switch-row .grow {
+        flex: 1;
+      }
+      .sections-inline {
+        display: none;
+      }
+      .toast {
+        position: fixed;
+        z-index: 35;
+        left: 16px;
+        right: 16px;
+        bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 12px);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 8px 8px 16px;
+        border-radius: 12px;
+        background: var(--fg);
+        color: var(--bg);
+        box-shadow: var(--shadow);
+      }
+      .toast p {
+        margin: 0;
+        flex: 1;
+      }
+      .toast .button-text {
+        color: var(--bg);
+        text-decoration: underline;
+      }
+
+      /* ---------- The settings sheet: a modal <dialog> at the bottom, on a phone only ---------- */
+      .sheet {
+        border: 0;
+        padding: 0;
+        color: var(--fg);
+        background: var(--sheet);
+      }
+      .sheet:modal {
+        position: fixed;
+        inset: auto 0 0 0;
+        margin: 0;
+        width: 100%;
+        max-width: 640px;
+        margin-inline: auto;
+        max-height: calc(100svh - env(safe-area-inset-top, 0px) - var(--ad-h) - 32px);
+        border-radius: 16px 16px 0 0;
+        box-shadow: var(--shadow);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        overflow: auto;
+        overscroll-behavior: contain;
+        animation: rise 200ms ease-out;
+      }
+      .sheet::backdrop {
+        background: var(--scrim);
+      }
+      @keyframes rise {
+        from {
+          transform: translateY(24px);
+          opacity: 0.6;
+        }
+      }
+      .sheet-head {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 18px 16px 8px;
+        background: var(--sheet);
+      }
+      /* At large text the title and Done wrap rather than squeeze each other. */
+      .sheet-head .button {
+        flex: none;
+      }
+      .sheet-head h2 {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .sheet-head::before {
+        content: '';
+        position: absolute;
+        top: 6px;
+        left: 50%;
+        width: 40px;
+        height: 5px;
+        margin-left: -20px;
+        border-radius: 3px;
+        background: var(--axis);
+      }
+      .sheet-head h2 {
+        margin: 0;
+        font-family: var(--f-num);
+        font-weight: 500;
+        font-size: 1.375rem;
+      }
+      .sheet-head h2:focus {
+        outline: none;
+      }
+      .sheet-body {
+        padding: 0 16px 20px;
+      }
+      .sheet-section {
+        margin-top: 16px;
+      }
+      .sheet-section > h3 {
+        margin: 0 0 6px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .toggle-list {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        overflow: hidden;
+        background: var(--panel);
+      }
+      .toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 48px;
+        padding: 6px 12px;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        background: none;
+        text-align: left;
+        cursor: pointer;
+        font-size: 1rem;
+        color: var(--fg);
+      }
+      .toggle:last-child {
+        border-bottom: 0;
+      }
+      .toggle .grow {
+        flex: 1;
+        min-width: 0;
+      }
+      .preset-note {
+        margin: 6px 2px 0;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .check-row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        min-height: 44px;
+        padding: 8px 0;
+      }
+      .check-row input {
+        width: 22px;
+        height: 22px;
+        margin: 2px 0 0;
+        flex: none;
+      }
+
+      /* On a wide screen the same content sits in a plain panel inside its card, not in a dialog. */
+      .options-inline {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1fr);
+        gap: 0 24px;
+        align-items: start;
+      }
+      /* The wrapper steps aside so the sections are the panel's grid items. */
+      .options-inline > .options-content {
+        display: contents;
+      }
+      .options-inline .sec-view {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      .options-inline .sec-method {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      .options-inline .sec-horizon {
+        grid-column: 3;
+        grid-row: 1;
+      }
+      .options-inline .sec-layers {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+      .options-inline .toggle-list,
+      .sections-inline .toggle-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 6px;
+        border: 0;
+        background: none;
+        overflow: visible;
+      }
+      .options-inline .toggle,
+      .sections-inline .toggle {
+        min-height: 36px;
+        border: 1px solid var(--ref);
+        border-radius: 18px;
+        padding: 4px 12px;
+        font-size: 0.875rem;
+      }
+      .options-inline .toggle[aria-pressed='true'],
+      .sections-inline .toggle[aria-pressed='true'] {
+        background: var(--soft);
+        border-color: var(--fg);
+        font-weight: 600;
+      }
+      .options-inline .toggle .switch,
+      .sections-inline .toggle .switch {
+        display: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
+        }
+        .undo-bar {
+          display: none;
+        }
+      }
+
+      /* ---------- The desktop: one page, the four parts in order, nothing hidden ---------- */
+      @media (min-width: 960px) {
+        html {
+          scroll-padding-top: 72px;
+          scroll-padding-bottom: 12px;
+        }
+        :root.has-tabs main {
+          padding-bottom: 48px;
+        }
+        .appbar,
+        main,
+        .site-footer {
+          max-width: 1240px;
+          margin-inline: auto;
+          padding-left: 24px;
+          padding-right: 24px;
+        }
+        .appbar {
+          position: sticky;
+          top: 0;
+          z-index: 30;
+          background: var(--bg);
+          border-bottom: 1px solid var(--line);
+          padding-top: 8px;
+          padding-bottom: 8px;
+          max-width: none;
+          padding-left: max(24px, calc((100vw - 1240px) / 2 + 24px));
+          padding-right: max(24px, calc((100vw - 1240px) / 2 + 24px));
+        }
+        .tabs {
+          position: static;
+          display: flex;
+          gap: 4px;
+          margin-left: auto;
+          background: none;
+          border: 0;
+          padding: 0;
+        }
+        .tabs a {
+          flex-direction: row;
+          min-height: 40px;
+          padding: 0 14px;
+          border-radius: 20px;
+          font-size: 0.9375rem;
+          gap: 8px;
+        }
+        .tabs a svg {
+          width: 20px;
+          height: 20px;
+        }
+        .tabs a[aria-current] {
+          background: var(--panel);
+          box-shadow: 0 0 0 1px var(--line);
+        }
+        .tabs a[aria-current]::before {
+          display: none;
+        }
+        .tabs .dot {
+          top: 6px;
+          left: auto;
+          right: 6px;
+        }
+        main {
+          padding-top: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 32px;
+        }
+        .view,
+        .view:not(.current) {
+          display: grid;
+          grid-template-columns: repeat(12, minmax(0, 1fr));
+          gap: 16px;
+        }
+        .view > * {
+          grid-column: 1 / -1;
+        }
+        .view-title {
+          font-size: 1.5rem;
+          border-bottom: 1px solid var(--line);
+          padding-bottom: 6px;
+        }
+        .phone-only {
+          display: none !important;
+        }
+        .site-footer {
+          display: block;
+          padding-top: 16px;
+          padding-bottom: 24px;
+          border-top: 1px solid var(--line);
+          font-size: 0.8125rem;
+          color: var(--muted);
+        }
+        #view-today {
+          min-height: 0;
+        }
+        #view-today .hello {
+          grid-column: 1 / span 7;
+          grid-row: 1;
+        }
+        #view-today .entry {
+          grid-column: 8 / -1;
+          grid-row: 1;
+          align-self: start;
+        }
+        #view-today .kpis-wrap {
+          grid-row: 2;
+        }
+        #view-today .reminder {
+          grid-column: 1 / -1;
+          grid-row: 3;
+        }
+        .kpis-desk-row {
+          grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+        }
+        #view-progress .goal-card {
+          grid-column: 1 / span 5;
+        }
+        #view-progress .weeks-card {
+          grid-column: 6 / -1;
+        }
+        #view-analysis .acard.half {
+          grid-column: span 6;
+        }
+        #view-data .log-group-wrap {
+          grid-column: 1 / span 7;
+          grid-row: span 4;
+        }
+        #view-data .side {
+          grid-column: 8 / -1;
+        }
+        .sections-inline {
+          display: block;
+          padding: 10px 16px 14px;
+          border-bottom: 1px solid var(--line);
+        }
+        .sections-row {
+          display: none;
+        }
+      }
+      /* A wide touch screen (an iPad, later) keeps 44 px targets. */
+      @media (min-width: 960px) and (pointer: coarse) {
+        .tabs a,
+        .options-inline .toggle,
+        .sections-inline .toggle {
+          min-height: 44px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main" id="skip">Skip to content</a>
+    <div class="ad-space" aria-hidden="true">
+      <div class="ad-slot">Ad · iPhone app only · native banner, 320 × 50</div>
+    </div>
+
+    <header class="appbar">
+      <a class="brand" href="#today"
+        ><svg viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="7" fill="#2f6690" />
+          <path
+            d="M6 11 L13 17 L18 14 L26 22"
+            fill="none"
+            stroke="#fff"
+            stroke-width="2.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          /></svg
+        >Weigh to Go</a
+      >
+      <nav class="tabs" id="tabs"></nav>
+    </header>
+
+    <main id="main" tabindex="-1">
+      <section class="view" id="view-today" aria-labelledby="today-title"></section>
+      <section class="view" id="view-progress" aria-labelledby="progress-title"></section>
+      <section class="view" id="view-analysis" aria-labelledby="analysis-title"></section>
+      <section class="view" id="view-data" aria-labelledby="data-title"></section>
+    </main>
+    <footer class="site-footer" id="footer"></footer>
+
+    <dialog class="sheet" id="sheet" aria-labelledby="sheet-title"></dialog>
+    <div class="toast" id="toast" role="status" hidden></div>
+
+    <script>
+      'use strict';
+      const Q = new URLSearchParams(location.search);
+      const root = document.documentElement;
+      if (
+        Q.get('theme') === 'dark' ||
+        (!Q.get('theme') && matchMedia('(prefers-color-scheme: dark)').matches)
+      )
+        root.classList.add('dark');
+      const APP = Q.get('app') === '1' || Q.get('ad') === '1';
+      const EMPTY = Q.get('empty') === '1';
+      if (APP) root.classList.add('app');
+      // No banner while the diary is empty (design §8): the band collapses to the status bar.
+      if (Q.get('ad') === '1' && !EMPTY) root.classList.add('ad');
+      // Text size. In the app the root follows Dynamic Type (17 px at the default size), capped at 34 px (200% of the app's 17 px).
+      const DT = Number(Q.get('dt')) || (APP ? 17 : 16);
+      const scale = Q.get('text') === '200' ? 2 : Q.get('text') === '150' ? 1.5 : 1;
+      root.style.fontSize = `${Math.min(DT * scale, 34)}px`;
+      const LANG = Q.get('lang') === 'pt' ? 'pt' : 'en';
+      const LOCALE = LANG === 'pt' ? 'pt-BR' : 'en-GB';
+      root.lang = LANG === 'pt' ? 'pt-BR' : 'en';
+      const UNIT = Q.get('unit') === 'lb' ? 'lb' : 'kg';
+      const desk = matchMedia('(min-width: 960px)');
+      /** English or Portuguese (the product reads every string from src/i18n/messages.ts). */
+      const L = (en, pt) => (LANG === 'pt' ? pt : en);
+      history.scrollRestoration = 'manual';
+
+      // ---------- A made-up year (no personal data) ----------
+      const DAY = 86400000;
+      const TODAY = Date.UTC(2026, 9, 21);
+      function seeded(seed) {
+        return () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      }
+      const rnd = seeded(11);
+      let days = [];
+      for (let i = 0; i < 365; i++) {
+        const t = TODAY - (365 - i) * DAY;
+        const base = 104 - (7.6 * i) / 364 + 0.45 * Math.sin(i / 19) + 0.25 * Math.sin(i / 5.3);
+        const kg = Math.round((base + (rnd() - 0.5) * 1.0) * 10) / 10;
+        if (rnd() < 0.085 && i < 364) continue;
+        days.push({ t, kg });
+      }
+      if (EMPTY) days = [];
+      const SAVED = Q.get('saved') === '1',
+        LOGGED = Q.get('logged') === '1';
+      if ((SAVED || LOGGED) && days.length)
+        days.push({ t: TODAY, kg: Math.round((days[days.length - 1].kg - 0.4) * 10) / 10 });
+      for (let i = 0; i < days.length; i++) {
+        let s = 0,
+          n = 0;
+        for (let j = i; j >= 0 && days[j].t > days[i].t - 7 * DAY; j--) {
+          s += days[j].kg;
+          n++;
+        }
+        days[i].avg7 = s / n;
+      }
+      const GOAL = 92,
+        HEIGHT = 1.76;
+      function fit(list) {
+        const n = list.length;
+        if (n < 2) return null;
+        const x0 = list[0].t;
+        let sx = 0,
+          sy = 0,
+          sxx = 0,
+          sxy = 0;
+        for (const d of list) {
+          const x = (d.t - x0) / DAY;
+          sx += x;
+          sy += d.kg;
+          sxx += x * x;
+          sxy += x * d.kg;
+        }
+        const b = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+        const a = (sy - b * sx) / n;
+        return { a, b, x0, at: (t) => a + b * ((t - x0) / DAY) };
+      }
+      const lin = fit(days);
+      const recent = fit(days.filter((d) => d.t > (days.at(-1)?.t ?? 0) - 21 * DAY));
+      const first = days[0],
+        last = days.at(-1);
+      const todayLogged = last?.t === TODAY;
+      const before = todayLogged ? days.at(-2) : last;
+
+      // ---------- Formatting ----------
+      const conv = (kg) => (UNIT === 'lb' ? kg * 2.20462 : kg);
+      const nf = (d) => new Intl.NumberFormat(LOCALE, { minimumFractionDigits: d, maximumFractionDigits: d });
+      const num = (kg, d = 1) => nf(d).format(conv(kg));
+      const wt = (kg, d = 1) => `${num(kg, d)} ${UNIT}`;
+      const signed = (kg, d = 1) => {
+        const v = conv(kg);
+        const s = nf(d).format(Math.abs(v));
+        return (v < -0.04 ? '−' : v > 0.04 ? '+' : '±') + s;
+      };
+      const dirClass = (kg) => (kg < -0.04 ? 'down' : kg > 0.04 ? 'up' : '');
+      const pct = (v, d = 1) =>
+        new Intl.NumberFormat(LOCALE, {
+          style: 'percent',
+          minimumFractionDigits: d,
+          maximumFractionDigits: d,
+        }).format(v);
+      const dfmt = (t, o) => new Intl.DateTimeFormat(LOCALE, { timeZone: 'UTC', ...o }).format(new Date(t));
+      const dShort = (t) => dfmt(t, { day: 'numeric', month: 'short' });
+      const dLong = (t) => dfmt(t, { weekday: 'long', day: 'numeric', month: 'long' });
+      const dYear = (t) => dfmt(t, { day: 'numeric', month: 'short', year: 'numeric' });
+      /** The readout's day: short, with the year only when it isn't this year. */
+      const dRead = (t) =>
+        dfmt(t, {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+          ...(new Date(t).getUTCFullYear() !== 2026 ? { year: 'numeric' } : {}),
+        });
+      /** A sentence never gets two full stops after an abbreviated month ("26 de set.."). */
+      const sentence = (s) => s.replace(/\.\.(?=<|$)/g, '.');
+      const plural = (n, en, pt) => `${n} ${L(en, pt)}${n === 1 ? '' : 's'}`;
+
+      const ICON = {
+        today:
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V9.5a6 6 0 0 1 12 0V20"/><path d="M12 12l2.5-3"/></svg>',
+        progress:
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5l6 6 4-3 8 9"/><path d="M3 20h18"/></svg>',
+        analysis:
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>',
+        data: '<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7.5" ry="3"/><path d="M4.5 6v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6M4.5 12v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"/></svg>',
+        cal: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+        sliders:
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+        chev: '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
+        go: '<svg class="go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
+        check:
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>',
+      };
+
+      // ---------- The shell: tab links, routes, focus, the bar's measured height ----------
+      const ROUTES = {
+        today: 'view-today',
+        progress: 'view-progress',
+        analysis: 'view-analysis',
+        data: 'view-data',
+      };
+      const NAMES = {
+        today: L('Today', 'Hoje'),
+        progress: L('Progress', 'Progresso'),
+        analysis: L('Analysis', 'Análise'),
+        data: L('Your data', 'Seus dados'),
+      };
+      const backupDue = !EMPTY;
+      const tabs = document.getElementById('tabs');
+      tabs.setAttribute('aria-label', L('Diary', 'Diário'));
+      tabs.innerHTML = Object.keys(ROUTES)
+        .map(
+          (k) =>
+            `<a href="#${k}" data-tab="${k}">${ICON[k]}<span>${NAMES[k]}</span>${k === 'data' && backupDue ? `<span class="dot" aria-hidden="true"></span><span class="visually-hidden"> ${L('(backup due)', '(backup pendente)')}</span>` : ''}</a>`,
+        )
+        .join('');
+      root.classList.add('has-tabs');
+      // The bar grows with text size and wrapping: the page's room for it follows what it measures.
+      // Hidden while typing, it measures 0: the last real height is kept.
+      new ResizeObserver(() => {
+        if (!desk.matches && tabs.offsetHeight > 0)
+          root.style.setProperty('--tab-h', `${tabs.offsetHeight}px`);
+      }).observe(tabs);
+      document.getElementById('skip').textContent = L('Skip to content', 'Pular para o conteúdo');
+      const scrolls = {};
+      let current = null;
+      function markCurrent(tab) {
+        for (const a of tabs.querySelectorAll('a')) {
+          if (a.dataset.tab === tab) a.setAttribute('aria-current', desk.matches ? 'location' : 'page');
+          else a.removeAttribute('aria-current');
+        }
+      }
+      function show(tab, focus) {
+        if (!ROUTES[tab]) tab = 'today';
+        if (current && !desk.matches) scrolls[current] = scrollY;
+        current = tab;
+        for (const [k, id] of Object.entries(ROUTES))
+          document.getElementById(id).classList.toggle('current', k === tab);
+        markCurrent(tab);
+        document.title = `${tab === 'today' ? '' : NAMES[tab] + ' · '}Weigh to Go`;
+        if (desk.matches) {
+          if (focus) document.getElementById(ROUTES[tab]).scrollIntoView({ block: 'start' });
+        } else {
+          scrollTo(0, scrolls[tab] || 0);
+          if (focus) document.getElementById(`${tab}-title`).focus({ preventScroll: true });
+        }
+        redrawShown();
+      }
+      // Only the four routes switch views; any other hash (the skip link's #main) is left to the browser.
+      addEventListener('hashchange', () => {
+        const h = location.hash.slice(1);
+        if (ROUTES[h]) show(h, true);
+      });
+      // While a text field has focus the keypad is up: the tab bar and the banner step aside.
+      // Text, number and search inputs and textareas; not range, date, time or checkbox.
+      const TYPING = 'input[type=text], input[type=number], input[type=search], input:not([type]), textarea';
+      document.addEventListener('focusin', (e) => {
+        if (e.target.matches(TYPING)) root.classList.add('typing');
+      });
+      document.addEventListener('focusout', () => root.classList.remove('typing'));
+
+      // ---------- Today ----------
+      function kpiTile(label, value, unit, sub, cls = '') {
+        return `<div class="kpi"><span class="kpi-label">${label}</span><span class="kpi-value ${cls}">${value}${unit ? `<span class="kpi-unit">${unit}</span>` : ''}</span><span class="kpi-sub">${sub}</span></div>`;
+      }
+      function avgWeekBefore() {
+        const t = last.t - 7 * DAY;
+        let best = days[0];
+        for (const d of days) if (d.t <= t) best = d;
+        return best.avg7;
+      }
+      const perWeek = () => `${UNIT}${L('/wk', '/sem')}`;
+      // The built key figures (kpi.*), word for word.
+      function kpiAvg7() {
+        const ch = last.avg7 - avgWeekBefore();
+        return kpiTile(
+          L('7-day average', 'Média dos últimos 7 dias'),
+          num(last.avg7),
+          UNIT,
+          `<span class="${dirClass(ch)}">${signed(ch)} ${UNIT}</span> ${L('vs. 7 days before', 'vs. 7 dias antes')}`,
+        );
+      }
+      function kpiLoss() {
+        return kpiTile(
+          L('Total loss', 'Perda total'),
+          num(first.kg - last.kg),
+          UNIT,
+          L(
+            `${pct((first.kg - last.kg) / first.kg)} of the starting ${wt(first.kg)}`,
+            `${pct((first.kg - last.kg) / first.kg)} dos ${wt(first.kg)} iniciais`,
+          ),
+          'down',
+        );
+      }
+      function kpiPace() {
+        return kpiTile(
+          L('Average pace', 'Ritmo médio'),
+          signed(lin.b * 7, 2),
+          perWeek(),
+          `${L('Last 3 weeks:', 'Últimas 3 semanas:')} <span class="${dirClass(recent.b)}">${signed(recent.b * 7, 2)} ${perWeek()}</span>`,
+          dirClass(lin.b),
+        );
+      }
+      function threeKpis() {
+        return [kpiAvg7(), kpiLoss(), kpiPace()];
+      }
+      function sixKpis() {
+        let min = days[0],
+          max = days[0];
+        for (const d of days) {
+          if (d.kg < min.kg) min = d;
+          if (d.kg > max.kg) max = d;
+        }
+        const prev = days.at(-2),
+          since = Math.round((last.t - min.t) / DAY);
+        return [
+          kpiTile(
+            L('Current weight', 'Peso atual'),
+            num(last.kg),
+            UNIT,
+            `${L('on', 'em')} ${dShort(last.t)} · <span class="${dirClass(last.kg - prev.kg)}">${signed(last.kg - prev.kg)} ${UNIT}</span> ${L('vs. previous', 'vs. anterior')}`,
+          ),
+          kpiLoss(),
+          kpiPace(),
+          kpiAvg7(),
+          kpiTile(
+            L('Lowest', 'Mínima'),
+            num(min.kg),
+            UNIT,
+            `${L('on', 'em')} ${dShort(min.t)} · ${since === 0 ? L('today', 'hoje') : L(`${plural(since, 'day', 'dia')} ago`, `há ${plural(since, 'day', 'dia')}`)}`,
+          ),
+          kpiTile(L('Highest', 'Máxima'), num(max.kg), UNIT, `${L('on', 'em')} ${dShort(max.t)}`),
+        ];
+      }
+      function drawSpark() {
+        const box = document.getElementById('spark-plot');
+        if (!box || !box.clientWidth) return;
+        const w = box.clientWidth,
+          h = box.clientHeight;
+        const list = days.filter((d) => d.t > last.t - 30 * DAY);
+        const lo = Math.min(...list.map((d) => d.kg)) - 0.2,
+          hi = Math.max(...list.map((d) => d.kg)) + 0.2;
+        const x = (t) => 4 + ((t - (last.t - 29 * DAY)) / (29 * DAY)) * (w - 8);
+        const y = (v) => 4 + (1 - (v - lo) / (hi - lo)) * (h - 8);
+        box.innerHTML = `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true">${list.map((d) => `<circle cx="${x(d.t).toFixed(1)}" cy="${y(d.kg).toFixed(1)}" r="2.2" class="l-points"/>`).join('')}<path d="${list.map((d, i) => `${i ? 'L' : 'M'}${x(d.t).toFixed(1)},${y(d.avg7).toFixed(1)}`).join('')}" class="l-avg7"/></svg>`;
+      }
+      const STR = {
+        // New strings of the design (proposed keys).
+        last: (w) => L(`Last: ${w}, yesterday`, `Última: ${w}, ontem`),
+        logged: (w) => L(`Today: ${w}. Saving replaces it.`, `Hoje: ${w}. Salvar substitui o valor.`),
+        savedSub: (c) =>
+          L(
+            `${c} vs. the last one · 7-day average ${wt(last.avg7)}`,
+            `${c} em relação à anterior · média de 7 dias ${wt(last.avg7)}`,
+          ),
+        undoHint: L('Undo is available for 10 seconds.', 'Dá para desfazer por 10 segundos.'),
+        // Built: entry.saved, word for word.
+        saved: (w, d) => L(`Saved: ${w} on ${d}.`, `Salvo: ${w} em ${d}.`),
+      };
+      function entryForm(value = '', hint) {
+        const h =
+          hint ??
+          (EMPTY
+            ? L(
+                'Today is already in. Type your weight and press Save.',
+                'A data de hoje já está preenchida. Digite seu peso e toque em Salvar.',
+              )
+            : todayLogged && !SAVED
+              ? STR.logged(wt(last.kg))
+              : STR.last(wt(before.kg)));
+        return `<form class="entry-form" id="entry-form" novalidate>
+      <label for="entry-weight">${L('Weight', 'Peso')}</label>
+      <div class="with-unit"><input id="entry-weight" type="text" inputmode="decimal" autocomplete="off" value="${value}" aria-describedby="entry-hint entry-unit"><span class="unit" id="entry-unit">${UNIT}</span></div>
+      <button class="button button-big" type="submit">${L('Save', 'Salvar')}</button>
+      <p class="hint" id="entry-hint">${h}</p>
+    </form>`;
+      }
+      function savedBlock(kg, prevKg) {
+        return `<div class="saved" id="saved-note" tabindex="-1">${ICON.check}<p><b>${STR.saved(wt(kg), dYear(TODAY))}</b></p><p class="sub">${STR.savedSub(`<span class="${dirClass(kg - prevKg)}">${signed(kg - prevKg)} ${UNIT}</span>`)}</p><button class="button button-ghost" type="button" id="undo">${L('Undo', 'Desfazer')}</button><span class="undo-bar" aria-hidden="true"></span></div>
+    <div class="after-row"><button class="button button-ghost" type="button" id="change-today">${L('Change', 'Alterar')}</button><button class="button button-ghost" type="button" id="another-day">${L('Another day', 'Outro dia')}</button></div>`;
+      }
+      function renderToday() {
+        const el = document.getElementById('view-today');
+        const todayText = `${L('Today', 'Hoje')}, ${dShort(TODAY)}`;
+        const chip = `<span class="date-chip">${ICON.cal}<span aria-hidden="true" id="chip-text">${todayText}</span><input type="date" id="entry-date" aria-label="${L('Date', 'Data')}: ${L('Today', 'Hoje')}, ${dLong(TODAY)}" value="2026-10-21" max="2026-10-22"></span>
+    <label class="date-field">${L('Date', 'Data')}<input type="date" id="entry-date-field" value="2026-10-21" max="2026-10-22"></label>`;
+        const entry = `<section class="card entry" aria-labelledby="entry-title"><div class="entry-head"><h2 id="entry-title">${L('Log a weigh-in', 'Registrar pesagem')}</h2>${chip}</div><div id="entry-slot">${SAVED ? savedBlock(last.kg, before.kg) : entryForm()}</div><p class="visually-hidden" role="status" id="entry-status"></p></section>`;
+        // Built notices, word for word (notice.setAside; in the app, enApp's notice.reload and its button).
+        const notices = `${Q.get('aside') === '1' ? `<div class="notice" role="status"><p>${L("The saved diary couldn't be read in full. A copy is kept in the app as it was, and what could be read is shown. If weigh-ins are missing, import your latest backup.", 'Não foi possível ler todo o diário salvo. Uma cópia fica guardada no app como estava, e o que pôde ser lido está aqui. Se faltarem pesagens, importe seu backup mais recente.')}</p></div>` : ''}${Q.get('reload') === '1' ? `<div class="notice" role="status"><p>${L("The app can't open its saved diary right now. Try again; if it keeps happening, close the app and open it again.", 'O app não está conseguindo abrir o diário salvo agora. Tente de novo; se continuar, feche o app e abra-o outra vez.')}</p><button class="button" type="button">${L('Try again', 'Tentar de novo')}</button></div>` : ''}`;
+        if (EMPTY) {
+          el.innerHTML = `<h1 class="view-title" id="today-title" tabindex="-1">${L('Your weight diary, on your device', 'Seu diário de peso, no seu aparelho')}</h1>
+      <p class="intro-text">${L("Log a weigh-in a day and Weigh to Go shows where you're heading: the trend under the daily noise, projections, weekly averages, the days you climb back up, and more.", 'Registre uma pesagem por dia e o Weigh to Go mostra para onde você está indo: a tendência por trás do sobe e desce diário, projeções, médias semanais, os dias em que o peso volta a subir e mais.')}</p>
+      <p class="privacy">${APP ? L('Everything runs on your iPhone: your weigh-ins are stored in this app only.', 'Tudo funciona no seu iPhone: suas pesagens ficam guardadas só neste app.') : L('Everything runs in your browser: your weigh-ins are stored on this device only.', 'Tudo funciona no seu navegador: suas pesagens ficam guardadas só neste aparelho.')}</p>${entry}
+      <div class="empty-links"><a href="#data">${L('Have a backup? Import it here', 'Tem um backup? Importe aqui')}</a><a href="#data">${L('Paste several days at once', 'Colar vários dias de uma vez')}</a></div>`;
+        } else {
+          el.innerHTML = `<h1 class="visually-hidden" id="today-title" tabindex="-1">${NAMES.today}</h1>${notices}
+      <div class="hello"><p class="eyebrow">${dLong(TODAY)}</p>
+        <p class="take phone-only">${L(`<b>${signed(last.kg - first.kg)} ${UNIT}</b> since ${dYear(first.t)}, about ${wt(Math.abs(lin.b * 7), 2)} a week.`, `<b>${signed(last.kg - first.kg)} ${UNIT}</b> desde ${dYear(first.t)}, cerca de ${wt(Math.abs(lin.b * 7), 2)} por semana.`)}</p>
+        <p class="take desk-take" hidden></p></div>
+      <div class="kpis-wrap"><div class="kpis kpis-today" role="group" aria-label="${L('Key figures', 'Indicadores')}">${threeKpis().join('')}</div></div>
+      <a class="card spark phone-only" href="#progress" aria-label="${L('Last 30 days, see Progress', 'Últimos 30 dias, ver Progresso')}"><span class="spark-head">${L('Last 30 days', 'Últimos 30 dias')}</span><span class="spark-more">${NAMES.progress} ›</span><span class="spark-plot" id="spark-plot"></span><span class="spark-legend"><span><i class="sw dot" style="background:var(--c-weight)"></i>${L('Weigh-ins', 'Pesagens')}</span><span><i class="sw" style="border-color:var(--c-avg7)"></i>${L('7-day average', 'Média de 7 dias')}</span></span></a>
+      ${entry}
+      ${backupDue ? `<p class="reminder"><span class="dot-inline" aria-hidden="true"></span><span>${L('Your last backup was 45 days ago. Export a new one, so recent weigh-ins are safe too.', 'Seu último backup foi há 45 dias. Exporte um novo, para que as pesagens recentes também fiquem seguras.')} <a href="#data">${L('Export backup', 'Exportar backup')}</a></span></p>` : ''}`;
+          if (desk.matches) {
+            const take = el.querySelector('.desk-take');
+            take.hidden = false;
+            take.innerHTML = fullTake();
+            const k = el.querySelector('.kpis');
+            k.innerHTML = sixKpis().join('');
+            k.classList.add('kpis-desk-row');
+          }
+          new ResizeObserver(drawSpark).observe(el.querySelector('#spark-plot'));
+        }
+        wireEntry();
+        wireDate();
+      }
+      function wireDate() {
+        const input = document.getElementById('entry-date'),
+          text = document.getElementById('chip-text');
+        if (!input) return;
+        // Some browsers open the picker only from its icon: ask for it, and let the tap do it where that fails.
+        input.addEventListener('click', () => {
+          try {
+            input.showPicker();
+          } catch {
+            /* the tap opens it */
+          }
+        });
+        const update = () => {
+          if (!input.value) input.value = '2026-10-21'; // empty means today
+          const t = Date.parse(input.value + 'T00:00:00Z');
+          text.textContent =
+            t === TODAY
+              ? `${L('Today', 'Hoje')}, ${dShort(t)}`
+              : dfmt(t, { weekday: 'short', day: 'numeric', month: 'short' });
+          input.setAttribute(
+            'aria-label',
+            `${L('Date', 'Data')}: ${t === TODAY ? L('Today', 'Hoje') + ', ' : ''}${dLong(t)}`,
+          );
+        };
+        input.addEventListener('input', update);
+        input.addEventListener('change', update);
+      }
+      let undoTimer = null,
+        undoLeft = 10000,
+        undoStart = 0;
+      function startUndo(ms) {
+        undoLeft = ms;
+        undoStart = performance.now();
+        clearTimeout(undoTimer);
+        undoTimer = setTimeout(() => {
+          const u = document.getElementById('undo');
+          if (u) {
+            u.remove();
+            document.querySelector('.undo-bar')?.remove();
+          }
+        }, ms);
+      }
+      function wireEntry() {
+        const form = document.getElementById('entry-form');
+        if (form)
+          form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const input = document.getElementById('entry-weight');
+            const v = parseFloat(input.value.replace(',', '.'));
+            if (!(v > 20 && v < 400)) {
+              input.focus();
+              const h = document.getElementById('entry-hint');
+              h.textContent = L(
+                `Type the weight in ${UNIT}, for example ${num(108.4)}.`,
+                `Digite o peso em ${UNIT}, por exemplo ${num(108.4)}.`,
+              );
+              h.classList.add('bad');
+              return;
+            }
+            const kg = UNIT === 'lb' ? v / 2.20462 : v;
+            document.getElementById('entry-slot').innerHTML = savedBlock(kg, days.length ? before.kg : kg);
+            // The live region exists from the start; it is written after the swap, so it is announced.
+            requestAnimationFrame(() => {
+              document.getElementById('entry-status').textContent =
+                `${STR.saved(wt(kg), dYear(TODAY))} ${STR.undoHint}`;
+            });
+            document.getElementById('saved-note').focus({ preventScroll: true });
+            wireEntry();
+          });
+        const undo = document.getElementById('undo');
+        if (undo) {
+          startUndo(10000);
+          const bar = document.querySelector('.undo-bar');
+          // The count stops while Undo has focus, and resumes with at least 5 seconds when focus leaves.
+          undo.addEventListener('focus', () => {
+            clearTimeout(undoTimer);
+            undoLeft -= performance.now() - undoStart;
+            bar?.classList.add('paused');
+          });
+          undo.addEventListener('blur', () => {
+            bar?.classList.remove('paused');
+            startUndo(Math.max(undoLeft, 5000));
+          });
+          undo.addEventListener('click', () => {
+            clearTimeout(undoTimer);
+            document.getElementById('entry-slot').innerHTML = entryForm(
+              num(SAVED ? last.kg : last.kg - 0.4),
+              L(
+                'Undone. The weight is back in the field to correct.',
+                'Desfeito. O peso voltou ao campo para corrigir.',
+              ),
+            );
+            document.getElementById('entry-status').textContent = L('Undone.', 'Desfeito.');
+            wireEntry();
+            // Synchronously, inside the tap: iOS opens the keypad only for a focus() made in the gesture.
+            document.getElementById('entry-weight').focus();
+          });
+          document.getElementById('change-today').addEventListener('click', () => {
+            document.getElementById('entry-slot').innerHTML = entryForm(
+              num(last.kg),
+              STR.logged(wt(last.kg)),
+            );
+            wireEntry();
+            document.getElementById('entry-weight').select();
+          });
+          document.getElementById('another-day').addEventListener('click', () => {
+            document.getElementById('entry-slot').innerHTML = entryForm();
+            wireEntry();
+            (desk.matches || matchMedia('(pointer: fine)').matches
+              ? document.getElementById('entry-date-field')
+              : document.getElementById('entry-date')
+            ).focus();
+          });
+        }
+      }
+
+      // ---------- Progress ----------
+      /** Built: summary.take (enSummary / ptSummary), word for word. */
+      function fullTake() {
+        const d = Math.round((last.t - first.t) / DAY);
+        return L(
+          `Since ${dYear(first.t)} you have lost <b>${wt(first.kg - last.kg)}</b> (${pct((first.kg - last.kg) / first.kg)} of your starting weight) in ${d} days, an average of ${wt(Math.abs(lin.b * 7), 2)} a week. Over the last 3 weeks it has fallen ${wt(Math.abs(recent.b * 7), 2)} a week, and your 7-day average is <b>${wt(last.avg7)}</b>.`,
+          `Desde ${dYear(first.t)} você perdeu <b>${wt(first.kg - last.kg)}</b> (${pct((first.kg - last.kg) / first.kg)} do peso inicial) em ${d} dias, um ritmo médio de ${wt(Math.abs(lin.b * 7), 2)} por semana. Nas últimas 3 semanas o peso caiu ${wt(Math.abs(recent.b * 7), 2)} por semana, e a média dos últimos 7 dias está em <b>${wt(last.avg7)}</b>.`,
+        );
+      }
+      // Built layer.* names, both languages.
+      const LAYERS = [
+        ['points', L('Weigh-ins', 'Pesagens'), 'dot', '--c-weight'],
+        ['line', L('Daily line', 'Linha diária'), 'dash', '--c-weight'],
+        ['avg7', L('7-day average', 'Média de 7 dias'), '', '--c-avg7'],
+        ['trend', L('Smoothed trend', 'Tendência suavizada'), 'dash', '--c-trend'],
+        ['weekly', L('Weekly averages', 'Médias semanais'), '', '--c-week'],
+        ['weekRange', L('Weekly low–high range', 'Faixa mín.–máx. da semana'), '', '--c-week'],
+        ['regression', L('Trend line', 'Reta de tendência'), 'dash', '--c-reg'],
+        ['projection', L('Projection', 'Projeção'), 'dash', '--c-proj'],
+        ['band', L('Projection range', 'Faixa da projeção'), '', '--c-proj'],
+        ['extremes', L('Highest and lowest', 'Máxima e mínima'), '', '--ref'],
+        ['events', L('Biggest drop and rise', 'Maior queda e maior alta'), '', '--ref'],
+        ['hiccups', L('Hiccups', 'Soluços'), '', '--up'],
+        ['goal', L('Goal', 'Meta'), 'dash', '--ok'],
+        ['bmi', L('BMI lines', 'Linhas de IMC'), 'dash', '--ref'],
+      ];
+      const PRESETS = {
+        essential: ['points', 'avg7', 'projection', 'goal'],
+        detailed: ['points', 'line', 'avg7', 'projection', 'band', 'extremes', 'hiccups', 'goal'],
+      };
+      // The default follows the screen at first use only; a change of width never resets a choice.
+      const chartState = {
+        preset: desk.matches ? 'detailed' : 'essential',
+        period: 'all',
+        method: 'linear',
+        horizon: 30,
+        cursor: null,
+      };
+      chartState.layers = new Set(PRESETS[chartState.preset]);
+      const presetName = {
+        essential: L('Essential', 'Essencial'),
+        detailed: L('Detailed', 'Detalhado'),
+        custom: L('Custom', 'Personalizado'),
+      };
+      function renderProgress() {
+        const el = document.getElementById('view-progress');
+        if (days.length < 2) {
+          el.innerHTML = `<h1 class="view-title" id="progress-title" tabindex="-1">${NAMES.progress}</h1><div class="card"><p class="take" style="margin:0">${L('The chart and figures appear from the second weigh-in.', 'O gráfico e os indicadores aparecem a partir da segunda pesagem.')}</p><p style="margin:12px 0 0"><a class="button" href="#today">${L('Log a weigh-in', 'Registrar pesagem')}</a></p></div>`;
+          return;
+        }
+        const togo = last.avg7 - GOAL,
+          daysTo = Math.round(togo / Math.abs(recent.b));
+        el.innerHTML = `<h1 class="view-title" id="progress-title" tabindex="-1">${NAMES.progress}</h1>
+    <div class="phone-only"><p class="eyebrow">${L(`${dYear(first.t)} to ${dYear(last.t)} · ${days.length} weigh-ins`, `${dYear(first.t)} a ${dYear(last.t)} · ${days.length} pesagens`)}</p><p class="take">${fullTake()}</p></div>
+    <section class="card chart-card" aria-labelledby="chart-title">
+      <div class="card-head"><div><h2 id="chart-title">${L('Weight over time', 'Peso ao longo do tempo')}</h2></div>
+        <button class="options-button" type="button" id="chart-options">${ICON.sliders}<span>${L('Layers', 'Camadas')}: <b id="preset-name">${presetName[chartState.preset]}</b></span></button></div>
+      <div class="readout" id="readout" aria-hidden="true"></div>
+      <div class="chart-box" id="chart-box"></div>
+      <div class="legend" id="legend" aria-hidden="true"></div>
+      <div class="segmented" role="group" aria-label="${L('Period', 'Período')}" id="period">${[
+        ['all', L('All', 'Tudo')],
+        [60, L('60 days', '60 dias')],
+        [30, L('30 days', '30 dias')],
+        [14, L('14 days', '14 dias')],
+      ]
+        .map(
+          ([v, l]) =>
+            `<button type="button" data-v="${v}" aria-pressed="${String(chartState.period) === String(v)}">${l}</button>`,
+        )
+        .join('')}</div>
+      <p class="foot" id="foot"></p>
+      <div class="options-inline" id="chart-panel" role="region" aria-labelledby="chart-options" hidden></div>
+    </section>
+    <div class="kpis kpis-6 phone-only" role="group" aria-label="${L('Key figures', 'Indicadores')}">${sixKpis().join('')}</div>
+    <section class="card goal-card" aria-labelledby="goal-title"><div class="card-head"><div><h2 id="goal-title">${L('Goal', 'Meta')}</h2><p class="take" style="margin-top:2px">${L(`<b>${wt(togo)}</b> to go to ${wt(GOAL)}`, `<b>${wt(togo)}</b> para chegar a ${wt(GOAL)}`)}</p></div><button class="options-button" type="button">${L('Change', 'Alterar')}</button></div>
+      <div class="bar" role="img" aria-label="${pct((first.kg - last.avg7) / (first.kg - GOAL), 0)}"><span style="width:${((100 * (first.kg - last.avg7)) / (first.kg - GOAL)).toFixed(0)}%"></span></div>
+      <p class="note">${L(`${pct((first.kg - last.avg7) / (first.kg - GOAL), 0)} of the way`, `${pct((first.kg - last.avg7) / (first.kg - GOAL), 0)} do caminho`)}</p>
+      <p class="note"><b>${L('At the pace of the last 3 weeks', 'No ritmo das últimas 3 semanas')}</b>: ${L(`in ${daysTo} days, at ${wt(Math.abs(recent.b * 7), 2)} a week`, `em ${daysTo} dias, a ${wt(Math.abs(recent.b * 7), 2)} por semana`)}</p></section>
+    <section class="card weeks-card" aria-labelledby="weeks-title"><h2 id="weeks-title">${L('Weekly averages', 'Médias semanais')}</h2><p class="note">${L(`This week ${wt(last.avg7)}, ${wt(Math.abs(last.avg7 - avgWeekBefore()))} below the week before.`, `Esta semana ${wt(last.avg7)}, ${wt(Math.abs(last.avg7 - avgWeekBefore()))} abaixo da anterior.`)}</p>
+      <table class="table"><thead><tr><th>${L('Week', 'Semana')}</th><th class="n">${L('Average', 'Média')}</th><th class="n">${L('Change', 'Variação')}</th></tr></thead><tbody>${weeksRows(4)}</tbody></table>
+      <div class="more-row"><span>${L('4 of 52 weeks', '4 de 52 semanas')}</span><button class="button-text" type="button">${L('Show more', 'Mostrar mais')}</button></div></section>`;
+        document.getElementById('chart-options').addEventListener('click', () => toggleChartOptions());
+        syncOptionsButton();
+        document.getElementById('period').addEventListener('click', (e) => {
+          const b = e.target.closest('button');
+          if (!b) return;
+          chartState.period = b.dataset.v === 'all' ? 'all' : Number(b.dataset.v);
+          for (const x of b.parentElement.children) x.setAttribute('aria-pressed', String(x === b));
+          chartState.cursor = null;
+          drawMain();
+        });
+        if (desk.matches) toggleChartOptions(true);
+      }
+      /** Narrow: the button opens a modal sheet. Wide: it shows and hides a plain panel in the card. */
+      function syncOptionsButton() {
+        const btn = document.getElementById('chart-options');
+        if (!btn) return;
+        if (desk.matches) {
+          btn.removeAttribute('aria-haspopup');
+          btn.setAttribute('aria-expanded', String(!document.getElementById('chart-panel').hidden));
+          btn.setAttribute('aria-controls', 'chart-panel');
+        } else {
+          btn.setAttribute('aria-haspopup', 'dialog');
+          btn.removeAttribute('aria-expanded');
+          btn.removeAttribute('aria-controls');
+        }
+      }
+      function toggleChartOptions(open) {
+        const panel = document.getElementById('chart-panel');
+        if (desk.matches) {
+          panel.hidden = open === undefined ? !panel.hidden : !open;
+          if (!panel.hidden) {
+            panel.replaceChildren(chartOptionsBody());
+            wireChartOptions(panel);
+          }
+          syncOptionsButton();
+        } else {
+          openSheet(
+            L('Chart options', 'Opções do gráfico'),
+            (body) => {
+              body.replaceChildren(chartOptionsBody());
+              wireChartOptions(body);
+            },
+            document.getElementById('chart-options'),
+          );
+        }
+      }
+      function chartOptionsBody() {
+        const L2 = chartState.layers;
+        const wrap = document.createElement('div');
+        wrap.className = 'options-content';
+        wrap.innerHTML = `<section class="sheet-section sec-view"><h3>${L('View', 'Visualização')}</h3><div class="segmented" role="group" aria-label="${L('View', 'Visualização')}" id="presets">${['essential', 'detailed', 'custom'].map((p) => `<button type="button" data-p="${p}" aria-pressed="${chartState.preset === p}">${presetName[p]}</button>`).join('')}</div><p class="preset-note" id="preset-note">${presetNote()}</p></section>
+    <section class="sheet-section sec-layers"><h3>${L('Layers', 'Camadas')} <button class="button-text" type="button" id="all-on">${L('All on', 'Todas')}</button></h3><div class="toggle-list" id="layer-list">${LAYERS.map(([k, l, st, c]) => `<button class="toggle" type="button" data-k="${k}" aria-pressed="${L2.has(k)}"><i class="sw ${st === 'dot' ? 'dot' : st}" style="${st === 'dot' ? 'background' : 'border-color'}:var(${c})"></i><span class="grow">${l}</span><span class="switch" aria-hidden="true"></span></button>`).join('')}</div></section>
+    <section class="sheet-section sec-method"><h3>${L('Projection', 'Projeção')}</h3><div class="segmented" role="group" aria-label="${L('Projection', 'Projeção')}" id="method">${[
+      ['linear', L('Whole period', 'Todo o período')],
+      ['recent', L('Last 3 weeks', 'Últimas 3 semanas')],
+      ['smoothed', L('Smoothed trend', 'Tendência suavizada')],
+    ]
+      .map(
+        ([v, l]) =>
+          `<button type="button" data-v="${v}" aria-pressed="${chartState.method === v}">${l}</button>`,
+      )
+      .join('')}</div></section>
+    <section class="sheet-section sec-horizon"><h3>${L('Horizon', 'Horizonte')}</h3><div class="segmented" role="group" aria-label="${L('Horizon', 'Horizonte')}" id="horizon">${[15, 30, 60, 90].map((v) => `<button type="button" data-v="${v}" aria-pressed="${chartState.horizon === v}">${v} ${L('days', 'dias')}</button>`).join('')}</div></section>`;
+        return wrap;
+      }
+      function wireChartOptions(scope) {
+        const L2 = chartState.layers;
+        const sync = () => {
+          document.getElementById('preset-name').textContent = presetName[chartState.preset];
+          for (const b of scope.querySelectorAll('#presets button'))
+            b.setAttribute('aria-pressed', String(b.dataset.p === chartState.preset));
+          for (const b of scope.querySelectorAll('#layer-list button'))
+            b.setAttribute('aria-pressed', String(L2.has(b.dataset.k)));
+          scope.querySelector('#preset-note').textContent = presetNote();
+          drawMain();
+        };
+        scope.querySelector('#presets').addEventListener('click', (e) => {
+          const b = e.target.closest('button');
+          if (!b) return;
+          chartState.preset = b.dataset.p;
+          if (b.dataset.p !== 'custom') {
+            L2.clear();
+            PRESETS[b.dataset.p].forEach((k) => L2.add(k));
+          } else chartState.custom?.forEach((k) => L2.add(k));
+          sync();
+        });
+        scope.querySelector('#layer-list').addEventListener('click', (e) => {
+          const b = e.target.closest('button');
+          if (!b) return;
+          const k = b.dataset.k;
+          if (L2.has(k)) L2.delete(k);
+          else L2.add(k);
+          chartState.preset = 'custom';
+          chartState.custom = new Set(L2);
+          sync();
+        });
+        scope.querySelector('#all-on').addEventListener('click', () => {
+          LAYERS.forEach(([k]) => L2.add(k));
+          chartState.preset = 'custom';
+          chartState.custom = new Set(L2);
+          sync();
+        });
+        for (const id of ['method', 'horizon'])
+          scope.querySelector('#' + id).addEventListener('click', (e) => {
+            const b = e.target.closest('button');
+            if (!b) return;
+            chartState[id] = id === 'horizon' ? Number(b.dataset.v) : b.dataset.v;
+            for (const x of b.parentElement.children) x.setAttribute('aria-pressed', String(x === b));
+            drawMain();
+          });
+      }
+      function presetNote() {
+        return chartState.preset === 'essential'
+          ? L(
+              'Weigh-ins, the 7-day average, the projection and the goal.',
+              'Pesagens, média de 7 dias, projeção e meta.',
+            )
+          : chartState.preset === 'detailed'
+            ? L(
+                'Adds the daily line, the projection range, highest and lowest, and hiccups.',
+                'Acrescenta a linha diária, a faixa da projeção, máxima e mínima, e os soluços.',
+              )
+            : L(
+                'Your own choice of layers, kept on this device.',
+                'Sua escolha de camadas, guardada neste aparelho.',
+              );
+      }
+      function weeksRows(k) {
+        let out = '';
+        for (let i = 0; i < k; i++) {
+          const end = last.t - i * 7 * DAY,
+            list = days.filter((d) => d.t <= end && d.t > end - 7 * DAY),
+            prevL = days.filter((d) => d.t <= end - 7 * DAY && d.t > end - 14 * DAY);
+          const m = list.reduce((s, d) => s + d.kg, 0) / list.length,
+            p = prevL.reduce((s, d) => s + d.kg, 0) / prevL.length;
+          out += `<tr><td>${dShort(end - 6 * DAY)}–${dShort(end)}</td><td class="n">${num(m)}</td><td class="n ${dirClass(m - p)}">${signed(m - p)}</td></tr>`;
+        }
+        return out;
+      }
+
+      // The main chart: drawn at the card's width, text in rem, a readout of fixed height above the plot.
+      function remPx() {
+        return parseFloat(getComputedStyle(root).fontSize);
+      }
+      function drawMain() {
+        const box = document.getElementById('chart-box');
+        if (!box || days.length < 2) return;
+        const W0 = box.clientWidth;
+        if (!W0) return;
+        const rem = remPx();
+        const Ls = chartState.layers;
+        const start = chartState.period === 'all' ? first.t : last.t - (chartState.period - 1) * DAY;
+        const list = days.filter((d) => d.t >= start);
+        const hz = Ls.has('projection') ? chartState.horizon : 0;
+        const end = last.t + hz * DAY;
+        const model = chartState.method === 'recent' ? recent : lin;
+        const projAt = (t) => last.avg7 + model.b * ((t - last.t) / DAY);
+        const spread = (h) => 0.15 + h * 0.022;
+        const stops = list.map((d) => ({ t: d.t, kg: d.kg, avg7: d.avg7 }));
+        if (hz) stops.push({ t: end, proj: projAt(end) });
+        const readoutHtml = (st) =>
+          st.proj
+            ? `<span class="r-day">${dRead(st.t)} · ${L('estimate', 'estimativa')}</span><span class="r-item"><i style="background:var(--c-proj)"></i>${wt(st.proj)}</span><span class="r-item">${num(st.proj - spread(hz))}–${num(st.proj + spread(hz))}</span>`
+            : `<span class="r-day">${dRead(st.t)}${st.t === last.t ? ' · ' + L('last weigh-in', 'último registro') : ''}</span><span class="r-item"><i style="background:var(--c-weight)"></i>${wt(st.kg)}</span>${Ls.has('avg7') ? `<span class="r-item"><i style="background:var(--c-avg7)"></i>${L('7-day', '7 dias')} ${wt(st.avg7)}</span>` : ''}`;
+        const ro = document.getElementById('readout');
+        // Fixed height: measured on every draw from the longest stops (plot.ts: CursorSpec.longest()), so nothing moves while scrubbing.
+        ro.style.minHeight = '0px';
+        let tallest = 0;
+        for (const st of [
+          stops[0],
+          stops[list.length - 1],
+          ...(hz ? [stops.at(-1)] : []),
+          { t: Date.UTC(2025, 8, 30), kg: 104.4, avg7: 104.4 },
+        ]) {
+          ro.innerHTML = readoutHtml(st);
+          tallest = Math.max(tallest, Math.ceil(ro.getBoundingClientRect().height));
+        }
+        ro.style.minHeight = `${tallest}px`;
+        // The plot's height: 15.5 rem on a phone, but never more than the small viewport left after the
+        // bars, the banner and the readout (at the 200% cap a 496 px plot would not fit a 568 px screen).
+        const room =
+          innerHeight -
+          (tabs.offsetHeight || 56) -
+          parseFloat(getComputedStyle(root).getPropertyValue('--ad-h')) -
+          tallest -
+          rem * 3;
+        const H = desk.matches ? Math.round(rem * 22) : Math.round(Math.max(160, Math.min(rem * 15.5, room)));
+        let lo = Math.min(...list.map((d) => d.kg)),
+          hi = Math.max(...list.map((d) => d.kg));
+        if (hz) lo = Math.min(lo, projAt(end) - 0.6);
+        if (Ls.has('goal') && GOAL > lo - 6) lo = Math.min(lo, GOAL);
+        lo = conv(lo);
+        hi = conv(hi);
+        const step = hi - lo > 12 ? (UNIT === 'lb' ? 5 : 2) : hi - lo > 4 ? 1 : 0.5;
+        lo = Math.floor(lo / step) * step - (Ls.has('goal') ? step * 0.3 : 0);
+        hi = Math.ceil(hi / step) * step;
+        // A narrow chart gives the end label's margin back to the plot; the estimate is in the foot and the readout.
+        const endLabel = hz && W0 >= rem * 17;
+        const left = rem * 2.4,
+          right = rem * (endLabel ? 3.2 : 0.8),
+          top = rem * 0.6,
+          bottom = rem * 1.6;
+        const x = (t) => left + ((t - start) / Math.max(DAY, end - start)) * (W0 - left - right);
+        const y = (kg) => top + (1 - (conv(kg) - lo) / (hi - lo)) * (H - top - bottom);
+        const yv = (v) => top + (1 - (v - lo) / (hi - lo)) * (H - top - bottom);
+        let s = '';
+        if (Ls.has('hiccups'))
+          for (const hc of hiccups())
+            if (hc.to >= start)
+              s += `<rect class="l-hiccup" x="${x(Math.max(hc.from, start))}" y="${top}" width="${Math.max(2, x(hc.to) - x(Math.max(hc.from, start)))}" height="${H - top - bottom}"/>`;
+        for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + 1e-9; v += step)
+          s += `<line class="gridline" x1="${left}" x2="${W0 - right}" y1="${yv(v)}" y2="${yv(v)}"/><text class="tick" x="${left - 6}" y="${yv(v) + rem * 0.28}" text-anchor="end">${nf(step < 1 ? 1 : 0).format(v)}</text>`;
+        const span = end - start;
+        const labelW = rem * (span > 70 * DAY ? 2.4 : 3.4);
+        const marks = [];
+        const sd = new Date(start);
+        let m = Date.UTC(sd.getUTCFullYear(), sd.getUTCMonth() + 1, 1);
+        if (span > 70 * DAY) {
+          while (m <= end) {
+            marks.push(m);
+            const dd = new Date(m);
+            m = Date.UTC(dd.getUTCFullYear(), dd.getUTCMonth() + 1, 1);
+          }
+        } else {
+          let t = start + 7 * DAY - ((start / DAY + 3) % 7) * DAY;
+          while (t <= end) {
+            marks.push(t);
+            t += 7 * DAY;
+          }
+        }
+        const every = Math.max(
+          1,
+          Math.ceil(marks.length / Math.max(1, Math.floor((W0 - left - right) / (labelW + 8)))),
+        );
+        marks.forEach((t, i) => {
+          if (i % every) return;
+          s += `<text class="tick" x="${x(t)}" y="${H - rem * 0.35}" text-anchor="middle">${span > 70 * DAY ? dfmt(t, { month: 'short' }) : dShort(t)}</text>`;
+        });
+        s += `<line class="axisline" x1="${left}" x2="${W0 - right}" y1="${H - bottom}" y2="${H - bottom}"/>`;
+        if (Ls.has('bmi'))
+          for (const b of [25, 30, 35]) {
+            const kg = b * HEIGHT * HEIGHT;
+            if (conv(kg) > lo && conv(kg) < hi)
+              s += `<line class="bmi-line" x1="${left}" x2="${W0 - right}" y1="${y(kg)}" y2="${y(kg)}"/><text class="reflabel" x="${left + 4}" y="${y(kg) - 4}">${L('BMI', 'IMC')} ${b}</text>`;
+          }
+        if (Ls.has('goal'))
+          s += `<line class="goal-line" x1="${left}" x2="${W0 - right}" y1="${y(GOAL)}" y2="${y(GOAL)}"/><text class="goal-label" x="${left + 4}" y="${y(GOAL) - 5}">${L('Goal', 'Meta')} ${wt(GOAL)}</text>`;
+        if (Ls.has('regression')) {
+          const m2 = fit(list);
+          s += `<path class="l-reg" d="M${x(list[0].t)},${y(m2.at(list[0].t))}L${x(last.t)},${y(m2.at(last.t))}"/>`;
+        }
+        if (Ls.has('band') && hz) {
+          const hs = [];
+          for (let h = 0; h <= hz; h += 3) hs.push(h);
+          const up = hs.map((h) => `${x(last.t + h * DAY)},${y(projAt(last.t + h * DAY) + spread(h))}`);
+          const dn = [...hs]
+            .reverse()
+            .map((h) => `${x(last.t + h * DAY)},${y(projAt(last.t + h * DAY) - spread(h))}`);
+          s += `<path class="l-band" d="M${up.join('L')}L${dn.join('L')}Z"/>`;
+        }
+        if (Ls.has('line'))
+          s += `<path class="l-line" d="${list.map((d, i) => `${i ? 'L' : 'M'}${x(d.t).toFixed(1)},${y(d.kg).toFixed(1)}`).join('')}"/>`;
+        const r = list.length > 120 ? 1.7 : list.length > 40 ? 2.4 : 3.2;
+        if (Ls.has('points'))
+          s += list
+            .map(
+              (d) =>
+                `<circle class="l-points" cx="${x(d.t).toFixed(1)}" cy="${y(d.kg).toFixed(1)}" r="${r}"/>`,
+            )
+            .join('');
+        if (Ls.has('weekly')) {
+          let p = '';
+          for (let t = start; t <= last.t; t += 7 * DAY) {
+            const w = list.filter((d) => d.t >= t && d.t < t + 7 * DAY);
+            if (!w.length) continue;
+            const mm = w.reduce((a, d) => a + d.kg, 0) / w.length;
+            p += `M${x(t)},${y(mm)}L${x(t + 7 * DAY)},${y(mm)}`;
+          }
+          s += `<path class="l-weekly" d="${p}"/>`;
+        }
+        if (Ls.has('trend')) {
+          let e = list[0].kg;
+          s += `<path class="l-trend" d="${list
+            .map((d, i) => {
+              e = e + 0.1 * (d.kg - e);
+              return `${i ? 'L' : 'M'}${x(d.t).toFixed(1)},${y(e).toFixed(1)}`;
+            })
+            .join('')}"/>`;
+        }
+        if (Ls.has('avg7'))
+          s += `<path class="l-avg7" d="${list.map((d, i) => `${i ? 'L' : 'M'}${x(d.t).toFixed(1)},${y(d.avg7).toFixed(1)}`).join('')}"/>`;
+        if (hz)
+          s += `<path class="l-proj" d="M${x(last.t)},${y(last.avg7)}L${x(end)},${y(projAt(end))}"/>${endLabel ? `<text class="endlabel end-proj" x="${x(end) + 4}" y="${y(projAt(end)) + rem * 0.3}">${num(projAt(end))}</text>` : ''}`;
+        if (Ls.has('extremes')) {
+          let mn = list[0],
+            mx = list[0];
+          for (const d of list) {
+            if (d.kg < mn.kg) mn = d;
+            if (d.kg > mx.kg) mx = d;
+          }
+          s += `<text class="reflabel" x="${Math.min(x(mx.t) + 6, W0 - right - rem * 4)}" y="${y(mx.kg) + rem * 0.35}">${L('high', 'máx.')} ${num(mx.kg)}</text><text class="reflabel" x="${x(mn.t) - 6}" y="${y(mn.kg) + rem * 1.1}" text-anchor="end">${L('low', 'mín.')} ${num(mn.kg)}</text>`;
+        }
+        s += `<g id="cursor"></g>`;
+        box.innerHTML = `<svg id="main-svg" width="${W0}" height="${H}" viewBox="0 0 ${W0} ${H}" tabindex="0"></svg><span class="visually-hidden" aria-live="polite" id="chart-live"></span>`;
+        const svg = box.firstElementChild;
+        svg.innerHTML = s;
+        document.getElementById('legend').innerHTML = LAYERS.filter(
+          ([k]) => Ls.has(k) && !['extremes', 'events', 'band', 'weekRange'].includes(k),
+        )
+          .map(
+            ([k, l, st, c]) =>
+              `<span><i class="sw ${st === 'dot' ? 'dot' : st}" style="${st === 'dot' ? 'background' : 'border-color'}:var(${c})"></i>${l}</span>`,
+          )
+          .join('');
+        // Built: chart.foot with method.*.name, word for word.
+        const mName =
+          chartState.method === 'recent'
+            ? L('over the last 3 weeks', 'linear das últimas 3 semanas')
+            : L('over the whole period', 'linear do período todo');
+        document.getElementById('foot').innerHTML = hz
+          ? L(
+              `Projection ${mName} (${signed(model.b * 7, 2)} ${UNIT} a week): <b>${wt(projAt(end))}</b> on ${dYear(end)}, likely between ${wt(projAt(end) - spread(hz))} and ${wt(projAt(end) + spread(hz))}. It extends the past pace; it is not a promise.`,
+              `Projeção ${mName} (${signed(model.b * 7, 2)} ${UNIT} por semana): <b>${wt(projAt(end))}</b> em ${dYear(end)}, provavelmente entre ${wt(projAt(end) - spread(hz))} e ${wt(projAt(end) + spread(hz))}. É uma extrapolação do ritmo passado, não uma promessa.`,
+            )
+          : '';
+        const readout = (st) => {
+          ro.innerHTML = readoutHtml(st);
+        };
+        const showStop = (i) => {
+          const st = stops[i];
+          chartState.cursor = i;
+          const v = st.proj ?? st.kg;
+          svg.querySelector('#cursor').innerHTML =
+            `<line class="cursor-line" x1="${x(st.t)}" x2="${x(st.t)}" y1="${top}" y2="${H - bottom}"/><circle class="cursor-dot ${st.proj ? 'proj' : ''}" cx="${x(st.t)}" cy="${y(v)}" r="6"/>`;
+          readout(st);
+        };
+        readout(stops[list.length - 1]);
+        const nearest = (px) => {
+          let best = 0,
+            bd = Infinity;
+          stops.forEach((st, i) => {
+            const dd = Math.abs(x(st.t) - px);
+            if (dd < bd) {
+              bd = dd;
+              best = i;
+            }
+          });
+          return best;
+        };
+        const onPoint = (e) => {
+          const rc = svg.getBoundingClientRect();
+          showStop(nearest(e.clientX - rc.left));
+        };
+        svg.addEventListener('pointerdown', onPoint);
+        svg.addEventListener('pointermove', (e) => {
+          if (e.pointerType === 'mouse' || e.buttons) onPoint(e);
+        });
+        svg.addEventListener('keydown', (e) => {
+          let i = chartState.cursor ?? list.length - 1;
+          if (e.key === 'ArrowLeft') i = Math.max(0, i - 1);
+          else if (e.key === 'ArrowRight') i = Math.min(stops.length - 1, i + 1);
+          else if (e.key === 'Home') i = 0;
+          else if (e.key === 'End') i = stops.length - 1;
+          else if (e.key === 'Escape') {
+            svg.querySelector('#cursor').innerHTML = '';
+            readout(stops[list.length - 1]);
+            return;
+          } else return;
+          e.preventDefault();
+          showStop(i);
+          document.getElementById('chart-live').textContent = ro.textContent;
+        });
+        const scrub = Q.get('scrub');
+        if (scrub !== null && current === 'progress') {
+          const i = nearest(x(last.t - Number(scrub) * DAY));
+          showStop(i);
+          if (Q.get('finger') === '1') {
+            const f = document.createElement('div');
+            f.className = 'finger';
+            const st = stops[i];
+            f.style.left = `${x(st.t)}px`;
+            f.style.top = `${y(st.proj ?? st.kg)}px`;
+            box.append(f);
+          }
+        }
+      }
+      function hiccups() {
+        const out = [];
+        let run = null;
+        for (let i = 1; i < days.length; i++) {
+          if (days[i].avg7 > days[i - 1].avg7 + 0.02) {
+            if (!run) run = { from: days[i - 1].t, start: days[i - 1].avg7, n: 0 };
+            run.n++;
+            run.to = days[i].t;
+            run.gain = days[i].avg7 - run.start;
+          } else {
+            if (run && run.n >= 3 && run.gain >= 0.3) out.push(run);
+            run = null;
+          }
+        }
+        return out;
+      }
+
+      // ---------- Analysis: each card closed to one line ----------
+      function cards() {
+        const h = hiccups();
+        const lossPct = (first.kg - last.kg) / first.kg;
+        const goalPct = (first.kg - GOAL) / first.kg;
+        const bmi = last.avg7 / (HEIGHT * HEIGHT),
+          bmi0 = first.kg / (HEIGHT * HEIGHT);
+        const lastH = h.at(-1),
+          lastDays = Math.round((lastH.to - lastH.from) / DAY);
+        // Titles are the built *.title strings; summaries are new strings of the design.
+        return [
+          {
+            id: 'pct',
+            title: L('Percentage loss', 'Perda percentual'),
+            sum: L(
+              `<b>${pct(lossPct)}</b> lost; ${pct(lossPct / goalPct, 0)} of the way to the ${pct(goalPct)} goal.`,
+              `<b>${pct(lossPct)}</b> perdidos; ${pct(lossPct / goalPct, 0)} do caminho até a meta de ${pct(goalPct)}.`,
+            ),
+            body: pctBody,
+          },
+          {
+            id: 'rate',
+            title: L('Compound daily rate', 'Taxa diária composta'),
+            sum: L(
+              `<b>${pct(-recent.b / last.kg, 2)} a day</b> over the last 3 weeks, about ${wt(Math.abs(recent.b * 7), 2)} a week.`,
+              `<b>${pct(-recent.b / last.kg, 2)} ao dia</b> nas últimas 3 semanas, cerca de ${wt(Math.abs(recent.b * 7), 2)} por semana.`,
+            ),
+            body: rateBody,
+          },
+          // The date sits mid-sentence: a sentence never ends on an abbreviated month.
+          {
+            id: 'hiccups',
+            title: L('Hiccups', 'Soluços'),
+            sum: L(
+              `<b>${h.length} climbs</b> back up in a year; the last, ending on ${dShort(lastH.to)}, lasted ${lastDays} days.`,
+              `<b>${h.length} subidas</b> em um ano; a última, até ${dShort(lastH.to)}, durou ${lastDays} dias.`,
+            ),
+            body: hiccupsBody,
+          },
+          {
+            id: 'bmi',
+            half: true,
+            title: L('BMI', 'IMC'),
+            sum: L(
+              `<b>${nf(1).format(bmi)}</b> today, ${nf(1).format(bmi0 - bmi)} lower than at the start.`,
+              `<b>${nf(1).format(bmi)}</b> hoje, ${nf(1).format(bmi0 - bmi)} abaixo do início.`,
+            ),
+            body: bmiBody,
+          },
+          {
+            id: 'facts',
+            half: true,
+            title: L('Facts', 'Curiosidades'),
+            sum: L(
+              `${days.length} weigh-ins in 365 days; the biggest one-day drop was ${wt(1.3)}.`,
+              `${days.length} pesagens em 365 dias; a maior queda num dia foi de ${wt(1.3)}.`,
+            ),
+            body: factsBody,
+          },
+          {
+            id: 'variation',
+            half: true,
+            title: L('Day-to-day variation', 'Variação de um dia para o outro'),
+            sum: L(
+              `A typical day moves <b>±${wt(0.4)}</b>; 8 days in 10 stay within ±${wt(0.7)}.`,
+              `Num dia típico o peso muda <b>±${wt(0.4)}</b>; 8 em cada 10 dias ficam dentro de ±${wt(0.7)}.`,
+            ),
+            body: variationBody,
+          },
+          {
+            id: 'weekdays',
+            half: true,
+            title: L('Weekdays', 'Dias da semana'),
+            sum: L(
+              `Mondays read highest and Fridays lowest, ${wt(0.3)} apart.`,
+              `As segundas pesam mais e as sextas menos, ${wt(0.3)} de diferença.`,
+            ),
+            body: weekdaysBody,
+          },
+          {
+            id: 'calendar',
+            title: L('Calendar', 'Calendário'),
+            sum: L(
+              'Last 3 months: 41 days down, 37 up and 12 without a weigh-in.',
+              'Últimos 3 meses: 41 dias de queda, 37 de subida e 12 sem pesagem.',
+            ),
+            body: calendarBody,
+          },
+        ];
+      }
+      function renderAnalysis() {
+        const el = document.getElementById('view-analysis');
+        if (days.length < 2) {
+          el.innerHTML = `<h1 class="view-title" id="analysis-title" tabindex="-1">${NAMES.analysis}</h1><div class="card"><p class="take" style="margin:0">${L('The analysis appears from the second weigh-in; some cards need three weeks.', 'As análises aparecem a partir da segunda pesagem; alguns cartões precisam de três semanas.')}</p><p style="margin:12px 0 0"><a class="button" href="#today">${L('Log a weigh-in', 'Registrar pesagem')}</a></p></div>`;
+          return;
+        }
+        const open = new Set((Q.get('open') || '').split(',').filter(Boolean));
+        if (desk.matches || Q.get('all') === '1') cards().forEach((c) => open.add(c.id));
+        el.innerHTML =
+          `<h1 class="view-title" id="analysis-title" tabindex="-1">${NAMES.analysis}</h1><p class="lede phone-only">${L('Each card says its point. Open one for the detail.', 'Cada cartão diz o essencial. Abra um para ver os detalhes.')}</p>` +
+          cards()
+            .map(
+              (c) =>
+                `<section class="card acard ${c.half ? 'half' : ''}" id="card-${c.id}" aria-labelledby="btn-${c.id}"><div class="acard-head"><h2><button class="acard-toggle" type="button" id="btn-${c.id}" aria-expanded="${open.has(c.id)}" aria-controls="body-${c.id}" aria-describedby="sum-${c.id}">${c.title}</button></h2><p class="acard-sum" id="sum-${c.id}">${sentence(c.sum)}</p>${ICON.chev}</div><div class="acard-body" id="body-${c.id}" ${open.has(c.id) ? '' : 'hidden'}>${open.has(c.id) ? c.body() : ''}</div></section>`,
+            )
+            .join('');
+        for (const b of el.querySelectorAll('.acard-toggle'))
+          b.addEventListener('click', () => {
+            const on = b.getAttribute('aria-expanded') !== 'true';
+            b.setAttribute('aria-expanded', String(on));
+            const body = document.getElementById(b.getAttribute('aria-controls'));
+            body.hidden = !on;
+            if (on && !body.innerHTML)
+              body.innerHTML = cards()
+                .find((c) => `body-${c.id}` === body.id)
+                .body();
+            wireCardTools(body);
+          });
+        for (const body of el.querySelectorAll('.acard-body:not([hidden])')) wireCardTools(body);
+      }
+      function wireCardTools(body) {
+        const pb = body.querySelector('.pct-box');
+        if (pb) drawPct(pb);
+        const b = body.querySelector('.card-options');
+        if (b && !b.wired) {
+          b.wired = true;
+          b.addEventListener('click', () => openNamedSheet('pct', b));
+        }
+      }
+      function drawPct(box) {
+        const w = box.clientWidth,
+          hgt = Math.round(remPx() * (desk.matches ? 15 : 11)),
+          mx = 0.12;
+        if (!w) return;
+        const x = (t) => 34 + ((t - first.t) / (last.t + 60 * DAY - first.t)) * (w - 80);
+        const y = (p) => 8 + (1 - p / mx) * (hgt - 30);
+        let s = '';
+        for (const p of [0, 0.05, 0.1])
+          s += `<line class="gridline" x1="30" x2="${w - 30}" y1="${y(p)}" y2="${y(p)}"/><text class="tick" x="26" y="${y(p) + 4}" text-anchor="end">${pct(p, 0)}</text>`;
+        const g = (first.kg - GOAL) / first.kg;
+        s += `<line class="goal-line" x1="30" x2="${w - 30}" y1="${y(g)}" y2="${y(g)}"/><text class="goal-label" x="34" y="${y(g) - 5}">${L('Goal', 'Meta')} ${pct(g)}</text>`;
+        s += days
+          .map(
+            (d) =>
+              `<circle class="l-points" cx="${x(d.t).toFixed(1)}" cy="${y((first.kg - d.kg) / first.kg).toFixed(1)}" r="1.6"/>`,
+          )
+          .join('');
+        s += `<path class="l-avg7" d="${days.map((d, i) => `${i ? 'L' : 'M'}${x(d.t).toFixed(1)},${y((first.kg - d.avg7) / first.kg).toFixed(1)}`).join('')}"/>`;
+        const pe = (first.kg - (last.avg7 + lin.b * 60)) / first.kg;
+        s += `<path class="l-proj" d="M${x(last.t)},${y((first.kg - last.avg7) / first.kg)}L${x(last.t + 60 * DAY)},${y(pe)}"/><text class="endlabel end-proj" x="${x(last.t + 60 * DAY) + 3}" y="${y(pe) + 4}">${pct(pe)}</text>`;
+        for (const t of [
+          Date.UTC(2026, 0, 1),
+          Date.UTC(2026, 3, 1),
+          Date.UTC(2026, 6, 1),
+          Date.UTC(2026, 9, 1),
+        ])
+          s += `<text class="tick" x="${x(t)}" y="${hgt - 4}" text-anchor="middle">${dfmt(t, { month: 'short' })}</text>`;
+        box.innerHTML = `<svg width="${w}" height="${hgt}" viewBox="0 0 ${w} ${hgt}" tabindex="0">${s}</svg>`;
+      }
+      // The percentage and rate cards use the built pct.* and rate.* figures, word for word.
+      function pctBody() {
+        const lossPct = (first.kg - last.kg) / first.kg,
+          g = (first.kg - GOAL) / first.kg;
+        return `<div class="readout"><span class="r-day">${dRead(last.t)} · ${L('last weigh-in', 'último registro')}</span><span class="r-item"><i style="background:var(--c-avg7)"></i>${pct((first.kg - last.avg7) / first.kg)}</span></div><div class="chart-box pct-box"></div>
+    <div class="mini-kpis">${kpiTile(L('Lost so far', 'Perdido até agora'), pct(lossPct), '', L(`of the starting weight of ${wt(first.kg)}`, `do peso inicial de ${wt(first.kg)}`), 'down')}${kpiTile(L('Goal in %', 'Meta em %'), pct(g), '', L(`${pct(lossPct / g, 0)} of the way covered`, `${pct(lossPct / g, 0)} do caminho percorrido`))}${kpiTile(L('Pace over the period', 'Ritmo do período'), pct((-lin.b * 7) / first.kg, 2), '', L(`about ${pct((-lin.b * 30) / first.kg, 1)} a month`, `cerca de ${pct((-lin.b * 30) / first.kg, 1)} por mês`))}${kpiTile(L('Next milestone', 'Próximo marco'), '10%', '', L(`expected on ${dYear(last.t + (((0.1 - lossPct) * first.kg) / Math.abs(lin.b)) * DAY)}`, `previsto para ${dYear(last.t + (((0.1 - lossPct) * first.kg) / Math.abs(lin.b)) * DAY)}`))}</div>
+    <h3 class="cal-month">${L('Loss milestones', 'Marcos de perda')}</h3><table class="table"><thead><tr><th>${L('Milestone', 'Marco')}</th><th class="n">${L('Target weight', 'Peso-alvo')}</th><th>${L('Status', 'Situação')}</th></tr></thead><tbody>
+    <tr><td>2.5%</td><td class="n">${num(first.kg * 0.975)}</td><td>${L('reached on', 'atingido em')} ${dShort(Date.UTC(2026, 0, 9))}</td></tr><tr><td>5%</td><td class="n">${num(first.kg * 0.95)}</td><td>${L('reached on', 'atingido em')} ${dShort(Date.UTC(2026, 4, 2))}</td></tr><tr><td>7.5%</td><td class="n">${num(first.kg * 0.925)}</td><td>${L(`${wt(last.kg - first.kg * 0.925)} to go`, `faltam ${wt(last.kg - first.kg * 0.925)}`)}</td></tr></tbody></table>
+    <div class="more-row"><span>${L('3 of 6', '3 de 6')}</span><button class="button-text" type="button">${L('Show more', 'Mostrar mais')}</button></div>
+    <div class="acard-tools"><button class="options-button card-options" type="button" aria-haspopup="dialog">${ICON.sliders}<span>${L('Options', 'Opções')}: <b>${L('Essential', 'Essencial')}</b></span></button></div>`;
+      }
+      function rateBody() {
+        return `<div class="mini-kpis">${kpiTile(L('Mean rate over the period', 'Taxa média do período'), pct(-lin.b / last.kg, 3), '', L(`≈ ${wt(Math.abs(lin.b * 7), 2)} a week, compounded`, `≈ ${wt(Math.abs(lin.b * 7), 2)} por semana, composto`))}${kpiTile(L('Last 3 weeks', 'Últimas 3 semanas'), pct(-recent.b / last.kg, 3), '', L(`≈ ${wt(Math.abs(recent.b * 7), 2)} a week`, `≈ ${wt(Math.abs(recent.b * 7), 2)} por semana`))}${kpiTile(L(`The rate in ${UNIT} today`, `A taxa em ${UNIT} hoje`), wt(Math.abs(recent.b), 3), '', L(`at the start, the same rate meant ${wt((Math.abs(recent.b) * first.kg) / last.kg, 3)} a day`, `no início, a mesma taxa dava ${wt((Math.abs(recent.b) * first.kg) / last.kg, 3)} por dia`))}${kpiTile(L("To lose 10% of today's weight", 'Para perder 10% do atual'), L('1 year', '1 ano'), '', L(`at the fitted rate, down to ${wt(last.kg * 0.9)}`, `mantendo a taxa ajustada, até ${wt(last.kg * 0.9)}`))}</div><div class="acard-tools"><button class="options-button" type="button">${ICON.sliders}<span>${L('Options', 'Opções')}: <b>${L('Essential', 'Essencial')}</b></span></button></div>`;
+      }
+      // Placeholders below (English, made-up labels): the product draws these cards' bodies as Sprint 1 does.
+      function hiccupsBody() {
+        const h = hiccups().slice(-5).reverse();
+        return `<p class="note">Rules line (placeholder).</p><table class="table"><thead><tr><th>When</th><th class="n">Days</th><th class="n">Climbed</th></tr></thead><tbody>${h.map((c) => `<tr><td>${dShort(c.from)}–${dShort(c.to)}</td><td class="n">${Math.round((c.to - c.from) / DAY)}</td><td class="n up">${signed(c.gain)}</td></tr>`).join('')}</tbody></table><div class="acard-tools"><button class="options-button" type="button">${ICON.sliders}<span>Rules</span></button></div>`;
+      }
+      function bmiBody() {
+        const b = last.avg7 / (HEIGHT * HEIGHT);
+        return `<p class="take" style="margin-top:12px"><span class="kpi-value" style="display:inline">${nf(1).format(b)}</span></p><div class="bmi-scale" aria-hidden="true"><span></span><span></span><span></span><span></span></div><p class="note">(Sprint 1's BMI figures and notes.)</p>`;
+      }
+      function factsBody() {
+        return `<dl class="facts"><div><dt>(Sprint 1's facts)</dt><dd>${days.length}</dd></div></dl>`;
+      }
+      function variationBody() {
+        const v = [2, 5, 11, 19, 27, 22, 14, 7, 3];
+        return `<div class="bars" aria-hidden="true">${v.map((n, i) => `<div><i class="${i > 4 ? 'up' : ''}" style="height:${n * 3}px"></i>${i === 0 ? '−1' : i === 4 ? '0' : i === 8 ? '+1' : ''}</div>`).join('')}</div>`;
+      }
+      function weekdaysBody() {
+        const v = [0.18, 0.08, 0.02, -0.04, -0.12, -0.05, 0.1];
+        return `<div class="bars" aria-hidden="true">${v.map((n, i) => `<div><i class="${n > 0 ? 'up' : ''}" style="height:${12 + Math.abs(n) * 400}px"></i>${dfmt(Date.UTC(2026, 9, 19 + i), { weekday: 'short' })}</div>`).join('')}</div>`;
+      }
+      function calendarBody() {
+        const r2 = seeded(5);
+        let s = '<div class="cal-wrap">';
+        for (const [mo, n, off] of [
+          [7, 31, 5],
+          [8, 30, 1],
+          [9, 20, 3],
+        ]) {
+          s += `<div><p class="cal-month">${dfmt(Date.UTC(2026, mo, 1), { month: 'long', year: 'numeric' })}</p><div class="cal">`;
+          for (let i = 0; i < off; i++) s += '<span style="visibility:hidden"></span>';
+          for (let i = 0; i < n; i++) {
+            const r = r2();
+            s += `<span class="${r < 0.12 ? '' : r < 0.32 ? 'd1' : r < 0.47 ? 'd2' : r < 0.56 ? 'd3' : r < 0.78 ? 'u1' : r < 0.93 ? 'u2' : 'u3'}"></span>`;
+          }
+          s += '</div></div>';
+        }
+        return s + '</div>';
+      }
+
+      // ---------- Your data ----------
+      const IAP = Q.get('iap') || 'ready';
+      const HEALTH = Q.get('health') || 'off';
+      function removeAdsRow() {
+        // New strings for Sprint 4 (nothing is built yet).
+        const T = {
+          ready: [
+            L('One payment, for good; no subscription.', 'Um pagamento, para sempre; sem assinatura.'),
+            `<span class="button" style="min-height:44px;padding:4px 16px">${L('Buy', 'Comprar')} · ${L('price', 'preço')}</span>`,
+          ],
+          buying: [
+            L('Opening the App Store…', 'Abrindo a App Store…'),
+            `<span class="button" aria-disabled="true">${L('Buying…', 'Comprando…')}</span>`,
+          ],
+          pending: [
+            L(
+              'Waiting for approval. The ads go away as soon as it is approved.',
+              'Aguardando aprovação. Os anúncios somem assim que ela for aprovada.',
+            ),
+            '',
+          ],
+          failed: [
+            `<span class="status-line bad">${L("The purchase didn't go through. Try again later.", 'A compra não foi concluída. Tente de novo mais tarde.')}</span>`,
+            `<span class="button button-ghost">${L('Try again', 'Tentar de novo')}</span>`,
+          ],
+          offline: [
+            L(
+              "The App Store can't be reached. Try again when you're online.",
+              'Não foi possível acessar a App Store. Tente de novo quando estiver on-line.',
+            ),
+            `<span class="button button-ghost">${L('Try again', 'Tentar de novo')}</span>`,
+          ],
+          bought: [L('Ads removed. Thank you.', 'Anúncios removidos. Obrigado.'), ''],
+          'restore-none': [
+            L(
+              'No purchase to restore for this Apple Account.',
+              'Nenhuma compra para restaurar nesta Conta Apple.',
+            ),
+            '',
+          ],
+        }[IAP] || ['', ''];
+        return `<div class="row row-plain"><span class="grow">${L('Remove ads', 'Remover anúncios')}<span class="sub" role="status">${T[0]}</span></span>${T[1]}</div>`;
+      }
+      // Built: reminder.*, word for word (Sprint 3, story 4).
+      function reminderCard() {
+        const denied = Q.get('notif') === 'denied';
+        return `<section class="group-pad" aria-labelledby="rem-title"><h3 id="rem-title">${L('Daily reminder', 'Lembrete diário')}</h3>
+    <button class="switch-row" type="button" aria-pressed="${!denied}"><span class="grow">${L('Remind me to weigh in', 'Lembrar de me pesar')}</span><span class="switch" aria-hidden="true"></span></button>
+    <label class="field-row">${L('Time', 'Horário')}<input type="time" value="07:30"></label>
+    ${Q.get('notif') === 'failed' ? `<p class="status-line">${L("Couldn't set the reminders. The app tries again when you come back to it.", 'Não foi possível programar os lembretes. O app tenta de novo quando você voltar a ele.')}</p>` : ''}
+    ${denied ? `<p class="status-line bad">${L('Notifications for Weigh to Go are off. Turn them on in Settings › Notifications › Weigh to Go and come back: the reminder starts by itself.', 'As notificações do Weigh to Go estão desligadas. Ligue-as em Ajustes › Notificações › Weigh to Go e volte: o lembrete começa sozinho.')}</p>` : ''}
+    <p class="note" style="margin:0">${L('One notification a day at this time, none on a day already logged. Reminders stop after 30 days without opening the app.', 'Uma notificação por dia neste horário, nenhuma num dia já registrado. Os lembretes param depois de 30 dias sem abrir o app.')}</p></section>`;
+      }
+      // Built: health.*, word for word (Sprint 3, story 5). Hidden when the device has no Health (health.unavailable).
+      function healthCard() {
+        if (HEALTH === 'none') return '';
+        const on = HEALTH !== 'off' && HEALTH !== 'readfail' ? true : HEALTH === 'readfail';
+        return `<section class="group-pad" aria-labelledby="health-title"><h3 id="health-title">${L('Apple Health', 'App Saúde')}</h3>
+    <button class="switch-row" type="button" aria-pressed="${on}"><span class="grow">${L('Use Apple Health', 'Usar o app Saúde')}</span><span class="switch" aria-hidden="true"></span></button>
+    <p class="note" style="margin:0">${L('Reads your weight from Apple Health, so readings from a smart scale or another app join the diary, and saves the weights you log here to it. Readings from Health stay in Health: the app reads them again each time it opens, and they are not in your backup file. A weight you type here always wins over a reading from another app.', 'Lê seu peso do app Saúde, para que as medições de uma balança inteligente ou de outro app entrem no diário, e salva lá os pesos que você registra aqui. As medições do app Saúde ficam no app Saúde: o app as lê de novo cada vez que abre, e elas não entram no seu arquivo de backup. Um peso digitado aqui sempre prevalece sobre uma medição de outro app.')}</p>
+    ${on ? `<p class="status-line">${HEALTH === 'zero' ? L('No days from Apple Health yet.', 'Nenhum dia veio do app Saúde ainda.') : L('312 days from Apple Health.', '312 dias vieram do app Saúde.')}</p>` : ''}
+    ${HEALTH === 'readfail' ? `<p class="status-line">${L('Couldn’t read Apple Health just now. The app tries again when you come back.', 'Não foi possível ler o app Saúde agora. O app tenta de novo quando você voltar.')}</p>` : ''}
+    ${HEALTH === 'denied' ? `<p class="status-line bad">${L('Apple Health isn’t letting Weigh to Go save weight. In the Health app, tap your picture, then Apps under Privacy, Weigh to Go, and turn on Weight.', 'O app Saúde não está deixando o Weigh to Go salvar o peso. No app Saúde, toque na sua foto, depois em Apps, em Privacidade, em Weigh to Go, e ligue Peso.')}</p>` : ''}
+    <div><p class="note" style="margin:0 0 4px">${L('On a day with several readings', 'Num dia com várias medições')}</p><div class="segmented" role="group" aria-label="${L('On a day with several readings', 'Num dia com várias medições')}" style="margin-top:0"><button type="button" aria-pressed="true">${L('The first of the day', 'A primeira do dia')}</button><button type="button" aria-pressed="false">${L('The last of the day', 'A última do dia')}</button></div></div>
+    <p class="note" style="margin:0">${revokeText()}</p></section>`;
+      }
+      const revokeText = () =>
+        L(
+          'Turning this off stops reading and saving. To take back the app’s access, open the Health app, tap your picture, then Apps under Privacy, Weigh to Go.',
+          'Ao desligar, o app deixa de ler e de salvar. Para tirar o acesso do app, abra o app Saúde, toque na sua foto, depois em Apps, em Privacidade, e em Weigh to Go.',
+        );
+      function renderData() {
+        const el = document.getElementById('view-data');
+        const rows = days
+          .slice(-5)
+          .reverse()
+          .map((d, i) => {
+            const prev = days[days.length - 2 - i];
+            const ch = prev ? d.kg - prev.kg : 0;
+            return `<button class="row row-log" type="button" data-day="${d.t}"><span>${dfmt(d.t, { weekday: 'short', day: 'numeric', month: 'short' })}</span><span class="val n">${num(d.kg)}</span><span class="chg ${dirClass(ch)}">${signed(ch)}</span>${ICON.go}</button>`;
+          })
+          .join('');
+        const sel = (id, label, opts, v) =>
+          `<div class="row row-select"><span class="grow"><span id="${id}-l">${label}</span><span class="sub" aria-hidden="true">${v}</span></span>${ICON.go}<select id="${id}" aria-labelledby="${id}-l">${opts.map((o) => `<option ${o === v ? 'selected' : ''}>${o}</option>`).join('')}</select></div>`;
+        const SECTIONS = sectionNames();
+        el.innerHTML = `<h1 class="view-title" id="data-title" tabindex="-1">${NAMES.data}</h1>${Q.get('erased') === 'nothealth' ? `<p class="status-line" role="status">${L('Everything here was erased, but the weights in Apple Health couldn’t be deleted. In the Health app: Weight, Data Sources & Access, Weigh to Go, Delete All Data.', 'Tudo aqui foi apagado, mas os pesos no app Saúde não puderam ser apagados. No app Saúde: Peso, Fontes de Dados e Acesso, Weigh to Go, Apagar Todos os Dados.')}</p>` : ''}
+    <div class="log-group-wrap stack">
+      <h2 class="group-title">${L('Weigh-ins', 'Registros')}</h2>
+      <div class="group">${days.length ? rows + `<button class="row" type="button"><span class="grow">${L('Show all', 'Mostrar todas')}<span class="sub">${L(`Showing the latest 5 of ${days.length}.`, `Mostrando as 5 mais recentes de ${days.length}.`)}</span></span>${ICON.go}</button>` : `<p class="row row-plain">${L('No weigh-ins yet.', 'Nenhuma pesagem ainda.')}</p>`}
+        <button class="row" type="button" id="open-paste"><span class="grow">${L('Paste several days at once', 'Colar vários dias de uma vez')}</span>${ICON.go}</button></div>
+    </div>
+    <div class="side stack">
+      <h2 class="group-title">${L('Backup', 'Backup')}</h2>
+      <div class="group"><div class="group-pad"><p>${backupDue ? `<span class="badge">${L('Due', 'Pendente')}</span> ${L(`Last backup exported on ${dYear(TODAY - 45 * DAY)}.`, `Último backup exportado em ${dYear(TODAY - 45 * DAY)}.`)}` : L('No backup exported yet.', 'Nenhum backup exportado ainda.')}</p>
+        <p class="note" style="margin:0">${APP ? L('Everything stays in this app on your iPhone, and in your iPhone’s backup if you use iCloud Backup or back up to a computer. A backup file is the only copy you hold yourself: export one now and then, and use it to move to another device.', 'Tudo fica neste app, no seu iPhone, e no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador. Um arquivo de backup é a única cópia que fica com você: exporte um de vez em quando e use-o para passar para outro aparelho.') : L('Everything stays in this browser. A backup file is the only copy outside it: export one now and then, and use it to move to another device.', 'Tudo fica neste navegador. Um arquivo de backup é a única cópia fora dele: exporte um de vez em quando e use-o para passar para outro aparelho.')}</p>
+        <button class="button" type="button">${L('Export backup', 'Exportar backup')}</button><button class="button button-ghost" type="button">${L('Import backup', 'Importar backup')}</button></div>
+        <div class="group-pad"><button class="button button-ghost" type="button">${L('Export CSV', 'Exportar CSV')}</button>
+          <label class="field-row" for="csv-format">${L('CSV format', 'Formato do CSV')}</label><select id="csv-format"><option>${L('Automatic (, .)', 'Automático (; ,)')}</option><option>${L('Semicolons, decimal comma (Excel in Portuguese and most of Europe)', 'Ponto e vírgula, vírgula decimal (Excel em português)')}</option><option>${L('Commas, decimal point (Excel in English)', 'Vírgulas, ponto decimal (Excel em inglês)')}</option></select></div></div>
+    </div>
+    <div class="side stack">
+      <h2 class="group-title">${L('Settings', 'Configurações')}</h2>
+      <div class="group">${sel('s-lang', L('Language · Idioma', 'Idioma · Language'), [L('Automatic (English)', 'Automático (Português)'), 'English', 'Português'], L('Automatic (English)', 'Automático (Português)'))}${sel('s-unit', L('Weight unit', 'Unidade de peso'), [L('Automatic (kg)', 'Automático (kg)'), 'kg', 'lb'], L('Automatic (kg)', 'Automático (kg)'))}${sel('s-hunit', L('Height unit', 'Unidade de altura'), ['cm', L('ft and in', 'pés e pol.')], 'cm')}
+        <button class="row sections-row" type="button" id="open-sections"><span class="grow">${L('Sections', 'Seções')}<span class="sub">${L('All 13 shown', 'Todas as 13 visíveis')}</span></span>${ICON.go}</button>
+        <div class="sections-inline" role="group" aria-labelledby="sec-inline-l"><p class="note" id="sec-inline-l" style="margin:0 0 6px">${L('Sections', 'Seções')}</p><div class="toggle-list">${SECTIONS.map((s) => `<button class="toggle" type="button" aria-pressed="true"><span class="grow">${s}</span><span class="switch" aria-hidden="true"></span></button>`).join('')}</div></div>
+        <button class="row" type="button"><span class="grow">${L('Goal', 'Meta')}</span><span class="val">${wt(GOAL)}</span>${ICON.go}</button>
+        <button class="row" type="button"><span class="grow">${L('Height', 'Altura')}</span><span class="val">176 cm</span>${ICON.go}</button></div>
+    </div>
+    ${
+      APP
+        ? `<div class="side stack"><h2 class="group-title">${L('iPhone app', 'App para iPhone')}</h2><div class="group">
+        ${reminderCard()}
+        ${healthCard()}
+        ${removeAdsRow()}
+        <button class="row" type="button"><span class="grow">${L('Restore purchases', 'Restaurar compras')}<span class="sub">${L('Bought on another iPhone? Get it back here.', 'Comprou em outro iPhone? Recupere aqui.')}</span></span>${ICON.go}</button>
+        ${Q.get('consent') === '1' ? `<button class="row" type="button"><span class="grow">${L('Privacy choices', 'Opções de privacidade')}<span class="sub">${L('Your consent for Google’s ads, where the law asks for it', 'Seu consentimento para os anúncios do Google, onde a lei pede')}</span></span>${ICON.go}</button>` : ''}
+      </div></div>`
+        : ''
+    }
+    <div class="side stack">
+      <h2 class="group-title">${L('About', 'Sobre')}</h2>
+      <div class="group"><div class="group-pad">${aboutText()}<p class="note" style="margin:0">Weigh to Go v0.2.0 · ${L('Made by', 'Feito por')} <a href="#data">Jonathas Costa</a></p></div></div>
+      <div class="danger-zone"><button class="button button-danger" type="button" id="erase">${L('Erase everything', 'Apagar tudo')}</button></div>
+    </div>`;
+        for (const r of el.querySelectorAll('.row-log'))
+          r.addEventListener('click', () => openNamedSheet('day', r, Number(r.dataset.day)));
+        el.querySelector('#open-sections').addEventListener('click', (e) =>
+          openNamedSheet('sections', e.currentTarget),
+        );
+        el.querySelector('#open-paste').addEventListener('click', (e) =>
+          openNamedSheet('paste', e.currentTarget),
+        );
+        el.querySelector('#erase').addEventListener('click', (e) => openNamedSheet('erase', e.currentTarget));
+        for (const b of el.querySelectorAll('.sections-inline .toggle, .switch-row'))
+          b.addEventListener('click', () =>
+            b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')),
+          );
+        document.getElementById('footer').innerHTML =
+          `${L('Made by', 'Feito por')} <a href="#data">Jonathas Costa</a> · v0.2.0 (${L('prototype', 'protótipo')})`;
+      }
+      // New strings (about.*): the backup clause follows the built enApp data.note and notice.noBackup.
+      function aboutText() {
+        if (APP)
+          return `<p>${L('Your weigh-ins stay in this app on your iPhone, and in your iPhone’s backup if you use iCloud Backup or back up to a computer. We keep nothing: no account, no server of ours, no analytics.', 'Suas pesagens ficam neste app, no seu iPhone, e no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador. Nós não guardamos nada: sem conta, sem servidor nosso, sem análise de uso.')}</p>
+    <p>${L('If you turn on Apple Health, weights are shared with Health on this iPhone. Ads come from Google AdMob: they are not personalised and never receive your weigh-ins, but Google gets what any ad request carries, such as the iPhone’s model and network address. Removing the ads stops those requests.', 'Se você ligar o app Saúde, os pesos são compartilhados com o Saúde neste iPhone. Os anúncios vêm do Google AdMob: não são personalizados e nunca recebem suas pesagens, mas o Google recebe o que qualquer pedido de anúncio leva, como o modelo do iPhone e o endereço de rede. Remover os anúncios encerra esses pedidos.')}</p>
+    <p><a href="https://www.jonathas.net/weightogo/${L('privacy', 'privacidade')}.html">${L('Privacy policy', 'Política de privacidade')}</a></p>`;
+        return `<p>${L('Everything runs in your browser: your weigh-ins are stored on this device only.', 'Tudo funciona no seu navegador: suas pesagens ficam guardadas só neste aparelho.')} ${L('No account, no server of ours, no tracking.', 'Sem conta, sem servidor nosso, sem rastreamento.')}</p>`;
+      }
+      function sectionNames() {
+        return [
+          L('Key figures', 'Indicadores'),
+          L('Main chart', 'Gráfico principal'),
+          L('Goal', 'Meta'),
+          L('Weekly averages', 'Médias semanais'),
+          L('Percentage loss', 'Perda percentual'),
+          L('Compound daily rate', 'Taxa diária composta'),
+          L('Hiccups', 'Soluços'),
+          L('BMI', 'IMC'),
+          L('Facts', 'Curiosidades'),
+          L('Day-to-day variation', 'Variação de um dia para o outro'),
+          L('Weekdays', 'Dias da semana'),
+          L('Calendar', 'Calendário'),
+          L('Weigh-ins', 'Registros'),
+        ];
+      }
+
+      // ---------- Sheets: a modal <dialog>; Back closes it on the website ----------
+      let opener = null,
+        sheetEntry = false;
+      function openSheet(title, fill, from, done = L('Done', 'Concluir')) {
+        const d = document.getElementById('sheet');
+        d.innerHTML = `<div class="sheet-head"><h2 id="sheet-title" tabindex="-1" autofocus>${title}</h2>${done ? `<button class="button button-ghost" type="button" data-close>${done}</button>` : ''}</div><div class="sheet-body"></div>`;
+        fill(d.querySelector('.sheet-body'));
+        d.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => d.close()));
+        opener = from || document.activeElement;
+        d.showModal();
+        root.classList.add('sheet-open');
+        history.pushState({ sheet: true }, '');
+        sheetEntry = true;
+      }
+      const sheetEl = document.getElementById('sheet');
+      sheetEl.addEventListener('click', (e) => {
+        if (e.target === sheetEl) sheetEl.close();
+      });
+      sheetEl.addEventListener('close', () => {
+        root.classList.remove('sheet-open');
+        if (sheetEntry) {
+          sheetEntry = false;
+          history.back();
+        }
+        opener?.focus?.({ preventScroll: true });
+      });
+      addEventListener('popstate', () => {
+        if (sheetEl.open) {
+          sheetEntry = false;
+          sheetEl.close();
+        }
+      });
+      function openNamedSheet(kind, from, arg) {
+        if (kind === 'day') {
+          const day = days.find((x) => x.t === arg) || last;
+          openSheet(
+            dfmt(day.t, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+            (b) => {
+              b.innerHTML = `<form class="entry-form"><label for="day-weight">${L('Weight', 'Peso')}</label><div class="with-unit"><input id="day-weight" inputmode="decimal" value="${num(day.kg)}"><span class="unit">${UNIT}</span></div><button class="button button-big" type="submit">${L('Save', 'Salvar')}</button></form>
+        <div class="danger-zone" style="margin-top:28px"><button class="button button-danger" type="button" id="del-day" aria-label="${L(`Delete the weigh-in of ${dShort(day.t)}`, `Apagar a pesagem de ${dShort(day.t)}`)}">${L('Delete', 'Apagar')}</button></div>`;
+              b.querySelector('#del-day').addEventListener('click', () => {
+                document.getElementById('sheet').close();
+                toast(L(`Deleted the weigh-in of ${dShort(day.t)}.`, `Pesagem de ${dShort(day.t)} apagada.`));
+              });
+            },
+            from,
+            L('Cancel', 'Cancelar'),
+          );
+        } else if (kind === 'sections') {
+          openSheet(
+            L('Sections', 'Seções'),
+            (b) => {
+              b.innerHTML = `<div class="sheet-section"><div class="toggle-list">${sectionNames()
+                .map(
+                  (s) =>
+                    `<button class="toggle" type="button" aria-pressed="true"><span class="grow">${s}</span><span class="switch" aria-hidden="true"></span></button>`,
+                )
+                .join('')}</div></div>`;
+              b.querySelectorAll('.toggle').forEach((t) =>
+                t.addEventListener('click', () =>
+                  t.setAttribute('aria-pressed', String(t.getAttribute('aria-pressed') !== 'true')),
+                ),
+              );
+            },
+            from,
+          );
+        } else if (kind === 'paste') {
+          // Built paste.* strings, word for word.
+          openSheet(
+            L('Paste several days at once', 'Colar vários dias de uma vez'),
+            (b) => {
+              b.innerHTML = `<p class="preset-note" id="paste-help">${L(`One weigh-in per line, a date and a weight, like “19/10 ${num(108.4)}”. Weights are read in ${UNIT} unless a line says kg or lb. Days already logged are replaced.`, `Uma pesagem por linha, com a data e o peso, como “19/10 ${num(108.4)}”. Os pesos são lidos em ${UNIT}, a menos que a linha diga kg ou lb. Dias já registrados são substituídos.`)}</p><label class="visually-hidden" for="paste">${L('Weigh-ins to import', 'Pesagens para importar')}</label><textarea id="paste" rows="6" aria-describedby="paste-help" style="width:100%;margin-top:10px;font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid var(--ref);background:var(--bg);color:var(--fg)"></textarea><button class="button" type="button" style="width:100%;margin-top:10px">${L('Import lines', 'Importar linhas')}</button>`;
+            },
+            from,
+            L('Cancel', 'Cancelar'),
+          );
+        } else if (kind === 'erase') {
+          // Built data.eraseWarning (enApp in the app), data.eraseHealth and data.eraseHealthNote; one Cancel.
+          const healthOn = APP && HEALTH !== 'off' && HEALTH !== 'none';
+          openSheet(
+            L('Erase everything', 'Apagar tudo'),
+            (b) => {
+              b.innerHTML = `<p>${APP ? L("This erases every weigh-in, your goal, height and settings from this app, and can't be undone. Export a backup first if you may want them back.", 'Isto apaga todas as pesagens, sua meta, altura e configurações deste app, e não pode ser desfeito. Exporte um backup antes, caso queira recuperar tudo.') : L("This erases every weigh-in, your goal, height and settings from this browser, and can't be undone. Export a backup first if you may want them back.", 'Isto apaga todas as pesagens, sua meta, altura e configurações deste navegador, e não pode ser desfeito. Exporte um backup antes, caso queira recuperar tudo.')}</p>
+        ${healthOn ? `<label class="check-row"><input type="checkbox" aria-describedby="erase-revoke"> <span>${L('Also delete the weights this app saved in Apple Health', 'Apagar também os pesos que este app salvou no app Saúde')}</span></label><p class="preset-note" id="erase-revoke">${L('Readings from your scale or other apps stay in Apple Health. The app can’t take back its own access to Health: to do it, in the Health app tap your picture, then Apps under Privacy, Weigh to Go.', 'As medições da sua balança ou de outros apps continuam no app Saúde. O app não consegue tirar o próprio acesso ao app Saúde: para isso, no app Saúde toque na sua foto, depois em Apps, em Privacidade, e em Weigh to Go.')}</p>` : ''}
+        <div class="stack" style="margin-top:12px"><button class="button button-ghost" type="button">${L('Export backup', 'Exportar backup')}</button><button class="button" type="button" data-close>${L('Cancel', 'Cancelar')}</button><button class="button button-danger" type="button" style="margin-top:12px">${L('Erase', 'Apagar')}</button></div>`;
+            },
+            from,
+            null,
+          );
+        } else if (kind === 'pct') {
+          openSheet(
+            L('Percentage loss · options', 'Perda percentual · opções'),
+            (b) => {
+              b.innerHTML = `<section class="sheet-section"><h3>View</h3><div class="segmented" role="group" aria-label="View"><button type="button" aria-pressed="true">Essential</button><button type="button" aria-pressed="false">Detailed</button><button type="button" aria-pressed="false">Custom</button></div></section>
+        <section class="sheet-section"><h3>Show</h3><div class="toggle-list">${['Figures in %', 'Chart', 'Weekly pace in %', 'Milestones table'].map((s, i) => `<button class="toggle" type="button" aria-pressed="${i < 2}"><span class="grow">${s}</span><span class="switch" aria-hidden="true"></span></button>`).join('')}</div></section>
+        <section class="sheet-section"><h3>Layers</h3><div class="toggle-list">${['Weigh-ins', '7-day average', 'Trend line', 'Projection', 'Projection range', 'Milestones 5%, 10%, 15%…', 'Goal'].map((s, i) => `<button class="toggle" type="button" aria-pressed="${[0, 1, 3, 6].includes(i)}"><span class="grow">${s}</span><span class="switch" aria-hidden="true"></span></button>`).join('')}</div></section>
+        <section class="sheet-section"><h3>Projection</h3><div class="segmented" role="group" aria-label="Projection"><button type="button" aria-pressed="true">Whole period</button><button type="button" aria-pressed="false">Last 3 weeks</button><button type="button" aria-pressed="false">Smoothed trend</button></div></section>
+        <section class="sheet-section"><h3>Horizon</h3><div class="segmented" role="group" aria-label="Horizon"><button type="button" aria-pressed="false">15 days</button><button type="button" aria-pressed="false">30 days</button><button type="button" aria-pressed="true">60 days</button><button type="button" aria-pressed="false">90 days</button></div></section>`;
+            },
+            from,
+          );
+        }
+      }
+      let toastTimer;
+      function toast(text) {
+        const t = document.getElementById('toast');
+        t.innerHTML = `<p>${text}</p><button class="button-text" type="button">${L('Undo', 'Desfazer')}</button>`;
+        t.hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          t.hidden = true;
+        }, 10000);
+        t.querySelector('button').addEventListener('click', () => {
+          t.hidden = true;
+        });
+      }
+
+      // ---------- Drawing only what shows ----------
+      function redrawShown() {
+        if (current === 'progress' || desk.matches) drawMain();
+        if (current === 'today') drawSpark();
+        for (const b of document.querySelectorAll('.pct-box')) if (b.offsetParent) drawPct(b);
+      }
+
+      // ---------- Start ----------
+      function renderAll() {
+        renderToday();
+        renderProgress();
+        renderAnalysis();
+        renderData();
+      }
+      renderAll();
+      const startTab = Q.get('tab') || (ROUTES[location.hash.slice(1)] ? location.hash.slice(1) : 'today');
+      show(startTab, false);
+      const sheetQ = Q.get('sheet');
+      if (sheetQ === 'chart') {
+        show('progress');
+        toggleChartOptions();
+      } else if (sheetQ) openNamedSheet(sheetQ, null, last?.t);
+      if ('IntersectionObserver' in window) {
+        const io = new IntersectionObserver(
+          (entries) => {
+            if (!desk.matches) return;
+            for (const e of entries)
+              if (e.isIntersecting) markCurrent(Object.keys(ROUTES).find((k) => ROUTES[k] === e.target.id));
+          },
+          { rootMargin: '-80px 0px -60% 0px' },
+        );
+        Object.values(ROUTES).forEach((id) => io.observe(document.getElementById(id)));
+      }
+      // Crossing the breakpoint keeps every choice; the prototype re-renders, the product moves nodes (design §1).
+      desk.addEventListener('change', () => {
+        if (sheetEl.open) sheetEl.close();
+        renderAll();
+        show(current);
+      });
+      let rt;
+      addEventListener('resize', () => {
+        clearTimeout(rt);
+        rt = setTimeout(redrawShown, 100);
+      });
+      document.fonts.ready.then(redrawShown);
+    </script>
+  </body>
+</html>
