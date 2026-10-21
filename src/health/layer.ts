@@ -149,7 +149,27 @@ export async function withHealth(
     return run;
   };
 
+  /**
+   * What the last typed save found on each of its days, so `restore` can put the day back exactly:
+   * the diary's own record, this app's samples in Health, and the day's tombstone.
+   */
+  let beforeSave = new Map<
+    string,
+    { typed: StoredWeighIn | null; own: HealthSample[]; tombstone: Tombstone | undefined }
+  >();
+
   const save = () => files.write(HEALTH_FILE, JSON.stringify({ setting, tombstones, everOn }));
+  /** Keeps what was written in step with Health, which keeps the highest version for an identifier. */
+  const remember = (wrote: readonly SampleToWrite[]) => {
+    for (const w of wrote) {
+      const old = samples.find((x) => x.syncId === w.syncId);
+      if (old && (old.syncVersion ?? 0) >= w.syncVersion) continue;
+      samples = [
+        ...samples.filter((x) => x.syncId !== w.syncId),
+        { uuid: w.syncId, kg: w.kg, start: w.start, syncId: w.syncId, syncVersion: w.syncVersion },
+      ];
+    }
+  };
   const today = () => localDayOf(now().toISOString());
 
   const derive = async () => {
@@ -232,7 +252,10 @@ export async function withHealth(
     }
     const samplesToWrite = imported ? toWrite(weighIns, samples) : weighIns.map(sampleFor);
     if (setting.on && writing && samplesToWrite.length > 0) {
-      await quietly(() => backend.write(samplesToWrite));
+      await quietly(async () => {
+        await backend.write(samplesToWrite);
+        remember(samplesToWrite);
+      });
     }
     await derive();
   };
@@ -337,8 +360,66 @@ export async function withHealth(
     weighIns,
     put: (rows, profile) =>
       serial(async () => {
+        const typed = new Map((await inner.weighIns()).map((w) => [w.date, w]));
+        beforeSave = new Map(
+          rows.map((r) => [
+            r.date,
+            {
+              typed: typed.get(r.date) ?? null,
+              own: samples.filter((x) => dayOfSyncId(x.syncId) === r.date),
+              tombstone: tombstones.find((t) => t.date === r.date),
+            },
+          ]),
+        );
         await inner.put(rows, profile);
         await written(rows);
+      }),
+    /**
+     * Undoes the last save of a day. A day that was new is deleted, as any day deleted here (a
+     * tombstone once Health was used, H5). Otherwise everything goes back as it was: the diary's
+     * own record, savedAt included, and this app's sample in Health with its old sync version.
+     * Health keeps the highest version for an identifier and ignores a lower one, so the sample
+     * the save wrote is deleted before the old one is written back.
+     */
+    restore: (date, previous) =>
+      serial(async () => {
+        const before = beforeSave.get(date);
+        beforeSave.delete(date);
+        const typedNow = (await inner.weighIns()).some((w) => w.date === date);
+        if (previous === null) {
+          if (typedNow) await inner.remove(date);
+          await deleted([date]);
+          return;
+        }
+        // Without what the save found (another save came since), `previous` was the diary's own.
+        const typed = before ? before.typed : previous;
+        if (typed) await inner.put([typed]);
+        else if (typedNow) await inner.remove(date);
+        if (before?.tombstone) {
+          tombstones = [...tombstones.filter((t) => t.date !== date), before.tombstone];
+          await quietly(save);
+        }
+        if (setting.on && writing) {
+          const id = syncIdFor(date);
+          await quietly(() => backend.remove([id]));
+          samples = samples.filter((x) => x.syncId !== id);
+          const back: SampleToWrite[] = before
+            ? before.own.map((x) => ({
+                kg: x.kg,
+                start: x.start,
+                syncId: id,
+                syncVersion: x.syncVersion ?? Date.parse(x.start),
+              }))
+            : typed
+              ? [sampleFor(typed)]
+              : [];
+          if (back.length > 0)
+            await quietly(async () => {
+              await backend.write(back);
+              remember(back);
+            });
+        }
+        await derive();
       }),
     merge: (rows, profile) =>
       serial(async () => {
@@ -380,6 +461,7 @@ export async function withHealth(
         samples = [];
         derived = [];
         fromOthers = 0;
+        beforeSave = new Map();
         await save();
       }),
     onChange: (listener) => {
