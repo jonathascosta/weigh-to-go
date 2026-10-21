@@ -4,6 +4,7 @@
  */
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import { isMissingFile } from './file-errors';
+import { namesIn, readText } from './library';
 import { deviceStore, type Diary, type FileBackend } from '../data/device-store';
 import { deleteDatabase, openStore, type Store } from '../data/store';
 
@@ -12,15 +13,7 @@ const at = (name: string) => ({ path: `${FOLDER}/${name}`, directory: Directory.
 
 export const libraryFiles: FileBackend = {
   // A missing file is no data; any other failure to read must not be taken for one.
-  read: async (name) => {
-    try {
-      const { data } = await Filesystem.readFile({ ...at(name), encoding: Encoding.UTF8 });
-      return typeof data === 'string' ? data : await data.text();
-    } catch (error) {
-      if (isMissingFile(error)) return null;
-      throw error;
-    }
-  },
+  read: (name) => readText(FOLDER, name),
   write: async (name, text) => {
     await Filesystem.writeFile({ ...at(name), data: text, encoding: Encoding.UTF8, recursive: true });
   },
@@ -32,17 +25,9 @@ export const libraryFiles: FileBackend = {
       toDirectory: Directory.Library,
     });
   },
-  list: async () => {
-    try {
-      return (await Filesystem.readdir({ path: FOLDER, directory: Directory.Library })).files.map(
-        (f) => f.name,
-      );
-    } catch (error) {
-      if (isMissingFile(error)) return [];
-      throw error;
-    }
-  },
+  list: () => namesIn(FOLDER),
   remove: async (name) => {
+    if (!(await namesIn(FOLDER)).includes(name)) return;
     try {
       await Filesystem.deleteFile(at(name));
     } catch (error) {

@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EMPTY_PROFILE } from '../data/records';
 import { memoryStore, type Store } from '../data/store';
 
-const { disk, fs, old } = vi.hoisted(() => {
+const { disk, fs, old, calls } = vi.hoisted(() => {
+  const calls: string[] = [];
   const disk = new Map<string, string>();
   const noFile = () => Object.assign(new Error('File does not exist'), { code: 'OS-PLUG-FILE-0008' });
   const fs = {
     readError: null as Error | null,
     readFile: (o: { path: string }) => {
+      calls.push(`readFile ${o.path}`);
       if (fs.readError) return Promise.reject(fs.readError);
       const data = disk.get(o.path);
       return data === undefined ? Promise.reject(noFile()) : Promise.resolve({ data });
@@ -23,15 +25,22 @@ const { disk, fs, old } = vi.hoisted(() => {
       disk.set(o.to, data);
       return Promise.resolve();
     },
-    deleteFile: (o: { path: string }) => (disk.delete(o.path) ? Promise.resolve() : Promise.reject(noFile())),
-    readdir: (o: { path: string }) =>
-      Promise.resolve({
-        files: [...disk.keys()]
-          .filter((k) => k.startsWith(`${o.path}/`))
-          .map((k) => ({ name: k.slice(o.path.length + 1) })),
-      }),
+    deleteFile: (o: { path: string }) => {
+      calls.push(`deleteFile ${o.path}`);
+      return disk.delete(o.path) ? Promise.resolve() : Promise.reject(noFile());
+    },
+    // Like iOS: a folder that isn't there can't be listed; the root always can.
+    readdir: (o: { path: string }) => {
+      calls.push(`readdir ${o.path}`);
+      const prefix = o.path === '' ? '' : `${o.path}/`;
+      const entries = [...disk.keys()].filter((k) => k.startsWith(prefix)).map((k) => k.slice(prefix.length));
+      if (o.path !== '' && entries.length === 0) return Promise.reject(noFile());
+      return Promise.resolve({
+        files: [...new Set(entries.map((e) => e.split('/')[0]))].map((name) => ({ name })),
+      });
+    },
   };
-  return { disk, fs, old: { store: null as Store | null, deleted: 0, deletes: true } };
+  return { disk, fs, calls, old: { store: null as Store | null, deleted: 0, deletes: true } };
 });
 
 vi.mock('@capacitor/filesystem', () => ({
@@ -53,6 +62,7 @@ const { libraryFiles, openNativeStore } = await import('./store-native');
 const weighIn = { date: '2026-10-17', kg: 100, savedAt: '2026-10-17T08:00:00.000Z' };
 
 beforeEach(() => {
+  calls.length = 0;
   disk.clear();
   fs.readError = null;
   old.store = null;
@@ -61,6 +71,14 @@ beforeEach(() => {
 });
 
 describe('libraryFiles', () => {
+  it("never asks for a file that isn't there, so a first launch logs no failed call", async () => {
+    expect(await libraryFiles.read('weigh-ins.json')).toBeNull();
+    await libraryFiles.remove('weigh-ins.json');
+    expect(calls.filter((c) => !c.startsWith('readdir'))).toEqual([]);
+    await openNativeStore();
+    expect(calls.filter((c) => c.startsWith('readFile') || c.startsWith('deleteFile'))).toEqual([]);
+  });
+
   it('reads a missing file as none, in the diary folder', async () => {
     expect(await libraryFiles.read('weigh-ins.json')).toBeNull();
     await libraryFiles.write('weigh-ins.json', '{}');
@@ -69,6 +87,7 @@ describe('libraryFiles', () => {
   });
 
   it('never takes a file it fails to read for a missing one', async () => {
+    await libraryFiles.write('weigh-ins.json', '{}');
     fs.readError = Object.assign(new Error('Permission denied'), { code: 'OS-PLUG-FILE-0012' });
     await expect(libraryFiles.read('weigh-ins.json')).rejects.toThrow('Permission denied');
   });
