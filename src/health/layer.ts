@@ -194,6 +194,16 @@ export async function withHealth(
     }
     const missing = toWrite(await inner.weighIns(), samples);
     if (writing && missing.length > 0) await quietly(() => backend.write(missing));
+    // Days deleted while Health was off: this app's older samples for them go now (H5).
+    const stale = samples.filter((s) => {
+      const day = dayOfSyncId(s.syncId);
+      const t = day === null ? undefined : tombstones.find((x) => x.date === day);
+      return t !== undefined && (s.syncVersion ?? 0) <= Date.parse(t.at);
+    });
+    if (writing && stale.length > 0) {
+      await quietly(() => backend.remove(stale.map((s) => s.syncId ?? '')));
+      samples = samples.filter((s) => !stale.includes(s));
+    }
   };
   const refresh = () =>
     serial(async () => {
@@ -203,15 +213,22 @@ export async function withHealth(
       notify();
     });
 
-  /** Writes typed weigh-ins to Health, and forgets the tombstones of their days. */
-  const written = async (weighIns: readonly StoredWeighIn[]) => {
+  /**
+   * Writes typed weigh-ins to Health, and forgets the tombstones of their days. A weight typed is
+   * written as it is (H6); `imported` rows only where Health has no reading for the day or an older
+   * one of this app's, so importing a backup never doubles a scale's readings.
+   */
+  const written = async (weighIns: readonly StoredWeighIn[], imported = false) => {
     if (weighIns.length === 0) return;
     const dates = new Set(weighIns.map((w) => w.date));
     if (tombstones.some((t) => dates.has(t.date))) {
       tombstones = tombstones.filter((t) => !dates.has(t.date));
       await quietly(save);
     }
-    if (setting.on && writing) await quietly(() => backend.write(weighIns.map(sampleFor)));
+    const samplesToWrite = imported ? toWrite(weighIns, samples) : weighIns.map(sampleFor);
+    if (setting.on && writing && samplesToWrite.length > 0) {
+      await quietly(() => backend.write(samplesToWrite));
+    }
     await derive();
   };
 
@@ -317,7 +334,7 @@ export async function withHealth(
     merge: (rows, profile) =>
       serial(async () => {
         const result = await inner.merge(rows, profile);
-        await written(rows);
+        await written(rows, true);
         return result;
       }),
     remove: (date) =>
@@ -336,7 +353,7 @@ export async function withHealth(
         const kept = new Set(rows.map((w) => w.date));
         // Replaced means gone: this app's samples for the days dropped go from Health too.
         await deleted(before.filter((d) => !kept.has(d)));
-        await written(rows);
+        await written(rows, true);
       }),
     // Erasing everything turns Health off and forgets the tombstones; deleting this app's samples
     // from Health is the person's choice, asked before (`deleteOwnSamples`).

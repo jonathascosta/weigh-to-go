@@ -73,15 +73,27 @@ describe('withHealth', () => {
     expect((await again.weighIns()).map((x) => x.kg)).toEqual([98.4]);
   });
 
-  it('keeps a day deleted while Health is off deleted when it is turned on', async () => {
+  it('keeps a day deleted while Health is off deleted when it is turned on, and deletes its sample then', async () => {
     const health = fakeHealth();
     const { store } = await open(health, fakeFiles(), () => new Date(local('2026-10-21', 9)));
     await store.health.turnOn();
     await store.put([w('2026-10-21', 97.5, 8)]);
     await store.health.turnOff();
     await store.remove('2026-10-21');
+    expect(health.state.samples).toHaveLength(1);
     await store.health.turnOn();
     expect(await store.weighIns()).toEqual([]);
+    expect(health.state.samples).toEqual([]);
+  });
+
+  it("never doubles a scale's reading when a backup is imported", async () => {
+    const health = fakeHealth([reading('2026-10-20', 7, 98)]);
+    const { store } = await open(health);
+    await store.health.turnOn();
+    await store.merge([w('2026-10-20', 98), w('2026-10-21', 97.5)], null);
+    expect(health.state.samples.map((s) => s.syncId ?? 'scale')).toEqual(['scale', syncIdFor('2026-10-21')]);
+    await store.replace([w('2026-10-20', 98)]);
+    expect(health.state.samples.filter((s) => s.syncId === syncIdFor('2026-10-20'))).toEqual([]);
   });
 
   it("deletes this app's sample when a typed day is deleted", async () => {

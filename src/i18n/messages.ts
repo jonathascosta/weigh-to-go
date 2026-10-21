@@ -817,7 +817,7 @@ export const en = {
   'data.eraseHealthNote':
     'Readings from your scale or other apps stay in Apple Health. The app can’t take back its own access to Health: to do it, in the Health app tap your picture, then Apps under Privacy, Weigh to Go.',
   'data.erasedNotHealth':
-    'Everything here was erased, but the weights in Apple Health couldn’t be deleted. In the Health app: Browse, Body Measurements, Weight, Show All Data.',
+    'Everything here was erased, but the weights in Apple Health couldn’t be deleted. In the Health app: Weight, Data Sources & Access, Weigh to Go, Delete All Data.',
   'notice.reloadButton': 'Reload',
   'update.ready': 'A new version of Weigh to Go is ready. Your weigh-ins stay where they are.',
   'install.empty':
@@ -1476,7 +1476,7 @@ export const pt: Messages = {
   'data.eraseHealthNote':
     'As medições da sua balança ou de outros apps continuam no app Saúde. O app não consegue tirar o próprio acesso ao app Saúde: para isso, no app Saúde toque na sua foto, depois em Apps, em Privacidade, e em Weigh to Go.',
   'data.erasedNotHealth':
-    'Tudo aqui foi apagado, mas os pesos no app Saúde não puderam ser apagados. No app Saúde: Buscar, Medidas Corporais, Peso, Mostrar Todos os Dados.',
+    'Tudo aqui foi apagado, mas os pesos no app Saúde não puderam ser apagados. No app Saúde: Peso, Fontes de Dados e Acesso, Weigh to Go, Apagar Todos os Dados.',
   'notice.reloadButton': 'Recarregar',
   'update.ready': 'Uma nova versão do Weigh to Go está pronta. Suas pesagens continuam aqui.',
   'install.empty':
@@ -1506,7 +1506,7 @@ export const enApp = {
   'install.empty':
     'If you have logged weigh-ins on weightogo.jonathas.net, export a backup there, save it to Files or send it to this iPhone with AirDrop, and import it here, under Your data.',
   'notice.noBackup':
-    'Your weigh-ins live only in this app (and in Apple Health, if you turn it on), and in your iPhone’s backup if you use one. Export a backup, so you keep a copy of your own.',
+    'Your weigh-ins live in this app (and in Apple Health, if you turn it on), and in your iPhone’s backup if you use one. Export a backup, so you keep a copy of your own.',
   'notice.reload':
     "The app can't open its saved diary right now. Try again; if it keeps happening, close the app and open it again.",
   'notice.reloadButton': 'Try again',
@@ -1528,7 +1528,7 @@ export const ptApp: typeof enApp = {
   'install.empty':
     'Se você registrou pesagens no site weightogo.jonathas.net, exporte um backup por lá, salve-o no app Arquivos ou mande-o para este iPhone por AirDrop, e importe-o aqui, em Seus dados.',
   'notice.noBackup':
-    'Suas pesagens ficam só neste app (e no app Saúde, se você ligá-lo), e no backup do seu iPhone, se você usa um. Exporte um backup, para ter uma cópia com você.',
+    'Suas pesagens ficam neste app (e no app Saúde, se você ligá-lo), e no backup do seu iPhone, se você usa um. Exporte um backup, para ter uma cópia com você.',
   'notice.reload':
     'O app não está conseguindo abrir o diário salvo agora. Tente de novo; se continuar, feche o app e abra-o outra vez.',
   'notice.reloadButton': 'Tentar de novo',
