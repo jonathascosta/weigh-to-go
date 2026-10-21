@@ -100,17 +100,19 @@ describe('findProblems', () => {
 
 describe('findMissingPages', () => {
   const robots = `User-agent: *\nAllow: /\n\nSitemap: ${SITE}sitemap.xml\n`;
-  const sitemap = `<urlset><url><loc>${SITE}</loc></url><url><loc>${SITE}pt/</loc></url></urlset>`;
-  const alternates = [
-    `<link rel="alternate" hreflang="en" href="${SITE}" />`,
-    `<link rel="alternate" hreflang="pt-BR" href="${SITE}pt/" />`,
-    `<link rel="alternate" hreflang="x-default" href="${SITE}" />`,
-  ].join('');
-  /** @param {string} url @param {string} html */
-  const home = (url = SITE, html = '<html lang="en">') =>
-    page()
-      .replace('<html>', html)
-      .replace('<head>', `<head><link rel="canonical" href="${url}" />${alternates}`);
+  const policy = { en: `${SITE}privacy.html`, pt: `${SITE}pt/privacidade.html` };
+  const sitemap = `<urlset>${[SITE, `${SITE}pt/`, policy.en, policy.pt].map((url) => `<url><loc>${url}</loc></url>`).join('')}</urlset>`;
+  /** @param {string} en @param {string} pt */
+  const alternates = (en, pt) =>
+    [
+      `<link rel="alternate" hreflang="en" href="${en}" />`,
+      `<link rel="alternate" hreflang="pt-BR" href="${pt}" />`,
+      `<link rel="alternate" hreflang="x-default" href="${en}" />`,
+    ].join('');
+  /** @param {string} url @param {string} html @param {string} [links] */
+  const home = (url = SITE, html = '<html lang="en">', links = alternates(SITE, `${SITE}pt/`)) =>
+    page().replace('<html>', html).replace('<head>', `<head><link rel="canonical" href="${url}" />${links}`);
+  const policyLinks = alternates(policy.en, policy.pt);
   const notFound = page()
     .replace('<html>', '<html lang="en">')
     .replace('<head>', '<head><meta name="robots" content="noindex" />');
@@ -121,6 +123,11 @@ describe('findMissingPages', () => {
     { name: '404.html', text: notFound },
     { name: 'robots.txt', text: robots },
     { name: 'sitemap.xml', text: sitemap },
+    { name: 'privacy.html', text: home(policy.en, '<html lang="en">', policyLinks) },
+    {
+      name: 'pt/privacidade.html',
+      text: home(policy.pt, '<html lang="pt-BR" data-lang="pt">', policyLinks),
+    },
   ];
 
   it('accepts the complete site', () => {
@@ -164,6 +171,22 @@ describe('findMissingPages', () => {
       `index.html: ${SITE} isn't in sitemap.xml`,
       'pt/index.html: missing',
       '404.html: missing',
+      `privacy.html: ${policy.en} isn't in sitemap.xml`,
+      `pt/privacidade.html: ${policy.pt} isn't in sitemap.xml`,
+    ]);
+  });
+
+  it("reports a privacy page that points to the home pages' versions instead of its own", () => {
+    const files = all();
+    const index = files.findIndex((file) => file.name === 'pt/privacidade.html');
+    files[index] = {
+      name: 'pt/privacidade.html',
+      text: home(policy.pt, '<html lang="pt-BR" data-lang="pt">'),
+    };
+    expect(findMissingPages(files)).toEqual([
+      "pt/privacidade.html: doesn't point to its en version",
+      "pt/privacidade.html: doesn't point to its pt-BR version",
+      "pt/privacidade.html: doesn't name the default version",
     ]);
   });
 });
@@ -214,6 +237,8 @@ describe('findAppProblems', () => {
     { name: 'index.html', text: head('manifest.webmanifest') },
     { name: '404.html', text: head('manifest.webmanifest') },
     { name: 'pt/index.html', text: head('manifest-pt.webmanifest') },
+    { name: 'privacy.html', text: head('manifest.webmanifest') },
+    { name: 'pt/privacidade.html', text: head('manifest-pt.webmanifest') },
     { name: 'manifest.webmanifest', text: manifest('/') },
     { name: 'manifest-pt.webmanifest', text: manifest('/pt/') },
     { name: 'sw.js', text: worker },
@@ -222,6 +247,8 @@ describe('findAppProblems', () => {
     'index.html',
     '404.html',
     'pt/index.html',
+    'privacy.html',
+    'pt/privacidade.html',
     'icons/icon-192.png',
     'icons/icon-512.png',
     'icons/icon-maskable-512.png',
@@ -236,7 +263,16 @@ describe('findAppProblems', () => {
   it('passes a site that links its manifests and precaches what it has', () => {
     expect(
       findAppProblems(
-        site(worker(['/', '/404.html', '/pt/', '/assets/barlow-latin-400-normal-a1.woff2'])),
+        site(
+          worker([
+            '/',
+            '/404.html',
+            '/privacy.html',
+            '/pt/',
+            '/pt/privacidade.html',
+            '/assets/barlow-latin-400-normal-a1.woff2',
+          ]),
+        ),
         exists,
       ),
     ).toEqual([]);

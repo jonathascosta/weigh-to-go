@@ -43,6 +43,14 @@ test('works offline once the service worker has the site', async ({ page }) => {
     await expect(page.locator('h1')).toHaveText('Seu diário de peso, no seu aparelho');
     await page.goto(`${server.url}/`);
     await expect(page.locator('h1')).toHaveText('Your weight diary, on your device');
+    // The privacy policy, precached, opens offline in both languages.
+    await page.goto(`${server.url}/privacy.html`);
+    await expect(page.locator('h1')).toHaveText('Privacy policy');
+    await expect(page.locator('h1')).toBeVisible();
+    await page.goto(`${server.url}/pt/privacidade.html`);
+    await expect(page.locator('h1')).toHaveText('Política de privacidade');
+    await expect(page.locator('h1')).toBeVisible();
+    await page.goto(`${server.url}/`);
 
     // A weigh-in logged offline is kept (it never needed the network), and is there after a reload.
     const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
