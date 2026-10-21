@@ -203,6 +203,9 @@ test('the privacy policy follows a language the reader chose, links included', a
   // The English policy, opened directly, reads in Portuguese too, with Portuguese links.
   await page.goto('/privacy.html');
   await expect(page.locator('h1')).toHaveText('Política de privacidade');
+  // The language shown is marked, not a link; the other is.
+  await expect(page.locator('.langs [aria-current="page"]')).toHaveText('Português');
+  await expect(page.locator('.langs [aria-current="page"]')).not.toHaveAttribute('href', /./);
   await expect(page.getByRole('link', { name: 'Declaração de privacidade do GitHub' })).toHaveAttribute(
     'href',
     'https://docs.github.com/pt/site-policy/privacy-policies/github-general-privacy-statement',

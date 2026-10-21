@@ -46,8 +46,10 @@ test('works offline once the service worker has the site', async ({ page }) => {
     // The privacy policy, precached, opens offline in both languages.
     await page.goto(`${server.url}/privacy.html`);
     await expect(page.locator('h1')).toHaveText('Privacy policy');
+    await expect(page.locator('h1')).toBeVisible();
     await page.goto(`${server.url}/pt/privacidade.html`);
     await expect(page.locator('h1')).toHaveText('Política de privacidade');
+    await expect(page.locator('h1')).toBeVisible();
     await page.goto(`${server.url}/`);
 
     // A weigh-in logged offline is kept (it never needed the network), and is there after a reload.
