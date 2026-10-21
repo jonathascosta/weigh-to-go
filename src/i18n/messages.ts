@@ -786,6 +786,8 @@ export const en = {
     "This browser isn't letting the page keep data, so weigh-ins last only until you close it. Export a backup before you leave.",
   'notice.reload':
     "The diary can't reach its data right now, perhaps because a newer version is open in another tab. Reload the page.",
+  'notice.setAside':
+    "The saved diary couldn't be read in full. A copy is kept in the app as it was, and what could be read is shown. If weigh-ins are missing, import your latest backup.",
   'notice.reloadButton': 'Reload',
   'update.ready': 'A new version of Weigh to Go is ready. Your weigh-ins stay where they are.',
   'install.empty':
@@ -1413,6 +1415,8 @@ export const pt: Messages = {
     'Este navegador não está deixando a página guardar dados, então as pesagens só duram até você fechá-la. Exporte um backup antes de sair.',
   'notice.reload':
     'O diário não está conseguindo acessar seus dados agora, talvez porque uma versão mais nova está aberta em outra aba. Recarregue a página.',
+  'notice.setAside':
+    'Não foi possível ler todo o diário salvo. Uma cópia fica guardada no app como estava, e o que pôde ser lido está aqui. Se faltarem pesagens, importe seu backup mais recente.',
   'notice.reloadButton': 'Recarregar',
   'update.ready': 'Uma nova versão do Weigh to Go está pronta. Suas pesagens continuam aqui.',
   'install.empty':
@@ -1422,6 +1426,54 @@ export const pt: Messages = {
     'Suas pesagens ficam guardadas só neste navegador. Exporte um backup, para que fiquem seguras se ele apagar seus dados.',
   'notice.oldBackup': (days: string) =>
     `Seu último backup foi há ${days}. Exporte um novo, para que as pesagens recentes também fiquem seguras.`,
+};
+
+/**
+ * The iPhone app's wording where the website's speaks of a browser or a page: laid over the
+ * dictionaries in the app's build.
+ */
+export const enApp = {
+  'home.privacy': 'Everything runs on your iPhone: your weigh-ins are stored in this app only.',
+  'data.note':
+    'Everything stays in this app on your iPhone, and in your iPhone’s backup if you use iCloud Backup or back up to a computer. A backup file is the only copy you hold yourself: export one now and then, and use it to move to another device.',
+  'data.eraseWarning':
+    "This erases every weigh-in, your goal, height and settings from this app, and can't be undone. Export a backup first if you may want them back.",
+  'data.eraseFailed': "Couldn't erase everything. Close the app, open it again and try again.",
+  'backup.newer-format': 'That backup comes from a newer Weigh to Go. Update the app, then try again.',
+  'notice.memory':
+    "The app can't open its saved diary right now, so new weigh-ins last only until you close it. Close the app and open it again.",
+  'install.empty':
+    'If you have logged weigh-ins on weightogo.jonathas.net, export a backup there, save it to Files or send it to this iPhone with AirDrop, and import it here, under Your data.',
+  'notice.noBackup':
+    'Your weigh-ins live only in this app, and in your iPhone’s backup if you use one. Export a backup, so you keep a copy of your own.',
+  'notice.reload':
+    "The app can't open its saved diary right now. Try again; if it keeps happening, close the app and open it again.",
+  'notice.reloadButton': 'Try again',
+  'entry.reload': "Couldn't save: the app can't reach its diary. Tap Try again at the top, then save again.",
+  'data.reload': "The app can't reach its diary. Tap Try again at the top, then try this again.",
+} satisfies Partial<Messages>;
+
+export const ptApp: typeof enApp = {
+  'home.privacy': 'Tudo funciona no seu iPhone: suas pesagens ficam guardadas só neste app.',
+  'data.note':
+    'Tudo fica neste app, no seu iPhone, e no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador. Um arquivo de backup é a única cópia que fica com você: exporte um de vez em quando e use-o para passar para outro aparelho.',
+  'data.eraseWarning':
+    'Isto apaga todas as pesagens, sua meta, altura e configurações deste app, e não pode ser desfeito. Exporte um backup antes, caso queira recuperar tudo.',
+  'data.eraseFailed': 'Não foi possível apagar tudo. Feche o app, abra-o de novo e tente outra vez.',
+  'backup.newer-format': 'Esse backup vem de um Weigh to Go mais novo. Atualize o app e tente de novo.',
+  'notice.memory':
+    'O app não está conseguindo abrir o diário salvo agora, então as novas pesagens só duram até você fechá-lo. Feche o app e abra-o de novo.',
+  'install.empty':
+    'Se você registrou pesagens no site weightogo.jonathas.net, exporte um backup por lá, salve-o no app Arquivos ou mande-o para este iPhone por AirDrop, e importe-o aqui, em Seus dados.',
+  'notice.noBackup':
+    'Suas pesagens ficam só neste app, e no backup do seu iPhone, se você usa um. Exporte um backup, para ter uma cópia com você.',
+  'notice.reload':
+    'O app não está conseguindo abrir o diário salvo agora. Tente de novo; se continuar, feche o app e abra-o outra vez.',
+  'notice.reloadButton': 'Tentar de novo',
+  'entry.reload':
+    'Não foi possível salvar: o app não está conseguindo acessar o diário. Toque em Tentar de novo, no topo, e salve outra vez.',
+  'data.reload':
+    'O app não está conseguindo acessar o diário. Toque em Tentar de novo, no topo, e repita isto.',
 };
 
 /** Each language's name in itself, for the switcher: a reader looks for their own. */

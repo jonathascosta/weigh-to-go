@@ -49,9 +49,12 @@ function outcome(here: StoredWeighIn | null, incoming: StoredWeighIn): Outcome {
 const emptyResult = (): Record<Outcome, number> => ({ added: 0, updated: 0, kept: 0, unchanged: 0 });
 
 export interface Store {
-  /** 'indexeddb' keeps the data on the device; 'memory' loses it when the page closes. */
-  readonly kind: 'indexeddb' | 'memory';
-  /** For a memory store, why; null for IndexedDB. */
+  /**
+   * 'indexeddb' keeps the data in the browser on the device; 'device' in a file of the iPhone app's
+   * own (device-store.ts); 'memory' loses it when the page closes.
+   */
+  readonly kind: 'indexeddb' | 'device' | 'memory';
+  /** For a memory store, why; null otherwise. */
   readonly reason: MemoryReason | null;
   /**
    * Whether the page should be reloaded: the data may be on disk but this store can't reach it (a
@@ -60,6 +63,11 @@ export interface Store {
    * operation fails, so read it from the store after one does, not from a copy.
    */
   readonly needsReload: boolean;
+  /**
+   * The app's store only: the name a diary file that couldn't be read was kept under, beside the
+   * new one, so the person can be told; null or absent otherwise.
+   */
+  readonly setAside?: string | null;
   /** Every weigh-in, by date. */
   weighIns(): Promise<StoredWeighIn[]>;
   /** Saves weigh-ins, replacing any on the same dates, and the profile if given, all at once. */

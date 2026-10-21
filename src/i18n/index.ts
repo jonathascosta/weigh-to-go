@@ -7,9 +7,12 @@ import { oneOf, pref, PREFS_PREFIX } from '../data/prefs';
 import { defaultUnits, HEIGHT_UNITS, WEIGHT_UNITS, type HeightUnit, type WeightUnit } from '../units';
 import { formatter, type Formatter } from './format';
 import { homeTag, isLang, pickLocale, type Lang, type Locale } from './locale';
-import { en, pt, type MessageKey, type Messages } from './messages';
+import { en, enApp, pt, ptApp, type MessageKey, type Messages } from './messages';
 
-const DICTIONARIES: Record<Lang, Messages> = { en, pt };
+/** The dictionaries; the iPhone app's build lays its own wording over the website's. */
+export const dictionaries = (inApp: boolean): Record<Lang, Messages> =>
+  inApp ? { en: { ...en, ...enApp }, pt: { ...pt, ...ptApp } } : { en, pt };
+const DICTIONARIES = dictionaries(import.meta.env.MODE === 'ios');
 
 /** The reader's choices; null means "automatic": follow the page and the browser. */
 export const langPref = pref('lang', (v: unknown): v is Lang | null => v === null || isLang(v), null);

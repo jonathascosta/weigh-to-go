@@ -30,6 +30,12 @@ describe('eraseEverything', () => {
     expect(await eraseEverything(memoryStore('unsupported'), null)).toBe(true);
   });
 
+  it("doesn't report success when the app's diary couldn't be reached", async () => {
+    vi.stubGlobal('localStorage', fakeStorage());
+    // The app passes no database to fall back on: its diary is a file.
+    expect(await eraseEverything(memoryStore('error'), null)).toBe(false);
+  });
+
   it('deletes the database on disk when the page runs in memory', async () => {
     vi.stubGlobal('localStorage', fakeStorage());
     const factory = new IDBFactory();

@@ -28,7 +28,9 @@ export function mountDashboard(root: HTMLElement, app: App): void {
   // An installed app with nothing in it: its data may be in the browser, which it doesn't share.
   const installText = h('p');
   const installHint = h('div', { class: 'notice', attrs: { role: 'status', hidden: true } }, installText);
-  const standalone = isStandalone();
+  // The iPhone app, like an installed website, starts with a diary of its own.
+  const inApp = import.meta.env.MODE === 'ios';
+  const standalone = inApp || isStandalone();
   const period = h('p', { class: 'eyebrow' });
   const take = h('p', { class: 'take' });
   const entry = h('section', { class: 'card entry', attrs: { 'aria-labelledby': 'entry-title' } });
@@ -133,7 +135,13 @@ export function mountDashboard(root: HTMLElement, app: App): void {
         ),
       );
     }
-    installHint.hidden = !(standalone && state.status === 'ready' && state.weighIns.length === 0);
+    // Not while the store runs in memory: an import there would last only until the app closes.
+    installHint.hidden = !(
+      standalone &&
+      state.status === 'ready' &&
+      state.weighIns.length === 0 &&
+      state.store?.kind !== 'memory'
+    );
     installText.textContent = m['install.empty'];
     for (const k of SECTIONS) el[k].hidden = !sections.has(k);
     for (const [section, part] of parts) {

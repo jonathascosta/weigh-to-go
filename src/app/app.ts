@@ -106,9 +106,12 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
     return state.store;
   };
 
-  /** After the first save, ask the browser to keep the data: never on load, since it may prompt. */
+  /**
+   * After the first save, ask the browser to keep the data: never on load, since it may prompt. Not
+   * in the iPhone app, whose own file needs no such request.
+   */
   const askPersistence = () => {
-    if (persistenceAsked.read()) return;
+    if (import.meta.env.MODE === 'ios' || state.store?.kind === 'device' || persistenceAsked.read()) return;
     persistenceAsked.write(true);
     void requestPersistence();
   };
@@ -153,7 +156,8 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
     erase: () =>
       write(async (s) => {
         try {
-          return await eraseEverything(s);
+          // The app's diary is a file: a database deleted in its web view erases nothing of it.
+          return await eraseEverything(s, import.meta.env.MODE === 'ios' ? null : undefined);
         } finally {
           // The preferences are gone: what the page held of them goes back to the defaults too.
           resetView();
