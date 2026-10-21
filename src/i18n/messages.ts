@@ -279,11 +279,11 @@ export const en = {
   'privacy.rights.diary':
     'Your diary and your Health data: we process none of it. It stays with you, and the section above says how to delete it.',
   'privacy.rights.ads':
-    'Google’s ad software: where the law asks for it, it runs on your consent, given in Google’s message; elsewhere, on our legitimate interest in funding a free app with non-personalised ads. Google may process the data outside your country, for example in the United States.',
+    'Google’s ad software: where the law asks for it, it runs on your consent, given in Google’s message; elsewhere, on our legitimate interest in funding a free app with non-personalised ads. Google’s consent tool, which asks for that consent, runs on our legitimate interest in asking, as the law requires. Google may process the data outside your country, for example in the United States.',
   'privacy.rights.messages':
     'A message you send us: we use it to answer you, on our legitimate interest in answering you.',
   'privacy.rights.ours':
-    'We hold nothing about you except a message you send us, which you can ask us to show you or delete.',
+    'We hold nothing about you except a message you send us, which you can ask us to show you or delete, and, if you turned it on, Apple’s anonymous crash reports and usage statistics.',
   'privacy.rights.google':
     'Google answers for the data its ad software collects: make requests about it to Google, as its privacy policy explains.',
   'privacy.rights.choices':
@@ -300,7 +300,7 @@ export const en = {
   'privacy.contact.link': 'Weigh to Go’s issues on GitHub',
   'privacy.contact.public': 'Issues are public: don’t post your weights or other personal data there.',
   'privacy.contact.messages':
-    'An issue, with your GitHub username, is public and stays on GitHub until it is deleted. You can edit what you wrote or delete your comments, and we’ll delete an issue you opened if you ask in it. Copies made outside our reach, such as notification emails or archives of public GitHub activity, may remain.',
+    'An issue, with your GitHub username, is public and stays on GitHub until it is deleted. You can edit what you wrote or delete your comments; editing keeps earlier versions in the edit history, where you or we can delete them. We’ll delete an issue you opened if you ask in it. Copies made outside our reach, such as notification emails or archives of public GitHub activity, may remain.',
 
   'settings.label': 'Settings',
   'settings.language': 'Language',
@@ -1033,11 +1033,11 @@ export const pt: Messages = {
   'privacy.rights.diary':
     'Seu diário e seus dados de saúde: nós não tratamos nenhum deles. Eles ficam com você, e a seção acima diz como apagá-los.',
   'privacy.rights.ads':
-    'O software de anúncios do Google: onde a lei pede, ele funciona com o seu consentimento, dado na mensagem do Google; nos outros lugares, com base no nosso legítimo interesse em manter um app gratuito com anúncios não personalizados. O Google pode tratar os dados fora do seu país, por exemplo nos Estados Unidos.',
+    'O software de anúncios do Google: onde a lei pede, ele funciona com o seu consentimento, dado na mensagem do Google; nos outros lugares, com base no nosso legítimo interesse em manter um app gratuito com anúncios não personalizados. A ferramenta de consentimento do Google, que pede esse consentimento, funciona com base no nosso legítimo interesse em perguntar, como a lei exige. O Google pode tratar os dados fora do seu país, por exemplo nos Estados Unidos.',
   'privacy.rights.messages':
     'Uma mensagem que você nos mandar: nós a usamos para responder a você, com base no nosso legítimo interesse em responder.',
   'privacy.rights.ours':
-    'Nós não guardamos nada sobre você, a não ser uma mensagem que você nos mandar, que você pode nos pedir para mostrar ou apagar.',
+    'Nós não guardamos nada sobre você, a não ser uma mensagem que você nos mandar, que você pode nos pedir para mostrar ou apagar, e, se você os ligou, os relatórios anônimos de falhas e as estatísticas de uso da Apple.',
   'privacy.rights.google':
     'O Google responde pelos dados que o software de anúncios dele coleta: faça os pedidos sobre eles ao Google, como explica a política de privacidade dele.',
   'privacy.rights.choices':
@@ -1054,7 +1054,7 @@ export const pt: Messages = {
   'privacy.contact.link': 'Issues do Weigh to Go no GitHub',
   'privacy.contact.public': 'As issues são públicas: não publique lá seus pesos nem outros dados pessoais.',
   'privacy.contact.messages':
-    'Uma issue, com o seu nome de usuário do GitHub, é pública e fica no GitHub até ser apagada. Você pode editar o que escreveu ou apagar seus comentários, e nós apagamos uma issue que você abriu se você pedir nela. Cópias feitas fora do nosso alcance, como emails de notificação ou arquivos da atividade pública do GitHub, podem continuar existindo.',
+    'Uma issue, com o seu nome de usuário do GitHub, é pública e fica no GitHub até ser apagada. Você pode editar o que escreveu ou apagar seus comentários; a edição guarda as versões anteriores no histórico de edições, de onde você ou nós podemos apagá-las. Nós apagamos uma issue que você abriu se você pedir nela. Cópias feitas fora do nosso alcance, como emails de notificação ou arquivos da atividade pública do GitHub, podem continuar existindo.',
 
   'settings.label': 'Configurações',
   'settings.language': 'Idioma',

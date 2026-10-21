@@ -275,8 +275,9 @@ Taken by the team from the privacy policy's review (Sprint 4, story 3), under de
 63. **The contact is the project's GitHub issues for now**
     (<https://github.com/jonathascosta/weigh-to-go/issues>), also App Store Connect's Support URL
     (STORE.md, step 8). The policy says an issue, with the GitHub username, is public and stays on
-    GitHub until it is deleted; that people can edit what they wrote or delete their comments, and
-    that we delete an issue on request made in it; that copies outside our reach (notification
+    GitHub until it is deleted; that people can edit what they wrote or delete their comments, that
+    editing keeps earlier versions in GitHub's edit history, where the author or we can delete them,
+    and that we delete an issue on request made in it; that copies outside our reach (notification
     emails, archives of public GitHub activity) may remain; and it asks people not to post weights
     or other personal data there. Open to the owner: a private contact for privacy requests (an email
     address, which only the owner can choose; none is published or invented meanwhile), where a
@@ -289,14 +290,16 @@ Taken by the team from the privacy policy's review (Sprint 4, story 3), under de
       describes (the controller).
     - Bases: Google's ad SDK runs on consent where the law asks for it (Google's message) and
       otherwise on a legitimate interest in funding a free app with non-personalised ads; a message
-      sent to us is answered on a legitimate interest in answering it.
+      sent to us is answered on a legitimate interest in answering it; Google's consent tool, which
+      asks for consent, runs on a legitimate interest in asking, as the law requires.
     - **Where the law asks for consent, the app starts Google's ad SDK only once consent is given.
       If the reader refuses, the app shows no ads and doesn't start the SDK** (no "limited ads").
       The consent message itself comes from Google's consent tool (UMP), which the app starts
       before any ad and which contacts Google to know whether a message is needed; the policy says
       so. Neither is started once "Remove ads" is bought.
     - Rights, as the owner can deliver them: we hold nothing about the reader except a message they
-      send us, which they can ask us to show or delete; Google answers for the data its ad software
+      send us, which they can ask us to show or delete, and Apple's anonymous crash reports and usage
+      statistics if they turned that sharing on; Google answers for the data its ad software
       collects, and requests about it go to Google (its privacy policy); where the app shows
       Privacy choices, consent can be withdrawn or an objection made there at any time; anywhere,
       deleting the app or buying Remove ads stops the collection. Complaints can go to the ANPD in
