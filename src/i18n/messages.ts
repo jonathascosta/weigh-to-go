@@ -274,10 +274,10 @@ export const en = {
     [change === null ? null : `${change} vs. the last one`, avg7 === null ? null : `7-day average ${avg7}`]
       .filter((part) => part !== null)
       .join(' · '),
-  'entry.undoHint': 'Undo is available for 10 seconds.',
+  'entry.undoHint': (seconds: string) => `Undo is available for ${seconds} seconds.`,
   'entry.undo': 'Undo',
   'entry.undone': 'Undone.',
-  'entry.changedSince': 'Changed since; nothing was undone.',
+  'entry.changedSince': 'This weigh-in changed since; nothing was undone.',
   'entry.change': 'Change',
   'entry.another': 'Another day',
   'entry.firstHint': 'Today is already in. Type your weight and press Save.',
@@ -954,10 +954,10 @@ export const pt: Messages = {
     ]
       .filter((part) => part !== null)
       .join(' · '),
-  'entry.undoHint': 'Você pode desfazer por 10 segundos.',
+  'entry.undoHint': (seconds: string) => `Você pode desfazer por ${seconds} segundos.`,
   'entry.undo': 'Desfazer',
   'entry.undone': 'Desfeito.',
-  'entry.changedSince': 'O registro mudou desde então; nada foi desfeito.',
+  'entry.changedSince': 'Esta pesagem mudou desde então; nada foi desfeito.',
   'entry.change': 'Alterar',
   'entry.another': 'Outro dia',
   'entry.firstHint': 'A data de hoje já está preenchida. Digite seu peso e aperte Salvar.',

@@ -16,7 +16,8 @@ describe('formatter', () => {
   it('signs changes with a real minus, and none for zero', () => {
     expect(us.weightChange(-0.4, 'kg')).toBe('−0.4 kg');
     expect(br.weightChange(1.1, 'kg')).toBe('+1,1 kg');
-    expect(us.weightChange(-0.02, 'kg')).toBe('0.0 kg');
+    expect(us.weightChange(-0.02, 'kg')).toBe('±0.0 kg');
+    expect(br.weightChange(0, 'kg')).toBe('±0,0 kg');
     expect(us.percentChange(-0.052)).toBe('−5.2%');
     expect(br.percent(0.052)).toBe('5,2%');
     expect(br.signedNumber(0.123, 2)).toBe('+0,12');

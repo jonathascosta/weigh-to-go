@@ -7,6 +7,22 @@ import { memoryStore, type Store } from '../data/store';
 import { choose, resetSettings, settings } from '../i18n';
 import { mountEntry, mountPaste, UNDO_MIN_MS, UNDO_MS, type EntryCard } from './entry';
 
+const { feel } = vi.hoisted(() => ({ feel: [] as string[] }));
+vi.mock('../platform/feel', () => ({
+  tapAfterSave: () => {
+    feel.push('tap');
+    return Promise.resolve();
+  },
+  saveStood: (day: string) => {
+    feel.push(`stood ${day}`);
+    return Promise.resolve();
+  },
+  afterImport: () => {
+    feel.push('import');
+    return Promise.resolve();
+  },
+}));
+
 // Wednesday 21 October 2026, 9 in the morning, wherever the tests run.
 const NOW = new Date(2026, 9, 21, 9);
 
@@ -62,6 +78,7 @@ beforeEach(() => {
   document.body.replaceChildren(container);
 });
 afterEach(() => {
+  card.dispose();
   vi.useRealTimers();
   resetSettings();
   vi.unstubAllGlobals();
@@ -128,9 +145,10 @@ describe('after Save', () => {
     // Focus on the notice, not on Undo: Enter pressed twice can't undo.
     expect(document.activeElement).toBe(el('#entry-saved'));
     expect(weight().value).toBe('');
-    // The live region was there, empty, from the start; it is written on the next frame.
+    // The live region was there, empty, from the start; written on the next frame, it adds only
+    // what the focused notice doesn't say.
     await vi.advanceTimersByTimeAsync(20);
-    expect(status()).toBe('Saved: 95.8 kg on 21 Oct 2026. Undo is available for 10 seconds.');
+    expect(status()).toBe('Undo is available for 10 seconds.');
     expect(button('Change')).toBeDefined();
     expect(button('Another day')).toBeDefined();
   });
@@ -200,9 +218,12 @@ describe('after Save', () => {
     button('Undo').click();
     await settle();
     expect(days()).toEqual(['2026-10-21 95.6']);
-    expect(el('.saved-sub').textContent).toBe('Changed since; nothing was undone.');
+    expect(el('.saved-sub').textContent).toBe('This weigh-in changed since; nothing was undone.');
     expect(button('Undo').hidden).toBe(true);
-    expect(status()).toBe('Changed since; nothing was undone.');
+    expect(status()).toBe('This weigh-in changed since; nothing was undone.');
+    // A neutral sign, not the check of a save.
+    expect(el('.saved-icon-check').hasAttribute('hidden')).toBe(true);
+    expect(el('.saved-icon-info').hasAttribute('hidden')).toBe(false);
   });
 
   it('opens the field with the day’s weight on Change, and the date on Another day', async () => {
@@ -224,6 +245,40 @@ describe('after Save', () => {
     card.leave();
     expect(savedShown()).toBe(false);
     expect(hint()).toBe('Today: 95.8 kg. Saving replaces it.');
+  });
+});
+
+describe('the app’s touches after a save', () => {
+  beforeEach(() => {
+    feel.length = 0;
+  });
+
+  it('taps at once, and counts the day of use only once the Undo window is over', async () => {
+    await setup();
+    await submit('95.8');
+    expect(feel).toEqual(['tap']);
+    await vi.advanceTimersByTimeAsync(UNDO_MS - 100);
+    expect(feel).toEqual(['tap']);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(feel).toEqual(['tap', 'stood 2026-10-21']);
+    // Once only.
+    card.leave();
+    expect(feel).toEqual(['tap', 'stood 2026-10-21']);
+  });
+
+  it('counts nothing for a save undone', async () => {
+    await setup();
+    await submit('95.8');
+    button('Undo').click();
+    await vi.advanceTimersByTimeAsync(UNDO_MS * 2);
+    expect(feel).toEqual(['tap']);
+  });
+
+  it('counts the day when the person moves on before the window is over', async () => {
+    await setup();
+    await submit('95.8');
+    card.leave();
+    expect(feel).toEqual(['tap', 'stood 2026-10-21']);
   });
 });
 
@@ -252,15 +307,14 @@ describe('the day moving on', () => {
 });
 
 describe('the paste box', () => {
-  it('opens and takes focus when asked', async () => {
+  it('opens when asked, giving its field for focus', async () => {
     await setup();
     const box = document.createElement('div');
     document.body.append(box);
     const paste = mountPaste(box, app);
     paste.draw(app.state(), settings());
     expect(box.querySelector('summary')!.textContent).toBe('Paste several days at once');
-    paste.open();
+    expect(paste.open()).toBe(box.querySelector('#paste-text'));
     expect(box.querySelector('details')!.open).toBe(true);
-    expect(document.activeElement).toBe(box.querySelector('#paste-text'));
   });
 });

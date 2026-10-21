@@ -47,7 +47,7 @@ export interface Formatter {
   weightValue(kg: number, unit: WeightUnit, digits?: number): string;
   /** A change in weight in `unit`, signed, as a bare number: "−0.4". */
   changeValue(kg: number, unit: WeightUnit, digits?: number): string;
-  /** A change in weight, with its sign (none for zero): "−0.4 kg", "+1.1 lb". */
+  /** A change in weight, with its sign (± for zero): "−0.4 kg", "+1.1 lb", "±0.0 kg". */
   weightChange(kg: number, unit: WeightUnit, digits?: number): string;
   /** A share (0.052 is 5.2%). */
   percent(share: number, digits?: number): string;
@@ -116,7 +116,11 @@ export function formatter(tag: string, signNegative = SIGN_NEGATIVE): Formatter 
     weightValue: (kg, unit, digits = 1) => minus(num(digits, false, 'weight')(fromKg(kg, unit))),
     changeValue: (kg, unit, digits = 1) => minus(num(digits, true, 'weight')(fromKg(kg, unit))),
     weight: (kg, unit, digits = 1) => `${minus(num(digits, false, 'weight')(fromKg(kg, unit)))} ${unit}`,
-    weightChange: (kg, unit, digits = 1) => `${minus(num(digits, true, 'weight')(fromKg(kg, unit)))} ${unit}`,
+    weightChange: (kg, unit, digits = 1) => {
+      const text = minus(num(digits, true, 'weight')(fromKg(kg, unit)));
+      // No change still says it is one: "±0.0 kg", never a bare "0.0 kg" beside signed ones.
+      return `${/^[+−]/.test(text) ? text : `±${text}`} ${unit}`;
+    },
     percent: (share, digits = 1) => minus(num(digits, false, 'percent')(share)),
     percentChange: (share, digits = 1) => minus(num(digits, true, 'percent')(share)),
     height: (cm, unit) => {

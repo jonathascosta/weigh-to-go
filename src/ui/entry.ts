@@ -5,10 +5,10 @@
 import { addDays, daysBetween, isIsoDay, isoDay, localToday, parseDay } from '../analysis/dates';
 import type { App, Saved, State } from '../app/app';
 import { parsePaste, toKg, type PasteResult } from '../data/paste';
-import type { StoredWeighIn } from '../data/records';
+import { sameRecord } from '../data/records';
 import { count, settings, type Settings } from '../i18n';
 import { dayMonthOrder, type DayMonthOrder } from '../i18n/locale';
-import { afterImport, afterSave } from '../platform/feel';
+import { afterImport, saveStood, tapAfterSave } from '../platform/feel';
 import { h, s as svg } from './dom';
 
 /** Lines of the paste box's bad list shown at most; the count says how many there were. */
@@ -60,10 +60,6 @@ export function pasteChanges(
 export const UNDO_MS = 10_000;
 export const UNDO_MIN_MS = 5_000;
 
-/** Whether two weigh-ins are the same record: the same weight, saved at the same moment. */
-const sameRecord = (a: StoredWeighIn, b: StoredWeighIn): boolean =>
-  a.kg === b.kg && Date.parse(a.savedAt) === Date.parse(b.savedAt);
-
 /**
  * The line under the field: what is logged for the day chosen (saving replaces it), else the last
  * weigh-in and how long ago, or, for an empty diary, that today is already in.
@@ -98,14 +94,17 @@ export function spokenDay(date: string, today: string, s: Settings): string {
   return date === today ? s.messages['entry.today'](long) : long;
 }
 
-const checkIcon = () => {
+const noticeIcon = (kind: 'check' | 'info') => {
   const icon = svg('svg', {
     viewBox: '0 0 24 24',
     'aria-hidden': 'true',
     focusable: 'false',
-    class: 'saved-icon',
+    class: `saved-icon saved-icon-${kind}`,
   });
-  icon.append(svg('circle', { cx: 12, cy: 12, r: 9.5 }), svg('path', { d: 'M7.5 12.5l3 3 6-6.5' }));
+  icon.append(
+    svg('circle', { cx: 12, cy: 12, r: 9.5 }),
+    kind === 'check' ? svg('path', { d: 'M7.5 12.5l3 3 6-6.5' }) : svg('path', { d: 'M12 11v6M12 7.5v.5' }),
+  );
   return icon;
 };
 
@@ -128,6 +127,8 @@ export interface EntryCard {
   readonly draw: (state: State, s: Settings) => void;
   /** The person left Today: the saved notice gives way to the field. */
   readonly leave: () => void;
+  /** Lets go of the listeners and timers on the page (for tests). */
+  readonly dispose: () => void;
 }
 
 /**
@@ -174,10 +175,14 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
   const savedSub = h('p', { class: 'saved-sub' });
   const undo = h('button', { class: 'button button-ghost undo', attrs: { type: 'button' } });
   const undoBar = h('span', { class: 'undo-bar', attrs: { 'aria-hidden': 'true' } });
+  // A check for a save; a neutral sign once the day changed since and the Undo did nothing.
+  const checkMark = noticeIcon('check');
+  const infoMark = noticeIcon('info');
   const notice = h(
     'div',
     { class: 'saved', attrs: { tabindex: -1, id: 'entry-saved' } },
-    checkIcon(),
+    checkMark,
+    infoMark,
     h('div', { class: 'saved-body' }, h('p', { class: 'saved-text' }, savedText), savedSub),
     undo,
     undoBar,
@@ -203,7 +208,19 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
     readonly replaced: boolean;
     readonly typed: string;
     undo: 'on' | 'gone' | 'changed';
+    /** Whether the save stood (its Undo over, unused) or was undone: settled once. */
+    settled: boolean;
   } | null = null;
+
+  /**
+   * The save can no longer be undone here, and wasn't: in the app, a day of use, and the rating
+   * prompt when its time has come. Never inside the Undo window, never for an undone save.
+   */
+  const stood = (was: typeof shown) => {
+    if (!was || was.settled) return;
+    was.settled = true;
+    void saveStood(localToday());
+  };
 
   const weightIn = (date: string): number | null =>
     app.state().weighIns.find((w) => w.date === date)?.kg ?? null;
@@ -239,6 +256,7 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
     timer = setTimeout(() => {
       timer = undefined;
       if (shown?.undo === 'on') shown.undo = 'gone';
+      stood(shown);
       showNotice(settings());
     }, ms);
     shrink(ms);
@@ -264,6 +282,8 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
       f.day(shown.date, 'medium'),
     );
     const day = app.state().analysis?.series.find((d) => d.date === shown?.date);
+    checkMark.toggleAttribute('hidden', shown.undo === 'changed');
+    infoMark.toggleAttribute('hidden', shown.undo !== 'changed');
     savedSub.textContent =
       shown.undo === 'changed'
         ? m['entry.changedSince']
@@ -282,6 +302,8 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
   /** Back to the field, for the day in the date control. */
   const toForm = (value = '') => {
     stopCount();
+    // Left before its Undo was over (Change, Another day, leaving Today): the save stands.
+    stood(shown);
     shown = null;
     savedBox.hidden = true;
     form.hidden = false;
@@ -300,8 +322,10 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
     // pressed twice can't undo, and the notice's text is read.
     notice.focus({ preventScroll: true });
     notice.scrollIntoView({ block: 'nearest' });
-    const m = settings().messages;
-    announce(next.saved ? `${savedText.textContent} ${m['entry.undoHint']}` : savedText.textContent);
+    // The notice, focused, is read; the live region adds only what it doesn't say.
+    const s = settings();
+    if (next.saved) announce(s.messages['entry.undoHint'](s.format.number(UNDO_MS / 1000, 0)));
+    else stood(next);
   };
 
   undo.addEventListener('click', () => {
@@ -314,6 +338,7 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
     if (!now || !sameRecord(now, saved.written)) {
       stopCount();
       was.undo = 'changed';
+      stood(was);
       showNotice(settings());
       notice.focus({ preventScroll: true });
       announce(m['entry.changedSince']);
@@ -321,6 +346,7 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
     }
     // A new day undone gives the typed weight back, to correct a slipped digit. Focus goes to the
     // field now, inside the tap: iOS opens the keypad only for a focus made within the gesture.
+    was.settled = true;
     toForm(saved.previous === null ? was.typed : '');
     weightInput.focus();
     announce(m['entry.undone']);
@@ -389,16 +415,18 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
     if (shown?.date === was && was !== now) toForm();
     else draw(app.state(), settings());
   };
-  document.addEventListener('visibilitychange', () => {
+  const onVisible = () => {
     if (document.visibilityState === 'visible') followToday();
-  });
+  };
+  document.addEventListener('visibilitychange', onVisible);
   window.addEventListener('focus', followToday);
   // A page restored from the back-forward cache.
   window.addEventListener('pageshow', followToday);
+  let midnight: ReturnType<typeof setTimeout> | undefined;
   const untilMidnight = () => {
     const now = new Date();
     const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
-    setTimeout(() => {
+    midnight = setTimeout(() => {
       followToday();
       untilMidnight();
     }, next.getTime() - now.getTime());
@@ -443,8 +471,9 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
         weightInput.value = '';
         error = null;
         const saved = result.find((r) => r.date === date) ?? null;
-        showSaved({ saved, kg, date, replaced, typed, undo: saved ? 'on' : 'gone' });
-        void afterSave(localToday());
+        // In the app, a light tap now; the day of use counts once the save stands.
+        void tapAfterSave();
+        showSaved({ saved, kg, date, replaced, typed, undo: saved ? 'on' : 'gone', settled: false });
       })
       .catch((failed: unknown) => {
         console.error(failed);
@@ -482,14 +511,21 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
     leave: () => {
       if (shown) toForm();
     },
+    dispose: () => {
+      stopCount();
+      clearTimeout(midnight);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', followToday);
+      window.removeEventListener('pageshow', followToday);
+    },
   };
 }
 
 /** The box for pasting many weigh-ins at once, in Your data. */
 export interface PasteBox {
   readonly draw: (state: State, s: Settings) => void;
-  /** Opens the box and puts focus in it. */
-  readonly open: () => void;
+  /** Opens the box; returns its text field, for focus. */
+  readonly open: () => HTMLElement;
 }
 
 export function mountPaste(container: HTMLElement, app: App): PasteBox {
@@ -685,7 +721,7 @@ export function mountPaste(container: HTMLElement, app: App): PasteBox {
     },
     open: () => {
       paste.open = true;
-      pasteText.focus();
+      return pasteText;
     },
   };
 }

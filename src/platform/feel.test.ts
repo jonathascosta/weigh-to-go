@@ -17,6 +17,8 @@ const {
   afterImport,
   afterSave,
   minorOf,
+  saveStood,
+  tapAfterSave,
   REVIEW_AFTER,
   reviewAskedPref,
   savedDaysPref,
@@ -72,6 +74,15 @@ describe('after a save, in the app', () => {
     expect(savedDaysPref.read()).toHaveLength(REVIEW_AFTER);
   });
 
+  it('taps at once on a save, and counts the day only once the save stands', async () => {
+    await tapAfterSave();
+    expect(calls).toEqual(['tap']);
+    expect(savedDaysPref.read()).toEqual([]);
+    await saveStood(day(3));
+    expect(calls).toEqual(['tap']);
+    expect(savedDaysPref.read()).toEqual([day(3)]);
+  });
+
   it('only taps after an import, counting no day of use', async () => {
     await afterImport();
     expect(calls).toEqual(['tap']);
@@ -83,6 +94,8 @@ describe('on the website', () => {
   it('does nothing', async () => {
     await afterSave(day(1));
     await afterImport();
+    await tapAfterSave();
+    await saveStood(day(2));
     expect(calls).toEqual([]);
     expect(savedDaysPref.read()).toEqual([]);
   });
