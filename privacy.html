@@ -43,27 +43,59 @@
       <article class="policy">
         <h1 data-i18n="privacy.heading">Privacy policy</h1>
         <p class="updated" data-i18n="privacy.updated">Last updated 21 October 2026</p>
+        <p class="langs">
+          <a href="privacy.html" hreflang="en" lang="en" data-choose-lang="en">English</a> ·&nbsp;<a
+            href="pt/privacidade.html"
+            hreflang="pt-BR"
+            lang="pt-BR"
+            data-choose-lang="pt"
+            >Português</a
+          >
+        </p>
         <section>
           <h2 id="short" data-i18n="privacy.short.heading">In short</h2>
-          <p data-i18n="privacy.short.text">
-            Weigh to Go has no server of ours, no accounts and no analytics. We never receive your weights or
-            the dates of your weigh-ins: they stay on your device (and in Apple Health, if you turn it on in
-            the app), and go only where you send them. In the iPhone app, Google’s ad SDK collects some data
-            about the device, as described below.
-          </p>
+          <ul>
+            <li data-i18n="privacy.short.1">
+              Weigh to Go runs no server of its own: no accounts, no analytics.
+            </li>
+            <li data-i18n="privacy.short.2">
+              We never receive your weights or the dates of your weigh-ins. They stay on your device (and in
+              Apple Health, if you turn it on in the app), and go only where you send them.
+            </li>
+            <li data-i18n="privacy.short.3">The website shows no ads and sends nothing anywhere.</li>
+            <li data-i18n="privacy.short.4">
+              The iPhone app shows only non-personalised ads from Google, whose ad software collects some data
+              about the device, as described below. Buying “Remove ads” stops both.
+            </li>
+          </ul>
         </section>
+        <nav class="toc" aria-labelledby="toc-title">
+          <p id="toc-title" data-i18n="privacy.toc">On this page</p>
+          <ul>
+            <li><a href="#website" data-i18n="privacy.web.heading">The website</a></li>
+            <li><a href="#app" data-i18n="privacy.app.heading">The iPhone app</a></li>
+            <li><a href="#health" data-i18n="privacy.health.heading">Apple Health</a></li>
+            <li><a href="#reminder" data-i18n="privacy.reminder.heading">The daily reminder</a></li>
+            <li><a href="#ads" data-i18n="privacy.ads.heading">Ads in the app</a></li>
+            <li><a href="#purchase" data-i18n="privacy.purchase.heading">The purchase and ratings</a></li>
+            <li><a href="#children" data-i18n="privacy.children.heading">Children</a></li>
+            <li><a href="#delete" data-i18n="privacy.delete.heading">Deleting everything</a></li>
+            <li><a href="#rights" data-i18n="privacy.rights.heading">Your rights</a></li>
+            <li><a href="#changes" data-i18n="privacy.changes.heading">Changes</a></li>
+            <li><a href="#contact" data-i18n="privacy.contact.heading">Who we are and contact</a></li>
+          </ul>
+        </nav>
         <section>
           <h2 id="website" data-i18n="privacy.web.heading">The website</h2>
           <p data-i18n="privacy.web.storage">
-            On weightogo.jonathas.net, your diary is kept in your browser’s storage (IndexedDB) on that
-            device, and your screen preferences, such as the language and units, in its local storage. Another
-            browser or device starts empty: a backup file is the only way the diary moves between them.
+            On weightogo.jonathas.net, your diary is kept in your browser’s storage on that device, with your
+            screen preferences, such as the language and units. Another browser or device starts empty: a
+            backup file is the only way the diary moves between them.
           </p>
           <p data-i18n="privacy.web.requests">
-            The page loads nothing from other sites and sends nothing anywhere: its Content Security Policy
-            (connect-src 'none') forbids it. Its code and fonts come from the site itself, and so does the
-            copy of the site’s files the browser keeps for offline use. Backups and CSV files are made in the
-            page and saved to your device.
+            The site’s security policy forbids the page to load from other sites or send data. Its code and
+            fonts come from the site itself, and so does the copy of the site’s files the browser keeps for
+            offline use. Backups and CSV files are made in the page and saved to your device.
           </p>
           <p data-i18n="privacy.web.host">
             The site is served by GitHub Pages. Like any host’s, GitHub’s servers log technical details of
@@ -75,7 +107,7 @@
               <a
                 href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
                 data-href-en="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
-                data-href-pt="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+                data-href-pt="https://docs.github.com/pt/site-policy/privacy-policies/github-general-privacy-statement"
                 data-i18n="privacy.web.hostLink"
                 >GitHub General Privacy Statement</a
               >
@@ -85,16 +117,21 @@
         <section>
           <h2 id="app" data-i18n="privacy.app.heading">The iPhone app</h2>
           <p data-i18n="privacy.app.storage">
-            Everything you type stays in the app on your iPhone, in a file of its own. Like any app’s data,
-            that file is in your iPhone’s backup if you use iCloud Backup or back up to a computer; those
-            backups are kept by Apple or on your computer, not by us. With Apple Health on, the weights you
-            type are in Health too, which Apple keeps as it keeps the rest of your Health data.
+            Everything you type stays in the app’s own files and storage on your iPhone. Like any app’s data,
+            it is in your iPhone’s backup if you use iCloud Backup or back up to a computer; those backups are
+            kept by Apple or on your computer, not by us. With Apple Health on, the weights you type are in
+            Health too, which Apple keeps as it keeps the rest of your Health data.
           </p>
           <p data-i18n="privacy.app.exports">
             A backup or CSV file you export goes only where you send it, through the share sheet (Files,
-            AirDrop, Mail or another app you choose). The app writes it to its own cache for a moment and
-            deletes it once the sheet closes. The CSV includes the days read from Apple Health; the backup
-            file holds only the weights typed in the app.
+            AirDrop, Mail or another app you choose); the app keeps no copy once the sheet closes. The backup
+            holds what you typed in the app (weights, goal, height); the CSV also has the days read from Apple
+            Health.
+          </p>
+          <p data-i18n="privacy.app.apple">
+            If you turn on “Share with App Developers” in your iPhone’s settings, Apple shares crash reports
+            and statistics about how you use the app with us, as it does for every app. It is off unless you
+            turn it on.
           </p>
         </section>
         <section>
@@ -105,13 +142,13 @@
             you type.
           </p>
           <p data-i18n="privacy.health.memory">
-            What the app reads from Health stays on your iPhone, in memory while the app is open: it isn’t
-            written to the app’s files or to its backup file, so it never reaches iCloud through us. The app
-            reads it again from Health each time it opens.
+            What the app reads from Health stays on your iPhone, in memory while the app is open. It isn’t
+            kept in the app’s files (only for a moment, in a CSV you export) or in its backup file, so it
+            never reaches iCloud through us. The app reads it again from Health each time it opens.
           </p>
           <p data-i18n="privacy.health.ads">
             Health data is never used for ads, nor for anything but your diary in the app, and never reaches
-            Google’s ad SDK.
+            Google.
           </p>
           <p data-i18n="privacy.health.control">
             You control the app’s access in the Health app: tap your picture, then Apps under Privacy, Weigh
@@ -128,15 +165,17 @@
         <section>
           <h2 id="ads" data-i18n="privacy.ads.heading">Ads in the app</h2>
           <p data-i18n="privacy.ads.banner">
-            The iPhone app shows a banner ad from Google AdMob; the website shows no ads. The ads are
-            non-personalised only: the app never asks to track you and doesn’t use your device’s advertising
+            The iPhone app shows a banner ad from Google AdMob; the website shows no ads. The app shows only
+            non-personalised ads: it never asks to track you and doesn’t use your device’s advertising
             identifier (IDFA).
           </p>
           <p data-i18n="privacy.ads.collects">
-            To show ads, measure them and prevent fraud, Google’s ad SDK in the app collects data about your
-            device and how the ads are used, such as your IP address, the device’s model and operating system,
-            your interactions with the ads, an approximate location worked out from the IP address, and crash
-            and performance data. Google uses that data as its own policies describe:
+            To show ads, measure them and prevent fraud, Google’s ad software in the app (the Google Mobile
+            Ads SDK) collects data about your device and how the ads are used: for example your IP address,
+            the device’s model and operating system, an identifier the iPhone keeps for this app’s maker
+            (IDFV, not the advertising identifier, IDFA), advertising data such as the ads shown and your
+            interactions with them, an approximate location worked out from the IP address, and crash and
+            performance data. Google uses that data as its own policies describe:
           </p>
           <ul>
             <li>
@@ -158,23 +197,25 @@
               >
             </li>
           </ul>
-          <p data-i18n="privacy.ads.never">
-            The ad SDK never receives your weigh-ins, their dates or anything from Apple Health.
+          <p data-i18n="privacy.ads.retention">
+            Google keeps this data for as long as its policies say. What it receives from the app never holds
+            a weigh-in, its date or anything from Apple Health.
           </p>
           <p data-i18n="privacy.ads.consent">
-            Where the law requires it (the European Economic Area, the United Kingdom, Switzerland and some US
-            states), Google’s consent message appears in the app, and you can change your choices later in the
-            app’s settings, under Privacy choices.
+            In the European Economic Area, the United Kingdom and Switzerland, Google’s consent message
+            appears in the app; there, and in US states whose laws give you choices, you can change them in
+            the app’s settings, under “Privacy choices”.
           </p>
           <p data-i18n="privacy.ads.remove">
-            Buying Remove ads stops the ads, and with them the SDK’s ad requests.
+            Buying “Remove ads” stops the ads, and the app no longer starts Google’s ad software, so it sends
+            Google nothing.
           </p>
         </section>
         <section>
           <h2 id="purchase" data-i18n="privacy.purchase.heading">The purchase and ratings</h2>
           <p data-i18n="privacy.purchase.text">
-            Remove ads is a one-time purchase handled by Apple: we receive no payment details. The app checks
-            the purchase on your iPhone with Apple’s StoreKit, with no purchase service in between.
+            “Remove ads” is a one-time purchase handled by Apple: we receive no payment details. The app
+            checks the purchase on your iPhone, with Apple’s own tools and no purchase service in between.
           </p>
           <p data-i18n="privacy.purchase.rating">
             When the app asks for a rating, it uses the iPhone’s own prompt: a rating you give goes to Apple,
@@ -183,21 +224,44 @@
         </section>
         <section>
           <h2 id="children" data-i18n="privacy.children.heading">Children</h2>
-          <p data-i18n="privacy.children.text">Weigh to Go is not directed to children.</p>
+          <p data-i18n="privacy.children.text">Weigh to Go isn’t made for children.</p>
         </section>
         <section>
           <h2 id="delete" data-i18n="privacy.delete.heading">Deleting everything</h2>
           <p data-i18n="privacy.delete.web">
-            On the website: Your data › Erase everything, or clear the site’s data in your browser’s settings.
+            On the website: “Your data › Erase everything”, or clear the site’s data in your browser’s
+            settings.
           </p>
           <p data-i18n="privacy.delete.app">
-            In the app: Your data › Erase everything, which can also delete the weights the app saved in Apple
-            Health, or delete the app. Earlier backups of your iPhone keep their copy until they are replaced
-            or deleted.
+            In the app: “Your data › Erase everything”, which can also delete the weights the app saved in
+            Apple Health. Deleting the app erases its files but leaves those weights in Health: use “Erase
+            everything” first, or delete them in the Health app. Earlier backups of your iPhone keep their
+            copy until they are replaced or deleted.
           </p>
           <p data-i18n="privacy.delete.health">
             To take back the app’s access to Health, open the Health app, tap your picture, then Apps under
             Privacy, Weigh to Go.
+          </p>
+        </section>
+        <section>
+          <h2 id="rights" data-i18n="privacy.rights.heading">Your rights</h2>
+          <p data-i18n="privacy.rights.diary">
+            Your diary and your Health data: we process none of it. It stays with you, and the section above
+            says how to delete it.
+          </p>
+          <p data-i18n="privacy.rights.ads">
+            Google’s ad software: where the law asks for it, it runs on your consent, given in Google’s
+            message; elsewhere, on our legitimate interest in funding a free app with non-personalised ads.
+            Google may process the data outside your country, for example in the United States.
+          </p>
+          <p data-i18n="privacy.rights.messages">A message you send us: used to answer you.</p>
+          <p data-i18n="privacy.rights.list">
+            You can ask for access to your data and its deletion, object to its use, and withdraw your consent
+            to Google’s ads at any time, under “Privacy choices”.
+          </p>
+          <p data-i18n="privacy.rights.complaint">
+            You can also complain to a data-protection authority: the ANPD in Brazil, or your local authority
+            in the European Economic Area, the United Kingdom or Switzerland.
           </p>
         </section>
         <section>
@@ -208,18 +272,27 @@
           </p>
         </section>
         <section>
-          <h2 id="contact" data-i18n="privacy.contact.heading">Contact</h2>
+          <h2 id="contact" data-i18n="privacy.contact.heading">Who we are and contact</h2>
+          <p data-i18n="privacy.contact.who">
+            Weigh to Go is made by Jonathas Costa, who is responsible for this policy.
+          </p>
           <p>
-            <span data-i18n="privacy.contact.text">Questions and requests go through the support page:</span>
-            <a
-              href="https://www.jonathas.net/weightogo.html"
-              data-href-en="https://www.jonathas.net/weightogo.html"
-              data-href-pt="https://www.jonathas.net/weightogo/pt.html"
-              data-i18n="privacy.contact.link"
-              >Weigh to Go support</a
-            >.
+            <span data-i18n="privacy.contact.text"
+              >Questions and requests go through the project’s issues on GitHub:</span
+            >
+            <a href="https://github.com/jonathascosta/weigh-to-go/issues" data-i18n="privacy.contact.link"
+              >Weigh to Go’s issues on GitHub</a
+            >
+          </p>
+          <p data-i18n="privacy.contact.public">
+            Issues are public: don’t post your weights or other personal data there.
+          </p>
+          <p data-i18n="privacy.contact.messages">
+            A message you send us is used only to answer it, and kept only as long as that takes; an issue
+            stays on GitHub until it is deleted, which you can ask us to do.
           </p>
         </section>
+        <p class="back"><a href="./" data-i18n="notFound.link">Go to your diary</a></p>
       </article>
     </main>
     <footer class="site-footer">

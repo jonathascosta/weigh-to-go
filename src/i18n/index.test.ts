@@ -5,6 +5,7 @@ import {
   automatic,
   choose,
   count,
+  isSafeHref,
   onSettingsChange,
   plural,
   resetSettings,
@@ -195,14 +196,56 @@ describe('translatePage', () => {
       documentElement: { lang: 'en' },
       querySelectorAll: (selector: string) => {
         asked.push(selector);
-        return selector.startsWith('[data-href-') ? [link] : [];
+        return selector.startsWith('a[data-href-') ? [link] : [];
       },
     };
     translatePage(doc);
     expect(link.getAttribute('href')).toBe('pt/privacidade.html');
     translatePage(doc, resolveSettings(['en-US'], none));
     expect(link.getAttribute('href')).toBe('privacy.html');
-    expect(asked.filter((s) => s.startsWith('[data-href-'))).toEqual(['[data-href-pt]', '[data-href-en]']);
+    expect(asked.filter((s) => s.includes('data-href-'))).toEqual(['a[data-href-pt]', 'a[data-href-en]']);
+  });
+
+  it('keeps the href when the language has no address, or an empty or unsafe one', () => {
+    const links = [
+      element({ href: 'privacy.html', 'data-href-en': 'privacy.html' }),
+      element({ href: 'privacy.html', 'data-href-pt': '' }),
+      element({ href: 'privacy.html', 'data-href-pt': 'javascript:alert(1)' }),
+      element({ href: 'privacy.html', 'data-href-pt': ' javascript:alert(1)' }),
+      element({ href: 'privacy.html', 'data-href-pt': '//example.com/' }),
+    ];
+    const doc = {
+      documentElement: { lang: 'en' },
+      querySelectorAll: (selector: string) =>
+        selector === 'a[data-href-pt]' ? links.filter((l) => l.getAttribute('data-href-pt') !== null) : [],
+    };
+    translatePage(doc);
+    for (const link of links) expect(link.getAttribute('href')).toBe('privacy.html');
+  });
+});
+
+describe('isSafeHref', () => {
+  it('takes https: addresses and paths on this site, nothing else', () => {
+    for (const href of [
+      'https://www.jonathas.net/x',
+      'privacy.html',
+      '../privacy.html',
+      '/pt/privacidade.html',
+    ])
+      expect(isSafeHref(href), href).toBe(true);
+    for (const href of [
+      '',
+      'http://example.com/',
+      'javascript:alert(1)',
+      'JavaScript:alert(1)',
+      ' javascript:alert(1)',
+      'java\tscript:alert(1)',
+      'data:text/html,x',
+      '//example.com/',
+      '/\\example.com/',
+      'https:///example.com',
+    ])
+      expect(isSafeHref(href), href).toBe(false);
   });
 });
 

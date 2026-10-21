@@ -208,29 +208,36 @@ export const en = {
     'What Weigh to Go does with your data, on the website and in the iPhone app: your weigh-ins stay on your device, and we never receive them.',
   'privacy.heading': 'Privacy policy',
   'privacy.updated': 'Last updated 21 October 2026',
+  'privacy.toc': 'On this page',
   'privacy.short.heading': 'In short',
-  'privacy.short.text':
-    'Weigh to Go has no server of ours, no accounts and no analytics. We never receive your weights or the dates of your weigh-ins: they stay on your device (and in Apple Health, if you turn it on in the app), and go only where you send them. In the iPhone app, Google’s ad SDK collects some data about the device, as described below.',
+  'privacy.short.1': 'Weigh to Go runs no server of its own: no accounts, no analytics.',
+  'privacy.short.2':
+    'We never receive your weights or the dates of your weigh-ins. They stay on your device (and in Apple Health, if you turn it on in the app), and go only where you send them.',
+  'privacy.short.3': 'The website shows no ads and sends nothing anywhere.',
+  'privacy.short.4':
+    'The iPhone app shows only non-personalised ads from Google, whose ad software collects some data about the device, as described below. Buying “Remove ads” stops both.',
   'privacy.web.heading': 'The website',
   'privacy.web.storage':
-    'On weightogo.jonathas.net, your diary is kept in your browser’s storage (IndexedDB) on that device, and your screen preferences, such as the language and units, in its local storage. Another browser or device starts empty: a backup file is the only way the diary moves between them.',
+    'On weightogo.jonathas.net, your diary is kept in your browser’s storage on that device, with your screen preferences, such as the language and units. Another browser or device starts empty: a backup file is the only way the diary moves between them.',
   'privacy.web.requests':
-    "The page loads nothing from other sites and sends nothing anywhere: its Content Security Policy (connect-src 'none') forbids it. Its code and fonts come from the site itself, and so does the copy of the site’s files the browser keeps for offline use. Backups and CSV files are made in the page and saved to your device.",
+    'The site’s security policy forbids the page to load from other sites or send data. Its code and fonts come from the site itself, and so does the copy of the site’s files the browser keeps for offline use. Backups and CSV files are made in the page and saved to your device.',
   'privacy.web.host':
     'The site is served by GitHub Pages. Like any host’s, GitHub’s servers log technical details of each visit, such as your IP address and browser, as GitHub’s privacy statement describes. We don’t see those logs, and your weigh-ins are never in them.',
   'privacy.web.hostLink': 'GitHub General Privacy Statement',
   'privacy.app.heading': 'The iPhone app',
   'privacy.app.storage':
-    'Everything you type stays in the app on your iPhone, in a file of its own. Like any app’s data, that file is in your iPhone’s backup if you use iCloud Backup or back up to a computer; those backups are kept by Apple or on your computer, not by us. With Apple Health on, the weights you type are in Health too, which Apple keeps as it keeps the rest of your Health data.',
+    'Everything you type stays in the app’s own files and storage on your iPhone. Like any app’s data, it is in your iPhone’s backup if you use iCloud Backup or back up to a computer; those backups are kept by Apple or on your computer, not by us. With Apple Health on, the weights you type are in Health too, which Apple keeps as it keeps the rest of your Health data.',
   'privacy.app.exports':
-    'A backup or CSV file you export goes only where you send it, through the share sheet (Files, AirDrop, Mail or another app you choose). The app writes it to its own cache for a moment and deletes it once the sheet closes. The CSV includes the days read from Apple Health; the backup file holds only the weights typed in the app.',
+    'A backup or CSV file you export goes only where you send it, through the share sheet (Files, AirDrop, Mail or another app you choose); the app keeps no copy once the sheet closes. The backup holds what you typed in the app (weights, goal, height); the CSV also has the days read from Apple Health.',
+  'privacy.app.apple':
+    'If you turn on “Share with App Developers” in your iPhone’s settings, Apple shares crash reports and statistics about how you use the app with us, as it does for every app. It is off unless you turn it on.',
   'privacy.health.heading': 'Apple Health',
   'privacy.health.optional':
     'Apple Health is optional, and off until you turn it on in the app. The app then reads and writes weight only: it reads the readings of a smart scale or another app, and saves there the weights you type.',
   'privacy.health.memory':
-    'What the app reads from Health stays on your iPhone, in memory while the app is open: it isn’t written to the app’s files or to its backup file, so it never reaches iCloud through us. The app reads it again from Health each time it opens.',
+    'What the app reads from Health stays on your iPhone, in memory while the app is open. It isn’t kept in the app’s files (only for a moment, in a CSV you export) or in its backup file, so it never reaches iCloud through us. The app reads it again from Health each time it opens.',
   'privacy.health.ads':
-    'Health data is never used for ads, nor for anything but your diary in the app, and never reaches Google’s ad SDK.',
+    'Health data is never used for ads, nor for anything but your diary in the app, and never reaches Google.',
   'privacy.health.control':
     'You control the app’s access in the Health app: tap your picture, then Apps under Privacy, Weigh to Go.',
   'privacy.reminder.heading': 'The daily reminder',
@@ -238,35 +245,51 @@ export const en = {
     'The app’s daily reminder, off until you turn it on, is a set of local notifications planned on your iPhone. Nothing is sent anywhere to show them.',
   'privacy.ads.heading': 'Ads in the app',
   'privacy.ads.banner':
-    'The iPhone app shows a banner ad from Google AdMob; the website shows no ads. The ads are non-personalised only: the app never asks to track you and doesn’t use your device’s advertising identifier (IDFA).',
+    'The iPhone app shows a banner ad from Google AdMob; the website shows no ads. The app shows only non-personalised ads: it never asks to track you and doesn’t use your device’s advertising identifier (IDFA).',
   'privacy.ads.collects':
-    'To show ads, measure them and prevent fraud, Google’s ad SDK in the app collects data about your device and how the ads are used, such as your IP address, the device’s model and operating system, your interactions with the ads, an approximate location worked out from the IP address, and crash and performance data. Google uses that data as its own policies describe:',
+    'To show ads, measure them and prevent fraud, Google’s ad software in the app (the Google Mobile Ads SDK) collects data about your device and how the ads are used: for example your IP address, the device’s model and operating system, an identifier the iPhone keeps for this app’s maker (IDFV, not the advertising identifier, IDFA), advertising data such as the ads shown and your interactions with them, an approximate location worked out from the IP address, and crash and performance data. Google uses that data as its own policies describe:',
   'privacy.ads.googlePolicy': 'Google Privacy Policy',
   'privacy.ads.googlePartners': 'How Google uses information from sites or apps that use its services',
-  'privacy.ads.never': 'The ad SDK never receives your weigh-ins, their dates or anything from Apple Health.',
+  'privacy.ads.retention':
+    'Google keeps this data for as long as its policies say. What it receives from the app never holds a weigh-in, its date or anything from Apple Health.',
   'privacy.ads.consent':
-    'Where the law requires it (the European Economic Area, the United Kingdom, Switzerland and some US states), Google’s consent message appears in the app, and you can change your choices later in the app’s settings, under Privacy choices.',
-  'privacy.ads.remove': 'Buying Remove ads stops the ads, and with them the SDK’s ad requests.',
+    'In the European Economic Area, the United Kingdom and Switzerland, Google’s consent message appears in the app; there, and in US states whose laws give you choices, you can change them in the app’s settings, under “Privacy choices”.',
+  'privacy.ads.remove':
+    'Buying “Remove ads” stops the ads, and the app no longer starts Google’s ad software, so it sends Google nothing.',
   'privacy.purchase.heading': 'The purchase and ratings',
   'privacy.purchase.text':
-    'Remove ads is a one-time purchase handled by Apple: we receive no payment details. The app checks the purchase on your iPhone with Apple’s StoreKit, with no purchase service in between.',
+    '“Remove ads” is a one-time purchase handled by Apple: we receive no payment details. The app checks the purchase on your iPhone, with Apple’s own tools and no purchase service in between.',
   'privacy.purchase.rating':
     'When the app asks for a rating, it uses the iPhone’s own prompt: a rating you give goes to Apple, not to us.',
   'privacy.children.heading': 'Children',
-  'privacy.children.text': 'Weigh to Go is not directed to children.',
+  'privacy.children.text': 'Weigh to Go isn’t made for children.',
   'privacy.delete.heading': 'Deleting everything',
   'privacy.delete.web':
-    'On the website: Your data › Erase everything, or clear the site’s data in your browser’s settings.',
+    'On the website: “Your data › Erase everything”, or clear the site’s data in your browser’s settings.',
   'privacy.delete.app':
-    'In the app: Your data › Erase everything, which can also delete the weights the app saved in Apple Health, or delete the app. Earlier backups of your iPhone keep their copy until they are replaced or deleted.',
+    'In the app: “Your data › Erase everything”, which can also delete the weights the app saved in Apple Health. Deleting the app erases its files but leaves those weights in Health: use “Erase everything” first, or delete them in the Health app. Earlier backups of your iPhone keep their copy until they are replaced or deleted.',
   'privacy.delete.health':
     'To take back the app’s access to Health, open the Health app, tap your picture, then Apps under Privacy, Weigh to Go.',
+  'privacy.rights.heading': 'Your rights',
+  'privacy.rights.diary':
+    'Your diary and your Health data: we process none of it. It stays with you, and the section above says how to delete it.',
+  'privacy.rights.ads':
+    'Google’s ad software: where the law asks for it, it runs on your consent, given in Google’s message; elsewhere, on our legitimate interest in funding a free app with non-personalised ads. Google may process the data outside your country, for example in the United States.',
+  'privacy.rights.messages': 'A message you send us: used to answer you.',
+  'privacy.rights.list':
+    'You can ask for access to your data and its deletion, object to its use, and withdraw your consent to Google’s ads at any time, under “Privacy choices”.',
+  'privacy.rights.complaint':
+    'You can also complain to a data-protection authority: the ANPD in Brazil, or your local authority in the European Economic Area, the United Kingdom or Switzerland.',
   'privacy.changes.heading': 'Changes',
   'privacy.changes.text':
     'If what the app or the website does with data changes, this policy changes with it, and so does the date at the top.',
-  'privacy.contact.heading': 'Contact',
-  'privacy.contact.text': 'Questions and requests go through the support page:',
-  'privacy.contact.link': 'Weigh to Go support',
+  'privacy.contact.heading': 'Who we are and contact',
+  'privacy.contact.who': 'Weigh to Go is made by Jonathas Costa, who is responsible for this policy.',
+  'privacy.contact.text': 'Questions and requests go through the project’s issues on GitHub:',
+  'privacy.contact.link': 'Weigh to Go’s issues on GitHub',
+  'privacy.contact.public': 'Issues are public: don’t post your weights or other personal data there.',
+  'privacy.contact.messages':
+    'A message you send us is used only to answer it, and kept only as long as that takes; an issue stays on GitHub until it is deleted, which you can ask us to do.',
 
   'settings.label': 'Settings',
   'settings.language': 'Language',
@@ -928,29 +951,36 @@ export const pt: Messages = {
     'O que o Weigh to Go faz com os seus dados, no site e no app para iPhone: suas pesagens ficam no seu aparelho, e nós nunca as recebemos.',
   'privacy.heading': 'Política de privacidade',
   'privacy.updated': 'Última atualização: 21 de outubro de 2026',
+  'privacy.toc': 'Nesta página',
   'privacy.short.heading': 'Em resumo',
-  'privacy.short.text':
-    'O Weigh to Go não tem servidor nosso, nem contas, nem análise de uso. Nós nunca recebemos seus pesos nem as datas das suas pesagens: eles ficam no seu aparelho (e no app Saúde, se você ligá-lo no app) e só vão para onde você os mandar. No app para iPhone, o SDK de anúncios da Google coleta alguns dados do aparelho, como explicado abaixo.',
+  'privacy.short.1': 'O Weigh to Go não tem servidor próprio: nem contas, nem análise de uso.',
+  'privacy.short.2':
+    'Nós nunca recebemos seus pesos nem as datas das suas pesagens. Eles ficam no seu aparelho (e no app Saúde, se você ligá-lo no app) e só vão para onde você os mandar.',
+  'privacy.short.3': 'O site não mostra anúncios e não envia nada para lugar nenhum.',
+  'privacy.short.4':
+    'O app para iPhone mostra só anúncios não personalizados do Google, cujo software de anúncios coleta alguns dados do aparelho, como explicado abaixo. Comprar “Remover anúncios” acaba com os dois.',
   'privacy.web.heading': 'O site',
   'privacy.web.storage':
-    'No weightogo.jonathas.net, seu diário fica guardado no armazenamento do navegador (IndexedDB), naquele aparelho, e suas preferências de tela, como o idioma e as unidades, no armazenamento local dele. Outro navegador ou aparelho começa vazio: um arquivo de backup é o único jeito de o diário passar de um para outro.',
+    'No weightogo.jonathas.net, seu diário fica guardado no armazenamento do navegador, naquele aparelho, com suas preferências de tela, como o idioma e as unidades. Outro navegador ou aparelho começa vazio: um arquivo de backup é o único jeito de o diário passar de um para outro.',
   'privacy.web.requests':
-    "A página não carrega nada de outros sites e não envia nada para lugar nenhum: a política de segurança de conteúdo dela (Content Security Policy, connect-src 'none') não deixa. O código e as fontes vêm do próprio site, assim como a cópia dos arquivos do site que o navegador guarda para funcionar offline. Os backups e os arquivos CSV são feitos na página e salvos no seu aparelho.",
+    'A política de segurança do site proíbe a página de carregar coisas de outros sites ou de enviar dados. O código e as fontes vêm do próprio site, assim como a cópia dos arquivos do site que o navegador guarda para funcionar offline. Os backups e os arquivos CSV são feitos na página e salvos no seu aparelho.',
   'privacy.web.host':
     'O site é servido pelo GitHub Pages. Como os de qualquer hospedagem, os servidores do GitHub registram dados técnicos de cada visita, por exemplo o seu endereço IP e o navegador, conforme a declaração de privacidade do GitHub. Nós não vemos esses registros, e suas pesagens nunca estão neles.',
-  'privacy.web.hostLink': 'Declaração de privacidade do GitHub (em inglês)',
+  'privacy.web.hostLink': 'Declaração de privacidade do GitHub',
   'privacy.app.heading': 'O app para iPhone',
   'privacy.app.storage':
-    'Tudo o que você digita fica no app, no seu iPhone, num arquivo só dele. Como os dados de qualquer app, esse arquivo entra no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador; esses backups ficam com a Apple ou no seu computador, não com a gente. Com o app Saúde ligado, os pesos que você digita ficam lá também, guardados pela Apple como o resto dos seus dados de saúde.',
+    'Tudo o que você digita fica nos arquivos e no armazenamento do próprio app, no seu iPhone. Como os dados de qualquer app, eles entram no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador; esses backups ficam com a Apple ou no seu computador, não conosco. Com o app Saúde ligado, os pesos que você digita ficam lá também, guardados pela Apple como o resto dos seus dados de saúde.',
   'privacy.app.exports':
-    'Um backup ou arquivo CSV que você exporta vai só para onde você o mandar, pela tela de compartilhamento (Arquivos, AirDrop, Mail ou outro app que você escolher). O app o grava por um instante no próprio cache e o apaga quando a tela fecha. O CSV inclui os dias lidos do app Saúde; o arquivo de backup guarda só os pesos digitados no app.',
+    'Um backup ou arquivo CSV que você exporta vai só para onde você o mandar, pela tela de compartilhamento (Arquivos, AirDrop, Mail ou outro app que você escolher); o app não guarda cópia depois que a tela fecha. O backup guarda o que você digitou no app (pesos, meta, altura); o CSV também traz os dias lidos do app Saúde.',
+  'privacy.app.apple':
+    'Se você ligar “Compartilhar com Desenvolvedores de Apps” nos ajustes do iPhone, a Apple compartilha conosco relatórios de falhas e estatísticas de uso do app, como faz com todo app. Isso fica desligado, a menos que você ligue.',
   'privacy.health.heading': 'App Saúde',
   'privacy.health.optional':
     'O app Saúde é opcional e fica desligado até você ligá-lo no app. A partir daí, o app lê e grava só o peso: lê as medições de uma balança inteligente ou de outro app e salva lá os pesos que você digita.',
   'privacy.health.memory':
-    'O que o app lê do app Saúde fica no seu iPhone, na memória, enquanto o app está aberto: não é gravado nos arquivos do app nem no arquivo de backup dele, então nunca chega ao iCloud por nós. O app lê tudo de novo do app Saúde cada vez que abre.',
+    'O que o app lê do app Saúde fica no seu iPhone, na memória, enquanto o app está aberto. Não fica guardado nos arquivos do app (só por um instante, num CSV que você exporta) nem no arquivo de backup dele, então nunca chega ao iCloud por nós. O app lê tudo de novo do app Saúde cada vez que abre.',
   'privacy.health.ads':
-    'Os dados do app Saúde nunca são usados para anúncios, nem para nada além do seu diário no app, e nunca chegam ao SDK de anúncios da Google.',
+    'Os dados do app Saúde nunca são usados para anúncios, nem para nada além do seu diário no app, e nunca chegam ao Google.',
   'privacy.health.control':
     'Você controla o acesso do app no app Saúde: toque na sua foto, depois em Apps, em Privacidade, e em Weigh to Go.',
   'privacy.reminder.heading': 'O lembrete diário',
@@ -958,36 +988,51 @@ export const pt: Messages = {
     'O lembrete diário do app, desligado até você ligá-lo, é um conjunto de notificações locais programadas no seu iPhone. Nada é enviado para lugar nenhum para mostrá-las.',
   'privacy.ads.heading': 'Anúncios no app',
   'privacy.ads.banner':
-    'O app para iPhone mostra um banner de anúncio do Google AdMob; o site não mostra anúncios. Os anúncios são só não personalizados: o app nunca pede para rastrear você e não usa o identificador de publicidade do seu aparelho (IDFA).',
+    'O app para iPhone mostra um banner de anúncio do Google AdMob; o site não mostra anúncios. O app mostra só anúncios não personalizados: nunca pede para rastrear você e não usa o identificador de publicidade do seu aparelho (IDFA).',
   'privacy.ads.collects':
-    'Para mostrar os anúncios, medi-los e evitar fraudes, o SDK de anúncios da Google no app coleta dados do seu aparelho e do uso dos anúncios, como o seu endereço IP, o modelo e o sistema operacional do aparelho, suas interações com os anúncios, uma localização aproximada obtida do endereço IP e dados de falhas e de desempenho. A Google usa esses dados como descrevem as políticas dela:',
+    'Para mostrar os anúncios, medi-los e evitar fraudes, o software de anúncios do Google no app (o Google Mobile Ads SDK) coleta dados do seu aparelho e do uso dos anúncios: por exemplo o seu endereço IP, o modelo e o sistema operacional do aparelho, um identificador que o iPhone guarda para quem fez este app (IDFV, não o identificador de publicidade, IDFA), dados de publicidade, como os anúncios mostrados e suas interações com eles, uma localização aproximada obtida do endereço IP e dados de falhas e de desempenho. O Google usa esses dados como descrevem as políticas dele:',
   'privacy.ads.googlePolicy': 'Política de Privacidade do Google',
   'privacy.ads.googlePartners': 'Como o Google usa as informações de sites ou apps que usam os serviços dele',
-  'privacy.ads.never': 'O SDK de anúncios nunca recebe suas pesagens, as datas delas nem nada do app Saúde.',
+  'privacy.ads.retention':
+    'O Google guarda esses dados pelo tempo que as políticas dele dizem. O que ele recebe do app nunca traz uma pesagem, a data dela nem nada do app Saúde.',
   'privacy.ads.consent':
-    'Onde a lei exige (no Espaço Econômico Europeu, no Reino Unido, na Suíça e em alguns estados dos EUA), a mensagem de consentimento da Google aparece no app, e você pode mudar suas escolhas depois nas configurações do app, em Opções de privacidade.',
+    'No Espaço Econômico Europeu, no Reino Unido e na Suíça, a mensagem de consentimento do Google aparece no app; lá, e nos estados dos EUA cujas leis dão escolhas a você, dá para mudá-las nas configurações do app, em “Opções de privacidade”.',
   'privacy.ads.remove':
-    'Comprar Remover anúncios acaba com os anúncios e, com eles, com os pedidos de anúncio do SDK.',
+    'Ao comprar “Remover anúncios”, os anúncios param e o app deixa de iniciar o software de anúncios do Google, então não envia nada ao Google.',
   'privacy.purchase.heading': 'A compra e as avaliações',
   'privacy.purchase.text':
-    'Remover anúncios é uma compra única, processada pela Apple: nós não recebemos nenhum dado de pagamento. O app confere a compra no seu iPhone com o StoreKit da Apple, sem nenhum serviço de compras no meio.',
+    '“Remover anúncios” é uma compra única, processada pela Apple: nós não recebemos nenhum dado de pagamento. O app confere a compra no seu iPhone, com as ferramentas da própria Apple, sem nenhum serviço de compras no meio.',
   'privacy.purchase.rating':
-    'Quando o app pede uma avaliação, ele usa o pedido do próprio iPhone: uma avaliação que você der vai para a Apple, não para a gente.',
+    'Quando o app pede uma avaliação, ele usa o pedido do próprio iPhone: uma avaliação que você der vai para a Apple, não para nós.',
   'privacy.children.heading': 'Crianças',
-  'privacy.children.text': 'O Weigh to Go não é voltado para crianças.',
+  'privacy.children.text': 'O Weigh to Go não é feito para crianças.',
   'privacy.delete.heading': 'Apagar tudo',
   'privacy.delete.web':
-    'No site: Seus dados › Apagar tudo, ou apague os dados do site nas configurações do navegador.',
+    'No site: “Seus dados › Apagar tudo”, ou apague os dados do site nas configurações do navegador.',
   'privacy.delete.app':
-    'No app: Seus dados › Apagar tudo, que também pode apagar os pesos que o app salvou no app Saúde, ou apague o app. Os backups anteriores do seu iPhone guardam a cópia deles até serem substituídos ou apagados.',
+    'No app: “Seus dados › Apagar tudo”, que também pode apagar os pesos que o app salvou no app Saúde. Apagar o app apaga os arquivos dele, mas deixa esses pesos no app Saúde: use “Apagar tudo” antes, ou apague-os no app Saúde. Os backups anteriores do seu iPhone guardam a cópia deles até serem substituídos ou apagados.',
   'privacy.delete.health':
     'Para tirar o acesso do app ao app Saúde, abra o app Saúde, toque na sua foto, depois em Apps, em Privacidade, e em Weigh to Go.',
+  'privacy.rights.heading': 'Seus direitos',
+  'privacy.rights.diary':
+    'Seu diário e seus dados de saúde: nós não tratamos nenhum deles. Eles ficam com você, e a seção acima diz como apagá-los.',
+  'privacy.rights.ads':
+    'O software de anúncios do Google: onde a lei pede, ele funciona com o seu consentimento, dado na mensagem do Google; nos outros lugares, com base no nosso legítimo interesse em manter um app gratuito com anúncios não personalizados. O Google pode tratar os dados fora do seu país, por exemplo nos Estados Unidos.',
+  'privacy.rights.messages': 'Uma mensagem que você nos mandar: usada para responder a você.',
+  'privacy.rights.list':
+    'Você pode pedir acesso aos seus dados e a exclusão deles, se opor ao uso deles e retirar a qualquer momento o consentimento aos anúncios do Google, em “Opções de privacidade”.',
+  'privacy.rights.complaint':
+    'Você também pode reclamar a uma autoridade de proteção de dados: a ANPD, no Brasil, ou a autoridade do seu país no Espaço Econômico Europeu, no Reino Unido ou na Suíça.',
   'privacy.changes.heading': 'Mudanças',
   'privacy.changes.text':
     'Se o que o app ou o site faz com os dados mudar, esta política muda junto, e a data no topo também.',
-  'privacy.contact.heading': 'Contato',
-  'privacy.contact.text': 'Dúvidas e pedidos vão pela página de suporte:',
-  'privacy.contact.link': 'Suporte do Weigh to Go',
+  'privacy.contact.heading': 'Quem somos e contato',
+  'privacy.contact.who': 'O Weigh to Go é feito por Jonathas Costa, que é o responsável por esta política.',
+  'privacy.contact.text': 'Dúvidas e pedidos vão pelas issues do projeto no GitHub:',
+  'privacy.contact.link': 'Issues do Weigh to Go no GitHub',
+  'privacy.contact.public': 'As issues são públicas: não publique lá seus pesos nem outros dados pessoais.',
+  'privacy.contact.messages':
+    'Uma mensagem que você nos mandar é usada só para responder a ela e guardada só pelo tempo que isso levar; uma issue fica no GitHub até ser apagada, o que você pode nos pedir.',
 
   'settings.label': 'Configurações',
   'settings.language': 'Idioma',

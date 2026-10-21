@@ -2,7 +2,7 @@
 // reader's language, then the frame check. A page written for one language (data-lang) stays in it
 // unless the reader chose another, as the home pages do. Without scripts they show as written.
 import { checkFrame } from './frame';
-import { setPageLang, t, translatePage } from './i18n';
+import { choose, setPageLang, t, translatePage } from './i18n';
 import { isLang } from './i18n/locale';
 import { en } from './i18n/messages';
 
@@ -15,4 +15,17 @@ try {
 } catch (error) {
   console.error(error);
 }
-checkFrame(openLabel);
+if (checkFrame(openLabel)) {
+  // The policy's English and Português links: following one is choosing that language, saved as the
+  // settings' language switch saves it, since a saved choice outranks the page's own language.
+  for (const link of document.querySelectorAll<HTMLAnchorElement>('a[data-choose-lang]')) {
+    link.addEventListener('click', () => {
+      const lang = link.dataset.chooseLang;
+      try {
+        if (isLang(lang)) choose({ lang });
+      } catch (error) {
+        console.error(error);
+      }
+    });
+  }
+}

@@ -47,28 +47,63 @@
       <article class="policy">
         <h1 data-i18n="privacy.heading">Política de privacidade</h1>
         <p class="updated" data-i18n="privacy.updated">Última atualização: 21 de outubro de 2026</p>
+        <p class="langs">
+          <a href="../privacy.html" hreflang="en" lang="en" data-choose-lang="en">English</a> ·&nbsp;<a
+            href="privacidade.html"
+            hreflang="pt-BR"
+            lang="pt-BR"
+            data-choose-lang="pt"
+            >Português</a
+          >
+        </p>
         <section>
           <h2 id="short" data-i18n="privacy.short.heading">Em resumo</h2>
-          <p data-i18n="privacy.short.text">
-            O Weigh to Go não tem servidor nosso, nem contas, nem análise de uso. Nós nunca recebemos seus
-            pesos nem as datas das suas pesagens: eles ficam no seu aparelho (e no app Saúde, se você ligá-lo
-            no app) e só vão para onde você os mandar. No app para iPhone, o SDK de anúncios da Google coleta
-            alguns dados do aparelho, como explicado abaixo.
-          </p>
+          <ul>
+            <li data-i18n="privacy.short.1">
+              O Weigh to Go não tem servidor próprio: nem contas, nem análise de uso.
+            </li>
+            <li data-i18n="privacy.short.2">
+              Nós nunca recebemos seus pesos nem as datas das suas pesagens. Eles ficam no seu aparelho (e no
+              app Saúde, se você ligá-lo no app) e só vão para onde você os mandar.
+            </li>
+            <li data-i18n="privacy.short.3">
+              O site não mostra anúncios e não envia nada para lugar nenhum.
+            </li>
+            <li data-i18n="privacy.short.4">
+              O app para iPhone mostra só anúncios não personalizados do Google, cujo software de anúncios
+              coleta alguns dados do aparelho, como explicado abaixo. Comprar “Remover anúncios” acaba com os
+              dois.
+            </li>
+          </ul>
         </section>
+        <nav class="toc" aria-labelledby="toc-title">
+          <p id="toc-title" data-i18n="privacy.toc">Nesta página</p>
+          <ul>
+            <li><a href="#website" data-i18n="privacy.web.heading">O site</a></li>
+            <li><a href="#app" data-i18n="privacy.app.heading">O app para iPhone</a></li>
+            <li><a href="#health" data-i18n="privacy.health.heading">App Saúde</a></li>
+            <li><a href="#reminder" data-i18n="privacy.reminder.heading">O lembrete diário</a></li>
+            <li><a href="#ads" data-i18n="privacy.ads.heading">Anúncios no app</a></li>
+            <li><a href="#purchase" data-i18n="privacy.purchase.heading">A compra e as avaliações</a></li>
+            <li><a href="#children" data-i18n="privacy.children.heading">Crianças</a></li>
+            <li><a href="#delete" data-i18n="privacy.delete.heading">Apagar tudo</a></li>
+            <li><a href="#rights" data-i18n="privacy.rights.heading">Seus direitos</a></li>
+            <li><a href="#changes" data-i18n="privacy.changes.heading">Mudanças</a></li>
+            <li><a href="#contact" data-i18n="privacy.contact.heading">Quem somos e contato</a></li>
+          </ul>
+        </nav>
         <section>
           <h2 id="website" data-i18n="privacy.web.heading">O site</h2>
           <p data-i18n="privacy.web.storage">
-            No weightogo.jonathas.net, seu diário fica guardado no armazenamento do navegador (IndexedDB),
-            naquele aparelho, e suas preferências de tela, como o idioma e as unidades, no armazenamento local
-            dele. Outro navegador ou aparelho começa vazio: um arquivo de backup é o único jeito de o diário
-            passar de um para outro.
+            No weightogo.jonathas.net, seu diário fica guardado no armazenamento do navegador, naquele
+            aparelho, com suas preferências de tela, como o idioma e as unidades. Outro navegador ou aparelho
+            começa vazio: um arquivo de backup é o único jeito de o diário passar de um para outro.
           </p>
           <p data-i18n="privacy.web.requests">
-            A página não carrega nada de outros sites e não envia nada para lugar nenhum: a política de
-            segurança de conteúdo dela (Content Security Policy, connect-src 'none') não deixa. O código e as
-            fontes vêm do próprio site, assim como a cópia dos arquivos do site que o navegador guarda para
-            funcionar offline. Os backups e os arquivos CSV são feitos na página e salvos no seu aparelho.
+            A política de segurança do site proíbe a página de carregar coisas de outros sites ou de enviar
+            dados. O código e as fontes vêm do próprio site, assim como a cópia dos arquivos do site que o
+            navegador guarda para funcionar offline. Os backups e os arquivos CSV são feitos na página e
+            salvos no seu aparelho.
           </p>
           <p data-i18n="privacy.web.host">
             O site é servido pelo GitHub Pages. Como os de qualquer hospedagem, os servidores do GitHub
@@ -79,11 +114,11 @@
           <ul>
             <li>
               <a
-                href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+                href="https://docs.github.com/pt/site-policy/privacy-policies/github-general-privacy-statement"
                 data-href-en="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
-                data-href-pt="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+                data-href-pt="https://docs.github.com/pt/site-policy/privacy-policies/github-general-privacy-statement"
                 data-i18n="privacy.web.hostLink"
-                >Declaração de privacidade do GitHub (em inglês)</a
+                >Declaração de privacidade do GitHub</a
               >
             </li>
           </ul>
@@ -91,17 +126,22 @@
         <section>
           <h2 id="app" data-i18n="privacy.app.heading">O app para iPhone</h2>
           <p data-i18n="privacy.app.storage">
-            Tudo o que você digita fica no app, no seu iPhone, num arquivo só dele. Como os dados de qualquer
-            app, esse arquivo entra no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no
-            computador; esses backups ficam com a Apple ou no seu computador, não com a gente. Com o app Saúde
-            ligado, os pesos que você digita ficam lá também, guardados pela Apple como o resto dos seus dados
-            de saúde.
+            Tudo o que você digita fica nos arquivos e no armazenamento do próprio app, no seu iPhone. Como os
+            dados de qualquer app, eles entram no backup do seu iPhone, se você usa o Backup do iCloud ou faz
+            backup no computador; esses backups ficam com a Apple ou no seu computador, não conosco. Com o app
+            Saúde ligado, os pesos que você digita ficam lá também, guardados pela Apple como o resto dos seus
+            dados de saúde.
           </p>
           <p data-i18n="privacy.app.exports">
             Um backup ou arquivo CSV que você exporta vai só para onde você o mandar, pela tela de
-            compartilhamento (Arquivos, AirDrop, Mail ou outro app que você escolher). O app o grava por um
-            instante no próprio cache e o apaga quando a tela fecha. O CSV inclui os dias lidos do app Saúde;
-            o arquivo de backup guarda só os pesos digitados no app.
+            compartilhamento (Arquivos, AirDrop, Mail ou outro app que você escolher); o app não guarda cópia
+            depois que a tela fecha. O backup guarda o que você digitou no app (pesos, meta, altura); o CSV
+            também traz os dias lidos do app Saúde.
+          </p>
+          <p data-i18n="privacy.app.apple">
+            Se você ligar “Compartilhar com Desenvolvedores de Apps” nos ajustes do iPhone, a Apple
+            compartilha conosco relatórios de falhas e estatísticas de uso do app, como faz com todo app. Isso
+            fica desligado, a menos que você ligue.
           </p>
         </section>
         <section>
@@ -112,13 +152,14 @@
             digita.
           </p>
           <p data-i18n="privacy.health.memory">
-            O que o app lê do app Saúde fica no seu iPhone, na memória, enquanto o app está aberto: não é
-            gravado nos arquivos do app nem no arquivo de backup dele, então nunca chega ao iCloud por nós. O
-            app lê tudo de novo do app Saúde cada vez que abre.
+            O que o app lê do app Saúde fica no seu iPhone, na memória, enquanto o app está aberto. Não fica
+            guardado nos arquivos do app (só por um instante, num CSV que você exporta) nem no arquivo de
+            backup dele, então nunca chega ao iCloud por nós. O app lê tudo de novo do app Saúde cada vez que
+            abre.
           </p>
           <p data-i18n="privacy.health.ads">
             Os dados do app Saúde nunca são usados para anúncios, nem para nada além do seu diário no app, e
-            nunca chegam ao SDK de anúncios da Google.
+            nunca chegam ao Google.
           </p>
           <p data-i18n="privacy.health.control">
             Você controla o acesso do app no app Saúde: toque na sua foto, depois em Apps, em Privacidade, e
@@ -135,16 +176,18 @@
         <section>
           <h2 id="ads" data-i18n="privacy.ads.heading">Anúncios no app</h2>
           <p data-i18n="privacy.ads.banner">
-            O app para iPhone mostra um banner de anúncio do Google AdMob; o site não mostra anúncios. Os
-            anúncios são só não personalizados: o app nunca pede para rastrear você e não usa o identificador
-            de publicidade do seu aparelho (IDFA).
+            O app para iPhone mostra um banner de anúncio do Google AdMob; o site não mostra anúncios. O app
+            mostra só anúncios não personalizados: nunca pede para rastrear você e não usa o identificador de
+            publicidade do seu aparelho (IDFA).
           </p>
           <p data-i18n="privacy.ads.collects">
-            Para mostrar os anúncios, medi-los e evitar fraudes, o SDK de anúncios da Google no app coleta
-            dados do seu aparelho e do uso dos anúncios, como o seu endereço IP, o modelo e o sistema
-            operacional do aparelho, suas interações com os anúncios, uma localização aproximada obtida do
-            endereço IP e dados de falhas e de desempenho. A Google usa esses dados como descrevem as
-            políticas dela:
+            Para mostrar os anúncios, medi-los e evitar fraudes, o software de anúncios do Google no app (o
+            Google Mobile Ads SDK) coleta dados do seu aparelho e do uso dos anúncios: por exemplo o seu
+            endereço IP, o modelo e o sistema operacional do aparelho, um identificador que o iPhone guarda
+            para quem fez este app (IDFV, não o identificador de publicidade, IDFA), dados de publicidade,
+            como os anúncios mostrados e suas interações com eles, uma localização aproximada obtida do
+            endereço IP e dados de falhas e de desempenho. O Google usa esses dados como descrevem as
+            políticas dele:
           </p>
           <ul>
             <li>
@@ -166,47 +209,74 @@
               >
             </li>
           </ul>
-          <p data-i18n="privacy.ads.never">
-            O SDK de anúncios nunca recebe suas pesagens, as datas delas nem nada do app Saúde.
+          <p data-i18n="privacy.ads.retention">
+            O Google guarda esses dados pelo tempo que as políticas dele dizem. O que ele recebe do app nunca
+            traz uma pesagem, a data dela nem nada do app Saúde.
           </p>
           <p data-i18n="privacy.ads.consent">
-            Onde a lei exige (no Espaço Econômico Europeu, no Reino Unido, na Suíça e em alguns estados dos
-            EUA), a mensagem de consentimento da Google aparece no app, e você pode mudar suas escolhas depois
-            nas configurações do app, em Opções de privacidade.
+            No Espaço Econômico Europeu, no Reino Unido e na Suíça, a mensagem de consentimento do Google
+            aparece no app; lá, e nos estados dos EUA cujas leis dão escolhas a você, dá para mudá-las nas
+            configurações do app, em “Opções de privacidade”.
           </p>
           <p data-i18n="privacy.ads.remove">
-            Comprar Remover anúncios acaba com os anúncios e, com eles, com os pedidos de anúncio do SDK.
+            Ao comprar “Remover anúncios”, os anúncios param e o app deixa de iniciar o software de anúncios
+            do Google, então não envia nada ao Google.
           </p>
         </section>
         <section>
           <h2 id="purchase" data-i18n="privacy.purchase.heading">A compra e as avaliações</h2>
           <p data-i18n="privacy.purchase.text">
-            Remover anúncios é uma compra única, processada pela Apple: nós não recebemos nenhum dado de
-            pagamento. O app confere a compra no seu iPhone com o StoreKit da Apple, sem nenhum serviço de
-            compras no meio.
+            “Remover anúncios” é uma compra única, processada pela Apple: nós não recebemos nenhum dado de
+            pagamento. O app confere a compra no seu iPhone, com as ferramentas da própria Apple, sem nenhum
+            serviço de compras no meio.
           </p>
           <p data-i18n="privacy.purchase.rating">
             Quando o app pede uma avaliação, ele usa o pedido do próprio iPhone: uma avaliação que você der
-            vai para a Apple, não para a gente.
+            vai para a Apple, não para nós.
           </p>
         </section>
         <section>
           <h2 id="children" data-i18n="privacy.children.heading">Crianças</h2>
-          <p data-i18n="privacy.children.text">O Weigh to Go não é voltado para crianças.</p>
+          <p data-i18n="privacy.children.text">O Weigh to Go não é feito para crianças.</p>
         </section>
         <section>
           <h2 id="delete" data-i18n="privacy.delete.heading">Apagar tudo</h2>
           <p data-i18n="privacy.delete.web">
-            No site: Seus dados › Apagar tudo, ou apague os dados do site nas configurações do navegador.
+            No site: “Seus dados › Apagar tudo”, ou apague os dados do site nas configurações do navegador.
           </p>
           <p data-i18n="privacy.delete.app">
-            No app: Seus dados › Apagar tudo, que também pode apagar os pesos que o app salvou no app Saúde,
-            ou apague o app. Os backups anteriores do seu iPhone guardam a cópia deles até serem substituídos
-            ou apagados.
+            No app: “Seus dados › Apagar tudo”, que também pode apagar os pesos que o app salvou no app Saúde.
+            Apagar o app apaga os arquivos dele, mas deixa esses pesos no app Saúde: use “Apagar tudo” antes,
+            ou apague-os no app Saúde. Os backups anteriores do seu iPhone guardam a cópia deles até serem
+            substituídos ou apagados.
           </p>
           <p data-i18n="privacy.delete.health">
             Para tirar o acesso do app ao app Saúde, abra o app Saúde, toque na sua foto, depois em Apps, em
             Privacidade, e em Weigh to Go.
+          </p>
+        </section>
+        <section>
+          <h2 id="rights" data-i18n="privacy.rights.heading">Seus direitos</h2>
+          <p data-i18n="privacy.rights.diary">
+            Seu diário e seus dados de saúde: nós não tratamos nenhum deles. Eles ficam com você, e a seção
+            acima diz como apagá-los.
+          </p>
+          <p data-i18n="privacy.rights.ads">
+            O software de anúncios do Google: onde a lei pede, ele funciona com o seu consentimento, dado na
+            mensagem do Google; nos outros lugares, com base no nosso legítimo interesse em manter um app
+            gratuito com anúncios não personalizados. O Google pode tratar os dados fora do seu país, por
+            exemplo nos Estados Unidos.
+          </p>
+          <p data-i18n="privacy.rights.messages">
+            Uma mensagem que você nos mandar: usada para responder a você.
+          </p>
+          <p data-i18n="privacy.rights.list">
+            Você pode pedir acesso aos seus dados e a exclusão deles, se opor ao uso deles e retirar a
+            qualquer momento o consentimento aos anúncios do Google, em “Opções de privacidade”.
+          </p>
+          <p data-i18n="privacy.rights.complaint">
+            Você também pode reclamar a uma autoridade de proteção de dados: a ANPD, no Brasil, ou a
+            autoridade do seu país no Espaço Econômico Europeu, no Reino Unido ou na Suíça.
           </p>
         </section>
         <section>
@@ -217,18 +287,27 @@
           </p>
         </section>
         <section>
-          <h2 id="contact" data-i18n="privacy.contact.heading">Contato</h2>
+          <h2 id="contact" data-i18n="privacy.contact.heading">Quem somos e contato</h2>
+          <p data-i18n="privacy.contact.who">
+            O Weigh to Go é feito por Jonathas Costa, que é o responsável por esta política.
+          </p>
           <p>
-            <span data-i18n="privacy.contact.text">Dúvidas e pedidos vão pela página de suporte:</span>
-            <a
-              href="https://www.jonathas.net/weightogo/pt.html"
-              data-href-en="https://www.jonathas.net/weightogo.html"
-              data-href-pt="https://www.jonathas.net/weightogo/pt.html"
-              data-i18n="privacy.contact.link"
-              >Suporte do Weigh to Go</a
-            >.
+            <span data-i18n="privacy.contact.text"
+              >Dúvidas e pedidos vão pelas issues do projeto no GitHub:</span
+            >
+            <a href="https://github.com/jonathascosta/weigh-to-go/issues" data-i18n="privacy.contact.link"
+              >Issues do Weigh to Go no GitHub</a
+            >
+          </p>
+          <p data-i18n="privacy.contact.public">
+            As issues são públicas: não publique lá seus pesos nem outros dados pessoais.
+          </p>
+          <p data-i18n="privacy.contact.messages">
+            Uma mensagem que você nos mandar é usada só para responder a ela e guardada só pelo tempo que isso
+            levar; uma issue fica no GitHub até ser apagada, o que você pode nos pedir.
           </p>
         </section>
+        <p class="back"><a href="./" data-i18n="notFound.link">Ir para o seu diário</a></p>
       </article>
     </main>
     <footer class="site-footer">

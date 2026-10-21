@@ -233,6 +233,35 @@ main {
   padding-left: 1.25em;
 }
 
+/* Links stand alone in lists and lines here: each a tap target of at least 44 px, apart. */
+.policy li a,
+.policy .langs a,
+.policy .back a {
+  display: inline-block;
+  padding-block: 10px;
+}
+
+.policy li + li {
+  margin-top: 8px;
+}
+
+.policy .toc li + li {
+  margin-top: 0;
+}
+
+.policy .toc p {
+  margin-top: 20px;
+  font-weight: 600;
+}
+
+.policy .langs {
+  margin-top: 4px;
+}
+
+.policy .back {
+  margin-top: 28px;
+}
+
 .policy .updated {
   margin-top: 10px;
   font-size: 0.875rem;
@@ -261,7 +290,7 @@ main {
 }
 
 .site-footer {
-  padding-block: 16px max(24px, env(safe-area-inset-bottom, 0px));
+  padding-block: 4px max(12px, env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--line);
   font-size: 0.8125rem;
   color: var(--muted);
@@ -269,6 +298,13 @@ main {
 
 .site-footer p {
   margin: 0;
+}
+
+/* Footer links are tap targets of at least 44 px. */
+.site-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 .version {

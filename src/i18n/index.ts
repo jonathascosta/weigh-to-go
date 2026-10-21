@@ -205,11 +205,22 @@ export function translatePage(doc: TranslatableDocument, { locale, messages }: S
   }
   // A link with a page in each language (the privacy policy) goes to the one the reader reads.
   const hrefAttribute = `data-href-${locale.lang}`;
-  for (const element of doc.querySelectorAll(`[${hrefAttribute}]`)) {
+  for (const element of doc.querySelectorAll(`a[${hrefAttribute}]`)) {
     const href = element.getAttribute(hrefAttribute);
-    if (href !== null && href !== '') element.setAttribute('href', href);
+    if (href !== null && isSafeHref(href)) element.setAttribute('href', href);
   }
 }
+
+/**
+ * An https: address, or a path on this site: no other scheme, no `//` (or `/\`, which browsers read
+ * the same) that would lead to another host, and no spaces or control characters, which browsers
+ * strip from an address (so " javascript:" would be a scheme after all).
+ */
+export const isSafeHref = (href: string): boolean =>
+  href !== '' &&
+  // eslint-disable-next-line no-control-regex -- control characters are what this looks for.
+  !/[\u0000-\u0020\u007f]/.test(href) &&
+  (/^https:\/\/[^/\\]/i.test(href) || (!/^[/\\]{2}/.test(href) && !/^[a-z][a-z\d+.-]*:/i.test(href)));
 
 const pluralRules = new Map<string, Intl.PluralRules>();
 
