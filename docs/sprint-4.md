@@ -25,7 +25,16 @@ both change together, in the same pull request.
    `GADApplicationIdentifier` is always set (the SDK stops the app at launch without it). Builds
    from TestFlight show Google's test ads, recognised by their sandbox receipt, so the owner's daily
    use never counts as invalid traffic; a build for the App Store fails in the workflow when the
-   owner's AdMob ids are missing, so test ads can't ship.
+   owner's AdMob ids are missing, so test ads can't ship. Also, so the privacy policy (story 3) stays
+   true:
+   - [ ] Check what the policy says Google's SDK collects (`privacy.ads.collects`) against Google's
+         data disclosure page (<https://developers.google.com/admob/ios/privacy/data-disclosure>),
+         pasted by the owner if a session can't open it, and make the App Privacy answers (STORE.md,
+         step 9) match it; change the policy and its date where they differ.
+   - [ ] Once the Remove ads purchase is held, neither the Mobile Ads SDK nor UMP is started, so
+         the app sends Google nothing, with a unit test.
+   - [ ] The native banner is hidden whenever the web view leaves the diary (the static pages:
+         the privacy policy and the 404 page), with a check.
 
 2. **Remove ads, once and for good.** A non-consumable in-app purchase,
    `net.jonathas.weightogo.removeads`, at the price the owner sets in App Store Connect. Checked on
@@ -36,6 +45,8 @@ both change together, in the same pull request.
    away at once and stay away on every device of that Apple account. Tested with a StoreKit
    configuration file in an XCTest (`SKTestSession`) on the macOS runner's simulator, and by the
    owner on TestFlight's sandbox. The plugin must support Capacitor 8 and Swift Package Manager.
+   Once the purchase is held, neither the Mobile Ads SDK nor UMP is started at launch or after the
+   purchase, with a unit test, as the privacy policy says (story 3).
 
 3. **Privacy.** The privacy policy in both languages, in the app and on jonathas.net: what stays on
    the phone (everything typed), what Apple holds (Health, backups, purchases), what Google's ad SDK
@@ -47,24 +58,33 @@ both change together, in the same pull request.
    `pt/privacidade.html`, built like the 404 page (`src/static-page.ts`: the text in the reader's
    language, then the frame check), readable with scripts off, in the app's build too, and precached
    by the service worker. Their text is in `src/i18n/messages.ts` under `privacy.*`, one key per
-   paragraph; the messages test checks both pages carry every key. Every page's footer links it in
-   the reader's language (`data-href-en` and `data-href-pt`, which `translatePage` follows); the
-   pages are canonical, name each other with hreflang, are in the sitemap, and `check-dist` checks all
-   of it; end-to-end tests open the policy from each footer, in both languages. Its sections: In
-   short, The website, The iPhone app, Apple Health, The daily reminder, Ads in the app, The purchase
-   and ratings, Children, Deleting everything, Changes, Contact (the support page on jonathas.net).
+   paragraph or bullet; the messages test checks both pages carry every key. Every page's footer
+   links it in the reader's language (`data-href-en` and `data-href-pt`, which `translatePage`
+   follows, https: or same-site addresses only); the policy has an English · Português pair of links
+   (following one saves that language, as the settings do), an "On this page" list and a link back
+   to the diary at the end, for the app, which has no back button. The pages are canonical, name
+   each other with hreflang, are in the sitemap and Lighthouse's list, and `check-dist` checks them;
+   end-to-end tests open the policy from each footer in both languages, offline too.
+
+   Its sections: In short (four bullets), The website, The iPhone app, Apple Health, The daily
+   reminder, Ads in the app, The purchase and ratings, Children, Deleting everything, Your rights,
+   Changes, Who we are and contact. The contact is the project's GitHub issues, with a warning that
+   they are public, until the owner decides on a private contact and the support pages (decision 63
+   in [decisions.md](decisions.md)); the policy names Jonathas Costa as responsible for it and gives
+   the ad SDK's legal bases (decision 64).
+
    It describes the ads and the purchase as they ship in the same release, so stories 1 and 2 must
-   match it, or change it and its date: a banner in the app only, non-personalised ads, no tracking
-   prompt and no IDFA; Google's consent message where the law asks, with **Privacy choices**
-   (**Opções de privacidade**) in settings; Remove ads stops the ad requests; the purchase checked on
-   the device with StoreKit. What it says Google's SDK collects (IP address, device model and
-   operating system, ad interactions, an approximate location from the IP address, crash and
-   performance data) must be checked in story 1 against Google's data disclosure page, which this
-   session couldn't open. The privacy manifest agrees with what is built today (no tracking, no data
-   collected, file timestamps C617.1); story 1 adds the SDK's collected data types to it, and to the
-   App Privacy answers (STORE.md, step 9), with the SDK. The app has no About text yet (the design's
-   O17); when it comes, it links the policy. The copies on jonathas.net are the owner's (STORE.md,
-   step 7).
+   match it, or change it and its date: a banner in the app only, only non-personalised ads, no
+   tracking prompt and no IDFA; Google's consent message in the EEA, the UK and Switzerland, and
+   **Privacy choices** (**Opções de privacidade**) in settings there and in US states whose laws give
+   choices; once Remove ads is bought, Google's SDK is no longer started; the purchase checked on the
+   device. Story 1's checklist covers the data Google's SDK collects (the policy's list follows what
+   this story was given: IP address, device model and system, IDFV, advertising data and ad
+   interactions, an approximate location from the IP address, crash and performance data; this
+   session couldn't open Google's page). The privacy manifest agrees with what is built today (no
+   tracking, no data collected, file timestamps C617.1); Google's SDK ships its own manifest, and the
+   App Privacy answers (STORE.md, step 9) are what must match the policy. The app has no About text
+   yet (the design's O17); when it comes, it links the bundled policy.
 
 4. **The listing.** The name (checked free on the App Store, at most 30 characters, with a fallback
    in case "Weigh to Go" is taken), subtitle, keywords, description and promotional text in English

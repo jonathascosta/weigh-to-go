@@ -62,9 +62,11 @@ de consentimento.
      `ADMOB_APP_ID` e `ADMOB_BANNER_ID` do environment `app-store`. Os builds do TestFlight mostram
      os anúncios de teste da Google de qualquer jeito; um build para a App Store precisa dos dois.
    - Adicione o seu iPhone como dispositivo de teste (Settings, Test devices), como no Arrows.
-   - Em Privacy & messaging, inclua o app numa mensagem de regulamentos europeus (GDPR) e publique-a,
-     e numa mensagem de estados dos EUA, se tiver uma. Sem a mensagem explicativa do IDFA: o app
-     nunca pede rastreamento.
+   - Em Privacy & messaging, inclua o app numa mensagem de regulamentos europeus (GDPR) e numa
+     mensagem de regulamentos de estados dos EUA (US state regulations), e publique as duas: a
+     política de privacidade promete as escolhas em Opções de privacidade no EEE, no Reino Unido, na
+     Suíça e nos estados dos EUA cujas leis as dão. Sem a mensagem explicativa do IDFA: o app nunca
+     pede rastreamento.
    - Em Blocking controls, defina a classificação máxima dos anúncios e bloqueie as categorias
      sensíveis que não combinam com um diário de peso (produtos de dieta e emagrecimento, entre
      outras, onde existirem).
@@ -73,13 +75,19 @@ de consentimento.
    - Cole numa sessão a lista atual de SKAdNetwork da Google
      (<https://developers.google.com/admob/ios/3p-skadnetworks>): a sessão não consegue abrir essa
      página e não deve digitar os ids de memória.
-7. **As páginas no jonathas.net.** A política de privacidade já existe no site, em
+7. **As páginas no jonathas.net.** A política de privacidade fica no site, em
    `https://weightogo.jonathas.net/privacy.html` e `/pt/privacidade.html` em português (e no app,
-   pelo rodapé). No repositório `jonathascosta/jonathas.net`, como no Arrows: suporte em
-   `https://www.jonathas.net/weightogo.html` (`/weightogo/pt.html` em português), que a política
-   indica como contato, e cópias da política em `/weightogo/privacy.html` e
-   `/weightogo/privacidade.html`, copiadas do texto dessas duas páginas, com a data, para que os dois
-   lugares digam o mesmo. Confira que os seis endereços abrem.
+   pelo rodapé). O contato dela são as issues do projeto no GitHub até você decidir um contato
+   privado (um endereço de email) e as páginas de suporte (decisão 63 em
+   [decisions.md](decisions.md)); aí a política, a data dela e este passo mudam juntos. No
+   repositório `jonathascosta/jonathas.net`, como no Arrows:
+   - suporte em `https://www.jonathas.net/weightogo.html` (`/weightogo/pt.html` em português),
+     quando você decidir o que ele diz;
+   - `/weightogo/privacy.html` e `/weightogo/privacidade.html` como links ou redirecionamentos para
+     as duas páginas da política acima, não cópias, para que haja uma só política a manter em dia.
+
+   Confira que os endereços abrem.
+
 8. **A listagem.** Primeiro, grave uma vez a App Review Information da versão no App Store Connect
    (sem login necessário, o contato, as notas do passo 11): sem isso o workflow da listagem falha com
    "No data". Depois rode o workflow **App Store listing**: ele envia os textos e as capturas dos dois
@@ -88,7 +96,9 @@ de consentimento.
    (<https://developers.google.com/admob/ios/privacy/data-disclosure>), para anúncios não
    personalizados sem rastreamento. O que a pessoa digita e o que o app lê do app Saúde ficam no
    iPhone e não chegam a ninguém, o que as definições da Apple não contam como coletado; as compras
-   passam pela Apple. As respostas têm de bater com a política de privacidade.
+   passam pela Apple. As respostas têm de bater com a política de privacidade. A Privacy Policy URL
+   (App Privacy) é `https://weightogo.jonathas.net/privacy.html`, e
+   `https://weightogo.jonathas.net/pt/privacidade.html` na localização em português (Brasil).
 10. **Classificação etária.** Sem conteúdo censurável, sem conteúdo dos usuários, sem chat, sem
     apostas, sem navegação web. Responda com verdade às perguntas sobre temas de saúde e medicina: o
     app registra peso e mostra estimativas, não dá conselho médico e não oferece tratamento.
@@ -125,6 +135,6 @@ de consentimento.
   preparação. Atualize as notas da versão nos dois idiomas.
 - Se uma tela das capturas mudou, rode `npm run store:screenshots` e faça commit delas.
 - Se o que o app faz com os dados mudou: a política de privacidade (e a data dela), o manifesto de
-  privacidade, as respostas do App Privacy e a cópia no jonathas.net, juntos.
+  privacidade e as respostas do App Privacy, juntos.
 - Confira se a lista de SKAdNetwork da Google tem data mais nova que a do `Info.plist`.
 - Rode o workflow da listagem, depois o do TestFlight, confira o build contra o `main` e submeta.

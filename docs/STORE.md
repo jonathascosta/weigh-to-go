@@ -61,9 +61,10 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
      environment's secrets `ADMOB_APP_ID` and `ADMOB_BANNER_ID`. TestFlight builds show Google's test
      ads anyway; a build for the App Store needs both.
    - Add your iPhone as a test device (Settings, Test devices), as for Arrows.
-   - In Privacy & messaging, add the app to a European regulations (GDPR) message and publish it,
-     and to a US states message if you have one. No IDFA explainer: the app never asks for
-     tracking.
+   - In Privacy & messaging, add the app to a European regulations (GDPR) message and to a US
+     state regulations message, and publish both: the privacy policy promises the choices in
+     Privacy choices in the EEA, the UK, Switzerland and US states whose laws give them. No IDFA
+     explainer: the app never asks for tracking.
    - In Blocking controls, set the maximum ad content rating, and block sensitive categories that
      don't belong next to a weight diary (dieting and weight-loss products among them, where offered).
    - `app-ads.txt` is already on jonathas.net for the account. Once the app is live, link it to its
@@ -71,13 +72,19 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    - Paste Google's current SKAdNetwork list into a session
      (<https://developers.google.com/admob/ios/3p-skadnetworks>): a session can't open that page and
      must not type the ids from memory.
-7. **The pages on jonathas.net.** The privacy policy already exists on the website, at
+7. **The pages on jonathas.net.** The privacy policy lives on the website, at
    `https://weightogo.jonathas.net/privacy.html` and `/pt/privacidade.html` in Portuguese (and in the
-   app, from the footer). In the `jonathascosta/jonathas.net` repository, as for Arrows: support at
-   `https://www.jonathas.net/weightogo.html` (`/weightogo/pt.html` in Portuguese), which the policy
-   names as its contact, and copies of the policy at `/weightogo/privacy.html` and
-   `/weightogo/privacidade.html`, copied from those two pages' text, date included, so both places
-   say the same. Check that the six addresses open.
+   app, from the footer). Its contact is the project's GitHub issues until you decide on a private
+   contact (an email address) and the support pages (decision 63 in [decisions.md](decisions.md));
+   then the policy, its date and this step change together. In the `jonathascosta/jonathas.net`
+   repository, as for Arrows:
+   - support at `https://www.jonathas.net/weightogo.html` (`/weightogo/pt.html` in Portuguese), once
+     you decide what it says;
+   - `/weightogo/privacy.html` and `/weightogo/privacidade.html` as links or redirects to the two
+     policy pages above, not copies, so there is one policy to keep up to date.
+
+   Check that the addresses open.
+
 8. **The listing.** First save the version's App Review Information once in App Store Connect (no
    sign-in required, the contact, the notes of step 11): without it the listing workflow fails with
    "No data". Then run the **App Store listing** workflow: it sends the text and screenshots of both
@@ -86,7 +93,9 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    (<https://developers.google.com/admob/ios/privacy/data-disclosure>), for non-personalised ads
    without tracking. What the person types and what the app reads from Apple Health stay on the phone
    and reach no one, which Apple's definitions don't count as collected; purchases go through Apple.
-   The answers must agree with the privacy policy.
+   The answers must agree with the privacy policy. The Privacy Policy URL (App Privacy) is
+   `https://weightogo.jonathas.net/privacy.html`, and `https://weightogo.jonathas.net/pt/privacidade.html`
+   for the Portuguese (Brazil) localisation.
 10. **Age rating.** No objectionable content, no user-generated content, no chat, no gambling, no
     web browsing. Answer the questions about health and medical topics truthfully: the app logs
     weight and shows estimates, gives no medical advice and offers no treatment. Advertising: yes.
@@ -160,6 +169,6 @@ diagnosis or treatment. Fonts and libraries are used under open licences, listed
   being prepared. Update the release notes in both languages.
 - If a screen in the screenshots changed, run `npm run store:screenshots` and commit them.
 - If what the app does with data changed: the privacy policy (and its date), the privacy manifest,
-  the App Privacy answers and the copy on jonathas.net, together.
+  and the App Privacy answers, together.
 - Check Google's SKAdNetwork list for a newer date than the one in `Info.plist`.
 - Run the listing workflow, then the TestFlight one, check the build against `main`, then submit.

@@ -266,3 +266,25 @@ font-size: 17px }`, and fit tested at that cap. _Alternative:_ cap at 32 px and 
 62. (B19) **Screenshots of stories 3 to 7 go to an ignored folder** and are attached to the pull
     requests; only reference shots stay in the repository. _Alternative:_ commit them beside the
     code.
+
+## 21 October 2026 · The privacy policy's contact and legal bases
+
+Taken by the team from the privacy policy's review (Sprint 4, story 3), under decision 9; each is
+**open to the owner**. Numbered on from the decisions above.
+
+63. **The contact is the project's GitHub issues for now**
+    (<https://github.com/jonathascosta/weigh-to-go/issues>). The policy says issues are public and
+    asks people not to post their weights or other personal data there. Open to the owner: a private
+    contact for privacy requests (an email address, which only the owner can choose; none is
+    published or invented meanwhile) and the support pages on jonathas.net (STORE.md, step 7), which
+    don't exist yet. When the owner decides, the policy (and its date), STORE.md and STORE_PT.md
+    step 7 change together. _Alternative:_ no contact until those exist, which a privacy policy
+    can't do without.
+64. **Who is responsible, and on what basis.** The policy names Jonathas Costa, already named in
+    the footer, as responsible for it. Google's ad SDK runs on consent where the law asks for it
+    (Google's message) and otherwise on a legitimate interest in funding a free app with
+    non-personalised ads; a message sent to us is used only to answer it. The policy lists the
+    rights (access, deletion, objection, withdrawing consent under Privacy choices) and the
+    authorities a complaint can go to (the ANPD in Brazil, the local authority in the EEA, the UK or
+    Switzerland). _Alternative:_ consent everywhere, which Google's message offers only where the
+    law asks.

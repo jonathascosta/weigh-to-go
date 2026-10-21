@@ -19,7 +19,7 @@ decimal comma or commas and a decimal point, as you choose. Both are made in the
 nothing is sent anywhere. The privacy policy, for the website and the iPhone app, is at
 [privacy.html](https://weightogo.jonathas.net/privacy.html)
 ([pt/privacidade.html](https://weightogo.jonathas.net/pt/privacidade.html) in Portuguese), linked from
-every page's footer.
+the footer of the diary and the 404 page.
 
 ## Installing and offline use
 
