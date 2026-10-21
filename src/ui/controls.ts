@@ -25,12 +25,13 @@ export function manyChips<T>(
   return row.element;
 }
 
-/** Chips for one choice; `after` runs once it has changed. */
+/** Chips for one choice, or a segmented control; `after` runs once it has changed. */
 export function oneChips<T>(
   label: string,
   items: readonly Chip<T>[],
   state: One<T>,
   after: () => void,
+  kind: 'chips' | 'segmented' = 'chips',
 ): HTMLElement {
   const row = chips(
     label,
@@ -41,6 +42,7 @@ export function oneChips<T>(
       row.sync();
       after();
     },
+    kind,
   );
   return row.element;
 }

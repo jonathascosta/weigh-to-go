@@ -134,8 +134,8 @@ export const LAYERS = [
 ] as const;
 export type Layer = (typeof LAYERS)[number];
 
-/** On at first, as in the original dashboard. */
-const DEFAULT_LAYERS: readonly Layer[] = [
+/** "Detailed": on at first in Sprint 1, as in the original dashboard. */
+export const DETAILED_LAYERS: readonly Layer[] = [
   'points',
   'line',
   'avg7',
@@ -145,22 +145,129 @@ const DEFAULT_LAYERS: readonly Layer[] = [
   'hiccups',
   'goal',
 ];
-/** "Just the essentials". */
+/** "Essential": Sprint 1's "Just the essentials". */
 export const ESSENTIAL_LAYERS: readonly Layer[] = ['points', 'avg7', 'projection', 'goal'];
+
+/** The main chart's views (docs/ux/design.md §4): two sets of layers, and the reader's own. */
+export const PRESETS = ['essential', 'detailed', 'custom'] as const;
+export type Preset = (typeof PRESETS)[number];
+export const PRESET_LAYERS: Readonly<Record<Exclude<Preset, 'custom'>, readonly Layer[]>> = {
+  essential: ESSENTIAL_LAYERS,
+  detailed: DETAILED_LAYERS,
+};
 
 export const HORIZONS = [15, 30, 60, 90] as const;
 export type Horizon = (typeof HORIZONS)[number];
 export const PERIODS = ['all', 60, 30, 14] as const;
 export type Period = (typeof PERIODS)[number];
 
-export const layersPref = pref('chart.layers', someOf<Layer>(LAYERS), [...DEFAULT_LAYERS]);
+/** A guard that also takes null: "nothing saved", told apart from any saved value. */
+const orNull =
+  <T>(valid: (value: unknown) => value is T) =>
+  (value: unknown): value is T | null =>
+    value === null || valid(value);
+
+/** The layers in force; null when nothing is saved (the default then follows the screen). */
+export const layersPref = pref<Layer[] | null>('chart.layers', orNull(someOf<Layer>(LAYERS)), null);
+/** The view chosen; null when none was (Sprint 1 saved only the layers). */
+export const presetPref = pref<Preset | null>('chart.preset', orNull(oneOf<Preset>(PRESETS)), null);
+/** The reader's own layers, which Custom brings back. */
+export const customPref = pref<Layer[] | null>('chart.custom', orNull(someOf<Layer>(LAYERS)), null);
 export const methodPref = pref('chart.method', oneOf<Method>(METHODS), 'linear');
 export const horizonPref = pref('chart.horizon', oneOf<Horizon>(HORIZONS), 30);
 export const periodPref = pref('chart.period', oneOf<Period>(PERIODS), 'all');
-export const chartLayers = many(layersPref);
+export const chartLayers = chartView();
 export const chartMethod = one(methodPref);
 export const chartHorizon = one(horizonPref);
 export const chartPeriod = one(periodPref);
+
+/** The view a set of layers makes: Essential or Detailed when it is exactly theirs, else Custom. */
+export function presetOf(layers: readonly Layer[]): Preset {
+  const set = new Set(layers);
+  for (const preset of ['essential', 'detailed'] as const) {
+    const own = PRESET_LAYERS[preset];
+    if (own.length === set.size && own.every((layer) => set.has(layer))) return preset;
+  }
+  return 'custom';
+}
+
+/** The main chart's layers and the view they make. */
+export interface ChartView {
+  /** The view in force. */
+  preset(): Preset;
+  has(layer: Layer): boolean;
+  /** Picks a view: Essential and Detailed bring their layers, Custom the reader's own. */
+  choose(preset: Preset): void;
+  /** Turns one layer on or off, which makes the view Custom and is remembered as the reader's own. */
+  toggle(layer: Layer): void;
+  /** Turns every layer on (Custom). */
+  allOn(): void;
+  /**
+   * Says how wide the screen is, for the first default only: with nothing saved, a phone starts on
+   * Essential and the desktop on Detailed. Read once; no later change of width resets a choice.
+   */
+  useWidth(isWide: () => boolean): void;
+}
+
+function chartView(): ChartView {
+  let isWide = () => true;
+  let held: { preset: Preset; layers: Set<Layer>; custom: Layer[] | null } | null = null;
+  const get = () => {
+    if (held) return held;
+    const saved = layersPref.read();
+    const chosen = presetPref.read();
+    const custom = customPref.read();
+    if (chosen === 'custom') {
+      held = { preset: chosen, layers: new Set(saved ?? custom ?? DETAILED_LAYERS), custom };
+    } else if (chosen) {
+      held = { preset: chosen, layers: new Set(PRESET_LAYERS[chosen]), custom };
+    } else if (saved) {
+      // Sprint 1 saved the layers only: they read as the view they match, or as Custom.
+      const preset = presetOf(saved);
+      held = { preset, layers: new Set(saved), custom: preset === 'custom' ? saved : custom };
+    } else {
+      const preset = isWide() ? 'detailed' : 'essential';
+      held = { preset, layers: new Set(PRESET_LAYERS[preset]), custom };
+    }
+    return held;
+  };
+  const keep = (preset: Preset, layers: Iterable<Layer>, custom?: Layer[]) => {
+    const now = get();
+    now.preset = preset;
+    now.layers = new Set(layers);
+    if (custom) now.custom = custom;
+    presetPref.write(preset);
+    layersPref.write([...now.layers]);
+    if (custom) customPref.write(custom);
+  };
+  const view: ChartView & Holder = {
+    preset: () => get().preset,
+    has: (layer) => get().layers.has(layer),
+    choose: (preset) => {
+      const now = get();
+      // Custom with none of the reader's own yet: the layers in force become theirs.
+      if (preset === 'custom') keep(preset, now.custom ?? now.layers, now.custom ?? [...now.layers]);
+      else keep(preset, PRESET_LAYERS[preset]);
+    },
+    toggle: (layer) => {
+      const layers = new Set(get().layers);
+      if (layers.has(layer)) layers.delete(layer);
+      else layers.add(layer);
+      keep('custom', layers, [...layers]);
+    },
+    allOn: () => {
+      keep('custom', LAYERS, [...LAYERS]);
+    },
+    useWidth: (wide) => {
+      isWide = wide;
+    },
+    reset: () => {
+      held = null;
+    },
+  };
+  holders.add(view);
+  return view;
+}
 
 // ---------- Percentage loss ----------
 

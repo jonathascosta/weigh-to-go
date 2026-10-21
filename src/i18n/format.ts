@@ -11,11 +11,13 @@ export type DayStyle =
   | 'long'
   | 'dayMonth'
   | 'monthYear'
+  | 'month'
   | 'weekday'
   | 'weekdayLong'
   | 'weekdayNarrow'
   | 'dayMonthShort'
   | 'weekdayDayMonth'
+  | 'weekdayDayMonthYear'
   | 'weekdayDayMonthLong';
 
 const DAY_OPTIONS: Record<DayStyle, Intl.DateTimeFormatOptions> = {
@@ -24,6 +26,8 @@ const DAY_OPTIONS: Record<DayStyle, Intl.DateTimeFormatOptions> = {
   long: { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' },
   dayMonth: { day: '2-digit', month: '2-digit' },
   monthYear: { month: 'short', year: 'numeric' },
+  /** "Oct": a month on a compact time axis, whose January carries the year. */
+  month: { month: 'short' },
   weekday: { weekday: 'short' },
   weekdayLong: { weekday: 'long' },
   weekdayNarrow: { weekday: 'narrow' },
@@ -31,6 +35,8 @@ const DAY_OPTIONS: Record<DayStyle, Intl.DateTimeFormatOptions> = {
   dayMonthShort: { day: 'numeric', month: 'short' },
   /** "Mon, 19 Oct". */
   weekdayDayMonth: { weekday: 'short', day: 'numeric', month: 'short' },
+  /** "Mon, 19 Oct 2025": a chart's readout, for a day of another year. */
+  weekdayDayMonthYear: { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' },
   /** "Wednesday 21 October". */
   weekdayDayMonthLong: { weekday: 'long', day: 'numeric', month: 'long' },
 };

@@ -80,11 +80,15 @@ export function entryHint(state: State, s: Settings, date: string, today: string
   return m['entry.last'](f.weight(last.kg, unit), when);
 }
 
-/** The date chip's text: "Today, 21 Oct", or the day chosen, "Mon, 19 Oct". */
-export function chipText(date: string, today: string, s: Settings): string {
+/**
+ * The date chip's text: "Today, 21 Oct", or the day chosen, "Mon, 19 Oct"; `short`, for the
+ * narrowest phones, in figures: "Today, 21/10", "19/10".
+ */
+export function chipText(date: string, today: string, s: Settings, short = false): string {
   const f = s.format;
-  if (date === today) return s.messages['entry.today'](f.day(date, 'dayMonthShort'));
-  return date.slice(0, 4) === today.slice(0, 4) ? f.day(date, 'weekdayDayMonth') : f.day(date, 'medium');
+  if (date === today) return s.messages['entry.today'](f.day(date, short ? 'dayMonth' : 'dayMonthShort'));
+  if (date.slice(0, 4) !== today.slice(0, 4)) return f.day(date, short ? 'short' : 'medium');
+  return f.day(date, short ? 'dayMonth' : 'weekdayDayMonth');
 }
 
 /** The day as the date control's name says it: "Today, Wednesday 21 October". */
@@ -147,7 +151,17 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
   const dateLabel = h('label', { attrs: { for: 'entry-date' } }, dateWord, dateSpoken);
   const dateInput = h('input', { attrs: { id: 'entry-date', type: 'date', required: true } });
   const chip = h('span', { class: 'chip-text', attrs: { 'aria-hidden': 'true' } });
-  const dateControl = h('div', { class: 'date-control' }, dateLabel, calendarIcon(), chip, dateInput);
+  // Below 360 px the chip says the day in figures, so it shares a row with the card's title.
+  const chipShort = h('span', { class: 'chip-text chip-short', attrs: { 'aria-hidden': 'true' } });
+  const dateControl = h(
+    'div',
+    { class: 'date-control' },
+    dateLabel,
+    calendarIcon(),
+    chip,
+    chipShort,
+    dateInput,
+  );
 
   const weightLabel = h('label', { attrs: { for: 'entry-weight' } });
   const weightInput = h('input', {
@@ -523,6 +537,7 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
     dateInput.max = isoDay(addDays(parseDay(today), 1));
     const date = isIsoDay(dateInput.value) ? dateInput.value : today;
     chip.textContent = chipText(date, today, s);
+    chipShort.textContent = chipText(date, today, s, true);
     dateSpoken.textContent = `: ${spokenDay(date, today, s)}`;
     weightLabel.textContent = m['entry.weight'];
     unitTag.textContent = m[`unit.${s.weightUnit}`];

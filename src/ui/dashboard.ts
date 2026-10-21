@@ -25,7 +25,8 @@ import { mountRates } from './rates';
 import { mountReminder } from './reminder';
 import { mountShell, type Shell, type View } from './shell';
 import { isStandalone } from './standalone';
-import { renderSummary } from './summary';
+import { mountSpark } from './spark';
+import { renderProgress, renderToday, stackBelow } from './summary';
 import { mountWeeks } from './weeks';
 
 type Draw = (state: State, s: Settings) => void;
@@ -77,9 +78,17 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   // The iPhone app, like an installed website, starts with a diary of its own.
   const inApp = import.meta.env.MODE === 'ios';
   const standalone = inApp || isStandalone();
-  const period = h('p', { class: 'eyebrow' });
+  // Today: the date and where the reader stands (a short line on a phone, the full sentence on the
+  // one page), the key figures and, on a phone, the last 30 days.
+  const dateLine = h('p', { class: 'eyebrow' });
   const take = h('p', { class: 'take' });
-  const summary = h('div', { class: 'summary' }, period, take);
+  const summary = h('div', { class: 'summary' }, dateLine, take);
+  const spark = mountSpark();
+  // Progress, on a phone: the period, the full sentence, and all six figures after the chart.
+  const progressPeriod = h('p', { class: 'eyebrow' });
+  const progressTake = h('p', { class: 'take' });
+  const progressSummary = h('div', { class: 'summary phone-only' }, progressPeriod, progressTake);
+  const progressKpis = h('section', { class: 'kpis kpis-six phone-only' });
   const entry = h('section', { class: 'card entry', attrs: { 'aria-labelledby': 'entry-title' } });
   const backupLine = h('p', { class: 'reminder' });
   // The empty diary's ways in: a backup, or many days at once, both in Your data.
@@ -130,16 +139,48 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     intro.hidden = true;
   }
   const todayTitle = views.today.querySelector('h1');
-  views.today.append(
-    ...(intro ? [intro] : []),
-    notices,
-    h('div', { class: 'top' }, summary, entry),
-    emptyLinks,
-    el.kpis,
+  const top = h('div', { class: 'top' }, summary);
+  views.today.append(...(intro ? [intro] : []), notices, top, el.kpis, spark.element, emptyLinks, backupLine);
+  // The weigh-in beside the summary on the one page; on a phone low on the screen, under the
+  // figures and the last 30 days, where the thumb is (design §2). The backup line follows it.
+  shell.place(entry, { parent: top }, { parent: views.today, before: emptyLinks });
+  // The sparkline only where the weigh-in still fits above the tab bar with it, at its smallest
+  // (its real minimum at this text size):
+  // media queries don't see the root's text size, so this is measured (large text, a short phone).
+  const fitSpark = () => {
+    if (shell.isWide() || shell.currentView() !== 'today') return;
+    if (document.documentElement.classList.contains('typing')) return;
+    const field = entry.querySelector<HTMLElement>('#entry-weight') ?? entry;
+    const bottom = field.getBoundingClientRect().bottom + window.scrollY;
+    if (bottom <= window.scrollY) return;
+    const off = views.today.classList.contains('spark-off');
+    const gap = 16;
+    const now = off || spark.element.hidden ? 0 : spark.element.getBoundingClientRect().height + gap;
+    const tab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tab-h')) || 56;
+    // With the sparkline at its smallest, against the layout viewport's height, which Safari's
+    // toolbars don't change while scrolling (innerHeight does).
+    const at = bottom - now + spark.minHeight() + gap;
+    views.today.classList.toggle('spark-off', at > document.documentElement.clientHeight - tab);
+  };
+  if (typeof ResizeObserver === 'function') {
+    const watch = new ResizeObserver(() => {
+      fitSpark();
+    });
+    watch.observe(entry);
+    watch.observe(summary);
+    // Shown, the sparkline measures its own rows: checked again with its real minimum.
+    watch.observe(spark.element);
+  }
+  // Three figures stack as a list when their row is narrower than 20 rem; Progress's six, in two
+  // columns, below 15 rem.
+  stackBelow(el.kpis, 20);
+  stackBelow(progressKpis, 15);
+  views.progress.append(
+    progressSummary,
+    el.chart,
+    progressKpis,
+    h('div', { class: 'grid' }, el.goal, el.weeks),
   );
-  // The backup line sits under the weigh-in on a phone, after the six key figures on the one page.
-  shell.place(backupLine, { parent: views.today }, { parent: views.today, before: el.kpis });
-  views.progress.append(el.chart, h('div', { class: 'grid' }, el.goal, el.weeks));
   views.analysis.append(
     h(
       'div',
@@ -222,18 +263,24 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
       },
     ),
   );
-  add('today', null, renderSummary({ period, take, kpis: el.kpis }));
+  const todaySummary = add(
+    'today',
+    null,
+    renderToday({ date: dateLine, take, kpis: el.kpis }, () => shell.isWide()),
+  );
+  add('today', null, spark.draw);
+  const progressPart = add('progress', null, (state, s) => {
+    // On the one page Today holds the sentence and the six figures.
+    if (!shell.isWide())
+      renderProgress({ period: progressPeriod, take: progressTake, kpis: progressKpis })(state, s);
+  });
   const weighIn = mountEntry(entry, app);
   add('today', null, weighIn.draw);
   // The daily variation follows the main chart's period.
   const chart = add(
     'progress',
     'chart',
-    mountChart(
-      el.chart,
-      app,
-      follow(() => variation),
-    ),
+    mountChart(el.chart, app, { layout: shell, onPeriod: follow(() => variation) }),
   );
   add('progress', 'goal', mountGoal(el.goal, app));
   add('progress', 'weeks', mountWeeks(el.weeks, app));
@@ -276,6 +323,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   /** The sections on when last shown: one that just appeared is drawn, and nothing else. */
   const on = new Set<Section>(SECTIONS.filter((k) => sections.has(k)));
   const showSections = () => {
+    progressKpis.hidden = !sections.has('kpis');
     for (const k of SECTIONS) {
       el[k].hidden = !sections.has(k);
       if (sections.has(k) === on.has(k)) continue;
@@ -321,6 +369,8 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     // The empty diary opens on the intro and the weigh-in, with nothing to sum up yet.
     const empty = state.status === 'ready' && state.weighIns.length === 0;
     views.today.classList.toggle('is-empty', empty);
+    // Progress too: no sentence or figures to show, only the chart's line that says what comes.
+    views.progress.classList.toggle('is-empty', empty);
     emptyLinks.hidden = !empty;
     if (intro) {
       intro.hidden = !empty;
@@ -352,8 +402,22 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
       // Leaving Today ends the saved notice: back there, the card offers the field again.
       if (view !== 'today') weighIn.leave();
       drawShown();
+      if (view === 'today') fitSpark();
     }),
-    shell.onWide(drawShown),
+    (() => {
+      // A rotated phone, or Safari's bars: the room left for the weigh-in changes.
+      window.addEventListener('resize', fitSpark);
+      return () => {
+        window.removeEventListener('resize', fitSpark);
+      };
+    })(),
+    shell.onWide(() => {
+      // What these draw follows the layout: three figures or six, the chart's height and labels.
+      todaySummary.dirty = true;
+      progressPart.dirty = true;
+      chart.dirty = true;
+      drawShown();
+    }),
   ];
 
   return {

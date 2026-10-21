@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, type App } from '../app/app';
-import { resetView } from '../app/view';
+import { chartLayers, resetView } from '../app/view';
 import { fakeStorage } from '../data/fake-storage.test-helper';
 import { memoryStore, type Store } from '../data/store';
 import { choose, resetSettings } from '../i18n';
@@ -252,7 +252,10 @@ describe('Dashboard II', () => {
     await app.save([{ date: '2026-09-18', kg: 98 }]);
     await settle();
     expect(document.activeElement).toBe(svg());
-    expect(section('pct-title').querySelector<HTMLElement>('.tip')!.hidden).toBe(false);
+    // The same day, in the readout strip above the chart.
+    expect(section('pct-title').querySelector('.readout')!.textContent).toMatch(
+      /^Tuesday, September 1, 2026/,
+    );
   });
 
   it('gives the main chart the card’s hiccup rules when the browser keeps nothing', async () => {
@@ -628,7 +631,7 @@ describe('on a phone, the parts drawn only while they show', () => {
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   };
   const svgOf = (id: string) =>
-    root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!.querySelector('svg');
+    root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!.querySelector('svg.chart-svg');
   const climbs = [
     100, 99.5, 99, 98.5, 98, 98.3, 98.6, 98.9, 99.2, 98.8, 98.4, 98.1, 97.9, 97.5, 97.8, 98.1, 98.4,
   ];
@@ -640,6 +643,9 @@ describe('on a phone, the parts drawn only while they show', () => {
       addEventListener: () => undefined,
       removeEventListener: () => undefined,
     }));
+    // A phone opened afresh: nothing held from the page mounted before.
+    board?.dispose();
+    resetView();
     root = document.createElement('div');
     document.body.replaceChildren(root);
     app = createApp(() => Promise.resolve(memoryStore()));
@@ -659,7 +665,32 @@ describe('on a phone, the parts drawn only while they show', () => {
     expect(svgOf('chart-title')).toBe(drawn);
   });
 
+  it('shows three figures and the last 30 days on Today, and Progress the sentence and all six', () => {
+    const today = root.querySelector<HTMLElement>('#view-today')!;
+    expect([...today.querySelectorAll('.kpi-label')].map((k) => k.textContent)).toEqual([
+      '7-day average',
+      'Total loss',
+      'Average pace',
+    ]);
+    expect(today.querySelector('.take')!.textContent).toMatch(/^−\d\.\d kg since /);
+    const spark = today.querySelector<HTMLAnchorElement>('a.spark')!;
+    expect(spark.getAttribute('href')).toBe('#progress');
+    expect(spark.getAttribute('aria-label')).toBe('Last 30 days, see Progress');
+    // The weigh-in comes after them, low on the screen.
+    const entry = today.querySelector('.entry')!;
+    expect(spark.compareDocumentPosition(entry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    go('#progress');
+    const progress = root.querySelector<HTMLElement>('#view-progress')!;
+    expect(progress.querySelectorAll('.kpi')).toHaveLength(6);
+    expect(progress.querySelector('.take')!.textContent).toMatch(/^Since /);
+    // On a phone the chart starts on Essential, its options behind the Layers button.
+    expect(root.querySelector('#chart-options-button')!.textContent).toBe('Layers: Essential');
+    expect(root.querySelector('#chart-options-button')!.getAttribute('aria-haspopup')).toBe('dialog');
+  });
+
   it('marks the main chart when the hiccup rules change, and draws it when Progress shows', () => {
+    // Detailed, which shows the hiccups (a phone starts on Essential).
+    chartLayers.choose('detailed');
     go('#progress');
     const before = svgOf('chart-title');
     expect(section('chart-title').querySelectorAll('rect.hiccup')).toHaveLength(2);
@@ -679,7 +710,7 @@ describe('on a phone, the parts drawn only while they show', () => {
     go('#analysis');
     const before = svgOf('variation-title');
     go('#progress');
-    const period = [...section('chart-title').querySelectorAll<HTMLButtonElement>('button.chip')].find(
+    const period = [...section('chart-title').querySelectorAll<HTMLButtonElement>('button.segment')].find(
       (b) => b.textContent === '14 days',
     )!;
     period.click();

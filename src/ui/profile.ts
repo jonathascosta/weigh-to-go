@@ -308,7 +308,7 @@ export function mountGoal(container: HTMLElement, app: App): (state: State, s: S
           'day' in p.value
             ? h('dd', {}, h('b', { text: p.value.day }), h('span', { class: 'rows-sub', text: p.value.sub }))
             : 'never' in p.value
-              ? h('dd', { class: 'tone-bad', text: p.value.never })
+              ? h('dd', { class: 'tone-up', text: p.value.never })
               : h('dd', {}, '—', h('span', { class: 'rows-sub', text: p.value.needs })),
         ]),
       ),

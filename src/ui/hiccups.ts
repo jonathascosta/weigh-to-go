@@ -76,7 +76,7 @@ export function hiccupKpiList(analysis: Analysis, hiccups: readonly Hiccup[], s:
       label: m['hiccups.kpi.count'],
       value: f.number(st.count, 0),
       unit: null,
-      tone: st.count > 0 ? 'bad' : null,
+      tone: st.count > 0 ? 'up' : null,
       sub: [
         st.count > 0 ? m['hiccups.kpi.countSub'](count(days, m['word.day'], s)) : m['hiccups.kpi.countNone'],
       ],
@@ -92,7 +92,7 @@ export function hiccupKpiList(analysis: Analysis, hiccups: readonly Hiccup[], s:
       label: m['hiccups.kpi.regained'],
       value: f.weightValue(st.regained, unit),
       unit,
-      tone: st.regained > FLAT_KG ? 'bad' : null,
+      tone: st.regained > FLAT_KG ? 'up' : null,
       sub: [
         st.regainedShareOfLoss === null
           ? m['hiccups.kpi.regainedNoLoss']
@@ -105,7 +105,7 @@ export function hiccupKpiList(analysis: Analysis, hiccups: readonly Hiccup[], s:
       label: m['hiccups.kpi.biggest'],
       value: f.changeValue(st.biggest.gain, unit),
       unit,
-      tone: 'bad',
+      tone: 'up',
       sub: [
         m['hiccups.kpi.biggestSub'](
           day(st.biggest.start),
@@ -138,7 +138,7 @@ export function hiccupKpiList(analysis: Analysis, hiccups: readonly Hiccup[], s:
           label: m['hiccups.kpi.now'],
           value: m['hiccups.now.ongoing'],
           unit: null,
-          tone: 'bad',
+          tone: 'up',
           sub: [m['hiccups.now.ongoingSub'](day(now.since), f.weightChange(now.gain, unit))],
         }
       : now.state === 'returning'
@@ -153,7 +153,7 @@ export function hiccupKpiList(analysis: Analysis, hiccups: readonly Hiccup[], s:
             label: m['hiccups.kpi.now'],
             value: m['hiccups.now.none'],
             unit: null,
-            tone: 'good',
+            tone: 'down',
             sub: [
               now.recoveredOn ? m['hiccups.now.recoveredOn'](day(now.recoveredOn)) : m['hiccups.now.never'],
             ],
@@ -367,7 +367,7 @@ export function mountHiccups(
       const centre = (a + p) / 2;
       if (!room(centre, 2 * half)) continue;
       labels.append(
-        svg('text', { class: 'annot annot-bad', x: centre, y: top - 6, 'text-anchor': 'middle' }, text),
+        svg('text', { class: 'annot annot-up', x: centre, y: top - 6, 'text-anchor': 'middle' }, text),
       );
     }
     const path = (value: (d: Day) => number | null) =>
@@ -408,7 +408,7 @@ export function mountHiccups(
         stop: (i) => ({ x: x(at(i).t), y: y(u(at(i).kg)), key: at(i).t.getTime(), dot: 'hoverdot' }),
         tip: (i) => {
           const d = at(i);
-          const rows: TipRow[] = [{ name: m['tip.weight'], value: w(d.kg), swatch: 'sw-weight' }];
+          const rows: TipRow[] = [{ name: m['tip.weight'], value: w(d.kg), swatch: 'sw-weight sw-dot' }];
           const v = b === 'kg' ? null : d[b];
           if (b !== 'kg' && v !== null)
             rows.push({ name: m[`tip.${b}`], value: w(v), swatch: b === 'avg7' ? 'sw-avg7' : 'sw-trend' });
@@ -421,7 +421,7 @@ export function mountHiccups(
                   dayShort(x0.start.date, analysis, s),
                   dayShort(x0.peak.date, analysis, s),
                 ),
-                swatch: 'sw-bad',
+                swatch: 'sw-up',
               },
               {
                 name: m['hiccups.tip.gain'],
@@ -461,7 +461,7 @@ export function mountHiccups(
       h(
         'span',
         {},
-        h('span', { class: 'swatch sw-bad sw-faint', attrs: { 'aria-hidden': 'true' } }),
+        h('span', { class: 'swatch sw-up sw-faint', attrs: { 'aria-hidden': 'true' } }),
         ' ',
         m['hiccups.legend.band'],
       ),
@@ -523,7 +523,7 @@ export function mountHiccups(
               h('td', { class: 'num col-wide', text: r.weight }),
               h('td', { class: 'num' }, tone(r.gain.text, r.gain.change, FLAT_KG)),
               h('td', { class: 'num col-wide', text: r.gainPct }),
-              h('td', { class: r.back.good ? 'tone-good wrap' : 'wrap', text: r.back.text }),
+              h('td', { class: r.back.good ? 'tone-down wrap' : 'wrap', text: r.back.text }),
             ),
           )),
     );

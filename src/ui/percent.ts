@@ -55,10 +55,10 @@ import { kpiTiles, missing, toneOf, type Kpi, type Tone } from './summary';
 export { lostPct };
 
 const BAND_TONE: Record<PaceBand, Tone> = {
-  rising: 'bad',
+  rising: 'up',
   flat: null,
   below: null,
-  within: 'good',
+  within: 'down',
   above: null,
 };
 
@@ -567,7 +567,7 @@ export function mountPercent(
           const rows: TipRow[] = [];
           if (item.day) {
             const d = item.day;
-            rows.push({ name: m['pct.tip.loss'], value: pt(pc(d.kg), 2), swatch: 'sw-weight' });
+            rows.push({ name: m['pct.tip.loss'], value: pt(pc(d.kg), 2), swatch: 'sw-weight sw-dot' });
             rows.push({ name: m['tip.weight'], value: w(d.kg) });
             if (on('avg7') && d.avg7 !== null)
               rows.push({ name: m['tip.avg7'], value: pt(pc(d.avg7), 2), swatch: 'sw-avg7' });
@@ -579,7 +579,7 @@ export function mountPercent(
             return { heading: f.day(d.date, 'long'), rows };
           }
           const p = item.p ?? { t: last.t, v: 0, lo: null, hi: null, h: 0 };
-          rows.push({ name: m['tip.projection'], value: pt(p.v, 2), swatch: 'sw-proj' });
+          rows.push({ name: m['tip.projection'], value: pt(p.v, 2), swatch: 'sw-proj sw-dash' });
           rows.push({ name: m['pct.tip.weight'], value: w(F * (1 - p.v / 100)) });
           if (band && p.lo !== null && p.hi !== null)
             rows.push({ name: m['tip.band'], value: m['tip.range'](pt(p.lo), pt(p.hi)) });
@@ -763,12 +763,12 @@ export function mountPercent(
         h(
           'tr',
           {},
-          h('th', { class: row.goal ? 'tone-good' : '', attrs: { scope: 'row' }, text: row.name }),
+          h('th', { class: row.goal ? 'tone-down' : '', attrs: { scope: 'row' }, text: row.name }),
           h('td', { class: 'num col-wide', text: row.target }),
           'reached' in row.status
             ? h(
                 'td',
-                { class: 'tone-good' },
+                { class: 'tone-down' },
                 h('span', { class: 'day-long', text: m['pct.ms.reached'](row.status.reached.long) }),
                 h('span', { class: 'day-short', text: m['pct.ms.reached'](row.status.reached.short) }),
               )
@@ -776,7 +776,7 @@ export function mountPercent(
           ...METHODS.map((k) => {
             const v = row.by[k];
             if (v === null) return h('td', { class: col(k), text: '—' });
-            if (v === 'never') return h('td', { class: `${col(k)} tone-bad`, text: m['pct.ms.never'] });
+            if (v === 'never') return h('td', { class: `${col(k)} tone-up`, text: m['pct.ms.never'] });
             return h('td', { class: col(k) }, ...dayCell(v));
           }),
         ),
