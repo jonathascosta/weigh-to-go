@@ -252,7 +252,10 @@ describe('Dashboard II', () => {
     await app.save([{ date: '2026-09-18', kg: 98 }]);
     await settle();
     expect(document.activeElement).toBe(svg());
-    expect(section('pct-title').querySelector<HTMLElement>('.tip')!.hidden).toBe(false);
+    // The same day, in the readout strip above the chart.
+    expect(section('pct-title').querySelector('.readout')!.textContent).toMatch(
+      /^Tuesday, September 1, 2026/,
+    );
   });
 
   it('gives the main chart the card’s hiccup rules when the browser keeps nothing', async () => {
@@ -628,7 +631,7 @@ describe('on a phone, the parts drawn only while they show', () => {
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   };
   const svgOf = (id: string) =>
-    root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!.querySelector('svg');
+    root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!.querySelector('svg.chart-svg');
   const climbs = [
     100, 99.5, 99, 98.5, 98, 98.3, 98.6, 98.9, 99.2, 98.8, 98.4, 98.1, 97.9, 97.5, 97.8, 98.1, 98.4,
   ];
@@ -679,7 +682,7 @@ describe('on a phone, the parts drawn only while they show', () => {
     go('#analysis');
     const before = svgOf('variation-title');
     go('#progress');
-    const period = [...section('chart-title').querySelectorAll<HTMLButtonElement>('button.chip')].find(
+    const period = [...section('chart-title').querySelectorAll<HTMLButtonElement>('button.segment')].find(
       (b) => b.textContent === '14 days',
     )!;
     period.click();

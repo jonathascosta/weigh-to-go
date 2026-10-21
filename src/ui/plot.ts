@@ -1,19 +1,121 @@
 /**
  * What every chart shares: the box it is drawn in at the page's own pixels, the focusable group it
  * is drawn as, the axes (with ticks that carry the year when the days need it), and the cursor that
- * the pointer, a finger and the keyboard all move, with its tooltip and the hidden line that reads
- * it out. A chart redrawn under a reader keeps their focus and their place.
+ * the pointer, a finger and the keyboard all move. The day under the cursor is read in a strip of
+ * fixed height above the plot (docs/ux/design.md §6), which a finger never covers; a mouse also
+ * gets a tooltip beside the pointer. The keyboard's hidden live line reads the strip, and a hidden
+ * range input beside the chart lets VoiceOver on a touch screen move the cursor too. A chart
+ * redrawn under a reader keeps their focus and their place.
  */
 import { bisector } from 'd3-array';
 import { scaleUtc, type ScaleLinear, type ScaleTime } from 'd3-scale';
 import { utcDay } from 'd3-time';
 import type { Formatter } from '../i18n/format';
 import { h, s as svg } from './dom';
+import { WIDE_QUERY } from './shell';
 
-/** A rough width of a label in the charts' 12px condensed font, to leave room for it. */
-export const textWidth = (text: string): number => text.length * 6.6;
+/**
+ * The page's measures, from a hidden probe: a chart label's width per character (its font is the
+ * charts' own, in rem, so it grows with the text size), the root's text size (1 em), and the small
+ * viewport's height (100svh).
+ */
+interface Probe {
+  readonly tick: HTMLElement;
+  readonly em: HTMLElement;
+  readonly svh: HTMLElement;
+}
+
+let probe: Probe | null = null;
+/** The width of a chart label's character, measured; 0 until measured again. */
+let charWidth = 0;
+/** Every plot's redraw, called when the text size changes. */
+const redraws = new Set<() => void>();
+
+const redrawAll = () => {
+  charWidth = 0;
+  for (const redraw of redraws) {
+    try {
+      redraw();
+    } catch (error) {
+      console.error(error);
+    }
+  }
+};
+
+function measures(): Probe | null {
+  if (probe) return probe;
+  if (typeof document === 'undefined') return null;
+  const tick = h('span', { class: 'tick', text: '0123456789' });
+  const em = h('span', { class: 'probe-em' });
+  const svh = h('span', { class: 'probe-svh' });
+  document.body.append(h('div', { class: 'chart-probe', attrs: { 'aria-hidden': 'true' } }, tick, em, svh));
+  probe = { tick, em, svh };
+  // A change of the root's text size (the browser's text setting, or Dynamic Type in the app)
+  // changes the 1 em box: every chart is measured and drawn again. Browser zoom keeps it, and the
+  // width's own redraw covers zoom.
+  if (typeof ResizeObserver === 'function') {
+    let size = -1;
+    new ResizeObserver(() => {
+      const now = em.getBoundingClientRect().height;
+      if (size >= 0 && now > 0 && now !== size) redrawAll();
+      if (now > 0) size = now;
+    }).observe(em);
+  }
+  // The charts' font, once it has loaded, is narrower than the fallback the first draw measured.
+  const fonts = (document as { fonts?: { ready?: Promise<unknown> } }).fonts;
+  fonts?.ready?.then(redrawAll, () => undefined);
+  return probe;
+}
+
+/** The root's text size in px (16 at the browser's default). */
+export function remPx(): number {
+  if (typeof document === 'undefined') return 16;
+  const size = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  return Number.isFinite(size) && size > 0 ? size : 16;
+}
+
+/** The width of a chart label, from the probe (12 px condensed digits are about 6.6 px each). */
+export const textWidth = (text: string): number => {
+  if (charWidth === 0) {
+    const width = measures()?.tick.getBoundingClientRect().width ?? 0;
+    charWidth = width > 0 ? width / 10 : (6.6 * remPx()) / 16;
+  }
+  return text.length * charWidth;
+};
+
+/** Whether the layout is the one page (960 px and wider), as the shell decides it. */
+const isWideNow = (): boolean =>
+  typeof window === 'undefined' || typeof window.matchMedia !== 'function'
+    ? true
+    : window.matchMedia(WIDE_QUERY).matches;
+
+/** Whether a tooltip can follow the pointer: a mouse, or anything that hovers and points finely. */
+const hoverFine = (): boolean =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+/** A custom property of the root, in px (0 when it isn't a length yet). */
+const rootPx = (name: string): number => {
+  const value = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+  return Number.isFinite(value) ? value : 0;
+};
+
+/**
+ * A main chart's plot height: 22 rem on the desktop; on a phone 15.5 rem, but never more than the
+ * small viewport left after the tab bar, the banner band, the readout strip (`strip` px) and 3 rem,
+ * and never less than 160 px (design §6).
+ */
+export function plotHeight(strip: number): number {
+  const rem = remPx();
+  if (isWideNow()) return Math.round(22 * rem);
+  const viewport = measures()?.svh.getBoundingClientRect().height || window.innerHeight;
+  const room = viewport - (rootPx('--tab-h') || 56) - rootPx('--ad-h') - strip - 3 * rem;
+  return Math.round(Math.max(160, Math.min(15.5 * rem, room)));
+}
 
 export interface TipRow {
+  /** The row's name; empty for a value that says what it is (a weight with its swatch). */
   readonly name: string;
   readonly value: string;
   /** A swatch class (a layer's colour), if any. */
@@ -36,15 +138,30 @@ export interface Stop {
   readonly box?: { readonly x: number; readonly y: number; readonly size: number };
 }
 
-export interface CursorSpec {
+/** What the readout strip says: for each stop, and where it rests with no cursor. */
+export interface ReadoutSpec {
+  readonly count: number;
+  /** The tooltip's content for a stop (a mouse's), and the strip's when `readout` isn't given. */
+  tip(i: number): TipContent;
+  /** The strip's shorter content for a stop, if it differs from the tooltip's. */
+  readout?(i: number): TipContent;
+  /**
+   * The few stops whose strip text is longest (the projection's end, an older day with its year,
+   * the last weigh-in): the strip is measured with each and keeps the tallest height, so it never
+   * moves while the cursor does. The first, `from` and the last when not given.
+   */
+  longest?(): readonly number[];
+  /** Where the arrow keys start when nothing is picked (where the reader's eye is). */
+  readonly from: number;
+}
+
+export interface CursorSpec extends ReadoutSpec {
   /** The rule's top and bottom. */
   readonly top: number;
   readonly bottom: number;
   /** The plot area the pointer surface covers. */
   readonly area: { readonly left: number; readonly right: number };
-  readonly count: number;
   stop(i: number): Stop;
-  tip(i: number): TipContent;
   /** The stop under the pointer at `px`, `py` (in the chart's own pixels), or -1. */
   near(px: number, py: number): number;
   /** Whether a vertical rule marks the stop (not for rows or a calendar); true unless said. */
@@ -54,8 +171,6 @@ export interface CursorSpec {
    * calendar's up and down), or null to leave the key alone.
    */
   keys?(key: string, i: number): number | null;
-  /** Where the arrow keys start when nothing is picked (where the reader's eye is). */
-  readonly from: number;
 }
 
 export interface Frame {
@@ -71,7 +186,7 @@ export interface Frame {
 }
 
 export interface Plot {
-  /** The box and its tooltip, to put on the page. */
+  /** The readout strip, the box and its tooltip, to put on the page. */
   readonly element: HTMLElement;
   /** The hidden line that reads the cursor out. */
   readonly live: HTMLElement;
@@ -79,21 +194,78 @@ export interface Plot {
   width(): number;
   /** Shows a line of text instead of a chart, `height` pixels high. */
   empty(text: string, height: number): void;
+  /**
+   * Fills the readout strip with each of the longest stops in turn and fixes its height to the
+   * tallest; returns that height (0 where nothing is laid out). `show` does it for a spec not
+   * measured yet.
+   */
+  readout(spec: ReadoutSpec): number;
   /** A chart's root: a focusable group the keyboard moves through, not an image. */
   root(frame: Frame): SVGSVGElement;
   /** Puts `root` on the page with its cursor, keeping focus and the day if the reader was on it. */
   show(root: SVGSVGElement, cursor: CursorSpec | null, height: number): void;
 }
 
+/** The text a readout says aloud: "Tue, 20 Oct: Weight 96.2 kg, 7-day average 96.3 kg". */
+export const spoken = ({ heading, rows }: TipContent): string =>
+  `${heading}: ${rows.map((r) => (r.name ? `${r.name} ${r.value}` : r.value)).join(', ')}`;
+
+/** The rows of a readout or a tooltip, with their swatches. */
+const rowsOf = (rows: readonly TipRow[], kind: 'tip' | 'readout'): HTMLElement[] =>
+  rows.map((row) =>
+    h(
+      'span',
+      { class: `${kind}-row` },
+      row.swatch ? h('span', { class: `swatch ${row.swatch}` }) : null,
+      row.name ? h('span', { class: `${kind}-name`, text: row.name }) : null,
+      h('span', { class: `${kind}-value`, text: row.value }),
+    ),
+  );
+
+/** The cursor a finger left on a chart: a tap anywhere else on the page takes it away. */
+let resting: { root: Element; hide: () => void } | null = null;
+let outsideWired = false;
+function wireOutside(): void {
+  if (outsideWired || typeof document === 'undefined') return;
+  outsideWired = true;
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (!resting) return;
+      if (event.target instanceof Node && resting.root.contains(event.target)) return;
+      const was = resting;
+      resting = null;
+      was.hide();
+    },
+    true,
+  );
+}
+
 /** A plot box; `redraw` is called when it changes width (a rotated phone, a resized window). */
 export function createPlot(redraw: () => void): Plot {
-  const box = h('div', { class: 'chart' });
+  const strip = h('div', { class: 'readout', attrs: { 'aria-hidden': 'true', hidden: true } });
+  // For VoiceOver on a touch screen, which sends no arrow keys: its swipes move this input, and
+  // the input moves the cursor. It sits beside the chart, outside what each draw replaces.
+  const range = h('input', {
+    class: 'visually-hidden',
+    attrs: { type: 'range', tabindex: -1, min: 0, max: 0, step: 1, value: 0, hidden: true },
+  });
+  const box = h('div', { class: 'chart' }, range);
   const tip = h('div', { class: 'tip', attrs: { hidden: true, 'aria-hidden': 'true' } });
   const live = h('p', { class: 'visually-hidden', attrs: { 'aria-live': 'polite' } });
-  const element = h('div', { class: 'chart-wrap' }, box, tip);
+  const element = h('div', { class: 'plot' }, strip, h('div', { class: 'chart-wrap' }, box, tip));
+  redraws.add(redraw);
 
   /** The chart shown last, to keep the reader's place when it is drawn again. */
-  let current: { root: SVGSVGElement; key: () => number | null } | null = null;
+  let current: {
+    root: SVGSVGElement;
+    key: () => number | null;
+    show: (i: number, how: How) => void;
+  } | null = null;
+  /** The node each draw replaces: the chart, or the line said instead. */
+  let shown: Element | null = null;
+  /** The readout spec the strip was last measured with. */
+  let measured: ReadoutSpec | null = null;
 
   let lastWidth = 0;
   let frame = 0;
@@ -110,6 +282,41 @@ export function createPlot(redraw: () => void): Plot {
   const sized = (height: number) => {
     box.style.minHeight = `${String(height)}px`;
   };
+  const replace = (node: Element) => {
+    if (shown?.parentNode === box) shown.replaceWith(node);
+    else box.append(node);
+    shown = node;
+  };
+
+  const fillStrip = (content: TipContent) => {
+    strip.replaceChildren(
+      h('span', { class: 'readout-day', text: content.heading }),
+      ...rowsOf(content.rows, 'readout'),
+    );
+  };
+  const readoutOf = (spec: ReadoutSpec, i: number): TipContent => spec.readout?.(i) ?? spec.tip(i);
+
+  const fit = (spec: ReadoutSpec): number => {
+    measured = spec;
+    if (spec.count === 0) {
+      strip.hidden = true;
+      return 0;
+    }
+    strip.hidden = false;
+    strip.style.minHeight = '';
+    const stops = spec.longest?.() ?? [0, spec.from, spec.count - 1];
+    let tallest = 0;
+    for (const i of new Set(stops)) {
+      if (i < 0 || i >= spec.count) continue;
+      fillStrip(readoutOf(spec, i));
+      // Whole pixels, so a fraction can't shift the plot under the strip.
+      tallest = Math.max(tallest, Math.ceil(strip.getBoundingClientRect().height));
+    }
+    // Not laid out (hidden, or no layout at all): no height is fixed rather than a wrong one.
+    if (tallest > 0) strip.style.minHeight = `${String(tallest)}px`;
+    fillStrip(readoutOf(spec, Math.min(Math.max(spec.from, 0), spec.count - 1)));
+    return tallest;
+  };
 
   return {
     element,
@@ -117,10 +324,14 @@ export function createPlot(redraw: () => void): Plot {
     width: () => box.clientWidth || 640,
     empty: (text, height) => {
       current = null;
+      measured = null;
       tip.hidden = true;
+      strip.hidden = true;
+      range.hidden = true;
       sized(height);
-      box.replaceChildren(h('p', { class: 'empty', text }));
+      replace(h('p', { class: 'empty', text }));
     },
+    readout: fit,
     root: (f) => {
       const root = svg('svg', {
         width: f.width,
@@ -134,6 +345,7 @@ export function createPlot(redraw: () => void): Plot {
         class: 'chart-svg',
       });
       root.append(svg('desc', { id: f.descId }, f.desc));
+      range.setAttribute('aria-labelledby', f.labelledBy);
       return root;
     },
     show: (root, spec, height) => {
@@ -143,16 +355,20 @@ export function createPlot(redraw: () => void): Plot {
       sized(height);
       // Drawn at this width: the observer's next call, for the same width, has nothing to do.
       lastWidth = box.clientWidth;
-      const cursor = spec ? attachCursor(root, spec, { box, tip, live }) : null;
-      box.replaceChildren(root);
-      current = { root, key: () => cursor?.key() ?? null };
+      if (!spec) {
+        strip.hidden = true;
+        range.hidden = true;
+      } else if (measured !== spec) fit(spec);
+      const cursor = spec ? attachCursor(root, spec, { box, tip, live, range, strip: fillStrip }) : null;
+      replace(root);
+      current = cursor ? { root, key: cursor.key, show: cursor.show } : null;
       if (keep) {
         root.focus();
         // The same day, not the same position: a day added before it moves it along.
         if (spec && cursor && keep.key !== null) {
           for (let i = 0; i < spec.count; i++) {
             if (spec.stop(i).key === keep.key) {
-              cursor.show(i);
+              cursor.show(i, 'restore');
               break;
             }
           }
@@ -162,25 +378,77 @@ export function createPlot(redraw: () => void): Plot {
   };
 }
 
+/** What moved the cursor: a pointer (with where it is), a key, VoiceOver's range, or a redraw. */
+type How =
+  | { readonly by: 'pointer'; readonly type: string; readonly x: number; readonly y: number }
+  | 'key'
+  | 'range'
+  | 'restore';
+
 /** Wires the cursor to `root`; returns how to show a stop, and the key of the stop it is on. */
 function attachCursor(
   root: SVGSVGElement,
   spec: CursorSpec,
-  { box, tip, live }: { box: HTMLElement; tip: HTMLElement; live: HTMLElement },
-): { show: (i: number) => void; key: () => number | null } {
+  {
+    box,
+    tip,
+    live,
+    range,
+    strip,
+  }: {
+    box: HTMLElement;
+    tip: HTMLElement;
+    live: HTMLElement;
+    range: HTMLInputElement;
+    strip: (content: TipContent) => void;
+  },
+): { show: (i: number, how: How) => void; key: () => number | null } {
   const width = Number(root.getAttribute('width'));
   const rule = svg('line', { class: 'hoverline', y1: spec.top, y2: spec.bottom, visibility: 'hidden' });
-  const dot = svg('circle', { class: 'hoverdot', r: 5.5, visibility: 'hidden' });
+  const dot = svg('circle', { class: 'hoverdot', r: 6, visibility: 'hidden' });
   const outline = svg('rect', { class: 'hoverbox', rx: 3, visibility: 'hidden' });
+  const rest = Math.min(Math.max(spec.from, 0), Math.max(spec.count - 1, 0));
+  const readout = (i: number): TipContent => spec.readout?.(i) ?? spec.tip(i);
   let cursor = -1;
+
+  /** The range input says where the cursor is, in the strip's words. */
+  const tell = (i: number, content: TipContent) => {
+    range.value = String(i);
+    range.setAttribute('aria-valuetext', spoken(content));
+  };
+  range.hidden = spec.count === 0;
+  range.max = String(Math.max(0, spec.count - 1));
+  if (spec.count > 0) tell(rest, readout(rest));
+
   const hide = () => {
     rule.setAttribute('visibility', 'hidden');
     dot.setAttribute('visibility', 'hidden');
     outline.setAttribute('visibility', 'hidden');
     tip.hidden = true;
+    cursor = -1;
+    if (spec.count > 0) {
+      const content = readout(rest);
+      strip(content);
+      tell(rest, content);
+    }
   };
-  /** Shows the stop `i`; `announce` reads it out (keyboard only: the pointer would chatter). */
-  const show = (i: number, announce = false) => {
+
+  /** The tooltip beside the pointer (or the stop, for the keyboard), at least 16 px away. */
+  const place = (content: TipContent, x: number, y: number) => {
+    tip.replaceChildren(
+      h('div', { class: 'tip-title', text: content.heading }),
+      ...rowsOf(content.rows, 'tip'),
+    );
+    tip.hidden = false;
+    let left = x + 16;
+    if (left + tip.offsetWidth > box.clientWidth) left = Math.max(0, x - 16 - tip.offsetWidth);
+    let top = y - tip.offsetHeight - 16;
+    if (top < 0) top = y + 16;
+    tip.style.left = `${String(left)}px`;
+    tip.style.top = `${String(top)}px`;
+  };
+
+  const show = (i: number, how: How) => {
     if (i < 0 || i >= spec.count) {
       hide();
       return;
@@ -204,36 +472,29 @@ function attachCursor(
       dot.setAttribute('class', at.dot);
       dot.setAttribute('visibility', 'visible');
     }
-    const { heading, rows } = spec.tip(i);
-    tip.replaceChildren(
-      h('div', { class: 'tip-title', text: heading }),
-      ...rows.map((row) =>
-        h(
-          'div',
-          { class: 'tip-row' },
-          row.swatch ? h('span', { class: `swatch ${row.swatch}` }) : null,
-          h('span', { class: 'tip-name', text: row.name }),
-          h('span', { class: 'tip-value', text: row.value }),
-        ),
-      ),
-    );
-    tip.hidden = false;
-    let tipLeft = at.x + 14;
-    if (tipLeft + tip.offsetWidth > box.clientWidth) tipLeft = Math.max(0, at.x - 14 - tip.offsetWidth);
-    let tipTop = at.y - tip.offsetHeight - 12;
-    if (tipTop < 0) tipTop = at.y + 16;
-    tip.style.left = `${String(tipLeft)}px`;
-    tip.style.top = `${String(tipTop)}px`;
-    if (announce) live.textContent = `${heading}: ${rows.map((r) => `${r.name} ${r.value}`).join(', ')}`;
+    const content = readout(i);
+    strip(content);
+    tell(i, content);
+    // The tooltip is for a mouse (and the keyboard beside one): under a finger the strip says it.
+    const pointer = typeof how === 'object' ? how : null;
+    if (hoverFine() && (how === 'key' || pointer?.type === 'mouse'))
+      place(spec.tip(i), pointer ? pointer.x : at.x, pointer ? pointer.y : at.y);
+    else tip.hidden = true;
+    // Read out for the keyboard only: the pointer would chatter, and VoiceOver reads the range.
+    if (how === 'key') live.textContent = spoken(content);
+    if (pointer && pointer.type !== 'mouse') {
+      resting = { root, hide };
+    }
   };
+
   const point = (event: PointerEvent) => {
     const rect = root.getBoundingClientRect();
     const height = Number(root.getAttribute('height'));
     const px = rect.width > 0 ? ((event.clientX - rect.left) / rect.width) * width : event.clientX;
     const py = rect.height > 0 ? ((event.clientY - rect.top) / rect.height) * height : event.clientY;
-    show(spec.near(px, py));
+    show(spec.near(px, py), { by: 'pointer', type: event.pointerType, x: px, y: py });
   };
-  // On the whole chart, not just the plot area: a finger lands on a label or a line as often as
+  // On the whole chart, not just the plot area: a finger lands on a label or a margin as often as
   // on the space between. A tap shows the day too (touch has no hover); a drag across scrubs.
   root.addEventListener('pointermove', point);
   root.addEventListener('pointerdown', point);
@@ -253,9 +514,13 @@ function attachCursor(
     const jump = own ?? (key === 'Home' ? 0 : key === 'End' ? spec.count - 1 : null);
     if (step === 0 && jump === null) return;
     event.preventDefault();
-    show(Math.min(spec.count - 1, Math.max(0, jump ?? from + step)), true);
+    show(Math.min(spec.count - 1, Math.max(0, jump ?? from + step)), 'key');
   });
   root.addEventListener('blur', hide);
+  range.oninput = () => {
+    show(Number(range.value), 'range');
+  };
+  wireOutside();
   root.append(
     rule,
     dot,
@@ -269,20 +534,28 @@ function attachCursor(
     }),
   );
   return {
-    show: (i) => {
-      show(i);
-    },
+    show,
     key: () => (cursor >= 0 && cursor < spec.count ? spec.stop(cursor).key : null),
   };
 }
 
-/** The stop for the day under `px` on a time axis, from a list of days in order. */
+/**
+ * The stop nearest the day under `px` on a time axis, from a list of days in order: a tap between
+ * weigh-ins, or in a margin, snaps to the closest one, never to nothing (-1 only without days).
+ */
 export function nearDay(x: ScaleTime<number, number>, times: readonly Date[]): (px: number) => number {
-  const index = new Map<number, number>();
-  times.forEach((t, i) => {
-    if (!index.has(t.getTime())) index.set(t.getTime(), i);
-  });
-  return (px) => index.get(utcDay.round(x.invert(px)).getTime()) ?? -1;
+  const ms = times.map((t) => t.getTime());
+  const days = bisector((t: number) => t);
+  return (px) => {
+    if (ms.length === 0) return -1;
+    const t = x.invert(px).getTime();
+    const i = days.left(ms, t);
+    const next = ms[i];
+    const previous = ms[i - 1];
+    if (next === undefined) return ms.length - 1;
+    if (previous === undefined) return i;
+    return t - previous <= next - t ? i - 1 : i;
+  };
 }
 
 /** The left margin that fits the y labels. */
@@ -337,7 +610,18 @@ export function timeTicks(
   const monthly = (ticks: readonly Date[]) =>
     (ticks.length > 1 || (long && ticks.length === 1)) && ticks.every((t) => t.getUTCDate() === 1);
   let ticks = pick(74);
-  if (monthly(ticks)) return { ticks, style: 'monthYear' };
+  if (monthly(ticks)) {
+    // A narrow chart may hold more months than the rough spacing gives (one "Jan 2026" alone on
+    // a phone): as many as fit with room between their labels.
+    const room = textWidth('Sept 2026') + 12;
+    const fits = (list: readonly Date[]) =>
+      list.every((t, i) => i === 0 || x(t) - x(list[i - 1] ?? t) >= room);
+    for (let n = ticks.length + 1; n <= ticks.length + 6; n++) {
+      const more = x.ticks(n).filter((t) => +t === +utcDay.floor(t));
+      if (more.length > ticks.length && monthly(more) && fits(more)) ticks = more;
+    }
+    return { ticks, style: 'monthYear' };
+  }
   if (!needsYear(from, to, today)) return { ticks, style: 'dayMonth' };
   // A day with its year is wider: fewer of them.
   ticks = pick(100);

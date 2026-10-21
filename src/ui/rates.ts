@@ -606,7 +606,7 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
             {
               name: d.rate >= 0 ? m['rate.tip.loss'] : m['rate.tip.gain'],
               value: gap > 1 ? m['rate.tip.perDay'](pct) : pct,
-              swatch: d.rate >= 0 ? 'sw-ok' : 'sw-bad',
+              swatch: d.rate >= 0 ? 'sw-ok' : 'sw-up',
             },
             {
               name: m['rate.tip.change'],

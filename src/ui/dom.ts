@@ -54,9 +54,9 @@ export function rich(text: string): (string | HTMLElement)[] {
   return text.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 === 1 ? h('b', { text: part }) : part));
 }
 
-/** Text with a tone for a change in weight: good when it falls, bad when it rises. */
+/** Text with a tone for a change in weight: its direction, down when it falls, up when it rises. */
 export function tone(text: string, change: number | null, flat = 0): HTMLElement {
-  const kind = change === null || Math.abs(change) <= flat ? 'flat' : change < 0 ? 'good' : 'bad';
+  const kind = change === null || Math.abs(change) <= flat ? 'flat' : change < 0 ? 'down' : 'up';
   return h('span', { class: `tone-${kind}`, text });
 }
 
@@ -69,18 +69,20 @@ export interface Chip<T> {
 
 /**
  * A row of toggle buttons (aria-pressed): `isOn` says which are pressed, `onPick` is called with the
- * one clicked. Returns the row and a function to bring the pressed states up to date.
+ * one clicked. Returns the row and a function to bring the pressed states up to date. `kind` draws
+ * them as chips, or as a segmented control (one choice of a few, sharing the row's width).
  */
 export function chips<T>(
   label: string,
   items: readonly Chip<T>[],
   isOn: (value: T) => boolean,
   onPick: (value: T) => void,
+  kind: 'chips' | 'segmented' = 'chips',
 ): { element: HTMLElement; sync: () => void } {
   const buttons = items.map((item) => {
     const button = h(
       'button',
-      { class: 'chip', attrs: { type: 'button' } },
+      { class: kind === 'chips' ? 'chip' : 'segment', attrs: { type: 'button' } },
       item.swatch ? h('span', { class: `swatch ${item.swatch}`, attrs: { 'aria-hidden': 'true' } }) : null,
       item.label,
     );
@@ -95,7 +97,7 @@ export function chips<T>(
   sync();
   const element = h(
     'div',
-    { class: 'chips', attrs: { role: 'group', 'aria-label': label } },
+    { class: kind, attrs: { role: 'group', 'aria-label': label } },
     ...buttons.map((b) => b.button),
   );
   return { element, sync };

@@ -16,6 +16,7 @@ export type DayStyle =
   | 'weekdayNarrow'
   | 'dayMonthShort'
   | 'weekdayDayMonth'
+  | 'weekdayDayMonthYear'
   | 'weekdayDayMonthLong';
 
 const DAY_OPTIONS: Record<DayStyle, Intl.DateTimeFormatOptions> = {
@@ -31,6 +32,8 @@ const DAY_OPTIONS: Record<DayStyle, Intl.DateTimeFormatOptions> = {
   dayMonthShort: { day: 'numeric', month: 'short' },
   /** "Mon, 19 Oct". */
   weekdayDayMonth: { weekday: 'short', day: 'numeric', month: 'short' },
+  /** "Mon, 19 Oct 2025": a chart's readout, for a day of another year. */
+  weekdayDayMonthYear: { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' },
   /** "Wednesday 21 October". */
   weekdayDayMonthLong: { weekday: 'long', day: 'numeric', month: 'long' },
 };

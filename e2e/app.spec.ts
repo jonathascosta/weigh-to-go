@@ -20,7 +20,7 @@ test('logs a weigh-in, and shows it in the summary and the log', async ({ page }
   await page.getByRole('button', { name: 'Save', exact: true }).first().click();
   await expect(page.locator('#entry-saved')).toContainText('Saved: 82.4 kg');
   await expect(page.locator('section[aria-labelledby="log-title"] tbody')).toContainText('82.4');
-  await expect(page.locator('.take')).toContainText('First weigh-in logged: 82.4 kg.');
+  await expect(page.locator('#view-today .take')).toContainText('First weigh-in logged: 82.4 kg.');
   await check();
 });
 
@@ -119,7 +119,7 @@ test('reads the main chart day by day with the keyboard', async ({ page }) => {
   await chart.focus();
   await page.keyboard.press('ArrowLeft');
   const lastButOne = await live.textContent();
-  expect(lastButOne).toMatch(/: Weight \d+\.\d kg/);
+  expect(lastButOne).toMatch(/: \d+\.\d kg/);
   await page.keyboard.press('Home');
   await expect(live).not.toHaveText(lastButOne ?? '');
   await page.keyboard.press('ArrowRight');

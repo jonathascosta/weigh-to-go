@@ -42,7 +42,7 @@ describe('pctKpiList', () => {
     expect(k[4]!.sub).toEqual(['Todo o período: ', { text: 'acima de 1% por semana', tone: null }]);
     // 10% is 90 kg, 4.2 kg away at 0.2 a day: 21 days after 2026-09-30.
     expect(k[5]!.sub).toEqual(['previsto para 21 de out. de 2026']);
-    expect(k[0]!.tone).toBe('good');
+    expect(k[0]!.tone).toBe('down');
   });
 
   it('shows the goal in % and the way covered instead of the next milestone', () => {
@@ -95,12 +95,12 @@ describe('pctKpiList', () => {
     const within = analyze(series(30, 0.1))!;
     expect(pctKpiList(within, 'linear', null, en)[4]!.sub[1]).toEqual({
       text: 'within the 0.5% to 1% range',
-      tone: 'good',
+      tone: 'down',
     });
     const rising = analyze(series(30, -0.1))!;
     expect(pctKpiList(rising, 'linear', null, en)[4]!.sub[1]).toEqual({
       text: 'weight rising at this pace',
-      tone: 'bad',
+      tone: 'up',
     });
   });
 });

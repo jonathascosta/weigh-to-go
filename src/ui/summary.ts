@@ -1,11 +1,16 @@
 /**
  * The diary's summary: the period and the sentence that says where the reader stands, and the six
- * key figures under it. The texts are worked out by pure functions (tested), then put on the page.
+ * key figures under it. On a phone, Today has a short line and three of the figures, and Progress
+ * the period, the full sentence and all six (docs/ux/design.md §2); on the desktop, Today keeps the
+ * full sentence and the six. The texts are worked out by pure functions (tested), then put on the
+ * page.
  */
 import { FLAT_KG, STABLE_KG_PER_WEEK, type Analysis } from '../analysis/analyze';
+import { localToday } from '../analysis/dates';
 import type { State } from '../app/app';
 import { count, type Settings } from '../i18n';
 import { h, rich, tone } from './dom';
+import { remPx } from './plot';
 
 /**
  * A day as short as it can be read: day and month when the data all falls in the year of `last`,
@@ -56,11 +61,35 @@ export function takeLine(state: State, s: Settings): string {
   });
 }
 
-export type Tone = 'good' | 'bad' | null;
+/**
+ * Today's short line (design §2): the change since the first weigh-in, signed, and the weekly pace
+ * over the whole period, in one sentence of at most two lines. The first weigh-in is greeted as
+ * the full sentence greets it.
+ */
+export function todayTake(state: State, s: Settings): string {
+  const { analysis } = state;
+  if (state.status === 'loading') return '';
+  if (!analysis) return s.messages['summary.start'];
+  const { summary, models, last } = analysis;
+  const { format: f, weightUnit: unit } = s;
+  if (summary.n < 2) return s.messages['summary.first'](f.weight(last.kg, unit));
+  const linear = models.linear;
+  return s.messages['today.take']({
+    change: f.weightChange(-summary.loss, unit),
+    from: f.day(summary.first.date, 'medium'),
+    pace: linear ? f.weight(Math.abs(linear.slope * 7), unit, 2) : null,
+  });
+}
 
-/** The tone of a change: good when it falls by more than `flat`, bad when it rises. */
+/** A change's direction: down when it falls by more than `flat`, up when it rises by more. */
+export type Tone = 'down' | 'up' | null;
+
+/**
+ * The tone of a change: its direction, shown in blue for a fall and orange for a rise, with the
+ * sign always there too (colour is never the only signal).
+ */
 export const toneOf = (change: number, flat: number): Tone =>
-  Math.abs(change) <= flat ? null : change < 0 ? 'good' : 'bad';
+  Math.abs(change) <= flat ? null : change < 0 ? 'down' : 'up';
 
 /** A part of the line under a key figure: text, a change shown with its tone, or text with a tone. */
 export type KpiPart =
@@ -73,7 +102,7 @@ export interface Kpi {
   readonly label: string;
   readonly value: string;
   readonly unit: string | null;
-  /** The value's tone: a loss is good, a gain bad; null for none (or too small to matter). */
+  /** The value's direction: a loss is down, a gain up; null for none (or too small to matter). */
   readonly tone: Tone;
   /** The line under the value. */
   readonly sub: readonly KpiPart[];
@@ -198,12 +227,51 @@ export function kpis(analysis: Analysis | null, s: Settings): Kpi[] {
   ];
 }
 
-/** Puts the summary and key figures on the page, and keeps them current. */
-export function renderSummary(target: { period: HTMLElement; take: HTMLElement; kpis: HTMLElement }) {
+/** The three key figures Today shows on a phone: 7-day average, Total loss and Average pace. */
+export function todayKpis(analysis: Analysis | null, s: Settings): Kpi[] {
+  const all = kpis(analysis, s);
+  return [3, 1, 2].flatMap((i) => {
+    const k = all[i];
+    return k ? [k] : [];
+  });
+}
+
+/**
+ * Today's summary: the date, then on a phone the short line and three figures, and on the desktop
+ * the full sentence and all six. `wide` says which, read on every draw.
+ */
+export function renderToday(
+  target: { date: HTMLElement; take: HTMLElement; kpis: HTMLElement },
+  wide: () => boolean,
+) {
+  return (state: State, s: Settings): void => {
+    const isWide = wide();
+    target.date.textContent = s.format.day(localToday(), 'weekdayDayMonthLong');
+    target.take.replaceChildren(...rich(isWide ? takeLine(state, s) : todayTake(state, s)));
+    target.kpis.setAttribute('aria-label', s.messages['kpi.label']);
+    target.kpis.classList.toggle('kpis-three', !isWide);
+    target.kpis.replaceChildren(...kpiTiles(isWide ? kpis(state.analysis, s) : todayKpis(state.analysis, s)));
+  };
+}
+
+/** Progress's summary, on a phone: the period, the full sentence and the six key figures. */
+export function renderProgress(target: { period: HTMLElement; take: HTMLElement; kpis: HTMLElement }) {
   return (state: State, s: Settings): void => {
     target.period.textContent = periodLine(state, s);
     target.take.replaceChildren(...rich(takeLine(state, s)));
     target.kpis.setAttribute('aria-label', s.messages['kpi.label']);
     target.kpis.replaceChildren(...kpiTiles(kpis(state.analysis, s)));
   };
+}
+
+/**
+ * Stacks a row of figures as a list (the class `kpis-stacked`) while it is narrower than `rem` rem:
+ * at 320 px, or with large text. A width check, since container queries need Safari 16.
+ */
+export function stackBelow(row: HTMLElement, rem: number): void {
+  if (typeof ResizeObserver !== 'function') return;
+  new ResizeObserver(() => {
+    const width = row.getBoundingClientRect().width;
+    if (width > 0) row.classList.toggle('kpis-stacked', width < rem * remPx());
+  }).observe(row);
 }

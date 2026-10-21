@@ -28,6 +28,15 @@ export interface SummaryParts {
   readonly avg7: string | null;
 }
 
+/** The parts of Today's short line, formatted. */
+export interface TodayParts {
+  /** The change since the first weigh-in, signed: "−7.3 kg". */
+  readonly change: string;
+  readonly from: string;
+  /** The weekly pace over the whole period, without a sign; null without one. */
+  readonly pace: string | null;
+}
+
 /** The parts of the line under the chart, formatted. */
 export interface ProjectionParts {
   readonly method: string;
@@ -333,6 +342,13 @@ export const en = {
   'summary.first': (weight: string) =>
     `First weigh-in logged: **${weight}**. Keep logging to see your trend and projections.`,
   'summary.take': enSummary,
+  'today.take': (p: TodayParts) =>
+    p.pace === null
+      ? `**${p.change}** since ${p.from}.`
+      : `**${p.change}** since ${p.from}, about ${p.pace} a week.`,
+  'today.spark': 'Last 30 days',
+  'today.sparkMore': 'Progress',
+  'today.sparkLink': 'Last 30 days, see Progress',
 
   'kpi.label': 'Key figures',
   'kpi.current': 'Current weight',
@@ -404,10 +420,18 @@ export const en = {
   'paste.word.line': { one: 'line', other: 'lines' },
 
   'chart.title': 'Weight over time',
-  'chart.note': (unit: string) =>
-    `Daily weigh-ins in ${unit}. Turn layers on and off to clear the chart or enrich it.`,
   'chart.layers': 'Layers',
-  'chart.essential': 'Just the essentials',
+  'chart.options': 'Chart options',
+  'chart.view': 'View',
+  'chart.done': 'Done',
+  'preset.essential': 'Essential',
+  'preset.detailed': 'Detailed',
+  'preset.custom': 'Custom',
+  'preset.note.essential': 'Weigh-ins, the 7-day average, the projection and the goal.',
+  'preset.note.detailed': 'Adds the daily line, the projection range, highest and lowest, and hiccups.',
+  'preset.note.custom': 'Your own choice of layers, kept on this device.',
+  'chart.estimate': 'estimate',
+  'chart.rangeLabel': (lo: string, hi: string) => `likely ${lo} to ${hi}`,
   'chart.everything': 'All on',
   'chart.method': 'Projection',
   'chart.horizon': 'Horizon',
@@ -1109,6 +1133,13 @@ export const pt: Messages = {
   'summary.first': (weight: string) =>
     `Primeira pesagem registrada: **${weight}**. Continue registrando para ver sua tendência e projeções.`,
   'summary.take': ptSummary,
+  'today.take': (p: TodayParts) =>
+    p.pace === null
+      ? `**${p.change}** desde ${p.from}.`
+      : `**${p.change}** desde ${p.from}, cerca de ${p.pace} por semana.`,
+  'today.spark': 'Últimos 30 dias',
+  'today.sparkMore': 'Progresso',
+  'today.sparkLink': 'Últimos 30 dias, ver Progresso',
 
   'kpi.label': 'Indicadores',
   'kpi.current': 'Peso atual',
@@ -1185,10 +1216,18 @@ export const pt: Messages = {
   'paste.word.line': { one: 'linha', other: 'linhas' },
 
   'chart.title': 'Evolução do peso',
-  'chart.note': (unit: string) =>
-    `Pesagens diárias em ${unit}. Ligue e desligue as camadas para limpar ou enriquecer o gráfico.`,
   'chart.layers': 'Camadas',
-  'chart.essential': 'Só o essencial',
+  'chart.options': 'Opções do gráfico',
+  'chart.view': 'Visualização',
+  'chart.done': 'Concluir',
+  'preset.essential': 'Essencial',
+  'preset.detailed': 'Detalhado',
+  'preset.custom': 'Personalizado',
+  'preset.note.essential': 'Pesagens, média de 7 dias, projeção e meta.',
+  'preset.note.detailed': 'Acrescenta a linha diária, a faixa da projeção, máxima e mínima, e os soluços.',
+  'preset.note.custom': 'Sua escolha de camadas, guardada neste aparelho.',
+  'chart.estimate': 'estimativa',
+  'chart.rangeLabel': (lo: string, hi: string) => `provavelmente entre ${lo} e ${hi}`,
   'chart.everything': 'Ligar tudo',
   'chart.method': 'Projeção',
   'chart.horizon': 'Horizonte',

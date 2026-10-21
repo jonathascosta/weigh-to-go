@@ -183,13 +183,13 @@ export function mountVariation(
       h(
         'span',
         {},
-        h('span', { class: 'swatch sw-bad', attrs: { 'aria-hidden': 'true' } }),
+        h('span', { class: 'swatch sw-up', attrs: { 'aria-hidden': 'true' } }),
         m['variation.up'],
       ),
       h(
         'span',
         {},
-        h('span', { class: 'swatch sw-bad sw-faded', attrs: { 'aria-hidden': 'true' } }),
+        h('span', { class: 'swatch sw-up sw-faded', attrs: { 'aria-hidden': 'true' } }),
         m['variation.gap'],
       ),
     );

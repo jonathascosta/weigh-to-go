@@ -55,10 +55,10 @@ import { kpiTiles, missing, toneOf, type Kpi, type Tone } from './summary';
 export { lostPct };
 
 const BAND_TONE: Record<PaceBand, Tone> = {
-  rising: 'bad',
+  rising: 'up',
   flat: null,
   below: null,
-  within: 'good',
+  within: 'down',
   above: null,
 };
 
@@ -763,12 +763,12 @@ export function mountPercent(
         h(
           'tr',
           {},
-          h('th', { class: row.goal ? 'tone-good' : '', attrs: { scope: 'row' }, text: row.name }),
+          h('th', { class: row.goal ? 'tone-down' : '', attrs: { scope: 'row' }, text: row.name }),
           h('td', { class: 'num col-wide', text: row.target }),
           'reached' in row.status
             ? h(
                 'td',
-                { class: 'tone-good' },
+                { class: 'tone-down' },
                 h('span', { class: 'day-long', text: m['pct.ms.reached'](row.status.reached.long) }),
                 h('span', { class: 'day-short', text: m['pct.ms.reached'](row.status.reached.short) }),
               )
@@ -776,7 +776,7 @@ export function mountPercent(
           ...METHODS.map((k) => {
             const v = row.by[k];
             if (v === null) return h('td', { class: col(k), text: '—' });
-            if (v === 'never') return h('td', { class: `${col(k)} tone-bad`, text: m['pct.ms.never'] });
+            if (v === 'never') return h('td', { class: `${col(k)} tone-up`, text: m['pct.ms.never'] });
             return h('td', { class: col(k) }, ...dayCell(v));
           }),
         ),

@@ -32,7 +32,7 @@ describe('rateKpiList', () => {
     expect(k[0]!.sub).toEqual(['≈ 1,39% por semana, composto']);
     expect(k[1]!.sub).toEqual(['regressão sobre todos os dias · R² 1,00']);
     expect(k[3]!.sub).toEqual(['no início, a mesma taxa dava 0,200 kg por dia']);
-    expect(k[0]!.tone).toBe('good');
+    expect(k[0]!.tone).toBe('down');
   });
 
   it('shows weights in lb', () => {
@@ -47,7 +47,7 @@ describe('rateKpiList', () => {
     expect(two.every((x) => x.value === '—' && x.sub[0] === 'needs 3 weigh-ins')).toBe(true);
     const gaining = rateKpiList(analyze(constant(30, -0.1))!, en);
     expect(gaining.map((x) => x.label)).toEqual(['Mean rate over the period', 'Fitted rate', 'Last 3 weeks']);
-    expect(gaining[0]!.tone).toBe('bad');
+    expect(gaining[0]!.tone).toBe('up');
   });
 });
 
