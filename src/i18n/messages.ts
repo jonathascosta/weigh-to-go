@@ -795,7 +795,7 @@ export const en = {
     `One notification a day at this time, none on a day already logged. Reminders stop after ${days} days without opening the app.`,
   'reminder.denied':
     'Notifications for Weigh to Go are off. Turn them on in Settings › Notifications › Weigh to Go and come back: the reminder starts by itself.',
-  'reminder.failed': "Couldn't set the reminders. Try again.",
+  'reminder.failed': "Couldn't set the reminders. The app tries again when you come back to it.",
   'reminder.notificationTitle': 'Daily weigh-in',
   'reminder.notificationBody': 'Time for today’s weigh-in.',
   'notice.reloadButton': 'Reload',
@@ -1434,7 +1434,7 @@ export const pt: Messages = {
     `Uma notificação por dia neste horário, nenhuma num dia já registrado. Os lembretes param depois de ${days} dias sem abrir o app.`,
   'reminder.denied':
     'As notificações do Weigh to Go estão desligadas. Ligue-as em Ajustes › Notificações › Weigh to Go e volte: o lembrete começa sozinho.',
-  'reminder.failed': 'Não foi possível programar os lembretes. Tente de novo.',
+  'reminder.failed': 'Não foi possível programar os lembretes. O app tenta de novo quando você voltar a ele.',
   'reminder.notificationTitle': 'Pesagem do dia',
   'reminder.notificationBody': 'Hora da pesagem de hoje.',
   'notice.reloadButton': 'Recarregar',

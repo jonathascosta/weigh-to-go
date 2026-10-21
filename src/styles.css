@@ -402,17 +402,25 @@ main {
 
 .check {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   min-height: 44px;
+  padding-top: 11px;
   margin-top: 10px;
 }
 
+/* The box keeps its size beside a label of several lines, on the label's first line. */
 .check input {
-  width: 22px;
-  height: 22px;
+  flex: none;
+  width: 1.375em;
+  height: 1.375em;
   margin: 0;
   accent-color: var(--accent);
+}
+
+.card .field input[type='time'],
+.card .field select {
+  max-width: 20rem;
 }
 
 .with-unit {
