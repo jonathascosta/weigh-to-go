@@ -58,6 +58,13 @@ to rename.
    share sheet (Files, AirDrop, Mail), since a web view can't download, and the import opens the
    Files picker. The backup reminder counts from a completed share.
 
+   As built: columns `date`, `weight_<unit>`, `change_<unit>`, `average_7_days_<unit>`,
+   `trend_<unit>`, `lost_pct`, `saved_at` (named in the reader's language), weights in the reader's
+   unit, a byte order mark and CRLF line ends; the format is the reader's choice (semicolons and a
+   decimal comma, or commas and a decimal point), automatic by default from the locale. To check on
+   the first TestFlight build (story 7): the import opens the Files picker, and the share sheet saves
+   to Files.
+
 4. **A daily reminder.** Local notifications (Capacitor Local Notifications): off until the person
    turns it on and picks a time, which is when iOS asks for permission; the text in the person's
    language; tapping it opens the weigh-in. One notification a day for the next 30 days (iOS keeps at

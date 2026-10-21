@@ -13,7 +13,10 @@ Content Security Policy backs that up: it loads nothing from other sites and for
 sending anything (no fetch, XHR, WebSocket or beacon). Trusted Types allow one policy, for the
 service worker's own URL and nothing else. The only server involved, GitHub Pages, serves
 the files and sees the usual request logs, never your data. Clearing your browser's site data deletes
-your weigh-ins, so export a backup now and then.
+your weigh-ins, so export a backup now and then (Your data → Export backup, a JSON file the diary can
+import again). Your data → Export CSV saves the weigh-ins for a spreadsheet, with semicolons and a
+decimal comma or commas and a decimal point, as you choose. Both are made in the page and downloaded:
+nothing is sent anywhere.
 
 ## Installing and offline use
 
@@ -77,7 +80,7 @@ Work is planned in the repository's issues and milestones, one story per pull re
 
 The same pages, built with `npm run build:ios` (Vite's `ios` mode, into `dist-ios/`, without the
 service worker) and wrapped with Capacitor 8 in `ios/`, an Xcode project with Swift Package Manager.
-`npm run ios:sync` builds and copies them into the project. Nobody here has a Mac: the **iOS**
+`npm run ios:sync` builds and copies them into the project. In the app, a web view can't download, so the backup and the CSV go out through iOS's share sheet (Files, AirDrop, Mail), written briefly to the app's cache and deleted once the sheet closes. Nobody here has a Mac: the **iOS**
 workflow builds the app for the simulator on GitHub's macOS runners when native files change, opens
 it there and fails on a script error or a policy violation in its web view; the **TestFlight**
 workflow, run by hand from the Actions tab on `main`, signs it and uploads it with fastlane

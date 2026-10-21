@@ -14,7 +14,7 @@ import {
   parseBackup,
   type ParsedBackup,
 } from '../data/backup';
-import { createCsv, csvFileName } from '../data/csv';
+import { CSV_FORMATS, createCsv, csvFileName, csvFormatPref, csvSeparators } from '../data/csv';
 import { choose, count, settings, type Settings } from '../i18n';
 import { saveFile } from '../platform/save';
 import { h } from './dom';
@@ -58,7 +58,14 @@ async function exportCsv(app: App, s: Settings): Promise<string | null> {
   const { weighIns, analysis } = app.state();
   const file = csvFileName(localToday(new Date()));
   const savedAt = new Map(weighIns.map((w) => [w.date, w.savedAt]));
-  const text = createCsv(analysis?.series ?? [], savedAt, s.weightUnit, s.locale.tag);
+  const text = createCsv(
+    analysis?.series ?? [],
+    savedAt,
+    s.weightUnit,
+    s.locale.tag,
+    s.messages['csv.headers'],
+    csvFormatPref.read(),
+  );
   return (await saveFile(file, text, 'text/csv')) ? file : null;
 }
 
@@ -72,6 +79,12 @@ export function mountData(
   const last = h('p', { class: 'note' });
   const exportButton = h('button', { class: 'button', attrs: { type: 'button' } });
   const csvButton = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
+  const csvLabel = h('label', { attrs: { for: 'data-csv-format' } });
+  const csvFormat = h('select', { attrs: { id: 'data-csv-format' } });
+  csvFormat.addEventListener('change', () => {
+    const value = CSV_FORMATS.find((f) => f === csvFormat.value);
+    if (value) csvFormatPref.write(value);
+  });
   // The file input stays out of the tab order and out of sight: a real button opens it, so the
   // control the keyboard lands on is the one the reader sees.
   const fileInput = h('input', {
@@ -96,11 +109,17 @@ export function mountData(
   container.replaceChildren(
     h('div', { class: 'card-head' }, h('div', {}, title, note, last)),
     h('div', { class: 'actions' }, exportButton, csvButton, fileInput, importButton, eraseButton),
+    h('div', { class: 'field' }, csvLabel, csvFormat),
     panel,
   );
 
+  /** Whether an export is under way: one at a time (the share sheet takes only one). */
+  let exporting = false;
   /** Runs an export and says how it went: saved, cancelled (nothing said) or failed. */
   const runExport = async (save: () => Promise<string | null>) => {
+    if (exporting) return;
+    exporting = true;
+    render(app.state(), settings());
     try {
       const file = await save();
       if (file !== null) {
@@ -113,6 +132,8 @@ export function mountData(
       panel.replaceChildren(
         h('p', { class: 'status status-bad', text: settings().messages['data.exportFailed'] }),
       );
+    } finally {
+      exporting = false;
     }
     render(app.state(), settings());
   };
@@ -131,12 +152,17 @@ export function mountData(
       text: settings().messages['data.export'],
     });
     button.addEventListener('click', () => {
+      button.disabled = true;
       void exportBackup(app).then(
         (file) => {
           button.disabled = file !== null;
         },
         (error: unknown) => {
           console.error(error);
+          button.disabled = false;
+          button.after(
+            h('p', { class: 'status status-bad', text: settings().messages['data.exportFailed'] }),
+          );
         },
       );
     });
@@ -356,9 +382,23 @@ export function mountData(
         ? m['data.neverBackedUp']
         : m['data.lastBackup'](s.format.day(localToday(new Date(when)), 'medium'));
     exportButton.textContent = m['data.export'];
-    exportButton.disabled = state.status === 'loading';
+    exportButton.disabled = state.status === 'loading' || exporting;
     csvButton.textContent = m['data.exportCsv'];
-    csvButton.disabled = state.status === 'loading' || state.weighIns.length === 0;
+    csvLabel.textContent = m['data.csvFormat'];
+    const auto = csvSeparators(s.locale.tag);
+    csvFormat.replaceChildren(
+      ...CSV_FORMATS.map((f) =>
+        h('option', {
+          attrs: { value: f },
+          text:
+            f === 'auto'
+              ? m['data.csvFormat.auto'](`${auto.field} ${auto.decimal}`)
+              : m[f === 'semicolon' ? 'data.csvFormat.semicolon' : 'data.csvFormat.comma'],
+        }),
+      ),
+    );
+    csvFormat.value = csvFormatPref.read();
+    csvButton.disabled = state.status === 'loading' || state.weighIns.length === 0 || exporting;
     importButton.textContent = m['data.import'];
     importButton.disabled = state.status === 'loading';
     eraseButton.textContent = m['data.erase'];

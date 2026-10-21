@@ -1,23 +1,50 @@
 /**
  * The weigh-ins as a CSV file for a spreadsheet: one row a day, oldest first, with what the diary
- * works out for each day. Weights are in the reader's unit, and the separators follow the reader's
- * locale, so the file opens as columns in a spreadsheet set to that locale: a decimal comma with a
- * semicolon between fields, a decimal point with a comma.
+ * works out for each day. Weights are in the reader's unit and the headers in the reader's language.
+ * Two formats: a decimal comma with a semicolon between fields (what Excel expects in Portuguese and
+ * most of Europe) or a decimal point with a comma; "auto" picks the one the reader's locale uses, and
+ * the reader can choose the other.
  */
-import type { Day } from '../analysis/analyze';
+import { lostPct, type Day } from '../analysis/analyze';
+import { pref } from './prefs';
 import { fromKg, type WeightUnit } from '../units';
 
-/** The separators a locale's spreadsheets expect. */
-export function csvSeparators(localeTag: string): { decimal: string; field: string } {
+export type CsvFormat = 'auto' | 'semicolon' | 'comma';
+export const CSV_FORMATS = ['auto', 'semicolon', 'comma'] as const satisfies readonly CsvFormat[];
+/** The reader's choice of format, kept as a screen preference. */
+export const csvFormatPref = pref(
+  'csvFormat',
+  (v: unknown): v is CsvFormat => typeof v === 'string' && (CSV_FORMATS as readonly string[]).includes(v),
+  'auto',
+);
+
+/** The column names, in the reader's language (from the dictionary). */
+export interface CsvHeaders {
+  readonly date: string;
+  readonly weight: string;
+  readonly change: string;
+  readonly average7: string;
+  readonly trend: string;
+  readonly lostPct: string;
+  readonly savedAt: string;
+}
+
+/** The separators a format writes; "auto" asks the locale. */
+export function csvSeparators(
+  localeTag: string,
+  format: CsvFormat = 'auto',
+): { decimal: string; field: string } {
+  if (format === 'semicolon') return { decimal: ',', field: ';' };
+  if (format === 'comma') return { decimal: '.', field: ',' };
   const decimal =
     new Intl.NumberFormat(localeTag).formatToParts(1.5).find((p) => p.type === 'decimal')?.value ?? '.';
   return decimal === ',' ? { decimal: ',', field: ';' } : { decimal: '.', field: ',' };
 }
 
 /**
- * The CSV text: a header row, then each day's date (YYYY-MM-DD), weight, change from the previous
- * weigh-in, 7-day average and smoothed trend in `unit`, % lost since the first weigh-in, and when it
- * was saved (ISO, empty when unknown). Starts with a byte order mark so spreadsheets read it as UTF-8,
+ * The CSV text: a header row (`headers`, the weights' columns ending in the unit), then each day's
+ * date (YYYY-MM-DD), weight, change from the previous weigh-in, 7-day average and smoothed trend in
+ * `unit`, % lost since the first weigh-in, and when it was saved (ISO, empty when unknown). Starts with a byte order mark so spreadsheets read it as UTF-8,
  * and ends rows with CRLF, as RFC 4180 does.
  */
 export function createCsv(
@@ -25,19 +52,25 @@ export function createCsv(
   savedAt: ReadonlyMap<string, string>,
   unit: WeightUnit,
   localeTag: string,
+  headers: CsvHeaders,
+  format: CsvFormat = 'auto',
 ): string {
-  const { decimal, field } = csvSeparators(localeTag);
-  const num = (value: number | null, digits: number): string =>
-    value === null || !Number.isFinite(value) ? '' : value.toFixed(digits).replace('.', decimal);
+  const { decimal, field } = csvSeparators(localeTag, format);
+  const num = (value: number | null, digits: number): string => {
+    if (value === null || !Number.isFinite(value)) return '';
+    // A change that rounds to nothing is 0.0, never -0.0.
+    const rounded = Number(value.toFixed(digits));
+    return (rounded === 0 ? 0 : rounded).toFixed(digits).replace('.', decimal);
+  };
   const w = (kg: number | null) => (kg === null ? null : fromKg(kg, unit));
   const head = [
-    'date',
-    `weight_${unit}`,
-    `change_${unit}`,
-    `average_7_days_${unit}`,
-    `trend_${unit}`,
-    'lost_pct',
-    'saved_at',
+    headers.date,
+    `${headers.weight}_${unit}`,
+    `${headers.change}_${unit}`,
+    `${headers.average7}_${unit}`,
+    `${headers.trend}_${unit}`,
+    headers.lostPct,
+    headers.savedAt,
   ];
   const first = series[0]?.kg;
   const rows = series.map((d) =>
@@ -47,7 +80,7 @@ export function createCsv(
       num(w(d.change), 1),
       num(w(d.avg7), 2),
       num(w(d.trend), 2),
-      first === undefined ? '' : num(((first - d.kg) / first) * 100, 2),
+      first === undefined ? '' : num(lostPct(d.kg, first), 2),
       savedAt.get(d.date) ?? '',
     ].join(field),
   );
