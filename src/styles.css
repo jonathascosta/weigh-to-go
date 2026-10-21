@@ -464,17 +464,18 @@ main {
   }
 
   /* The labels grow with the text up to 150% (19.5 px) and stop, as iOS's own tab bars do; a long
-     one wraps and the bar grows rather than cutting it off. */
+     one wraps between words and the bar grows rather than cutting it off. On the narrowest screens
+     they stop a little earlier (5vw, 16 px at 320 px), so a word like "Progresso" isn't split. */
   .tabs a {
     min-height: 56px;
     flex-direction: column;
     justify-content: center;
     gap: 2px;
     padding: 6px 2px;
-    font-size: min(0.8125rem, 19.5px);
+    font-size: min(0.8125rem, 19.5px, max(5vw, 13px));
     line-height: 1.1;
     text-align: center;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
 
   .tabs svg {
@@ -971,14 +972,14 @@ main {
   gap: 0;
 }
 
-/* The digits and the unit stop growing (30 px and 20 px), and so does the room kept for the unit,
-   so the longest weight, "1102.3" lb or "212.45", fits the 122 px field at 320 px at any text size
-   (#41), here and in the day sheet. */
+/* The digits and the unit stop growing (30 px and 20 px), and so does the room kept for the unit
+   (32 px, of which the unit needs at most 30), so the longest weight, "1102.3" lb or "212.45",
+   fits the 122 px field at 320 px at any text size, the app's 34 px cap included (#41). */
 .entry-form .with-unit input {
   width: 100%;
   min-width: 0;
   min-height: 56px;
-  padding: 6px min(2.75rem, 36px) 6px min(0.75rem, 12px);
+  padding: 6px min(2.75rem, 32px) 6px min(0.75rem, 10px);
   font-family: var(--f-num);
   font-size: min(1.75rem, 30px);
   font-weight: 500;
@@ -1021,16 +1022,23 @@ main {
 /* The saved notice, where the field was: what was saved, Undo for 10 seconds, then Change and
    Another day. */
 .saved {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 2px 10px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 8px 10px;
   margin-top: 10px;
   padding: 10px 10px 10px 12px;
   border-radius: 10px;
   background: var(--soft);
   position: relative;
   overflow: hidden;
+}
+
+/* The text takes the room; where there is too little beside it (320 px, large text), Undo goes
+   under it, on the right. */
+.saved-body {
+  flex: 1 1 8rem;
+  min-width: 0;
 }
 
 /* Focus lands here after Save so the text is read; a ring only for the keyboard. */
@@ -1044,7 +1052,9 @@ main {
 }
 
 .saved-icon {
-  grid-row: 1 / span 2;
+  flex: none;
+  align-self: flex-start;
+  margin-top: 2px;
   width: 24px;
   height: 24px;
   fill: none;
@@ -1063,14 +1073,14 @@ main {
 }
 
 .saved-sub {
-  grid-column: 2;
+  margin-top: 2px;
   font-size: 0.875rem;
   color: var(--muted);
 }
 
 .saved .undo {
-  grid-column: 3;
-  grid-row: 1 / span 2;
+  flex: none;
+  margin-left: auto;
   background: var(--panel);
 }
 

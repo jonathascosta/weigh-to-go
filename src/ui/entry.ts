@@ -178,8 +178,7 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
     'div',
     { class: 'saved', attrs: { tabindex: -1, id: 'entry-saved' } },
     checkIcon(),
-    h('p', { class: 'saved-text' }, savedText),
-    savedSub,
+    h('div', { class: 'saved-body' }, h('p', { class: 'saved-text' }, savedText), savedSub),
     undo,
     undoBar,
   );
