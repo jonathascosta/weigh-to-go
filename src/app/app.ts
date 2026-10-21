@@ -106,9 +106,12 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
     return state.store;
   };
 
-  /** After the first save, ask the browser to keep the data: never on load, since it may prompt. */
+  /**
+   * After the first save, ask the browser to keep the data: never on load, since it may prompt. Not
+   * in the iPhone app, whose own file needs no such request.
+   */
   const askPersistence = () => {
-    if (persistenceAsked.read()) return;
+    if (state.store?.kind === 'device' || persistenceAsked.read()) return;
     persistenceAsked.write(true);
     void requestPersistence();
   };

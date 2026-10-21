@@ -38,7 +38,10 @@ if (checkFrame(openLabel)) {
     watchSettings(window);
   }
   const appBox = document.getElementById('app');
-  if (appBox) mountDashboard(appBox, createApp());
+  // The iPhone app keeps the diary in a file of its own (platform/store-native.ts, loaded only in
+  // the app's build); the website in the browser's IndexedDB.
+  const openNative = async () => (await import('./platform/store-native')).openNativeStore();
+  if (appBox) mountDashboard(appBox, createApp(import.meta.env.MODE === 'ios' ? openNative : undefined));
   ready();
   // Offline use, in the built site only (the dev server's files change under it all the time, and
   // the iPhone app has its files on the phone and no service worker).

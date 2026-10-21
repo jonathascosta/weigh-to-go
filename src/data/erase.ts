@@ -14,7 +14,7 @@ export async function eraseEverything(store: Store, factory?: IDBFactory | null)
     try {
       await store.clear();
       // Without storage nothing ever reached the disk: clearing memory is all there is to erase.
-      cleared = store.kind === 'indexeddb' || store.reason === 'unsupported';
+      cleared = store.kind !== 'memory' || store.reason === 'unsupported';
     } catch {
       // Reached below, through the database itself.
     }

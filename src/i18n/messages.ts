@@ -790,6 +790,8 @@ export const en = {
   'update.ready': 'A new version of Weigh to Go is ready. Your weigh-ins stay where they are.',
   'install.empty':
     'This installed app keeps its own data, apart from the browser’s. If you have logged weigh-ins in the browser, export a backup there and import it here, under Your data.',
+  'install.emptyApp':
+    'If you have logged weigh-ins on weightogo.jonathas.net, export a backup there and import it here, under Your data.',
   'update.reload': 'Reload',
   'notice.noBackup':
     "Your weigh-ins live only in this browser. Export a backup, so they're safe if it clears its data.",
@@ -1417,6 +1419,8 @@ export const pt: Messages = {
   'update.ready': 'Uma nova versão do Weigh to Go está pronta. Suas pesagens continuam aqui.',
   'install.empty':
     'Este app instalado guarda os próprios dados, separados dos do navegador. Se você registrou pesagens no navegador, exporte um backup por lá e importe-o aqui, em Seus dados.',
+  'install.emptyApp':
+    'Se você registrou pesagens em weightogo.jonathas.net, exporte um backup por lá e importe-o aqui, em Seus dados.',
   'update.reload': 'Recarregar',
   'notice.noBackup':
     'Suas pesagens ficam guardadas só neste navegador. Exporte um backup, para que fiquem seguras se ele apagar seus dados.',

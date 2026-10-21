@@ -44,6 +44,16 @@ describe('createApp', () => {
     expect(persist).toHaveBeenCalledOnce();
   });
 
+  it('asks nothing of the browser in the iPhone app, whose file needs no such request', async () => {
+    const app = createApp(() => Promise.resolve({ ...memoryStore(), kind: 'device', reason: null }));
+    await settle();
+    await app.save([{ date: '2026-10-17', kg: 100 }]);
+    await settle();
+    const persist = (navigator as unknown as { storage: { persist: ReturnType<typeof vi.fn> } }).storage
+      .persist;
+    expect(persist).not.toHaveBeenCalled();
+  });
+
   it('passes on a refused save, changing nothing', async () => {
     const app = createApp(() => Promise.resolve(memoryStore()));
     await settle();
