@@ -38,3 +38,37 @@ for (const path of ['/', '/pt/', ...STATIC_PAGES]) {
     }
   }
 }
+
+// On a phone, Progress (the summary, the chart and its strip) and the chart's options sheet.
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`Progress and the chart's options sheet have no axe violations (${colorScheme}, phone)`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      colorScheme,
+      viewport: { width: 360, height: 780 },
+      hasTouch: true,
+      isMobile: true,
+      locale: 'en-US',
+    });
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.locator('body')).toHaveClass(/frame-checked/);
+    await loadBackup(page);
+    await page.locator('nav.tabs a[href="#progress"]').click();
+    const scan = async () => {
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'])
+        .analyze();
+      return results.violations.map((v) => ({
+        rule: v.id,
+        where: v.nodes.slice(0, 5).map((n) => n.target.join(' ')),
+      }));
+    };
+    expect(await scan()).toEqual([]);
+    await page.locator('#chart-options-button').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    expect(await scan()).toEqual([]);
+    await context.close();
+  });
+}

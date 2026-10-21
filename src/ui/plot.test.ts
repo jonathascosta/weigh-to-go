@@ -20,6 +20,20 @@ describe('the time axis', () => {
     expect(timeTicks(x, 150, today).style).toBe('monthYear');
   });
 
+  it('fits as many months as their labels leave room for', () => {
+    const x = scaleUtc([day('2025-10-21'), day('2026-10-20')], [0, 260]);
+    const roomy = timeTicks(x, 260, today, () => 40).ticks;
+    const long = timeTicks(x, 260, today, () => 100).ticks;
+    expect(roomy.length).toBeGreaterThan(long.length);
+    expect(long.length).toBeGreaterThan(0);
+    for (const list of [roomy, long]) {
+      const width = list === roomy ? 40 : 100;
+      list.forEach((t, i) => {
+        if (i > 0) expect(x(t) - x(list[i - 1]!)).toBeGreaterThanOrEqual(width + 8);
+      });
+    }
+  });
+
   it('gives days their year only when they need it', () => {
     expect(timeTicks(scaleUtc([day('2026-09-01'), day('2026-09-20')], [0, 600]), 600, today).style).toBe(
       'dayMonth',

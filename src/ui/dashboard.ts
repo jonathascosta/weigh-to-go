@@ -342,6 +342,8 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     // The empty diary opens on the intro and the weigh-in, with nothing to sum up yet.
     const empty = state.status === 'ready' && state.weighIns.length === 0;
     views.today.classList.toggle('is-empty', empty);
+    // Progress too: no sentence or figures to show, only the chart's line that says what comes.
+    views.progress.classList.toggle('is-empty', empty);
     emptyLinks.hidden = !empty;
     if (intro) {
       intro.hidden = !empty;

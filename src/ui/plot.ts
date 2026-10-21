@@ -10,7 +10,7 @@
 import { bisector } from 'd3-array';
 import { scaleUtc, type ScaleLinear, type ScaleTime } from 'd3-scale';
 import { utcDay } from 'd3-time';
-import type { Formatter } from '../i18n/format';
+import type { DayStyle, Formatter } from '../i18n/format';
 import { h, s as svg } from './dom';
 import { WIDE_QUERY } from './shell';
 
@@ -601,6 +601,8 @@ export function timeTicks(
   x: ScaleTime<number, number>,
   plotWidth: number,
   today = new Date(),
+  /** A month label's width, from its text; a long one ("Sept 2026") when not given. */
+  monthWidth: (t: Date) => number = () => textWidth('Sept 2026'),
 ): { ticks: Date[]; style: 'monthYear' | 'dayMonth' | 'short' } {
   const pick = (spacing: number) =>
     x.ticks(Math.max(2, Math.floor(plotWidth / spacing))).filter((t) => +t === +utcDay.floor(t));
@@ -611,16 +613,21 @@ export function timeTicks(
     (ticks.length > 1 || (long && ticks.length === 1)) && ticks.every((t) => t.getUTCDate() === 1);
   let ticks = pick(74);
   if (monthly(ticks)) {
-    // A narrow chart may hold more months than the rough spacing gives (one "Jan 2026" alone on
-    // a phone): as many as fit with room between their labels.
-    const room = textWidth('Sept 2026') + 12;
+    // As many months as fit with room between their labels, which grow with the text size and
+    // the language ("jan. de 2026"): more than the rough spacing gives on a phone, fewer at 150%.
     const fits = (list: readonly Date[]) =>
-      list.every((t, i) => i === 0 || x(t) - x(list[i - 1] ?? t) >= room);
-    for (let n = ticks.length + 1; n <= ticks.length + 6; n++) {
-      const more = x.ticks(n).filter((t) => +t === +utcDay.floor(t));
-      if (more.length > ticks.length && monthly(more) && fits(more)) ticks = more;
+      list.every((t, i) => {
+        const before = list[i - 1];
+        return !before || x(t) - x(before) >= (monthWidth(before) + monthWidth(t)) / 2 + 8;
+      });
+    let best: Date[] | null = null;
+    for (let n = 1; n <= ticks.length + 6; n++) {
+      const some = x.ticks(n).filter((t) => +t === +utcDay.floor(t));
+      if (!monthly(some)) continue;
+      if (fits(some) ? some.length > (best?.length ?? 0) : best === null && some.length < ticks.length)
+        best = some;
     }
-    return { ticks, style: 'monthYear' };
+    return { ticks: best ?? ticks, style: 'monthYear' };
   }
   if (!needsYear(from, to, today)) return { ticks, style: 'dayMonth' };
   // A day with its year is wider: fewer of them.
@@ -636,15 +643,14 @@ export function timeAxis(
   { left, right, bottom, height }: { left: number; right: number; bottom: number; height: number },
 ): void {
   parent.append(svg('line', { class: 'axisline', x1: left, x2: right, y1: bottom, y2: bottom }));
-  const { ticks, style } = timeTicks(x, right - left);
+  const label = (t: Date, style: DayStyle) => f.day(t.toISOString().slice(0, 10), style);
+  const { ticks, style } = timeTicks(x, right - left, new Date(), (t) => textWidth(label(t, 'monthYear')));
+  // A label that would touch the one before is left out (large text, a long language).
+  const room = labelRow(8);
   for (const t of ticks) {
-    parent.append(
-      svg(
-        'text',
-        { class: 'tick', x: x(t), y: height - 9, 'text-anchor': 'middle' },
-        f.day(t.toISOString().slice(0, 10), style),
-      ),
-    );
+    const text = label(t, style);
+    if (!room(x(t), textWidth(text))) continue;
+    parent.append(svg('text', { class: 'tick', x: x(t), y: height - 9, 'text-anchor': 'middle' }, text));
   }
 }
 

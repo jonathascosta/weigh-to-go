@@ -344,3 +344,59 @@ Choices made while building story 3, open to the owner under decision 9.
     seconds."). To confirm in the VoiceOver device check (Sprint 3, story 7): the notice's text is
     read on focus, and the hint once. _Alternative:_ the design's announcement of both in the live
     region.
+
+## 21 October 2026 · The summary and the main chart on a phone, as built (Sprint 2, story 4)
+
+Choices made while building story 4, open to the owner under decision 9.
+
+74. **The options sheet is not a `<dialog>`.** `showModal()` and the modal `<dialog>` arrived in
+    Safari 15.4, and the app targets iOS 15.0 (decision 72), so the sheet is a `div` with
+    `role="dialog"` and `aria-modal="true"` on every browser (`src/ui/sheet.ts`): focus starts on its
+    title and is kept inside (Tab wraps, focus that wanders out comes back), Escape, Done, the scrim
+    and the browser's Back close it, focus returns to the button, and while it is open every other
+    child of `<body>` carries `aria-hidden="true"` (put back as it was on closing), the page behind
+    it doesn't scroll, and `<html>` has a `sheet-open` class for the banner (Sprint 4). One code path,
+    tested in happy-dom and Playwright alike. _Alternative:_ the design's native `<dialog>`, behind a
+    feature check with this as the fallback; or once O22 (iOS 16) is decided, the native one alone.
+75. **Figures stack by a width check, not a container query.** Container queries need Safari 16; a
+    `ResizeObserver` on the row (`stackBelow` in `src/ui/summary.ts`) sets `kpis-stacked` when Today's
+    three are narrower than 20 rem, and Progress's six (two columns on a phone) narrower than 15 rem,
+    in the root's rem, so the app's Dynamic Type counts too. _Alternative:_ `@container`, from iOS 16.
+76. **Today's short line from the second weigh-in.** `todayTake` says the change since the first
+    weigh-in as soon as there are two ("**−0.1 kg** since 1 Sept 2026."), adding "about … a week"
+    once the whole period has a pace (the third); only the first weigh-in reads as `summary.first`,
+    which says "First weigh-in logged", as the full sentence does. _Alternative:_ the design's
+    `summary.first` below three weigh-ins.
+77. **The readout's words.** A weigh-in reads "Tue, 20 Oct · last weigh-in", then the weight with its
+    dot and, when that layer is on, "7-day average 96.3 kg"; a projected day reads "Thu, 19 Nov ·
+    estimate", the estimate and "likely 94.8 kg to 96.4 kg" (`chart.rangeLabel`, with the band
+    layer). The weight carries no name, so the strip keeps two lines at 320 px; the keyboard's live
+    line and VoiceOver's range read the same words. _Alternative:_ the prototype's shorter "7-day"
+    for the average, or the tooltip's fuller rows.
+78. **Every chart gets the readout strip now**, the analysis cards' charts too, with their tooltip's
+    rows until story 5 gives each a shorter readout: the tooltip is for a mouse only, so a finger
+    needs the strip on every chart. Taps and drags snap to the nearest stop on every time chart
+    (`nearDay`). _Alternative:_ the strip on the main chart only until story 5, leaving the cards
+    without a readout under a finger meanwhile.
+79. **The chart's legend leaves out** the layers that label themselves (highest and lowest, biggest
+    drop and rise, BMI lines) and the areas the lines explain (projection range, weekly low–high
+    range); the layer switches show every layer's form (dot, line, dashed line, pale area).
+    _Alternative:_ every layer that is on.
+80. **The chart's note under its title goes** ("Daily weigh-ins in kg. Turn layers on and off…",
+    `chart.note`), as in the prototype: the Layers button says the second half, the readout and the
+    foot line give the unit, and the chart starts nearer its heading. `chart.essential` ("Just the
+    essentials") goes too, replaced by the Essential view. _Alternative:_ keep the note on the
+    desktop.
+81. **The sparkline's link has its own key**, `today.sparkLink` ("Last 30 days, see Progress"),
+    beside the design's `today.spark` and `today.sparkMore`, and it shows the 30 days ending today
+    (not the last weigh-in), hidden with fewer than two weigh-ins in them. _Alternative:_ the 30 days
+    up to the last weigh-in, which can be weeks old.
+82. **Month ticks fit their labels.** The time axis takes as many months as fit with room between
+    their labels, measured in the reader's language and text size: four on a 320 px phone where the
+    rough spacing gave "Jan 2026" alone, and fewer, never touching, for "jan. de 2026" at 150%; a
+    label that would still touch the one before is left out. _Alternative:_ the design's month names
+    without the year.
+83. **The date chip sits beside the title at 320 px**: the weigh-in card's head and the chip are a
+    few pixels tighter (8 px gap, 8–10 px padding), so "Log a weigh-in" and "Today, 21 Oct" share a
+    row and the field and Save stay above the tab bar at 320 × 568 in English. In Portuguese the
+    longer chip still wraps, and Save needs a short scroll there (principle 1 allows one).
