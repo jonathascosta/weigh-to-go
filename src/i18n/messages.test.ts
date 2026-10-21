@@ -41,8 +41,8 @@ describe('the dictionaries', () => {
           ? [String((message as (...args: string[]) => unknown)('1', '1', '1'))]
           : Object.values(message as Record<string, string>);
     for (const [lang, words] of [
-      ['en', /\b(browser|page|tab)\b/i],
-      ['pt', /\b(navegador|página|aba)\b/i],
+      ['en', /\b(browsers?|pages?|tabs?)\b/i],
+      ['pt', /\b(navegador(es)?|páginas?|abas?)\b/i],
     ] as const)
       for (const [key, message] of Object.entries(app[lang]))
         if (shown(key)) for (const text of texts(message)) expect(text, key).not.toMatch(words);

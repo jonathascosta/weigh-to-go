@@ -98,11 +98,14 @@ async function load(fs: FileBackend, now: Date): Promise<Loaded> {
       if (parsed.skipped > 0) {
         setAside = asideName(now);
         await fs.write(setAside, text);
-        // The diary without the rows that can't be read, so the copy is made once, not every launch.
-        await fs.write(DIARY_TEMP, diaryText(parsed.diary.weighIns, parsed.diary.profile));
-        await fs.rename(DIARY_TEMP, DIARY_FILE).catch((error: unknown) => {
-          console.warn(error);
-        });
+        // The diary without the rows that can't be read, so the copy is made once, not every launch
+        // (if this fails, the next change writes it anyway).
+        await fs
+          .write(DIARY_TEMP, diaryText(parsed.diary.weighIns, parsed.diary.profile))
+          .then(() => fs.rename(DIARY_TEMP, DIARY_FILE))
+          .catch((error: unknown) => {
+            console.warn(error);
+          });
         return { diary: parsed.diary, setAside };
       }
       await fs.remove(DIARY_TEMP).catch((error: unknown) => {
@@ -134,14 +137,21 @@ export interface DeviceStoreOptions {
   readonly now?: Date;
   /**
    * Weigh-ins kept elsewhere before, to start from while the diary holds none: written as the
-   * diary, or null for none.
+   * diary (a goal or height already in it is kept), or null for none.
    */
   readonly seed?: () => Promise<Diary | null>;
+  /** Called once the seed is written in the diary, and only then. */
+  readonly seeded?: () => Promise<void>;
+  /** Called after the diary is cleared, for what else erasing everything must reach. */
+  readonly cleared?: () => Promise<void>;
 }
 
 /** Opens the diary in `fs`; rejects as `load` does. */
 export async function deviceStore(fs: FileBackend, options: DeviceStoreOptions = {}): Promise<Store> {
-  const { diary, setAside } = await load(fs, options.now ?? new Date());
+  const loaded = await load(fs, options.now ?? new Date());
+  const { diary } = loaded;
+  /** Gone once the diary is cleared: the copy set aside goes with it. */
+  let setAside = loaded.setAside;
   const inner = memoryStore('unsupported');
   await inner.replace(diary.weighIns, diary.profile);
 
@@ -185,9 +195,18 @@ export async function deviceStore(fs: FileBackend, options: DeviceStoreOptions =
     const seed = await options.seed();
     // A seed that can't be written stays where it was, for the next opening to try again.
     if (seed) {
-      await change(() => inner.replace(seed.weighIns, seed.profile)).catch((error: unknown) => {
-        console.warn(error);
-      });
+      const profile = {
+        goalKg: diary.profile.goalKg ?? seed.profile.goalKg,
+        heightCm: diary.profile.heightCm ?? seed.profile.heightCm,
+      };
+      const written = await change(() => inner.replace(seed.weighIns, profile)).then(
+        () => true,
+        (error: unknown) => {
+          console.warn(error);
+          return false;
+        },
+      );
+      if (written) await options.seeded?.();
     }
   }
 
@@ -195,7 +214,9 @@ export async function deviceStore(fs: FileBackend, options: DeviceStoreOptions =
     kind: 'device',
     reason: null,
     needsReload: false,
-    setAside,
+    get setAside() {
+      return setAside;
+    },
     weighIns: () => serial(() => inner.weighIns()),
     put: (weighIns, profile) => change(() => inner.put(weighIns, profile)),
     merge: (weighIns, profile) => change(() => inner.merge(weighIns, profile)),
@@ -209,6 +230,8 @@ export async function deviceStore(fs: FileBackend, options: DeviceStoreOptions =
     clear: async () => {
       await change(() => inner.clear());
       for (const name of await fs.list()) if (name.startsWith(ASIDE_PREFIX)) await fs.remove(name);
+      setAside = null;
+      await options.cleared?.();
     },
     // One app, one store: there are no other tabs to hear from.
     onChange: () => () => undefined,

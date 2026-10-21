@@ -3,15 +3,12 @@
  * keeps, backs up with the phone and doesn't show in the Files app. Loaded only in the app's build.
  */
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import { isMissingFile } from './file-errors';
 import { deviceStore, type Diary, type FileBackend } from '../data/device-store';
 import { deleteDatabase, openStore, type Store } from '../data/store';
 
 const FOLDER = 'diary';
-/** The plugin's error code for a file that isn't there. */
-export const NO_FILE = 'OS-PLUG-FILE-0008';
 const at = (name: string) => ({ path: `${FOLDER}/${name}`, directory: Directory.Library });
-const missing = (error: unknown): boolean =>
-  typeof error === 'object' && error !== null && (error as { code?: unknown }).code === NO_FILE;
 
 export const libraryFiles: FileBackend = {
   // A missing file is no data; any other failure to read must not be taken for one.
@@ -20,7 +17,7 @@ export const libraryFiles: FileBackend = {
       const { data } = await Filesystem.readFile({ ...at(name), encoding: Encoding.UTF8 });
       return typeof data === 'string' ? data : await data.text();
     } catch (error) {
-      if (missing(error)) return null;
+      if (isMissingFile(error)) return null;
       throw error;
     }
   },
@@ -41,7 +38,7 @@ export const libraryFiles: FileBackend = {
         (f) => f.name,
       );
     } catch (error) {
-      if (missing(error)) return [];
+      if (isMissingFile(error)) return [];
       throw error;
     }
   },
@@ -49,7 +46,7 @@ export const libraryFiles: FileBackend = {
     try {
       await Filesystem.deleteFile(at(name));
     } catch (error) {
-      if (!missing(error)) throw error;
+      if (!isMissingFile(error)) throw error;
     }
   },
 };
@@ -72,30 +69,18 @@ async function fromIndexedDb(): Promise<Diary | null> {
   }
 }
 
-const profileFields = async (store: Store): Promise<number> => {
-  const { goalKg, heightCm } = await store.profile();
-  return Number(goalKg !== null) + Number(heightCm !== null);
-};
-
-export async function openNativeStore(): Promise<Store> {
-  const seed = { taken: false };
-  const store = await deviceStore(libraryFiles, {
-    seed: async () => {
-      const diary = await fromIndexedDb().catch(() => null);
-      seed.taken = diary !== null;
-      return diary;
-    },
-  });
-  // Only once the diary holds it: a seed that couldn't be written is tried again next time.
-  if (seed.taken && (await store.weighIns()).length + (await profileFields(store)) > 0) {
-    await deleteDatabase();
-  }
-  return {
-    ...store,
-    // Erasing reaches an earlier build's database too, if it is still there.
-    clear: async () => {
-      await store.clear();
-      await deleteDatabase();
-    },
-  };
+/** Deletes an earlier build's database; rejects if it is still there, so erasing says so. */
+async function dropIndexedDb(): Promise<void> {
+  if (!(await deleteDatabase())) throw new Error("Couldn't delete the earlier build's database");
 }
+
+export const openNativeStore = (): Promise<Store> =>
+  deviceStore(libraryFiles, {
+    seed: () => fromIndexedDb().catch(() => null),
+    // Only once the diary holds it: a seed that couldn't be written is tried again next time.
+    seeded: () =>
+      dropIndexedDb().catch((error: unknown) => {
+        console.warn(error);
+      }),
+    cleared: dropIndexedDb,
+  });

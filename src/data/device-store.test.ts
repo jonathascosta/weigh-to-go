@@ -138,22 +138,55 @@ describe('deviceStore', () => {
     expect(await again.weighIns()).toEqual([w('2026-10-17', 100), w('2026-10-18', 99)]);
   });
 
+  it("keeps the diary's own goal and height over the seed's, and says when the seed is in", async () => {
+    const seed = () =>
+      Promise.resolve({ weighIns: [w('2026-10-17', 100)], profile: { goalKg: 80, heightCm: 170 } });
+    const { backend } = fakeFiles({ [DIARY_FILE]: text([], { goalKg: 90, heightCm: null }) });
+    let seeded = 0;
+    const store = await deviceStore(backend, {
+      seed,
+      seeded: () => {
+        seeded++;
+        return Promise.resolve();
+      },
+    });
+    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 170 });
+    expect(seeded).toBe(1);
+  });
+
   it('opens empty when the seed cannot be written, to try it again next time', async () => {
     const seed = () => Promise.resolve({ weighIns: [w('2026-10-17', 100)], profile: EMPTY_PROFILE });
     const { files, fail, backend } = fakeFiles();
     fail.write = true;
-    const store = await deviceStore(backend, { seed });
+    let seeded = 0;
+    const store = await deviceStore(backend, {
+      seed,
+      seeded: () => {
+        seeded++;
+        return Promise.resolve();
+      },
+    });
     expect(await store.weighIns()).toEqual([]);
     expect(files.size).toBe(0);
+    expect(seeded).toBe(0);
   });
 
   it('is erased by erase everything, with any copy set aside', async () => {
     const { files, backend } = fakeFiles({ [DIARY_FILE]: '{"not": "a diary"' });
     const store = await deviceStore(backend, { now });
     await store.put([w('2026-10-17', 100)], { goalKg: 90, heightCm: 176 });
+    expect(store.setAside).toBe(asideName(now));
     expect(await eraseEverything(store, null)).toBe(true);
     expect(diaryOn(files)).toEqual({ weighIns: [], profile: EMPTY_PROFILE });
     expect([...files.keys()]).toEqual([DIARY_FILE]);
+    expect(store.setAside).toBeNull();
+  });
+
+  it("isn't erased when what else erasing must reach can't be", async () => {
+    const { backend } = fakeFiles();
+    const store = await deviceStore(backend, { cleared: () => Promise.reject(new Error('still there')) });
+    await store.put([w('2026-10-17', 100)]);
+    expect(await eraseEverything(store, null)).toBe(false);
   });
 
   it("isn't erased when the empty diary can't be written", async () => {

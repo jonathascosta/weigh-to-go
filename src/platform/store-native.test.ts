@@ -31,7 +31,7 @@ const { disk, fs, old } = vi.hoisted(() => {
           .map((k) => ({ name: k.slice(o.path.length + 1) })),
       }),
   };
-  return { disk, fs, old: { store: null as Store | null, deleted: 0 } };
+  return { disk, fs, old: { store: null as Store | null, deleted: 0, deletes: true } };
 });
 
 vi.mock('@capacitor/filesystem', () => ({
@@ -44,7 +44,7 @@ vi.mock('../data/store', async (original) => ({
   openStore: () => Promise.resolve(old.store ?? memoryStore()),
   deleteDatabase: () => {
     old.deleted++;
-    return Promise.resolve(true);
+    return Promise.resolve(old.deletes);
   },
 }));
 
@@ -57,6 +57,7 @@ beforeEach(() => {
   fs.readError = null;
   old.store = null;
   old.deleted = 0;
+  old.deletes = true;
 });
 
 describe('libraryFiles', () => {
@@ -107,6 +108,36 @@ describe('openNativeStore', () => {
     await store.clear();
     expect(await store.weighIns()).toEqual([]);
     expect(old.deleted).toBe(1);
+  });
+
+  it("keeps the earlier database when its diary couldn't be written", async () => {
+    await libraryFiles.write(
+      'weigh-ins.json',
+      JSON.stringify({
+        app: 'weigh-to-go',
+        format: 1,
+        weighIns: [],
+        profile: { goalKg: 90, heightCm: null },
+      }),
+    );
+    const earlier = memoryStore();
+    await earlier.put([weighIn]);
+    old.store = { ...earlier, kind: 'indexeddb', reason: null };
+    const write = fs.writeFile;
+    fs.writeFile = () => Promise.reject(new Error('disk full'));
+    try {
+      const store = await openNativeStore();
+      expect(await store.weighIns()).toEqual([]);
+      expect(old.deleted).toBe(0);
+    } finally {
+      fs.writeFile = write;
+    }
+  });
+
+  it("says erasing failed when the earlier database won't go", async () => {
+    const store = await openNativeStore();
+    old.deletes = false;
+    await expect(store.clear()).rejects.toThrow("Couldn't delete");
   });
 
   it('lists the diary folder, empty when there is none', async () => {
