@@ -111,7 +111,7 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
    * in the iPhone app, whose own file needs no such request.
    */
   const askPersistence = () => {
-    if (state.store?.kind === 'device' || persistenceAsked.read()) return;
+    if (import.meta.env.MODE === 'ios' || state.store?.kind === 'device' || persistenceAsked.read()) return;
     persistenceAsked.write(true);
     void requestPersistence();
   };

@@ -63,6 +63,11 @@ export interface Store {
    * operation fails, so read it from the store after one does, not from a copy.
    */
   readonly needsReload: boolean;
+  /**
+   * The app's store only: the name a diary file that couldn't be read was kept under, beside the
+   * new one, so the person can be told; null or absent otherwise.
+   */
+  readonly setAside?: string | null;
   /** Every weigh-in, by date. */
   weighIns(): Promise<StoredWeighIn[]>;
   /** Saves weigh-ins, replacing any on the same dates, and the profile if given, all at once. */

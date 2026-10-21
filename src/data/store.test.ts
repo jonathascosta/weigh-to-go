@@ -2,6 +2,8 @@ import { forceCloseDatabase, IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it } from 'vitest';
 import { EMPTY_PROFILE, type StoredWeighIn } from './records';
 import { eraseEverything } from './erase';
+import { deviceStore } from './device-store';
+import { fakeFiles } from './fake-files.test-helper';
 import { DB_NAME, memoryStore, openStore, type Store } from './store';
 
 const at = '2026-10-19T08:00:00.000Z';
@@ -52,6 +54,7 @@ function spied(): { factory: IDBFactory; connections: IDBDatabase[] } {
 const kinds: [string, () => Promise<Store>][] = [
   ['indexeddb', async () => track(await openStore(new IDBFactory()))],
   ['memory', () => Promise.resolve(memoryStore())],
+  ['device', () => deviceStore(fakeFiles().backend)],
 ];
 
 describe.each(kinds)('%s store', (kind, open) => {

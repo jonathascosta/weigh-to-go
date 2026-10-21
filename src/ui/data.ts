@@ -29,10 +29,16 @@ export function noticeFor(
   state: State,
   lastBackup: string | null,
   today: string,
-): { kind: 'memory' } | { kind: 'reload' } | { kind: 'backup'; days: number | null } | null {
+):
+  | { kind: 'memory' }
+  | { kind: 'reload' }
+  | { kind: 'setAside' }
+  | { kind: 'backup'; days: number | null }
+  | null {
   const { store } = state;
   if (store?.needsReload) return { kind: 'reload' };
   if (store?.kind === 'memory') return { kind: 'memory' };
+  if (store?.setAside) return { kind: 'setAside' };
   if (state.weighIns.length < BACKUP_REMINDER_MIN) return null;
   if (lastBackup === null) return { kind: 'backup', days: null };
   const days = daysBetween(parseDay(lastBackup.slice(0, 10)), parseDay(today));
@@ -353,8 +359,8 @@ export function mountData(
         window.location.reload();
       });
       noticeBox.replaceChildren(h('p', { text: m['notice.reload'] }), reload);
-    } else if (notice.kind === 'memory') {
-      noticeBox.replaceChildren(h('p', { text: m['notice.memory'] }));
+    } else if (notice.kind === 'memory' || notice.kind === 'setAside') {
+      noticeBox.replaceChildren(h('p', { text: m[`notice.${notice.kind}`] }));
     } else {
       const button = h('button', { class: 'button', attrs: { type: 'button' }, text: m['data.export'] });
       button.addEventListener('click', () => {

@@ -136,7 +136,7 @@ export function mountDashboard(root: HTMLElement, app: App): void {
       );
     }
     installHint.hidden = !(standalone && state.status === 'ready' && state.weighIns.length === 0);
-    installText.textContent = inApp ? m['install.emptyApp'] : m['install.empty'];
+    installText.textContent = m['install.empty'];
     for (const k of SECTIONS) el[k].hidden = !sections.has(k);
     for (const [section, part] of parts) {
       if (section !== null && !sections.has(section)) {

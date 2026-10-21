@@ -2,9 +2,10 @@
  * The iPhone app's store (docs/sprint-3.md, story 2): the weigh-ins and the profile in one JSON file
  * in the app's own container, which iOS keeps (and backs up with the phone) where a web view's
  * IndexedDB may be cleared. The work happens in memory, as in `memoryStore`, and every change is then
- * written whole: first to a temporary file, then renamed over the old one, so a write cut short
- * leaves the last good file. One queue runs every operation in turn, so two changes made close
- * together both land. A change whose write fails is undone in memory and rejects.
+ * written whole: first to a temporary file, then renamed over the old one. A write cut short leaves
+ * the last good diary or, when the rename had already deleted it, the new one, which the next opening
+ * puts in place. One queue runs every operation in turn, so two changes made close together both
+ * land. A change whose write fails is undone in memory and rejects.
  */
 import {
   byDate,
@@ -32,13 +33,16 @@ export const DIARY_TEMP = 'weigh-ins.json.tmp';
 const APP = 'weigh-to-go';
 const FORMAT = 1;
 
-interface Diary {
+export interface Diary {
   readonly weighIns: StoredWeighIn[];
   readonly profile: Profile;
 }
 
-/** The diary in a file's text, or null when it isn't one this store wrote. */
-export function parseDiary(text: string): Diary | null {
+/**
+ * The diary in a file's text, with how many rows were left out because they can't be read (a later
+ * version of the app may check weigh-ins more strictly), or null when it isn't a diary at all.
+ */
+export function parseDiary(text: string): { diary: Diary; skipped: number } | null {
   let value: unknown;
   try {
     value = JSON.parse(text);
@@ -52,41 +56,86 @@ export function parseDiary(text: string): Diary | null {
   const rows: unknown[] = weighIns;
   const isRow = (r: unknown): r is StoredWeighIn =>
     typeof r === 'object' && r !== null && isStoredWeighIn(r as StoredWeighIn);
-  if (!rows.every(isRow)) return null;
-  return { weighIns: [...rows].sort(byDate), profile: toProfile(profile) };
+  const good = rows.filter(isRow);
+  return {
+    diary: { weighIns: good.sort(byDate), profile: toProfile(profile) },
+    skipped: rows.length - good.length,
+  };
 }
 
 const diaryText = (weighIns: readonly StoredWeighIn[], profile: Profile): string =>
   JSON.stringify({ app: APP, format: FORMAT, weighIns, profile });
 
-/**
- * Reads the diary: the file if it is a good one; else a temporary file left by a write cut short
- * between its two steps, once the old file was gone (the newer data, which is then put in place);
- * else nothing, a new diary. Rejects when a file is there but isn't a diary, rather than start an
- * empty one that would write over it.
- */
-async function load(fs: FileBackend): Promise<Diary> {
-  const text = await fs.read(DIARY_FILE);
-  if (text !== null) {
-    const diary = parseDiary(text);
-    if (!diary) throw new Error(`${DIARY_FILE} is not a diary this app can read`);
-    // A temporary file beside a good diary is a write that never finished: the diary stands.
-    await fs.remove(DIARY_TEMP);
-    return diary;
-  }
-  const temp = await fs.read(DIARY_TEMP);
-  if (temp === null) return { weighIns: [], profile: EMPTY_PROFILE };
-  const diary = parseDiary(temp);
-  if (!diary) throw new Error(`${DIARY_TEMP} is not a diary this app can read`);
-  await fs.rename(DIARY_TEMP, DIARY_FILE);
-  return diary;
+/** The name a diary file that couldn't be read is kept under, beside the new one. */
+export const asideName = (now: Date): string =>
+  `weigh-ins.unreadable-${now.toISOString().replace(/[:.]/g, '-')}.json`;
+
+interface Loaded {
+  readonly diary: Diary;
+  /** The name a file that couldn't be read (wholly or in part) was kept under, or null. */
+  readonly setAside: string | null;
 }
 
-/** Opens the diary in `fs`; rejects when there is one that can't be read (see `load`). */
-export async function deviceStore(fs: FileBackend): Promise<Store> {
-  const { weighIns: saved, profile: savedProfile } = await load(fs);
+const EMPTY_DIARY: Diary = { weighIns: [], profile: EMPTY_PROFILE };
+
+/**
+ * Reads the diary. A good diary file is the diary (a temporary file beside it is a write that never
+ * finished, and is dropped). With no diary file, a temporary file is a write cut short after the old
+ * file was gone: if it is whole it is the newer diary and is put in place; if not, it was never the
+ * diary and is dropped. A diary file that can't be read is never written over: it is kept aside, and
+ * the person told; one with some rows that can't be read keeps a copy aside and loads the others.
+ * Null when there was no file at all: a first opening. Only a failure to read the files rejects.
+ */
+async function load(fs: FileBackend, now: Date): Promise<Loaded | null> {
+  let setAside: string | null = null;
+  const text = await fs.read(DIARY_FILE);
+  if (text !== null) {
+    const parsed = parseDiary(text);
+    if (parsed) {
+      if (parsed.skipped > 0) {
+        setAside = asideName(now);
+        await fs.write(setAside, text);
+      }
+      await fs.remove(DIARY_TEMP).catch((error: unknown) => {
+        console.warn(error);
+      });
+      return { diary: parsed.diary, setAside };
+    }
+    setAside = asideName(now);
+    await fs.rename(DIARY_FILE, setAside);
+  }
+  const temp = await fs.read(DIARY_TEMP);
+  if (temp === null) return text === null ? null : { diary: EMPTY_DIARY, setAside };
+  const parsed = parseDiary(temp);
+  if (!parsed) {
+    await fs.remove(DIARY_TEMP).catch((error: unknown) => {
+      console.warn(error);
+    });
+    return { diary: EMPTY_DIARY, setAside };
+  }
+  // If this fails, the next change writes the diary in place anyway.
+  await fs.rename(DIARY_TEMP, DIARY_FILE).catch((error: unknown) => {
+    console.warn(error);
+  });
+  return { diary: parsed.diary, setAside };
+}
+
+export interface DeviceStoreOptions {
+  /** For tests. */
+  readonly now?: Date;
+  /**
+   * On a first opening (no diary file at all), weigh-ins kept elsewhere before, to start from:
+   * written as the first diary, or null for none.
+   */
+  readonly seed?: () => Promise<Diary | null>;
+}
+
+/** Opens the diary in `fs`; rejects only when the files can't be read at all. */
+export async function deviceStore(fs: FileBackend, options: DeviceStoreOptions = {}): Promise<Store> {
+  const loaded = await load(fs, options.now ?? new Date());
+  const { diary, setAside } = loaded ?? { diary: EMPTY_DIARY, setAside: null };
   const inner = memoryStore('unsupported');
-  await inner.replace(saved, savedProfile);
+  await inner.replace(diary.weighIns, diary.profile);
 
   let queue: Promise<unknown> = Promise.resolve();
   /** Runs `work` after everything queued before it, whatever became of that. */
@@ -95,6 +144,20 @@ export async function deviceStore(fs: FileBackend): Promise<Store> {
     queue = run.catch(() => undefined);
     return run;
   };
+  /**
+   * Puts the written temporary file in place. On iOS a rename deletes the old file first, then
+   * moves: if the move fails after the delete, only the new file is left, so it is tried once more
+   * rather than reported as a failure that the next launch would contradict.
+   */
+  const commit = async () => {
+    try {
+      await fs.rename(DIARY_TEMP, DIARY_FILE);
+    } catch (error) {
+      const old = await fs.read(DIARY_FILE).catch(() => 'unknown');
+      if (old !== null) throw error;
+      await fs.rename(DIARY_TEMP, DIARY_FILE);
+    }
+  };
   /** Applies a change in memory, then writes the whole diary; undoes it in memory if the write fails. */
   const change = <T>(work: () => Promise<T>): Promise<T> =>
     serial(async () => {
@@ -102,7 +165,7 @@ export async function deviceStore(fs: FileBackend): Promise<Store> {
       try {
         const result = await work();
         await fs.write(DIARY_TEMP, diaryText(await inner.weighIns(), await inner.profile()));
-        await fs.rename(DIARY_TEMP, DIARY_FILE);
+        await commit();
         return result;
       } catch (error) {
         await inner.replace(before.weighIns, before.profile);
@@ -110,10 +173,21 @@ export async function deviceStore(fs: FileBackend): Promise<Store> {
       }
     });
 
+  if (!loaded && options.seed) {
+    const seed = await options.seed();
+    // A seed that can't be written stays where it was, for the next opening to try again.
+    if (seed && seed.weighIns.length > 0) {
+      await change(() => inner.replace(seed.weighIns, seed.profile)).catch((error: unknown) => {
+        console.warn(error);
+      });
+    }
+  }
+
   return {
     kind: 'device',
     reason: null,
     needsReload: false,
+    setAside,
     weighIns: () => serial(() => inner.weighIns()),
     put: (weighIns, profile) => change(() => inner.put(weighIns, profile)),
     merge: (weighIns, profile) => change(() => inner.merge(weighIns, profile)),
@@ -122,6 +196,7 @@ export async function deviceStore(fs: FileBackend): Promise<Store> {
     setProfile: (profile) => change(() => inner.setProfile(profile)),
     updateProfile: (fields) => change(() => inner.updateProfile(fields)),
     replace: (weighIns, profile) => change(() => inner.replace(weighIns, profile)),
+    // An empty diary, written like any change (the file stays, holding nothing).
     clear: () => change(() => inner.clear()),
     // One app, one store: there are no other tabs to hear from.
     onChange: () => () => undefined,

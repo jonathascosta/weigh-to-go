@@ -29,6 +29,16 @@ describe('noticeFor', () => {
     });
   });
 
+  it('says when part of the diary file was set aside, before the backup reminder', () => {
+    const s = state(20);
+    const store = { ...s.store!, kind: 'device' as const, setAside: 'weigh-ins.unreadable-x.json' };
+    expect(noticeFor({ ...s, store }, null, '2026-10-19')).toEqual({ kind: 'setAside' });
+    expect(noticeFor({ ...s, store: { ...store, setAside: null } }, null, '2026-10-19')).toEqual({
+      kind: 'backup',
+      days: null,
+    });
+  });
+
   it('reminds to back up once there is something to lose, and again after a month', () => {
     expect(noticeFor(state(BACKUP_REMINDER_MIN - 1), null, '2026-10-19')).toBeNull();
     expect(noticeFor(state(BACKUP_REMINDER_MIN), null, '2026-10-19')).toEqual({ kind: 'backup', days: null });

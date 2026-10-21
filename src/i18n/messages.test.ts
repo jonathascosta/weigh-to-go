@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { en, pt, type Messages } from './messages';
+import { dictionaries } from '.';
+import { en, enApp, pt, ptApp, type Messages } from './messages';
 
 const pages = import.meta.glob<string>(['/index.html', '/404.html', '/pt/index.html'], {
   query: '?raw',
@@ -22,6 +23,21 @@ describe('the dictionaries', () => {
           expect(message.length, key).toBe((english as () => string).length);
         else for (const form of Object.values(message)) expect(form.trim(), key).not.toBe('');
       }
+  });
+
+  it("have the app's own wording in both languages, never speaking of a browser", () => {
+    expect(Object.keys(ptApp).sort()).toEqual(Object.keys(enApp).sort());
+    const app = dictionaries(true);
+    expect(app.en['data.note']).toBe(enApp['data.note']);
+    expect(app.pt['notice.memory']).toBe(ptApp['notice.memory']);
+    expect(dictionaries(false).en['data.note']).toBe(en['data.note']);
+    // What the app can show: the page's description and the reload messages, which only a
+    // browser's store needs, aside.
+    const shown = (key: string) => !key.startsWith('page.') && !/reload/i.test(key);
+    for (const [key, message] of Object.entries(app.en))
+      if (shown(key) && typeof message === 'string') expect(message, key).not.toMatch(/browser/i);
+    for (const [key, message] of Object.entries(app.pt))
+      if (shown(key) && typeof message === 'string') expect(message, key).not.toMatch(/navegador/i);
   });
 
   it("cover every key the pages use, each page's text matching its language's dictionary", () => {
