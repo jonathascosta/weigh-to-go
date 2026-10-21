@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:ios": "tsc -b && vite build --mode ios",
+    "ios:sync": "npm run build:ios && cap sync ios",
     "preview": "vite preview",
     "test": "vitest run",
     "check": "tsc -b",
@@ -21,6 +23,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
+    "@capacitor/cli": "^8.5.3",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "1.63.0",
     "@types/d3-array": "^3.2.2",
@@ -38,6 +41,8 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
     "@fontsource/barlow": "^5.3.0",
     "@fontsource/barlow-condensed": "^5.3.0",
     "d3-array": "^3.2.4",

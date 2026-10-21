@@ -1,0 +1,76 @@
+# Signs the iOS app for the App Store and uploads it to TestFlight. Run by the
+# TestFlight workflow (.github/workflows/testflight.yml) from ios/App,
+# after the web build has been copied in (`cap sync ios`). Everything secret comes
+# from the environment; docs/STORE.md (step 3) lists it.
+
+require "base64"
+require "tmpdir"
+
+default_platform(:ios)
+
+APP_ID = "net.jonathas.weightogo"
+
+platform :ios do
+  desc "Build, sign and upload a build to TestFlight"
+  lane :beta do
+    # A temporary keychain that holds the certificate for this run only.
+    setup_ci
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("APP_STORE_CONNECT_API_KEY_ID"),
+      issuer_id: ENV.fetch("APP_STORE_CONNECT_API_ISSUER_ID"),
+      key_content: ENV.fetch("APP_STORE_CONNECT_API_KEY_P8"),
+      is_key_content_base64: true
+    )
+
+    # The certificate is on disk only for the import, outside the repository.
+    certificate = File.join(ENV.fetch("RUNNER_TEMP") { Dir.tmpdir }, "distribution.p12")
+    begin
+      File.binwrite(certificate, Base64.decode64(ENV.fetch("IOS_DISTRIBUTION_CERTIFICATE_P12")))
+      import_certificate(
+        certificate_path: certificate,
+        certificate_password: ENV.fetch("IOS_DISTRIBUTION_CERTIFICATE_PASSWORD"),
+        keychain_name: ENV.fetch("MATCH_KEYCHAIN_NAME"),
+        keychain_password: ENV.fetch("MATCH_KEYCHAIN_PASSWORD")
+      )
+    ensure
+      File.delete(certificate) if File.exist?(certificate)
+    end
+
+    # Makes the App Store profile anew on every run, so it always carries the App ID's current
+    # capabilities (HealthKit, turned on in docs/STORE.md step 1).
+    get_provisioning_profile(
+      api_key: api_key,
+      app_identifier: APP_ID,
+      team_id: ENV.fetch("APPLE_TEAM_ID"),
+      force: true
+    )
+
+    update_code_signing_settings(
+      path: "App.xcodeproj",
+      targets: ["App"],
+      use_automatic_signing: false,
+      team_id: ENV.fetch("APPLE_TEAM_ID"),
+      code_sign_identity: "Apple Distribution",
+      profile_uuid: lane_context[SharedValues::SIGH_UUID],
+      profile_name: lane_context[SharedValues::SIGH_NAME]
+    )
+
+    # Every upload needs a higher build number than the last: run number × 100 + attempt.
+    build_number = ENV.fetch("BUILD_NUMBER")
+    build_app(
+      project: "App.xcodeproj",
+      scheme: "App",
+      configuration: "Release",
+      # fastlane's name for an App Store export (Xcode's own, app-store-connect, fails its check).
+      export_method: "app-store",
+      export_options: { provisioningProfiles: { APP_ID => lane_context[SharedValues::SIGH_NAME] } },
+      xcargs: "CURRENT_PROJECT_VERSION='#{build_number}'",
+      output_directory: "build",
+      clean: true
+    )
+
+    upload_to_testflight(api_key: api_key, skip_waiting_for_build_processing: true)
+    UI.success("Uploaded build #{build_number} to TestFlight")
+  end
+end

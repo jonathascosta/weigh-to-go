@@ -18,11 +18,15 @@ function securityPolicy(): Plugin {
   };
 }
 
-export default defineConfig({
+// `vite build --mode ios` is the iPhone app's build (docs/sprint-3.md): the same pages into dist-ios/,
+// which Capacitor copies into the Xcode project, without the service worker (it doesn't run in
+// Capacitor's web view, and the app's files are on the phone already).
+export default defineConfig(({ mode }) => ({
   // Like GitHub Pages: each page is its own file, and an unknown path is no page (not the home one).
   appType: 'mpa',
-  plugins: [securityPolicy(), serviceWorker()],
+  plugins: mode === 'ios' ? [securityPolicy()] : [securityPolicy(), serviceWorker()],
   build: {
+    outDir: mode === 'ios' ? 'dist-ios' : 'dist',
     // Keep every asset a file of its own: the policy above has no data: sources.
     assetsInlineLimit: 0,
     // The polyfill loads modules with fetch(), which connect-src 'none' blocks; every browser the
@@ -38,4 +42,4 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts', 'scripts/**/*.test.mjs', 'scripts/**/*.test.ts'],
   },
-});
+}));

@@ -1,0 +1,118 @@
+name: iOS
+
+# Builds the iPhone app for the simulator, unsigned and without any secret, runs it there and fails on
+# a script error or a policy violation in its web view (docs/sprint-3.md, story 1), when a change
+# touches the native side or how the app is built: on its pull request and again on main after the
+# merge. The owner has no Mac, so this run is the first place the app opens. A change to the web code
+# alone is left to CI (a macOS minute costs ten if the repository ever goes private).
+on:
+  push:
+    branches: [main]
+    # The same paths as pull_request below: keep the two lists alike.
+    paths:
+      - 'ios/**'
+      - 'capacitor.config.ts'
+      - 'vite.config.ts'
+      - 'scripts/csp.mjs'
+      - 'src/main.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'capacitor.config.ts'
+      - 'vite.config.ts'
+      - 'scripts/csp.mjs'
+      - 'src/main.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: iOS build and launch (simulator)
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: latest-stable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # The app's pages into dist-ios/, then into the Xcode project with its Swift package list.
+      - run: npm run ios:sync
+
+      - name: The app ships no service worker
+        run: test ! -e ios/App/App/public/sw.js
+
+      - run: xcodebuild -version
+
+      - name: Build the app for the simulator
+        working-directory: ios/App
+        run: >-
+          xcodebuild build
+          -project App.xcodeproj
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath build
+          CODE_SIGNING_ALLOWED=NO
+
+      # Opens the app in a simulator and reads what its web view logged (Capacitor prints the page's
+      # console in a debug build): a script error, a Content Security Policy or Trusted Types violation
+      # fails the job. A screenshot of the first screen is kept as an artifact.
+      - name: Launch the app in the simulator
+        run: |
+          set -euo pipefail
+          udid=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          phones = [d for runtime, ds in devices.items() if "iOS" in runtime for d in ds if d["name"].startswith("iPhone")]
+          print(phones[-1]["udid"])')
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl install "$udid" ios/App/build/Build/Products/Debug-iphonesimulator/App.app
+          # The page's own check: report policy violations to the console, where Capacitor logs them.
+          (xcrun simctl launch --console-pty "$udid" net.jonathas.weightogo > launch.log 2>&1 &)
+          sleep 30
+          xcrun simctl io "$udid" screenshot first-screen.png
+          xcrun simctl terminate "$udid" net.jonathas.weightogo || true
+          cat launch.log
+          grep -q 'WebView loaded' launch.log || { echo '::error::The web view did not load'; exit 1; }
+          if grep -E '\[error\]|Content Security Policy|TrustedHTML|TrustedScript|Refused to' launch.log; then
+            echo '::error::The app logged an error or a policy violation (above)'
+            exit 1
+          fi
+
+      - name: Keep the screenshot
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ios-first-screen
+          path: first-screen.png
+          if-no-files-found: ignore

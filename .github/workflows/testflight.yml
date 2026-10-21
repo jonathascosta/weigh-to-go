@@ -1,0 +1,90 @@
+name: TestFlight
+
+# Signs the iPhone app for the App Store and uploads it to TestFlight, by hand from the Actions tab
+# (docs/STORE.md, step 4). It needs these secrets, the same ones Arrows uses:
+#
+#   APPLE_TEAM_ID                         the team that owns the app
+#   APP_STORE_CONNECT_API_KEY_ID          an App Store Connect API key (App Manager role)
+#   APP_STORE_CONNECT_API_ISSUER_ID
+#   APP_STORE_CONNECT_API_KEY_P8          the key's .p8 file, base64
+#   IOS_DISTRIBUTION_CERTIFICATE_P12      an Apple Distribution certificate with its key, base64
+#   IOS_DISTRIBUTION_CERTIFICATE_PASSWORD the .p12's password
+#
+# It uploads only what is on main. The job runs in the app-store environment, so its secrets can be
+# kept there and limited to main (Settings, Environments) rather than to the whole repository.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    name: Build, sign and upload to TestFlight
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-26
+    timeout-minutes: 60
+    environment: app-store
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+      IOS_DISTRIBUTION_CERTIFICATE_P12: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_P12 }}
+      IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+    steps:
+      - name: Check the secrets
+        run: |
+          missing=()
+          for name in APPLE_TEAM_ID APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_API_ISSUER_ID \
+            APP_STORE_CONNECT_API_KEY_P8 IOS_DISTRIBUTION_CERTIFICATE_P12 \
+            IOS_DISTRIBUTION_CERTIFICATE_PASSWORD; do
+            if [ -z "${!name}" ]; then missing+=("$name"); fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing secrets: ${missing[*]} (docs/STORE.md, step 3)"
+            exit 1
+          fi
+
+      # Every upload needs a higher build number than the last, a re-run included.
+      - name: Number the build
+        run: echo "BUILD_NUMBER=$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: latest-stable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run ios:sync
+
+      - name: The app ships no service worker
+        run: test ! -e ios/App/App/public/sw.js
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@651ff0d62c5c79bed6d53ec518387aae20e72c1a # v1.329.0
+        with:
+          ruby-version: '3.3'
+
+      - name: Install fastlane
+        run: gem install fastlane --no-document --version '~> 2.228'
+
+      - name: Sign and upload
+        working-directory: ios/App
+        run: fastlane beta

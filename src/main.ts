@@ -36,8 +36,9 @@ if (checkFrame(openLabel)) {
   }
   const appBox = document.getElementById('app');
   if (appBox) mountDashboard(appBox, createApp());
-  // Offline use, in the built site only (the dev server's files change under it all the time).
-  if (import.meta.env.PROD && 'serviceWorker' in navigator && appBox) {
+  // Offline use, in the built site only (the dev server's files change under it all the time, and
+  // the iPhone app has its files on the phone and no service worker).
+  if (import.meta.env.PROD && import.meta.env.MODE !== 'ios' && 'serviceWorker' in navigator && appBox) {
     const offerUpdate = mountUpdateNotice(appBox);
     registerWorker(navigator.serviceWorker, offerUpdate).catch((error: unknown) => {
       // Without a worker the site works the same, online.

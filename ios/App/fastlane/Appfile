@@ -1,0 +1,3 @@
+# The app as App Store Connect knows it (capacitor.config.ts, docs/STORE.md step 1).
+app_identifier("net.jonathas.weightogo")
+team_id(ENV["APPLE_TEAM_ID"])
