@@ -685,7 +685,7 @@ export function mountRates(
           const pct = f.percent(Math.abs(d.rate) / 100, 3);
           const rows: TipRow[] = [
             {
-              name: d.rate >= 0 ? m['rate.tip.loss'] : m['rate.tip.gain'],
+              name: d.rate >= 0 ? m['rate.readout.loss'] : m['rate.readout.gain'],
               value: gap > 1 ? m['rate.tip.perDay'](pct) : pct,
               swatch: d.rate >= 0 ? 'sw-down sw-bar' : 'sw-up sw-bar',
             },

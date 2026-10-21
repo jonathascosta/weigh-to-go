@@ -468,6 +468,10 @@ Choices made while building story 5, open to the owner under decision 9.
     chart's period. Calendar: counted from the first weigh-in, "Since 1 Sept 2026: …" when the months
     shown hold every weigh-in; the first weigh-in counts as steady (nothing to compare with, as the
     key says). Percentage loss says "gained" for a gain; Hiccups words a single climb on its own.
+    A weekday whose mean change shows as ±0.00 is "steady", not a rise or a fall. **A diary left
+    weeks ago** (the last weigh-in more than 14 days old) words its windows to it: "over the last
+    3 weeks of the diary, to 23 Jun" / "nas últimas 3 semanas do diário, até 23 de jun.", "In the
+    3 months to Jun 2026" / "Nos 3 meses até jun. de 2026", and BMI "on 23 Jun" for "now".
     Proposed wording, open to the owner. _Alternative:_ the design's examples as written.
 91. **Inside an open card**: the chart first, then the figures and tables, then the card's own note
     (how to read it, Sprint 1's `*.note`), then Options on the right; the compound rate's daily chart
@@ -478,7 +482,13 @@ Choices made while building story 5, open to the owner under decision 9.
     signed as the weight moved, and the window's average). At 320 px in Portuguese with text at 150%
     the strips are 98 px, the design's height, except the % chart and the daily rate at 126 px (the
     named 7-day and window averages). Measured on every draw as before, and one height over every
-    stop (Playwright). The main chart's 154 px there is issue #52's. _Alternative:_ unnamed average
+    stop (Playwright). The daily rate's strip reads as its chart does, a loss above zero: "Loss
+    0.208%" / "Perda 0,208%" in words, and the window's average with the chart's sign (positive, a
+    loss), as the card's line and figures say a loss. **On a phone a card's plot is capped** as the
+    main chart's is, under its strip in the small viewport left (never under 160 px), so the strip
+    stays on screen while a finger reads the plot held sideways or with large text; the calendar's
+    squares shrink so two months share a row at 320 px, and its strip stays at the top of the screen
+    (`position: sticky`) over a calendar taller than it. The main chart's 154 px there is issue #52's. _Alternative:_ unnamed average
     rows, at 98 px, with colour and form alone to tell them apart.
 93. **Falls blue, rises orange in the analysis charts too** (design §11, O20): the bars of the daily
     variation, the weekdays, the daily rate and the weekly pace, and the hiccups' peaks, were green
@@ -486,20 +496,22 @@ Choices made while building story 5, open to the owner under decision 9.
     `SWATCH` (issue #51): a dot, a line, a dashed line, a pale area, or a bar. _Alternative:_ keep
     green and red for the bars.
 94. **Tables and lists on a phone** show their first rows, then 20 more with Show more and a count
-    ("4 of 52 weeks"): weeks 4, hiccups 5, milestones 3, facts 5 (`moreRows` in `dom.ts`). They lose
-    their scrolling box, share the width (`table-layout: fixed`), and break a date after its slashes
-    only. The one page keeps Sprint 1's counts (weeks a year at a time, the rest whole). The log's
+    ("4 of 52 weeks"): weeks 4, hiccups 5, milestones 3, facts 5 (`moreRows` in `dom.ts`). Those
+    three tables lose their scrolling box (`table-short`; the log keeps its own until story 6, and the
+    simulator's long table too), share the width (`table-layout: fixed`), break a date after its
+    slashes only, and a heading's word where it must (`word-break: break-word`). The one page keeps Sprint 1's counts (weeks a year at a time, the rest whole). The log's
     rows are story 6's. _Alternative:_ a box that scrolls inside the page.
 95. **The empty diary on Progress and Analysis**: one card, "The chart and figures appear from the
     second weigh-in." on Progress and "The analysis cards appear from the second weigh-in." on
     Analysis, with Log a weigh-in (to Today); the chart, the weekly averages and the cards step
-    aside, the Goal stays (a goal can be set before the first weigh-in). With one weigh-in or more,
-    each card's line says what it needs. _Alternative:_ the design's one sentence on both tabs.
+    aside, the Goal stays (a goal can be set before the first weigh-in). Analysis keeps its card
+    until the second weigh-in, as it says; from then on each card's line says what it needs. _Alternative:_ the design's one sentence on both tabs.
 96. **Every card hidden** says "Every analysis card is hidden. Show them in Your data › Settings",
     linking to Your data, where the Sections chips are until story 6. _Alternative:_ none until
     story 6 builds the Sections sheet.
 97. **The calendar's months until the person picks follow the screen on each draw** (3 narrow, 12 on
-    the one page, O10); once picked, the pick holds at every width. The Months choice is a
+    the one page, O10), its Months control and its line with them; once picked, the pick holds at
+    every width. The Months choice is a
     segmented control under the squares. _Alternative:_ read the width once, as the Views do.
 98. **Safari 15 without `:has()`**: the card head's focus ring is the stretched `::after`'s outline,
     and the chevron turns by an `is-open` class on the card. _Alternative:_ `:has(:focus-visible)`

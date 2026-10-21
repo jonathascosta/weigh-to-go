@@ -304,6 +304,66 @@ test('scrubs a card’s chart under a dragged finger, its readout still', async 
   await check();
 });
 
+test('keeps Your data no wider than the screen, with a short log in its own box', async ({ page }) => {
+  const { check } = await watch(page);
+  await page.goto('/');
+  await loadBackup(page);
+  await tab(page, 'data').tap();
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(page.locator('#log-table-box')).toBeVisible();
+    const m = await page.evaluate(() => ({
+      width: document.documentElement.scrollWidth,
+      log: document.querySelector('#log-table-box')?.getBoundingClientRect().height ?? 0,
+    }));
+    expect(m.width).toBe(width);
+    // Story 6 brings the log's own rows; until then it keeps Sprint 1's box (520 px at most).
+    expect(m.log).toBeLessThanOrEqual(520);
+  }
+  await check();
+});
+
+test('keeps the Goal on an empty Progress, under the card that says what comes', async ({ page }) => {
+  const { check } = await watch(page);
+  await page.goto('/#progress');
+  await expect(page.locator('#progress-empty')).toBeVisible();
+  await expect(page.locator('section[aria-labelledby="goal-title"]')).toBeVisible();
+  await expect(page.locator('#goal-change-button')).toBeVisible();
+  await expect(page.locator('section[aria-labelledby="chart-title"]')).toBeHidden();
+  await check();
+});
+
+test.describe('held sideways', () => {
+  for (const size of [
+    { width: 844, height: 390 },
+    { width: 667, height: 375 },
+  ])
+    test(`keeps a card chart and its strip on one screen at ${String(size.width)} × ${String(size.height)}`, async ({
+      page,
+    }) => {
+      const { check } = await watch(page);
+      await page.setViewportSize(size);
+      await page.goto('/');
+      await loadBackup(page);
+      await tab(page, 'analysis').tap();
+      for (const id of ['pct', 'hiccups', 'variation']) {
+        await tapOn(page, `#${id}-sum`);
+        const svg = page.locator(`svg[aria-labelledby="${id}-title"]`);
+        await svg.scrollIntoViewIfNeeded();
+        const fits = await svg.evaluate((el) => {
+          const strip = el.closest('.plot')?.querySelector('.readout');
+          if (!strip) throw new Error('No strip');
+          const tab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tab-h')) || 0;
+          return (
+            el.getBoundingClientRect().bottom - strip.getBoundingClientRect().top <= window.innerHeight - tab
+          );
+        });
+        expect(fits, id).toBe(true);
+      }
+      await check();
+    });
+});
+
 test('shows no band for the app’s banner on the website', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('nav.tabs a')).toHaveCount(4);
@@ -387,6 +447,11 @@ test.describe('at 320 × 568 in Portuguese', () => {
       for (const id of ['pct', 'rate', 'hiccups', 'bmi', 'facts', 'variation', 'weekdays', 'calendar'])
         await page.locator(`#${id}-toggle`).click();
       await expect(page.locator('svg[aria-labelledby="calendar-title"]')).toBeVisible();
+      // The compound rate at Detailed too: its curve and the simulator's table.
+      await page.locator('#rate-options-button').click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Detalhado', exact: true }).click();
+      await page.locator('.sheet-head button').click();
+      await expect(page.locator('#sim-title')).toBeVisible();
       const result = await page.evaluate(() => {
         const charts = [...document.querySelectorAll<SVGSVGElement>('#view-analysis svg.chart-svg')];
         const heights = charts.map((svg) => {
@@ -403,16 +468,17 @@ test.describe('at 320 × 568 in Portuguese', () => {
             seen.add(Math.round(strip.getBoundingClientRect().height));
             press(svg.getAttribute('aria-labelledby') === 'weekdays-title' ? 'ArrowDown' : 'ArrowRight');
           }
-          return [...seen];
+          return [...seen].map((h) => ({ id: svg.getAttribute('aria-labelledby') ?? '', h }));
         });
         return { width: document.documentElement.scrollWidth, heights };
       });
       expect(result.width).toBe(320);
       expect(result.heights.length).toBeGreaterThan(4);
-      for (const h of result.heights) expect(h).toHaveLength(1);
+      for (const h of result.heights) expect(h, h[0]?.id).toHaveLength(1);
       // Within the design's height at this size (§6: 98 px at 150% in Portuguese), the % and rate
       // strips a line more.
-      expect(Math.max(...result.heights.flat())).toBeLessThanOrEqual(text === 100 ? 70 : 130);
+      for (const { id, h } of result.heights.flat())
+        expect(h, id).toBeLessThanOrEqual(text === 100 ? 70 : 130);
       await check();
     });
 
