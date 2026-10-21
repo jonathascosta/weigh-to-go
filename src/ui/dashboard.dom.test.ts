@@ -670,6 +670,19 @@ describe('on a phone, the parts drawn only while they show', () => {
     expect(svgOf('variation-title')).not.toBe(before);
   });
 
+  it('opens the paste box from the empty diary’s link, once Your data shows', async () => {
+    await app.erase();
+    await settle();
+    const link = [...root.querySelectorAll<HTMLAnchorElement>('.empty-links a')].find(
+      (a) => a.textContent === 'Paste several days at once',
+    )!;
+    expect(link.closest('[hidden]')).toBeNull();
+    link.dispatchEvent(new MouseEvent('click', { cancelable: true }));
+    go('#data');
+    expect(root.querySelector('details.paste')!.hasAttribute('open')).toBe(true);
+    expect(document.activeElement).toBe(root.querySelector('#paste-text'));
+  });
+
   function section(id: string) {
     return root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!;
   }

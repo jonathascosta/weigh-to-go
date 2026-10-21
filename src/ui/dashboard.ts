@@ -246,10 +246,15 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   const paste = mountPaste(pasteCard, app);
   add('data', null, paste.draw);
   // The empty diary's link opens the paste box itself, once Your data shows.
+  let pasteAsked = false;
   pasteLink.addEventListener('click', () => {
-    requestAnimationFrame(() => {
-      paste.open();
-    });
+    pasteAsked = true;
+    // On the one page Your data already shows: after the link's own scroll.
+    if (shell.isWide())
+      setTimeout(() => {
+        pasteAsked = false;
+        paste.open();
+      }, 0);
   });
   // The reminder plans the phone's notifications from the days logged, and Health's card follows
   // the store: both follow every change, wherever the person is.
@@ -328,6 +333,10 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     // Leaving Today ends the saved notice: back there, the card offers the field again.
     if (view !== 'today') weighIn.leave();
     drawShown();
+    if (view === 'data' && pasteAsked) {
+      pasteAsked = false;
+      paste.open();
+    }
   });
   shell.onWide(drawShown);
 

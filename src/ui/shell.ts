@@ -220,7 +220,9 @@ export function mountShell(root: HTMLElement, nav: HTMLElement, win: Window = wi
     if (changed) notify(viewListeners, next);
     if (wide) views[next].scrollIntoView({ block: 'start' });
     else win.scrollTo(0, scrolls.get(next) ?? 0);
-    if (focus) headingOf(views[next])?.focus({ preventScroll: true });
+    // Unless what was drawn already took focus there (a box opened by the link that came here).
+    if (focus && !views[next].contains(doc.activeElement))
+      headingOf(views[next])?.focus({ preventScroll: true });
   };
 
   win.addEventListener('hashchange', () => {
