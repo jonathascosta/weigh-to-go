@@ -798,6 +798,20 @@ export const en = {
   'reminder.failed': "Couldn't set the reminders. The app tries again when you come back to it.",
   'reminder.notificationTitle': 'Daily weigh-in',
   'reminder.notificationBody': 'Time for today’s weigh-in.',
+  'health.title': 'Apple Health',
+  'health.note':
+    'Reads your weight from Apple Health, so readings from a smart scale or another app join the diary, and saves the weights you log here to it. Readings from Health stay on this iPhone: the app reads them again each time it opens. A weight you type here always wins over a reading.',
+  'health.switch': 'Use Apple Health',
+  'health.rule': 'On a day with several readings',
+  'health.ruleFirst': 'The first of the day',
+  'health.ruleLast': 'The last of the day',
+  'health.days': (days: string) => `${days} from Apple Health.`,
+  'health.denied':
+    'Apple Health isn’t letting Weigh to Go save weight. In the Health app, tap your picture, then Apps under Privacy, Weigh to Go, and turn on Weight.',
+  'health.unavailable': 'Apple Health isn’t available on this device.',
+  'health.revoke':
+    'Turning this off stops reading and saving. To take back the app’s access, open the Health app, tap your picture, then Apps under Privacy, Weigh to Go.',
+  'data.eraseHealth': 'Also delete the weights this app saved in Apple Health',
   'notice.reloadButton': 'Reload',
   'update.ready': 'A new version of Weigh to Go is ready. Your weigh-ins stay where they are.',
   'install.empty':
@@ -1437,6 +1451,20 @@ export const pt: Messages = {
   'reminder.failed': 'Não foi possível programar os lembretes. O app tenta de novo quando você voltar a ele.',
   'reminder.notificationTitle': 'Pesagem do dia',
   'reminder.notificationBody': 'Hora da pesagem de hoje.',
+  'health.title': 'App Saúde',
+  'health.note':
+    'Lê seu peso do app Saúde, para que as medições de uma balança inteligente ou de outro app entrem no diário, e salva lá os pesos que você registra aqui. As medições do Saúde ficam neste iPhone: o app as lê de novo cada vez que abre. Um peso digitado aqui sempre vale mais que uma medição.',
+  'health.switch': 'Usar o app Saúde',
+  'health.rule': 'Num dia com várias medições',
+  'health.ruleFirst': 'A primeira do dia',
+  'health.ruleLast': 'A última do dia',
+  'health.days': (days: string) => `${days} vindos do app Saúde.`,
+  'health.denied':
+    'O app Saúde não está deixando o Weigh to Go salvar o peso. No app Saúde, toque na sua foto, depois em Apps, em Privacidade, em Weigh to Go, e ligue Peso.',
+  'health.unavailable': 'O app Saúde não está disponível neste aparelho.',
+  'health.revoke':
+    'Desligar isto para a leitura e o registro. Para tirar o acesso do app, abra o app Saúde, toque na sua foto, depois em Apps, em Privacidade, e em Weigh to Go.',
+  'data.eraseHealth': 'Apagar também os pesos que este app salvou no app Saúde',
   'notice.reloadButton': 'Recarregar',
   'update.ready': 'Uma nova versão do Weigh to Go está pronta. Suas pesagens continuam aqui.',
   'install.empty':

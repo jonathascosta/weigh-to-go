@@ -17,6 +17,7 @@ import {
 import { CSV_FORMATS, createCsv, csvFileName, csvFormatPref, csvSeparators } from '../data/csv';
 import { choose, count, settings, type Settings } from '../i18n';
 import { saveFile } from '../platform/save';
+import { isHealthStore } from '../health/layer';
 import { h } from './dom';
 
 /** Days after the last backup before the reminder shows again. */
@@ -311,11 +312,18 @@ export function mountData(
       text: m['data.eraseConfirm'],
     });
     const cancel = cancelButton();
+    // With Apple Health on, the person chooses whether this app's samples go from Health too.
+    const { store } = app.state();
+    const withHealth = isHealthStore(store) && store.health.setting().on ? store : null;
+    const fromHealth = h('input', { attrs: { id: 'data-erase-health', type: 'checkbox' } });
     confirm.addEventListener('click', () => {
       confirm.disabled = true;
       cancel.disabled = true;
-      app
-        .erase()
+      fromHealth.disabled = true;
+      const first =
+        withHealth && fromHealth.checked ? withHealth.health.deleteOwnSamples() : Promise.resolve(0);
+      first
+        .then(() => app.erase())
         .then((gone) => {
           // The saved choices went with everything else: back to automatic here too.
           choose({ lang: null, weightUnit: null, heightUnit: null });
@@ -329,6 +337,12 @@ export function mountData(
     });
     panel.replaceChildren(
       h('p', { class: 'status status-bad', text: m['data.eraseWarning'] }),
+      ...(withHealth
+        ? [
+            h('label', { class: 'check' }, fromHealth, h('span', { text: m['data.eraseHealth'] })),
+            h('p', { class: 'note', text: m['health.revoke'] }),
+          ]
+        : []),
       h('div', { class: 'actions' }, backupFirst(), confirm, cancel),
     );
     // Not the destructive button: a second Enter must not erase everything.

@@ -94,3 +94,33 @@ from the decisions above.
 16. **Colour for a rise:** the calendar's blue for a fall and orange for a rise; red only for errors.
 17. **Long tables on a phone:** a few rows and "Show more", or a screen of their own, instead of boxes
     that scroll inside the page.
+
+## 21 October 2026 · Apple Health: the rules as built
+
+Sprint 3, story 5 asks for its rules to be recorded here, each **open to the owner** (decision 9).
+Numbered H1 to H8 so they don't clash with the design's.
+
+- **H1. Off until turned on.** A card in the app, "Apple Health", with a switch; turning it on is when
+  iOS shows its permission sheet, for weight only (read and write). On a device without Health the
+  card is hidden.
+- **H2. One sample per day, by identifier.** Each weight this app writes carries the sync identifier
+  `weightogo:<yyyy-mm-dd>` and a sync version (when it was saved, in ms): writing a day again
+  replaces its sample, and the same day from another device reconciles. This app's samples are
+  recognised by the identifier, not by the device that wrote them, so on a new phone they come back
+  into the diary.
+- **H3. Typed wins.** A weight typed in the app is never replaced by a reading from Health.
+- **H4. Several readings in a day:** the first of the day counts (the morning weigh-in); a choice in
+  the card makes it the last. This app's own sample for a day wins over a scale's.
+- **H5. Deleting a day** deletes this app's sample for it and keeps a tombstone (the day and when),
+  so a scale's reading for that day, which the app can't delete, stays out; a reading taken after
+  the deletion shows again.
+- **H6. Turning Health on** writes to Health only the typed days that have no reading there, so a
+  scale's reading is never doubled. After that, each weight typed is written.
+- **H7. What is read from Health stays in memory**, read again from Health each time the app opens
+  or comes back. It is never written to the diary's file, so it never reaches the iPhone's backup or
+  iCloud through us (guideline 5.1.3). The setting and the tombstones sit in a small file beside the
+  diary.
+- **H8. Erasing everything** turns Health off and forgets the tombstones; the person can tick "Also
+  delete the weights this app saved in Apple Health". The app can't take back its own access, so the
+  card and the erase question say where the person can (the Health app: their picture, then Apps
+  under Privacy, Weigh to Go).

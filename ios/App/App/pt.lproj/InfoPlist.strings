@@ -1,2 +1,6 @@
 /* The app's name on the Home Screen, in Portuguese. */
 "CFBundleDisplayName" = "Weigh to Go";
+/* Why the app reads weight from Apple Health, in Portuguese. */
+"NSHealthShareUsageDescription" = "O Weigh to Go lê seu peso do app Saúde, para que as medições de uma balança inteligente ou de outro app entrem no seu diário. Ele fica no seu iPhone.";
+/* Why the app writes weight to Apple Health, in Portuguese. */
+"NSHealthUpdateUsageDescription" = "O Weigh to Go salva no app Saúde os pesos que você registra, para que seus outros apps e aparelhos os vejam.";

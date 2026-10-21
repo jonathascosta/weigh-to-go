@@ -6,6 +6,8 @@ import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import { isMissingFile } from './file-errors';
 import { namesIn, readText } from './library';
 import { deviceStore, type Diary, type FileBackend } from '../data/device-store';
+import { withHealth } from '../health/layer';
+import { appleHealth } from './health-native';
 import { deleteDatabase, openStore, type Store } from '../data/store';
 
 const FOLDER = 'diary';
@@ -59,8 +61,9 @@ async function dropIndexedDb(): Promise<void> {
   if (!(await deleteDatabase())) throw new Error("Couldn't delete the earlier build's database");
 }
 
-export const openNativeStore = (): Promise<Store> =>
-  deviceStore(libraryFiles, {
+/** The diary file, with Apple Health beside it (health/layer.ts). */
+export async function openNativeStore(): Promise<Store> {
+  const diary = await deviceStore(libraryFiles, {
     seed: () => fromIndexedDb().catch(() => null),
     // Only once the diary holds it: a seed that couldn't be written is tried again next time.
     seeded: () =>
@@ -69,3 +72,5 @@ export const openNativeStore = (): Promise<Store> =>
       }),
     cleared: dropIndexedDb,
   });
+  return withHealth(diary, appleHealth, libraryFiles);
+}

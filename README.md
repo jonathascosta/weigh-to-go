@@ -87,7 +87,9 @@ temporary file and renamed over the old one, and a file that can't be read is ke
 written over; a diary an earlier build kept in IndexedDB is brought over once. Its texts speak of the app, not a browser (`enApp` and `ptApp` in
 `src/i18n/messages.ts`). Its daily reminder, off until the person turns it on (which is when iOS
 asks), plans a month of local notifications on the phone, none on a day already logged, and plans
-them again whenever the app opens or comes back (`src/reminders/`). In the app, a web view can't download, so the backup and the CSV go out through iOS's share sheet (Files, AirDrop, Mail), written briefly to the app's cache and deleted once the sheet closes. Nobody here has a Mac: the **iOS**
+them again whenever the app opens or comes back (`src/reminders/`). With Apple Health turned on (`src/health/`, through a Swift
+plugin of its own in `ios/App/App/`), readings from a scale or another app join the diary, kept in
+memory and read again from Health on each opening, and each weight typed here is written there. In the app, a web view can't download, so the backup and the CSV go out through iOS's share sheet (Files, AirDrop, Mail), written briefly to the app's cache and deleted once the sheet closes. Nobody here has a Mac: the **iOS**
 workflow builds the app for the simulator on GitHub's macOS runners when native files change, opens
 it there and fails on a script error or a policy violation in its web view; the **TestFlight**
 workflow, run by hand from the Actions tab on `main`, signs it and uploads it with fastlane

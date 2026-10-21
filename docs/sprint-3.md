@@ -120,6 +120,16 @@ to rename.
    and deletes its own samples); if none fits, a small Swift plugin of our own in `ios/`. Health data
    is never used for ads.
 
+   _As built:_ no published plugin writes sync identifiers or deletes its own samples, so the app has
+   its own, `ios/App/App/WeightHealthPlugin.swift` (registered by `MainViewController`), bridged by
+   `src/platform/health-native.ts`. The rules are pure functions in `src/health/reconcile.ts`; the
+   layer over the diary's store is `src/health/layer.ts`; the card `src/ui/health.ts`. Decisions H1
+   to H8 in [decisions.md](decisions.md). To check on TestFlight (story 7): the permission sheet;
+   a reading from another app (Health's own "Add Data") joining the diary; a weight typed here
+   appearing in Health with this app as its source; editing and deleting a day; turning the switch
+   off and on; erasing with and without the Health box ticked; a second device or a reinstall
+   bringing the days back.
+
 6. **Native finish.** A light haptic on saving; the decimal keypad and the keyboard's Done; the
    app comes back to today after a night in the background; Apple's rating prompt once per minor
    version after a few saved days (`@capacitor-community/in-app-review`, Arrows' rule); links that
