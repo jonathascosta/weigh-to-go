@@ -47,7 +47,8 @@ to rename.
    then renamed over the old one, the temporary file recovered on opening, and every read-modify-write
    through one queue, so two changes made close together both land (as `store.updateProfile`
    promises). The `Store` interface gains a third kind (`'device'`) beside `'indexeddb'` and
-   `'memory'`; erasing writes an empty diary (the file stays, holding nothing), and the
+   `'memory'`; erasing writes an empty diary (the file stays, holding nothing) and removes any copy
+   set aside and an earlier build's database, and the
    persistent-storage request is skipped in the app; the shared tests run against a fake Filesystem
    too. A diary file that can't be read is never written over: it is kept aside and the person told.
    Screen preferences stay in `localStorage` (they are conveniences, read synchronously before the

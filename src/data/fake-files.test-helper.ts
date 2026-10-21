@@ -33,6 +33,7 @@ export function fakeFiles(initial: Record<string, string> = {}) {
       files.delete(name);
       return Promise.resolve();
     },
+    list: () => Promise.resolve([...files.keys()]),
   };
   return { files, fail, backend };
 }

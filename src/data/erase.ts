@@ -4,10 +4,9 @@ import { deleteDatabase, type Store } from './store';
 /**
  * Erases everything the app keeps on this device: weigh-ins, profile and screen preferences. When
  * the store can't reach the database (it runs in memory, or lost the database to a newer page in
- * another tab), the database is deleted on disk instead, since the data may still be there. The
- * app's diary file has no such second way: if it can't be cleared, the data is not known to be gone.
- * Preferences are cleared whatever happens. Returns whether the data is known to be gone.
- * `factory` is for tests.
+ * another tab), the database is deleted on disk instead, since the data may still be there; the
+ * app passes a null `factory`, since its diary is a file, which has no such second way. Preferences are cleared whatever happens. Returns whether the data is known to be gone.
+ * `factory` is otherwise for tests.
  */
 export async function eraseEverything(store: Store, factory?: IDBFactory | null): Promise<boolean> {
   try {
@@ -19,7 +18,7 @@ export async function eraseEverything(store: Store, factory?: IDBFactory | null)
     } catch {
       // Reached below, through the database itself.
     }
-    return cleared || (store.kind !== 'device' && (await deleteDatabase(factory)));
+    return cleared || (await deleteDatabase(factory));
   } finally {
     clearPrefs();
   }

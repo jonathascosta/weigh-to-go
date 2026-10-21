@@ -108,13 +108,17 @@ describe('deviceStore', () => {
     expect(files.get(asideName(now))).toBe('{"not": "a diary"');
   });
 
-  it('opens the rows it can read, keeping a copy of the whole file aside', async () => {
+  it('opens the rows it can read, keeping a copy of the whole file aside once', async () => {
     const original = text([w('2026-10-17', 100), { date: 'someday', kg: 'heavy' }]);
     const { files, backend } = fakeFiles({ [DIARY_FILE]: original });
     const store = await deviceStore(backend, { now });
     expect(await store.weighIns()).toEqual([w('2026-10-17', 100)]);
     expect(store.setAside).toBe(asideName(now));
     expect(files.get(asideName(now))).toBe(original);
+    expect(diaryOn(files)?.weighIns).toEqual([w('2026-10-17', 100)]);
+    const again = await deviceStore(backend, { now: new Date('2026-10-22T09:00:00.000Z') });
+    expect(again.setAside).toBeNull();
+    expect(files.size).toBe(2);
   });
 
   it("rejects when the files can't be read at all", async () => {
@@ -123,15 +127,15 @@ describe('deviceStore', () => {
     await expect(deviceStore(backend)).rejects.toThrow('read failed');
   });
 
-  it('starts from the seed on a first opening only', async () => {
+  it('starts from the seed only while the diary holds no weigh-ins', async () => {
     const seed = () => Promise.resolve({ weighIns: [w('2026-10-17', 100)], profile: EMPTY_PROFILE });
     const { files, backend } = fakeFiles();
     const store = await deviceStore(backend, { seed });
     expect(await store.weighIns()).toEqual([w('2026-10-17', 100)]);
     expect(diaryOn(files)?.weighIns).toEqual([w('2026-10-17', 100)]);
-    await store.remove('2026-10-17');
+    await store.put([w('2026-10-18', 99)]);
     const again = await deviceStore(backend, { seed });
-    expect(await again.weighIns()).toEqual([]);
+    expect(await again.weighIns()).toEqual([w('2026-10-17', 100), w('2026-10-18', 99)]);
   });
 
   it('opens empty when the seed cannot be written, to try it again next time', async () => {
@@ -143,12 +147,13 @@ describe('deviceStore', () => {
     expect(files.size).toBe(0);
   });
 
-  it('is erased by erase everything', async () => {
-    const { files, backend } = fakeFiles();
-    const store = await deviceStore(backend);
+  it('is erased by erase everything, with any copy set aside', async () => {
+    const { files, backend } = fakeFiles({ [DIARY_FILE]: '{"not": "a diary"' });
+    const store = await deviceStore(backend, { now });
     await store.put([w('2026-10-17', 100)], { goalKg: 90, heightCm: 176 });
     expect(await eraseEverything(store, null)).toBe(true);
     expect(diaryOn(files)).toEqual({ weighIns: [], profile: EMPTY_PROFILE });
+    expect([...files.keys()]).toEqual([DIARY_FILE]);
   });
 
   it("isn't erased when the empty diary can't be written", async () => {

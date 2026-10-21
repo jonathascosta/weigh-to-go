@@ -135,7 +135,13 @@ export function mountDashboard(root: HTMLElement, app: App): void {
         ),
       );
     }
-    installHint.hidden = !(standalone && state.status === 'ready' && state.weighIns.length === 0);
+    // Not while the store runs in memory: an import there would last only until the app closes.
+    installHint.hidden = !(
+      standalone &&
+      state.status === 'ready' &&
+      state.weighIns.length === 0 &&
+      state.store?.kind !== 'memory'
+    );
     installText.textContent = m['install.empty'];
     for (const k of SECTIONS) el[k].hidden = !sections.has(k);
     for (const [section, part] of parts) {

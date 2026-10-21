@@ -25,19 +25,27 @@ describe('the dictionaries', () => {
       }
   });
 
-  it("have the app's own wording in both languages, never speaking of a browser", () => {
+  it("have the app's own wording in both languages, never speaking of a browser, a page or a tab", () => {
     expect(Object.keys(ptApp).sort()).toEqual(Object.keys(enApp).sort());
     const app = dictionaries(true);
     expect(app.en['data.note']).toBe(enApp['data.note']);
-    expect(app.pt['notice.memory']).toBe(ptApp['notice.memory']);
+    expect(app.pt['notice.reload']).toBe(ptApp['notice.reload']);
     expect(dictionaries(false).en['data.note']).toBe(en['data.note']);
-    // What the app can show: the page's description and the reload messages, which only a
-    // browser's store needs, aside.
-    const shown = (key: string) => !key.startsWith('page.') && !/reload/i.test(key);
-    for (const [key, message] of Object.entries(app.en))
-      if (shown(key) && typeof message === 'string') expect(message, key).not.toMatch(/browser/i);
-    for (const [key, message] of Object.entries(app.pt))
-      if (shown(key) && typeof message === 'string') expect(message, key).not.toMatch(/navegador/i);
+    // What the app never shows: the website's page descriptions, its 404 page, the frame check and
+    // the service worker's update notice.
+    const shown = (key: string) => !/^(page|notFound|frame|update)\./.test(key);
+    const texts = (message: unknown): string[] =>
+      typeof message === 'string'
+        ? [message]
+        : typeof message === 'function'
+          ? [String((message as (...args: string[]) => unknown)('1', '1', '1'))]
+          : Object.values(message as Record<string, string>);
+    for (const [lang, words] of [
+      ['en', /\b(browser|page|tab)\b/i],
+      ['pt', /\b(navegador|página|aba)\b/i],
+    ] as const)
+      for (const [key, message] of Object.entries(app[lang]))
+        if (shown(key)) for (const text of texts(message)) expect(text, key).not.toMatch(words);
   });
 
   it("cover every key the pages use, each page's text matching its language's dictionary", () => {

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, type App } from '../app/app';
 import { resetView } from '../app/view';
 import { fakeStorage } from '../data/fake-storage.test-helper';
-import { memoryStore } from '../data/store';
+import { memoryStore, type Store } from '../data/store';
 import { choose, resetSettings } from '../i18n';
 import { mountDashboard } from './dashboard';
 
@@ -356,7 +356,8 @@ describe('the installed app', () => {
     vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(display-mode: standalone)' }));
     root = document.createElement('div');
     document.body.replaceChildren(root);
-    app = createApp(() => Promise.resolve(memoryStore()));
+    const kept: Store = { ...memoryStore(), kind: 'indexeddb', reason: null, needsReload: false };
+    app = createApp(() => Promise.resolve(kept));
     mountDashboard(root, app);
     await settle();
     const hint = [...root.querySelectorAll<HTMLElement>('.notice')].find((n) =>
@@ -366,6 +367,19 @@ describe('the installed app', () => {
     await app.save([{ date: '2026-09-20', kg: 100 }]);
     await settle();
     expect(hint.hidden).toBe(true);
+  });
+
+  it('suggests no import into a store that lasts only until it closes', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(display-mode: standalone)' }));
+    root = document.createElement('div');
+    document.body.replaceChildren(root);
+    app = createApp(() => Promise.resolve(memoryStore('error')));
+    mountDashboard(root, app);
+    await settle();
+    const hint = [...root.querySelectorAll<HTMLElement>('.notice')].find((n) =>
+      n.textContent.includes('This installed app keeps its own data'),
+    );
+    expect(hint?.hidden ?? true).toBe(true);
   });
 
   it('says nothing in a browser tab', () => {

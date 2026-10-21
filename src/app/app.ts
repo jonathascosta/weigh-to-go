@@ -156,7 +156,8 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
     erase: () =>
       write(async (s) => {
         try {
-          return await eraseEverything(s);
+          // The app's diary is a file: a database deleted in its web view erases nothing of it.
+          return await eraseEverything(s, import.meta.env.MODE === 'ios' ? null : undefined);
         } finally {
           // The preferences are gone: what the page held of them goes back to the defaults too.
           resetView();

@@ -24,6 +24,12 @@ const { disk, fs, old } = vi.hoisted(() => {
       return Promise.resolve();
     },
     deleteFile: (o: { path: string }) => (disk.delete(o.path) ? Promise.resolve() : Promise.reject(noFile())),
+    readdir: (o: { path: string }) =>
+      Promise.resolve({
+        files: [...disk.keys()]
+          .filter((k) => k.startsWith(`${o.path}/`))
+          .map((k) => ({ name: k.slice(o.path.length + 1) })),
+      }),
   };
   return { disk, fs, old: { store: null as Store | null, deleted: 0 } };
 });
@@ -84,6 +90,29 @@ describe('openNativeStore', () => {
     expect(await store.profile()).toEqual({ goalKg: 90, heightCm: null });
     expect(disk.has('diary/weigh-ins.json')).toBe(true);
     expect(old.deleted).toBe(1);
+  });
+
+  it('brings over a goal and height alone, too', async () => {
+    const earlier = memoryStore();
+    await earlier.setProfile({ goalKg: 80, heightCm: 170 });
+    old.store = { ...earlier, kind: 'indexeddb', reason: null };
+    const store = await openNativeStore();
+    expect(await store.profile()).toEqual({ goalKg: 80, heightCm: 170 });
+    expect(old.deleted).toBe(1);
+  });
+
+  it('erases the diary and an earlier database still there', async () => {
+    const store = await openNativeStore();
+    await store.put([weighIn]);
+    await store.clear();
+    expect(await store.weighIns()).toEqual([]);
+    expect(old.deleted).toBe(1);
+  });
+
+  it('lists the diary folder, empty when there is none', async () => {
+    expect(await libraryFiles.list()).toEqual([]);
+    await libraryFiles.write('weigh-ins.json', '{}');
+    expect(await libraryFiles.list()).toEqual(['weigh-ins.json']);
   });
 
   it('starts empty, touching no database, when there was none', async () => {

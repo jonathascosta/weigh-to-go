@@ -84,7 +84,7 @@ service worker) and wrapped with Capacitor 8 in `ios/`, an Xcode project with Sw
 own, `diary/weigh-ins.json` in its Library folder, which iOS keeps and backs up with the phone, where
 it may clear a web view's IndexedDB (`src/data/device-store.ts`): every change is written to a
 temporary file and renamed over the old one, and a file that can't be read is kept aside, never
-written over. Its texts speak of the app, not a browser (`enApp` and `ptApp` in
+written over; a diary an earlier build kept in IndexedDB is brought over once. Its texts speak of the app, not a browser (`enApp` and `ptApp` in
 `src/i18n/messages.ts`). In the app, a web view can't download, so the backup and the CSV go out through iOS's share sheet (Files, AirDrop, Mail), written briefly to the app's cache and deleted once the sheet closes. Nobody here has a Mac: the **iOS**
 workflow builds the app for the simulator on GitHub's macOS runners when native files change, opens
 it there and fails on a script error or a policy violation in its web view; the **TestFlight**

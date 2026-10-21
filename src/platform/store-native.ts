@@ -35,6 +35,16 @@ export const libraryFiles: FileBackend = {
       toDirectory: Directory.Library,
     });
   },
+  list: async () => {
+    try {
+      return (await Filesystem.readdir({ path: FOLDER, directory: Directory.Library })).files.map(
+        (f) => f.name,
+      );
+    } catch (error) {
+      if (missing(error)) return [];
+      throw error;
+    }
+  },
   remove: async (name) => {
     try {
       await Filesystem.deleteFile(at(name));
@@ -45,19 +55,27 @@ export const libraryFiles: FileBackend = {
 };
 
 /**
- * Builds before this store kept the diary in the web view's IndexedDB: on the first opening, what is
- * there becomes the first diary, and the database goes once the diary is written.
+ * Builds before this store kept the diary in the web view's IndexedDB: while the diary is empty, what
+ * is there (weigh-ins, or only a goal and height) becomes the diary, and the database goes once the
+ * diary is written.
  */
 async function fromIndexedDb(): Promise<Diary | null> {
   const old = await openStore();
   try {
     if (old.kind !== 'indexeddb') return null;
     const weighIns = await old.weighIns();
-    return weighIns.length > 0 ? { weighIns, profile: await old.profile() } : null;
+    const profile = await old.profile();
+    const empty = weighIns.length === 0 && profile.goalKg === null && profile.heightCm === null;
+    return empty ? null : { weighIns, profile };
   } finally {
     old.close();
   }
 }
+
+const profileFields = async (store: Store): Promise<number> => {
+  const { goalKg, heightCm } = await store.profile();
+  return Number(goalKg !== null) + Number(heightCm !== null);
+};
 
 export async function openNativeStore(): Promise<Store> {
   const seed = { taken: false };
@@ -69,6 +87,15 @@ export async function openNativeStore(): Promise<Store> {
     },
   });
   // Only once the diary holds it: a seed that couldn't be written is tried again next time.
-  if (seed.taken && (await store.weighIns()).length > 0) await deleteDatabase();
-  return store;
+  if (seed.taken && (await store.weighIns()).length + (await profileFields(store)) > 0) {
+    await deleteDatabase();
+  }
+  return {
+    ...store,
+    // Erasing reaches an earlier build's database too, if it is still there.
+    clear: async () => {
+      await store.clear();
+      await deleteDatabase();
+    },
+  };
 }
