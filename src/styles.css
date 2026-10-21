@@ -233,11 +233,18 @@ main {
   padding-left: 1.25em;
 }
 
-/* Links stand alone in lists and lines here: each a tap target of at least 44 px, apart. */
-.policy li a,
+/* Links stand alone in lists and lines here: each a tap target of at least 44 px, apart. A link
+   that is a list item's whole text is a block as wide as its text, so the bullet sits by its first
+   line, however it wraps. */
 .policy .langs a,
 .policy .back a {
   display: inline-block;
+  padding-block: 10px;
+}
+
+.policy li a {
+  display: block;
+  width: fit-content;
   padding-block: 10px;
 }
 
@@ -245,8 +252,15 @@ main {
   margin-top: 8px;
 }
 
-.policy .toc li + li {
-  margin-top: 0;
+.policy .toc a {
+  min-width: 44px;
+}
+
+/* The language the page is shown in: marked, not a link. */
+.policy .langs a:not([href]) {
+  font-weight: 600;
+  color: var(--fg);
+  text-decoration: none;
 }
 
 .policy .toc p {
@@ -298,6 +312,11 @@ main {
 
 .site-footer p {
   margin: 0;
+}
+
+/* A separator stays with the link it introduces. */
+.nowrap {
+  white-space: nowrap;
 }
 
 /* Footer links are tap targets of at least 44 px. */

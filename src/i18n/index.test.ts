@@ -231,6 +231,9 @@ describe('isSafeHref', () => {
       'privacy.html',
       '../privacy.html',
       '/pt/privacidade.html',
+      './',
+      'pt/privacidade.html',
+      '#contact',
     ])
       expect(isSafeHref(href), href).toBe(true);
     for (const href of [

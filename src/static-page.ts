@@ -2,8 +2,8 @@
 // reader's language, then the frame check. A page written for one language (data-lang) stays in it
 // unless the reader chose another, as the home pages do. Without scripts they show as written.
 import { checkFrame } from './frame';
-import { choose, setPageLang, t, translatePage } from './i18n';
-import { isLang } from './i18n/locale';
+import { choose, isSafeHref, setPageLang, settings, t, translatePage } from './i18n';
+import { isLang, type Lang } from './i18n/locale';
 import { en } from './i18n/messages';
 
 let openLabel = en['frame.open'];
@@ -16,13 +16,36 @@ try {
   console.error(error);
 }
 if (checkFrame(openLabel)) {
-  // The policy's English and Português links: following one is choosing that language, saved as the
-  // settings' language switch saves it, since a saved choice outranks the page's own language.
+  try {
+    mountLanguageLinks(settings().locale.lang);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+/**
+ * The policy's English and Português pair: the language the page is shown in is marked as current
+ * (no link), the other links to its page. Following one is choosing that language, saved as the
+ * settings' switch saves it, since a saved choice outranks the page's own language; not when the
+ * reader opens it elsewhere (a modifier key), which leaves this page as it is.
+ */
+function mountLanguageLinks(shown: Lang): void {
   for (const link of document.querySelectorAll<HTMLAnchorElement>('a[data-choose-lang]')) {
-    link.addEventListener('click', () => {
-      const lang = link.dataset.chooseLang;
+    const lang = link.dataset.chooseLang;
+    const href = link.dataset.langHref;
+    if (!isLang(lang) || href === undefined || !isSafeHref(href)) continue;
+    if (lang === shown) {
+      link.removeAttribute('href');
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.setAttribute('href', href);
+      link.removeAttribute('aria-current');
+    }
+    link.addEventListener('click', (event) => {
+      if (!link.hasAttribute('href') || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)
+        return;
       try {
-        if (isLang(lang)) choose({ lang });
+        choose({ lang });
       } catch (error) {
         console.error(error);
       }

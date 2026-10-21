@@ -213,7 +213,8 @@ export const en = {
   'privacy.short.1': 'Weigh to Go runs no server of its own: no accounts, no analytics.',
   'privacy.short.2':
     'We never receive your weights or the dates of your weigh-ins. They stay on your device (and in Apple Health, if you turn it on in the app), and go only where you send them.',
-  'privacy.short.3': 'The website shows no ads and sends nothing anywhere.',
+  'privacy.short.3':
+    'The website shows no ads, and the page itself sends nothing anywhere; GitHub, which hosts it, logs visits (see below).',
   'privacy.short.4':
     'The iPhone app shows only non-personalised ads from Google, whose ad software collects some data about the device, as described below. Buying “Remove ads” stops both.',
   'privacy.web.heading': 'The website',
@@ -253,9 +254,13 @@ export const en = {
   'privacy.ads.retention':
     'Google keeps this data for as long as its policies say. What it receives from the app never holds a weigh-in, its date or anything from Apple Health.',
   'privacy.ads.consent':
-    'In the European Economic Area, the United Kingdom and Switzerland, Google’s consent message appears in the app; there, and in US states whose laws give you choices, you can change them in the app’s settings, under “Privacy choices”.',
+    'In the European Economic Area, the United Kingdom and Switzerland, Google’s consent message appears in the app, and the app starts Google’s ad software only once you consent. If you refuse, the app doesn’t start Google’s ad software and shows no ads.',
+  'privacy.ads.consentTool':
+    'The message comes from Google’s consent tool, which the app starts before any ad and which contacts Google to know whether a message is needed where you are.',
+  'privacy.ads.choices':
+    'There, and in US states whose laws give you choices, you can change your choices in the app’s settings, under “Privacy choices”.',
   'privacy.ads.remove':
-    'Buying “Remove ads” stops the ads, and the app no longer starts Google’s ad software, so it sends Google nothing.',
+    'Buying “Remove ads” stops the ads, and the app no longer starts Google’s ad software or its consent tool, so it sends Google nothing.',
   'privacy.purchase.heading': 'The purchase and ratings',
   'privacy.purchase.text':
     '“Remove ads” is a one-time purchase handled by Apple: we receive no payment details. The app checks the purchase on your iPhone, with Apple’s own tools and no purchase service in between.',
@@ -270,26 +275,32 @@ export const en = {
     'In the app: “Your data › Erase everything”, which can also delete the weights the app saved in Apple Health. Deleting the app erases its files but leaves those weights in Health: use “Erase everything” first, or delete them in the Health app. Earlier backups of your iPhone keep their copy until they are replaced or deleted.',
   'privacy.delete.health':
     'To take back the app’s access to Health, open the Health app, tap your picture, then Apps under Privacy, Weigh to Go.',
-  'privacy.rights.heading': 'Your rights',
+  'privacy.rights.heading': 'Legal bases and your rights',
   'privacy.rights.diary':
     'Your diary and your Health data: we process none of it. It stays with you, and the section above says how to delete it.',
   'privacy.rights.ads':
     'Google’s ad software: where the law asks for it, it runs on your consent, given in Google’s message; elsewhere, on our legitimate interest in funding a free app with non-personalised ads. Google may process the data outside your country, for example in the United States.',
-  'privacy.rights.messages': 'A message you send us: used to answer you.',
-  'privacy.rights.list':
-    'You can ask for access to your data and its deletion, object to its use, and withdraw your consent to Google’s ads at any time, under “Privacy choices”.',
+  'privacy.rights.messages':
+    'A message you send us: we use it to answer you, on our legitimate interest in answering you.',
+  'privacy.rights.ours':
+    'We hold nothing about you except a message you send us, which you can ask us to show you or delete.',
+  'privacy.rights.google':
+    'Google answers for the data its ad software collects: make requests about it to Google, as its privacy policy explains.',
+  'privacy.rights.choices':
+    'Where the app shows “Privacy choices”, you can withdraw your consent or object there at any time. Anywhere, deleting the app or buying “Remove ads” stops the collection.',
   'privacy.rights.complaint':
     'You can also complain to a data-protection authority: the ANPD in Brazil, or your local authority in the European Economic Area, the United Kingdom or Switzerland.',
   'privacy.changes.heading': 'Changes',
   'privacy.changes.text':
     'If what the app or the website does with data changes, this policy changes with it, and so does the date at the top.',
   'privacy.contact.heading': 'Who we are and contact',
-  'privacy.contact.who': 'Weigh to Go is made by Jonathas Costa, who is responsible for this policy.',
+  'privacy.contact.who':
+    'Weigh to Go is made by Jonathas Costa, who is responsible for the data this policy describes (the controller).',
   'privacy.contact.text': 'Questions and requests go through the project’s issues on GitHub:',
   'privacy.contact.link': 'Weigh to Go’s issues on GitHub',
   'privacy.contact.public': 'Issues are public: don’t post your weights or other personal data there.',
   'privacy.contact.messages':
-    'A message you send us is used only to answer it, and kept only as long as that takes; an issue stays on GitHub until it is deleted, which you can ask us to do.',
+    'An issue, with your GitHub username, is public and stays on GitHub until it is deleted. You can edit what you wrote or delete your comments, and we’ll delete an issue you opened if you ask in it. Copies made outside our reach, such as notification emails or archives of public GitHub activity, may remain.',
 
   'settings.label': 'Settings',
   'settings.language': 'Language',
@@ -956,7 +967,8 @@ export const pt: Messages = {
   'privacy.short.1': 'O Weigh to Go não tem servidor próprio: nem contas, nem análise de uso.',
   'privacy.short.2':
     'Nós nunca recebemos seus pesos nem as datas das suas pesagens. Eles ficam no seu aparelho (e no app Saúde, se você ligá-lo no app) e só vão para onde você os mandar.',
-  'privacy.short.3': 'O site não mostra anúncios e não envia nada para lugar nenhum.',
+  'privacy.short.3':
+    'O site não mostra anúncios, e a própria página não envia nada para lugar nenhum; o GitHub, que hospeda o site, registra as visitas (veja abaixo).',
   'privacy.short.4':
     'O app para iPhone mostra só anúncios não personalizados do Google, cujo software de anúncios coleta alguns dados do aparelho, como explicado abaixo. Comprar “Remover anúncios” acaba com os dois.',
   'privacy.web.heading': 'O site',
@@ -996,9 +1008,13 @@ export const pt: Messages = {
   'privacy.ads.retention':
     'O Google guarda esses dados pelo tempo que as políticas dele dizem. O que ele recebe do app nunca traz uma pesagem, a data dela nem nada do app Saúde.',
   'privacy.ads.consent':
-    'No Espaço Econômico Europeu, no Reino Unido e na Suíça, a mensagem de consentimento do Google aparece no app; lá, e nos estados dos EUA cujas leis dão escolhas a você, dá para mudá-las nas configurações do app, em “Opções de privacidade”.',
+    'No Espaço Econômico Europeu, no Reino Unido e na Suíça, a mensagem de consentimento do Google aparece no app, e o app só inicia o software de anúncios do Google depois que você consente. Se você recusar, o app não inicia o software de anúncios do Google e não mostra anúncios.',
+  'privacy.ads.consentTool':
+    'A mensagem vem da ferramenta de consentimento do Google, que o app inicia antes de qualquer anúncio e que consulta o Google para saber se a mensagem é necessária onde você está.',
+  'privacy.ads.choices':
+    'Lá, e nos estados dos EUA cujas leis dão escolhas a você, dá para mudar suas escolhas nas configurações do app, em “Opções de privacidade”.',
   'privacy.ads.remove':
-    'Ao comprar “Remover anúncios”, os anúncios param e o app deixa de iniciar o software de anúncios do Google, então não envia nada ao Google.',
+    'Ao comprar “Remover anúncios”, os anúncios param e o app deixa de iniciar o software de anúncios do Google e a ferramenta de consentimento dele, então não envia nada ao Google.',
   'privacy.purchase.heading': 'A compra e as avaliações',
   'privacy.purchase.text':
     '“Remover anúncios” é uma compra única, processada pela Apple: nós não recebemos nenhum dado de pagamento. O app confere a compra no seu iPhone, com as ferramentas da própria Apple, sem nenhum serviço de compras no meio.',
@@ -1013,26 +1029,32 @@ export const pt: Messages = {
     'No app: “Seus dados › Apagar tudo”, que também pode apagar os pesos que o app salvou no app Saúde. Apagar o app apaga os arquivos dele, mas deixa esses pesos no app Saúde: use “Apagar tudo” antes, ou apague-os no app Saúde. Os backups anteriores do seu iPhone guardam a cópia deles até serem substituídos ou apagados.',
   'privacy.delete.health':
     'Para tirar o acesso do app ao app Saúde, abra o app Saúde, toque na sua foto, depois em Apps, em Privacidade, e em Weigh to Go.',
-  'privacy.rights.heading': 'Seus direitos',
+  'privacy.rights.heading': 'Bases legais e seus direitos',
   'privacy.rights.diary':
     'Seu diário e seus dados de saúde: nós não tratamos nenhum deles. Eles ficam com você, e a seção acima diz como apagá-los.',
   'privacy.rights.ads':
     'O software de anúncios do Google: onde a lei pede, ele funciona com o seu consentimento, dado na mensagem do Google; nos outros lugares, com base no nosso legítimo interesse em manter um app gratuito com anúncios não personalizados. O Google pode tratar os dados fora do seu país, por exemplo nos Estados Unidos.',
-  'privacy.rights.messages': 'Uma mensagem que você nos mandar: usada para responder a você.',
-  'privacy.rights.list':
-    'Você pode pedir acesso aos seus dados e a exclusão deles, se opor ao uso deles e retirar a qualquer momento o consentimento aos anúncios do Google, em “Opções de privacidade”.',
+  'privacy.rights.messages':
+    'Uma mensagem que você nos mandar: nós a usamos para responder a você, com base no nosso legítimo interesse em responder.',
+  'privacy.rights.ours':
+    'Nós não guardamos nada sobre você, a não ser uma mensagem que você nos mandar, que você pode nos pedir para mostrar ou apagar.',
+  'privacy.rights.google':
+    'O Google responde pelos dados que o software de anúncios dele coleta: faça os pedidos sobre eles ao Google, como explica a política de privacidade dele.',
+  'privacy.rights.choices':
+    'Onde o app mostra “Opções de privacidade”, você pode retirar seu consentimento ou se opor ali a qualquer momento. Em qualquer lugar, apagar o app ou comprar “Remover anúncios” acaba com a coleta.',
   'privacy.rights.complaint':
     'Você também pode reclamar a uma autoridade de proteção de dados: a ANPD, no Brasil, ou a autoridade do seu país no Espaço Econômico Europeu, no Reino Unido ou na Suíça.',
   'privacy.changes.heading': 'Mudanças',
   'privacy.changes.text':
     'Se o que o app ou o site faz com os dados mudar, esta política muda junto, e a data no topo também.',
   'privacy.contact.heading': 'Quem somos e contato',
-  'privacy.contact.who': 'O Weigh to Go é feito por Jonathas Costa, que é o responsável por esta política.',
+  'privacy.contact.who':
+    'O Weigh to Go é feito por Jonathas Costa, que é o responsável pelos dados que esta política descreve (o controlador).',
   'privacy.contact.text': 'Dúvidas e pedidos vão pelas issues do projeto no GitHub:',
   'privacy.contact.link': 'Issues do Weigh to Go no GitHub',
   'privacy.contact.public': 'As issues são públicas: não publique lá seus pesos nem outros dados pessoais.',
   'privacy.contact.messages':
-    'Uma mensagem que você nos mandar é usada só para responder a ela e guardada só pelo tempo que isso levar; uma issue fica no GitHub até ser apagada, o que você pode nos pedir.',
+    'Uma issue, com o seu nome de usuário do GitHub, é pública e fica no GitHub até ser apagada. Você pode editar o que escreveu ou apagar seus comentários, e nós apagamos uma issue que você abriu se você pedir nela. Cópias feitas fora do nosso alcance, como emails de notificação ou arquivos da atividade pública do GitHub, podem continuar existindo.',
 
   'settings.label': 'Configurações',
   'settings.language': 'Idioma',
