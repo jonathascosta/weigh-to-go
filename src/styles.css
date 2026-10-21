@@ -409,12 +409,14 @@ main {
   margin-top: 10px;
 }
 
-/* The box keeps its size beside a label of several lines, on the label's first line. */
+/* The box keeps its size beside a label of several lines, centred on the label's first line, and
+   grows with the text (rem: an input's own em is the browser's 13 px). */
 .check input {
   flex: none;
-  width: 1.375em;
-  height: 1.375em;
-  margin: 0;
+  font: inherit;
+  width: 1.375rem;
+  height: 1.375rem;
+  margin: calc((1lh - 1.375rem) / 2) 0 0;
   accent-color: var(--accent);
 }
 

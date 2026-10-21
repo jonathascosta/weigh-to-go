@@ -72,6 +72,8 @@ export function mountReminder(
     const text = shown === 'denied' ? m['reminder.denied'] : shown === 'failed' ? m['reminder.failed'] : '';
     status.className = shown === 'failed' ? 'status status-bad' : 'status';
     if (status.textContent !== text) status.textContent = text;
+    // No blank band while there is nothing to say.
+    status.hidden = text === '';
   };
   /** Says it again: a screen reader announces a status only when its text changes. */
   const announce = () => {
