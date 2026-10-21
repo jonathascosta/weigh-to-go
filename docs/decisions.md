@@ -72,3 +72,22 @@ the weekly summary) adds 4 to 8 hours, since without a Mac every try is a CI run
 TestFlight round. What only the owner
 can do for the App Store is in [STORE.md](STORE.md) ([STORE_PT.md](STORE_PT.md) in Portuguese); a
 few of its steps can start now.
+
+## 21 October 2026 · The phone experience: defaults from the audit
+
+DaVinci's audit ([ux/audit.md](ux/audit.md)) ended with eight questions for the owner. Under
+decision 9 above, DaVinci's recommendation is the default, recorded here as **open to the owner**,
+who can change any of them; the design (Sprint 2, story 2) builds on them.
+
+1. **Structure on a phone:** tabs at the bottom (Today, Progress, Analysis, Your data). The desktop
+   keeps a page that shows more at once.
+2. **Default view on a phone:** the "Essential" preset, with the analysis cards closed to their
+   one-line summary. The desktop keeps a "Detailed" view equal to today's.
+3. **How often each part is used:** DaVinci's estimates in the audit's inventory, until the owner
+   says otherwise.
+4. **The intro:** shown only while the diary is empty; kept in the static HTML for search engines.
+5. **Language and units:** in settings, on the phone and on the desktop.
+6. **Deleting a weigh-in:** an Undo for a few seconds instead of a question; erasing and replacing
+   everything keep their confirmations.
+7. **Colour for rises:** the calendar's neutral blue and orange; red only for errors.
+8. **Long tables on a phone:** a few rows and "Show more", or a screen of their own.
