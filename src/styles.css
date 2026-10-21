@@ -3214,3 +3214,27 @@ span.cal-none {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
   }
 }
+
+/* On the one page a card's one-choice rows take their own width, as the period's. */
+@media (min-width: 960px) {
+  .options-card .segmented,
+  .options-card .control .segmented {
+    display: inline-flex;
+    width: auto;
+  }
+
+  .options-card .segment {
+    flex: 0 0 auto;
+    padding: 4px 14px;
+  }
+}
+
+/* The calendar's Months: its label over a control as wide as a phone's row, no wider. */
+.controls.span .control {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.controls.span .segmented {
+  max-width: 24rem;
+}
