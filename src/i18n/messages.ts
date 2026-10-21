@@ -798,6 +798,26 @@ export const en = {
   'reminder.failed': "Couldn't set the reminders. The app tries again when you come back to it.",
   'reminder.notificationTitle': 'Daily weigh-in',
   'reminder.notificationBody': 'Time for today’s weigh-in.',
+  'health.title': 'Apple Health',
+  'health.note':
+    'Reads your weight from Apple Health, so readings from a smart scale or another app join the diary, and saves the weights you log here to it. Readings from Health stay in Health: the app reads them again each time it opens, and they are not in your backup file. A weight you type here always wins over a reading from another app.',
+  'health.switch': 'Use Apple Health',
+  'health.rule': 'On a day with several readings',
+  'health.ruleFirst': 'The first of the day',
+  'health.ruleLast': 'The last of the day',
+  'health.days': (n: number, days: string) =>
+    n === 0 ? 'No days from Apple Health yet.' : `${days} from Apple Health.`,
+  'health.readFailed': 'Couldn’t read Apple Health just now. The app tries again when you come back.',
+  'health.denied':
+    'Apple Health isn’t letting Weigh to Go save weight. In the Health app, tap your picture, then Apps under Privacy, Weigh to Go, and turn on Weight.',
+  'health.unavailable': 'Apple Health isn’t available on this device.',
+  'health.revoke':
+    'Turning this off stops reading and saving. To take back the app’s access, open the Health app, tap your picture, then Apps under Privacy, Weigh to Go.',
+  'data.eraseHealth': 'Also delete the weights this app saved in Apple Health',
+  'data.eraseHealthNote':
+    'Readings from your scale or other apps stay in Apple Health. The app can’t take back its own access to Health: to do it, in the Health app tap your picture, then Apps under Privacy, Weigh to Go.',
+  'data.erasedNotHealth':
+    'Everything here was erased, but the weights in Apple Health couldn’t be deleted. In the Health app: Weight, Data Sources & Access, Weigh to Go, Delete All Data.',
   'notice.reloadButton': 'Reload',
   'update.ready': 'A new version of Weigh to Go is ready. Your weigh-ins stay where they are.',
   'install.empty':
@@ -1437,6 +1457,26 @@ export const pt: Messages = {
   'reminder.failed': 'Não foi possível programar os lembretes. O app tenta de novo quando você voltar a ele.',
   'reminder.notificationTitle': 'Pesagem do dia',
   'reminder.notificationBody': 'Hora da pesagem de hoje.',
+  'health.title': 'App Saúde',
+  'health.note':
+    'Lê seu peso do app Saúde, para que as medições de uma balança inteligente ou de outro app entrem no diário, e salva lá os pesos que você registra aqui. As medições do app Saúde ficam no app Saúde: o app as lê de novo cada vez que abre, e elas não entram no seu arquivo de backup. Um peso digitado aqui sempre prevalece sobre uma medição de outro app.',
+  'health.switch': 'Usar o app Saúde',
+  'health.rule': 'Num dia com várias medições',
+  'health.ruleFirst': 'A primeira do dia',
+  'health.ruleLast': 'A última do dia',
+  'health.days': (n: number, days: string) =>
+    n === 0 ? 'Nenhum dia veio do app Saúde ainda.' : `${days} ${n === 1 ? 'veio' : 'vieram'} do app Saúde.`,
+  'health.readFailed': 'Não foi possível ler o app Saúde agora. O app tenta de novo quando você voltar.',
+  'health.denied':
+    'O app Saúde não está deixando o Weigh to Go salvar o peso. No app Saúde, toque na sua foto, depois em Apps, em Privacidade, em Weigh to Go, e ligue Peso.',
+  'health.unavailable': 'O app Saúde não está disponível neste aparelho.',
+  'health.revoke':
+    'Ao desligar, o app deixa de ler e de salvar. Para tirar o acesso do app, abra o app Saúde, toque na sua foto, depois em Apps, em Privacidade, e em Weigh to Go.',
+  'data.eraseHealth': 'Apagar também os pesos que este app salvou no app Saúde',
+  'data.eraseHealthNote':
+    'As medições da sua balança ou de outros apps continuam no app Saúde. O app não consegue tirar o próprio acesso ao app Saúde: para isso, no app Saúde toque na sua foto, depois em Apps, em Privacidade, e em Weigh to Go.',
+  'data.erasedNotHealth':
+    'Tudo aqui foi apagado, mas os pesos no app Saúde não puderam ser apagados. No app Saúde: Peso, Fontes de Dados e Acesso, Weigh to Go, Apagar Todos os Dados.',
   'notice.reloadButton': 'Recarregar',
   'update.ready': 'Uma nova versão do Weigh to Go está pronta. Suas pesagens continuam aqui.',
   'install.empty':
@@ -1453,9 +1493,10 @@ export const pt: Messages = {
  * dictionaries in the app's build.
  */
 export const enApp = {
-  'home.privacy': 'Everything runs on your iPhone: your weigh-ins are stored in this app only.',
+  'home.privacy':
+    'Everything runs on your iPhone: your weigh-ins are stored in this app, and in Apple Health if you turn it on.',
   'data.note':
-    'Everything stays in this app on your iPhone, and in your iPhone’s backup if you use iCloud Backup or back up to a computer. A backup file is the only copy you hold yourself: export one now and then, and use it to move to another device.',
+    'Everything stays in this app on your iPhone, and in your iPhone’s backup if you use iCloud Backup or back up to a computer; with Apple Health on, the weights you type are in Health too. A backup file is the only copy you hold yourself: export one now and then, and use it to move to another device.',
   'data.eraseWarning':
     "This erases every weigh-in, your goal, height and settings from this app, and can't be undone. Export a backup first if you may want them back.",
   'data.eraseFailed': "Couldn't erase everything. Close the app, open it again and try again.",
@@ -1465,7 +1506,7 @@ export const enApp = {
   'install.empty':
     'If you have logged weigh-ins on weightogo.jonathas.net, export a backup there, save it to Files or send it to this iPhone with AirDrop, and import it here, under Your data.',
   'notice.noBackup':
-    'Your weigh-ins live only in this app, and in your iPhone’s backup if you use one. Export a backup, so you keep a copy of your own.',
+    'Your weigh-ins live in this app (and in Apple Health, if you turn it on), and in your iPhone’s backup if you use one. Export a backup, so you keep a copy of your own.',
   'notice.reload':
     "The app can't open its saved diary right now. Try again; if it keeps happening, close the app and open it again.",
   'notice.reloadButton': 'Try again',
@@ -1474,9 +1515,10 @@ export const enApp = {
 } satisfies Partial<Messages>;
 
 export const ptApp: typeof enApp = {
-  'home.privacy': 'Tudo funciona no seu iPhone: suas pesagens ficam guardadas só neste app.',
+  'home.privacy':
+    'Tudo funciona no seu iPhone: suas pesagens ficam guardadas neste app, e no app Saúde se você ligá-lo.',
   'data.note':
-    'Tudo fica neste app, no seu iPhone, e no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador. Um arquivo de backup é a única cópia que fica com você: exporte um de vez em quando e use-o para passar para outro aparelho.',
+    'Tudo fica neste app, no seu iPhone, e no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador; com o app Saúde ligado, os pesos que você digita ficam lá também. Um arquivo de backup é a única cópia que fica com você: exporte um de vez em quando e use-o para passar para outro aparelho.',
   'data.eraseWarning':
     'Isto apaga todas as pesagens, sua meta, altura e configurações deste app, e não pode ser desfeito. Exporte um backup antes, caso queira recuperar tudo.',
   'data.eraseFailed': 'Não foi possível apagar tudo. Feche o app, abra-o de novo e tente outra vez.',
@@ -1486,7 +1528,7 @@ export const ptApp: typeof enApp = {
   'install.empty':
     'Se você registrou pesagens no site weightogo.jonathas.net, exporte um backup por lá, salve-o no app Arquivos ou mande-o para este iPhone por AirDrop, e importe-o aqui, em Seus dados.',
   'notice.noBackup':
-    'Suas pesagens ficam só neste app, e no backup do seu iPhone, se você usa um. Exporte um backup, para ter uma cópia com você.',
+    'Suas pesagens ficam neste app (e no app Saúde, se você ligá-lo), e no backup do seu iPhone, se você usa um. Exporte um backup, para ter uma cópia com você.',
   'notice.reload':
     'O app não está conseguindo abrir o diário salvo agora. Tente de novo; se continuar, feche o app e abra-o outra vez.',
   'notice.reloadButton': 'Tentar de novo',

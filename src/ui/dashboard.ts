@@ -17,6 +17,7 @@ import { mountHiccups } from './hiccups';
 import { mountLog } from './log';
 import { mountPercent } from './percent';
 import { mountBmi, mountGoal } from './profile';
+import { mountHealth } from './health';
 import { mountRates } from './rates';
 import { mountReminder } from './reminder';
 import { isStandalone } from './standalone';
@@ -60,6 +61,8 @@ export function mountDashboard(root: HTMLElement, app: App, notifier?: Notifier)
   const reminder = notifier
     ? h('section', { class: 'card', attrs: { 'aria-labelledby': 'reminder-title' } })
     : null;
+  // So is Apple Health: the card shows once the app's store says the phone has it.
+  const health = inApp ? h('section', { class: 'card', attrs: { 'aria-labelledby': 'health-title' } }) : null;
   root.replaceChildren(
     notice,
     installHint,
@@ -74,6 +77,7 @@ export function mountDashboard(root: HTMLElement, app: App, notifier?: Notifier)
     el.log,
     data,
     ...(reminder ? [reminder] : []),
+    ...(health ? [health] : []),
   );
 
   const safely = (part: Part, state: State, s: Settings) => {
@@ -113,6 +117,7 @@ export function mountDashboard(root: HTMLElement, app: App, notifier?: Notifier)
     [null, mountData(data, notice, app)],
   ];
   if (reminder && notifier) parts.push([null, mountReminder(reminder, app, notifier)]);
+  if (health) parts.push([null, mountHealth(health)]);
 
   /**
    * Shows and hides the sections as chosen: a section that just appeared is drawn, and nothing else

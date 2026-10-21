@@ -49,6 +49,29 @@ describe('the iPhone app', () => {
     expect(read('ios/App/App/pt.lproj/InfoPlist.strings')).toContain('CFBundleDisplayName');
   });
 
+  it('asks for Apple Health with its reasons in both languages, and carries the entitlement', () => {
+    for (const key of ['NSHealthShareUsageDescription', 'NSHealthUpdateUsageDescription']) {
+      expect(infoPlist).toContain(`<key>${key}</key>`);
+      expect(read('ios/App/App/en.lproj/InfoPlist.strings')).toContain(`"${key}"`);
+      expect(read('ios/App/App/pt.lproj/InfoPlist.strings')).toContain(`"${key}"`);
+    }
+    expect(read('ios/App/App/App.entitlements')).toMatch(
+      /<key>com.apple.developer.healthkit<\/key>\s*<true\/>/,
+    );
+    expect(project.match(/CODE_SIGN_ENTITLEMENTS = App\/App.entitlements;/g)).toHaveLength(2);
+  });
+
+  it('registers its own Swift plugins in its own view controller', () => {
+    expect(project).toContain('WeightHealthPlugin.swift in Sources');
+    expect(project).toContain('MainViewController.swift in Sources');
+    expect(read('ios/App/App/Base.lproj/Main.storyboard')).toContain('customClass="MainViewController"');
+    expect(read('ios/App/App/MainViewController.swift')).toContain(
+      'registerPluginInstance(WeightHealthPlugin())',
+    );
+    // The scene builds the window in code: its root must be the same view controller.
+    expect(read('ios/App/App/SceneDelegate.swift')).toContain('rootViewController = MainViewController()');
+  });
+
   it('ships its privacy manifest', () => {
     expect(project).toContain('PrivacyInfo.xcprivacy in Resources');
     expect(read('ios/App/App/PrivacyInfo.xcprivacy')).toMatch(/<key>NSPrivacyTracking<\/key>\s*<false\/>/);

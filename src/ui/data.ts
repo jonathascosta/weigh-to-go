@@ -17,6 +17,7 @@ import {
 import { CSV_FORMATS, createCsv, csvFileName, csvFormatPref, csvSeparators } from '../data/csv';
 import { choose, count, settings, type Settings } from '../i18n';
 import { saveFile } from '../platform/save';
+import { isHealthStore } from '../health/layer';
 import { h } from './dom';
 
 /** Days after the last backup before the reminder shows again. */
@@ -51,7 +52,10 @@ export function noticeFor(
  * handed over counts as a backup for the reminder.
  */
 async function exportBackup(app: App): Promise<string | null> {
-  const { weighIns, profile } = app.state();
+  const { store, profile } = app.state();
+  // Only what was typed here: the days from Apple Health come back from Health, never from a file
+  // of ours (decision H7).
+  const weighIns = isHealthStore(store) ? await store.health.typed() : app.state().weighIns;
   const now = new Date();
   const file = backupFileName(localToday(now));
   if (!(await saveFile(file, createBackup(weighIns, profile, now), 'application/json'))) return null;
@@ -189,9 +193,10 @@ export function mountData(
   };
 
   /** Says how an operation went, and moves focus there: the buttons it came from are gone. */
-  const report = (text: string, ok: boolean) => {
+  /** Says how it went: done (green), failed (red), or done in part (plain). */
+  const report = (text: string, ok: boolean | 'partly') => {
     const line = h('p', {
-      class: ok ? 'status status-ok' : 'status status-bad',
+      class: ok === 'partly' ? 'status' : ok ? 'status status-ok' : 'status status-bad',
       attrs: { tabindex: -1 },
       text,
     });
@@ -311,16 +316,34 @@ export function mountData(
       text: m['data.eraseConfirm'],
     });
     const cancel = cancelButton();
+    // Once the app has written to Apple Health, the person chooses whether its samples go too.
+    const { store } = app.state();
+    const withHealth = isHealthStore(store) && store.health.everOn() ? store : null;
+    const fromHealth = h('input', { attrs: { id: 'data-erase-health', type: 'checkbox' } });
     confirm.addEventListener('click', () => {
       confirm.disabled = true;
       cancel.disabled = true;
-      app
-        .erase()
-        .then((gone) => {
+      fromHealth.disabled = true;
+      // Health refusing never stops the erase here: it is said apart.
+      const healthGone =
+        withHealth && fromHealth.checked
+          ? withHealth.health.deleteOwnSamples().then(
+              () => true,
+              (error: unknown) => {
+                console.warn(error);
+                return false;
+              },
+            )
+          : Promise.resolve(true);
+      healthGone
+        .then(async (fromHealthToo) => ({ gone: await app.erase(), fromHealthToo }))
+        .then(({ gone, fromHealthToo }) => {
           // The saved choices went with everything else: back to automatic here too.
           choose({ lang: null, weightUnit: null, heightUnit: null });
           const after = settings().messages;
-          report(gone ? after['data.erased'] : after['data.eraseFailed'], gone);
+          if (!gone) report(after['data.eraseFailed'], false);
+          else if (fromHealthToo) report(after['data.erased'], true);
+          else report(after['data.erasedNotHealth'], 'partly');
         })
         .catch((error: unknown) => {
           console.error(error);
@@ -329,6 +352,12 @@ export function mountData(
     });
     panel.replaceChildren(
       h('p', { class: 'status status-bad', text: m['data.eraseWarning'] }),
+      ...(withHealth
+        ? [
+            h('label', { class: 'check' }, fromHealth, h('span', { text: m['data.eraseHealth'] })),
+            h('p', { class: 'note', text: m['data.eraseHealthNote'] }),
+          ]
+        : []),
       h('div', { class: 'actions' }, backupFirst(), confirm, cancel),
     );
     // Not the destructive button: a second Enter must not erase everything.
