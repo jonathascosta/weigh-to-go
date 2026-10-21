@@ -8,12 +8,14 @@ import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import type { Notifier, Permission } from '../reminders/keeper';
 import { isReminderSetting } from '../reminders/schedule';
-import { isMissingFile } from './file-errors';
+import { readText } from './library';
 
 const asPermission = (state: string): Permission =>
   state === 'granted' ? 'granted' : state === 'denied' ? 'denied' : 'prompt';
 
-const SETTING = { path: 'settings/reminder.json', directory: Directory.Library };
+const SETTING_FOLDER = 'settings';
+const SETTING_NAME = 'reminder.json';
+const SETTING = { path: `${SETTING_FOLDER}/${SETTING_NAME}`, directory: Directory.Library };
 
 export const phoneNotifier: Notifier = {
   permission: async () => asPermission((await LocalNotifications.checkPermissions()).display),
@@ -42,20 +44,15 @@ export const phoneNotifier: Notifier = {
     });
   },
   readSetting: async () => {
+    const text = await readText(SETTING_FOLDER, SETTING_NAME);
+    if (text === null) return null;
+    let value: unknown = null;
     try {
-      const { data } = await Filesystem.readFile({ ...SETTING, encoding: Encoding.UTF8 });
-      const text = typeof data === 'string' ? data : await data.text();
-      let value: unknown = null;
-      try {
-        value = JSON.parse(text);
-      } catch {
-        // A broken file is no setting: the default, saved anew on the next change.
-      }
-      return isReminderSetting(value) ? value : null;
-    } catch (error) {
-      if (isMissingFile(error)) return null;
-      throw error;
+      value = JSON.parse(text);
+    } catch {
+      // A broken file is no setting: the default, saved anew on the next change.
     }
+    return isReminderSetting(value) ? value : null;
   },
   writeSetting: async (setting) => {
     await Filesystem.writeFile({

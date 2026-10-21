@@ -56,6 +56,18 @@ vi.mock('@capacitor/filesystem', () => ({
       files.set(o.path, o.data);
       return Promise.resolve({ uri: '' });
     },
+    readdir: (o: { path: string }) => {
+      const prefix = o.path === '' ? '' : `${o.path}/`;
+      const entries = [...files.keys()]
+        .filter((k) => k.startsWith(prefix))
+        .map((k) => k.slice(prefix.length));
+      if (o.path !== '' && entries.length === 0) {
+        return Promise.reject(Object.assign(new Error('missing'), { code: 'OS-PLUG-FILE-0008' }));
+      }
+      return Promise.resolve({
+        files: [...new Set(entries.map((e) => e.split('/')[0]))].map((name) => ({ name })),
+      });
+    },
   },
 }));
 
@@ -103,6 +115,11 @@ describe('phoneNotifier', () => {
     ln.listener?.({ actionId: 'dismiss' });
     ln.listener?.({ actionId: 'tap' });
     expect(opened).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads a broken setting file as none', async () => {
+    files.set('settings/reminder.json', '{"on": tru');
+    expect(await phoneNotifier.readSetting()).toBeNull();
   });
 
   it('keeps the setting in a file, none at first', async () => {
