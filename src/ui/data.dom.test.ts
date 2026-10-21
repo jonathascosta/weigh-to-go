@@ -28,7 +28,7 @@ beforeEach(async () => {
   root = document.createElement('div');
   document.body.replaceChildren(root);
   app = createApp(() => Promise.resolve(memoryStore()));
-  render = mountData(root, document.createElement('div'), app);
+  render = mountData(root, app);
   app.subscribe((state) => {
     render(state, choose({}));
   });

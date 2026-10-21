@@ -3,11 +3,13 @@
 // and dark, English and Portuguese, text at 100% and 150%, with a made-up year of weigh-ins loaded
 // through the page's own backup import.
 //
-//   npm run build && node scripts/ux-shots.mjs [out-dir] [--quick] [--measure]
+//   npm run build && node scripts/ux-shots.mjs [out-dir] [--quick] [--measure] [--sizes=390x844,1280x900]
 //
-// Shots: PNGs named <width>x<height>-<theme>-<lang>-<text>.png (the whole page) in out-dir, by
-// default a new folder in the system's temporary directory (printed), as they are too big to
-// commit. --quick takes only 390 × 844, light, English, 100%.
+// Shots: PNGs named <width>x<height>-<theme>-<lang>-<text>-<view>.png in out-dir, by default a new
+// folder in the system's temporary directory (printed), as they are too big to commit. On a phone
+// each of the four views is a page of its own, shot whole, with Today also after a save
+// (today-saved) and with an empty diary (today-empty); the desktop is one page (all).
+// --quick takes only 390 × 844, light, English, 100%. --sizes takes only the sizes listed.
 // --measure takes no shots: it writes measure.json in out-dir and prints a summary of what the audit
 // (docs/ux/audit.md) quotes: page and section heights, sideways overflow, where the weigh-in sits,
 // tap target sizes, how far each chart starts below its card's top, the smallest chart text and,
@@ -43,6 +45,12 @@ const args = process.argv.slice(2);
 const quick = args.includes('--quick');
 const measuring = args.includes('--measure');
 const named = args.find((a) => !a.startsWith('--'));
+const only = args
+  .find((a) => a.startsWith('--sizes='))
+  ?.slice('--sizes='.length)
+  .split(',');
+/** @param {Size} size */
+const wanted = (size) => !only || only.includes(`${String(size.width)}x${String(size.height)}`);
 const out = named ? resolve(named) : mkdtempSync(join(tmpdir(), 'weigh-to-go-ux-'));
 mkdirSync(out, { recursive: true });
 
@@ -86,11 +94,18 @@ async function settle(/** @type {Page} */ page) {
 
 /** Waits for the diary with a weigh-in in its log, as e2e/helpers.ts loadBackup does. */
 async function diaryReady(/** @type {Page} */ page) {
-  await page.locator('#pct-title').waitFor();
   await page
     .locator('section[aria-labelledby="log-title"] tbody button[data-role="delete"]')
     .first()
-    .waitFor();
+    .waitFor({ state: 'attached' });
+  await settle(page);
+}
+
+/** Shows a view, as its tab does. */
+async function show(/** @type {Page} */ page, /** @type {string} */ view) {
+  await page.evaluate((v) => {
+    window.location.hash = `#${v}`;
+  }, view);
   await settle(page);
 }
 
@@ -99,9 +114,9 @@ async function diaryReady(/** @type {Page} */ page) {
  * person opens it on a later day (the import leaves the page scrolled to its message).
  * @param {Browser} browser
  * @param {string} base
- * @param {{ size: Size, theme?: 'light' | 'dark', lang: string, text: number, fresh?: boolean }} options
+ * @param {{ size: Size, theme?: 'light' | 'dark', lang: string, text: number, fresh?: boolean, empty?: boolean }} options
  */
-async function openDiary(browser, base, { size, theme = 'light', lang, text, fresh = false }) {
+async function openDiary(browser, base, { size, theme = 'light', lang, text, fresh = false, empty = false }) {
   const phone = size.width < 800;
   const context = await browser.newContext({
     viewport: size,
@@ -112,18 +127,24 @@ async function openDiary(browser, base, { size, theme = 'light', lang, text, fre
     deviceScaleFactor: phone ? 2 : 1,
   });
   const page = await context.newPage();
-  await page.goto(new URL(lang === 'pt' ? 'pt/' : '', base).href);
-  await page
-    .locator('#data-file')
-    .setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: yearBackup() });
-  await page
-    .locator('section[aria-labelledby="data-title"] button')
-    .filter({ hasText: /^(Add to what is here|Juntar ao que está aqui)$/ })
-    .click();
-  await diaryReady(page);
-  if (fresh) {
-    await page.reload();
+  // The import is in Your data, a view of its own on a phone.
+  await page.goto(new URL(`${lang === 'pt' ? 'pt/' : ''}${empty ? '' : '#data'}`, base).href);
+  if (!empty) {
+    await page
+      .locator('#data-file')
+      .setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: yearBackup() });
+    await page
+      .locator('section[aria-labelledby="data-title"] button')
+      .filter({ hasText: /^(Add to what is here|Juntar ao que está aqui)$/ })
+      .click();
     await diaryReady(page);
+    await show(page, 'today');
+    if (fresh) {
+      await page.reload();
+      await diaryReady(page);
+    }
+  } else {
+    await page.locator('#entry-weight').waitFor();
   }
   if (text !== 100)
     await page.evaluate((t) => {
@@ -289,11 +310,11 @@ async function saveFlow(/** @type {Page} */ page) {
   const save = await page.locator('.entry button[type=submit]').boundingBox();
   if (!save) throw new Error('No Save button.');
   await page.touchscreen.tap(save.x + save.width / 2, save.y + save.height / 2);
-  await page.locator('#entry-status.status-ok').waitFor();
+  await page.locator('#entry-saved').waitFor();
   return page.evaluate(() => ({
     scrollY: window.scrollY,
     viewport: window.innerHeight,
-    statusTop: Math.round(document.querySelector('#entry-status')?.getBoundingClientRect().top ?? -1),
+    statusTop: Math.round(document.querySelector('#entry-saved')?.getBoundingClientRect().top ?? -1),
   }));
 }
 
@@ -328,7 +349,7 @@ try {
     if (measuring) {
       /** @type {Record<string, unknown>} */
       const results = {};
-      for (const size of [...PHONES, DESKTOP])
+      for (const size of [...PHONES, DESKTOP].filter(wanted))
         for (const lang of ['en', 'pt'])
           for (const text of size === DESKTOP ? [100] : [100, 150]) {
             const { context, page } = await openDiary(browser, base, { size, lang, text, fresh: true });
@@ -355,7 +376,7 @@ try {
       writeFileSync(file, `${JSON.stringify(results, null, 2)}\n`);
       console.log(`Written: ${file}`);
     } else {
-      const sizes = quick ? [{ width: 390, height: 844 }] : [...PHONES, DESKTOP];
+      const sizes = (quick ? [{ width: 390, height: 844 }] : [...PHONES, DESKTOP]).filter(wanted);
       /** @type {('light' | 'dark')[]} */
       const themes = quick ? ['light'] : ['light', 'dark'];
       const langs = quick ? ['en'] : ['en', 'pt'];
@@ -365,15 +386,55 @@ try {
           for (const lang of langs)
             for (const text of texts) {
               if (size === DESKTOP && text !== 100) continue;
+              const phone = size !== DESKTOP;
+              const stem = `${String(size.width)}x${String(size.height)}-${theme}-${lang}-${String(text)}`;
+              /** @param {Page} page @param {string} view */
+              const shoot = async (page, view) => {
+                const file = join(out, `${stem}-${view}.png`);
+                if (phone) {
+                  // Chromium's full-page capture drops the touch emulation (pointer: coarse turns
+                  // fine, and stays so): the viewport grows to the page instead, and back.
+                  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+                  await page.setViewportSize({ width: size.width, height: Math.max(height, size.height) });
+                  await settle(page);
+                  await page.screenshot({ path: file });
+                  await page.setViewportSize(size);
+                  await settle(page);
+                } else {
+                  await page.screenshot({ path: file, fullPage: true });
+                }
+                // Against the width asked for: on a phone the browser widens the layout to fit what
+                // overflows, so innerWidth grows with the page and can't show it.
+                const wide = await page.evaluate((w) => document.documentElement.scrollWidth > w, size.width);
+                console.log(file, wide ? '(scrolls sideways)' : '');
+              };
               const { context, page } = await openDiary(browser, base, { size, theme, lang, text });
-              const name = `${String(size.width)}x${String(size.height)}-${theme}-${lang}-${String(text)}.png`;
-              const file = join(out, name);
-              await page.screenshot({ path: file, fullPage: true });
-              // Against the width asked for: on a phone the browser widens the layout to fit what
-              // overflows, so innerWidth grows with the page and can't show it.
-              const wide = await page.evaluate((w) => document.documentElement.scrollWidth > w, size.width);
-              console.log(file, wide ? '(scrolls sideways)' : '');
+              if (phone) {
+                for (const view of ['today', 'progress', 'analysis', 'data']) {
+                  await show(page, view);
+                  await page.evaluate(() => {
+                    window.scrollTo(0, 0);
+                  });
+                  await shoot(page, view);
+                }
+                await show(page, 'today');
+                await page.locator('#entry-weight').fill(lang === 'pt' ? '95,2' : '95.2');
+                await page.locator('.entry button[type=submit]').click();
+                await page.locator('#entry-saved').waitFor();
+                await page.evaluate(() => {
+                  window.scrollTo(0, 0);
+                });
+                await settle(page);
+                await shoot(page, 'today-saved');
+              } else {
+                await shoot(page, 'all');
+              }
               await context.close();
+              if (phone) {
+                const fresh = await openDiary(browser, base, { size, theme, lang, text, empty: true });
+                await shoot(fresh.page, 'today-empty');
+                await fresh.context.close();
+              }
             }
     }
   } finally {

@@ -30,20 +30,27 @@ export function yearBackup(days = 365): Buffer {
   return Buffer.from(JSON.stringify(backup));
 }
 
-/** Loads a backup through the page's own import, added to what is there. */
+/**
+ * Loads a backup through the page's own import, added to what is there. On a phone the import is in
+ * Your data, so the page goes there for it and comes back to Today.
+ */
 export async function loadBackup(page: Page, buffer = yearBackup()): Promise<void> {
+  const data = page.locator('section[aria-labelledby="data-title"]');
+  const phone = !(await data.isVisible());
+  if (phone) await page.locator('nav.tabs a[href="#data"]').click();
   await page
     .locator('#data-file')
     .setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer });
-  await page
-    .locator('section[aria-labelledby="data-title"] button')
+  await data
+    .locator('button')
     .filter({ hasText: /^(Add to what is here|Juntar ao que está aqui)$/ })
     .click();
-  await expect(page.locator('#pct-title')).toBeVisible();
   // A weigh-in's row (with its Delete button), not the "No weigh-ins yet" one.
   await expect(
     page.locator('section[aria-labelledby="log-title"] tbody button[data-role="delete"]').first(),
   ).toBeVisible();
+  if (phone) await page.locator('nav.tabs a[href="#today"]').click();
+  else await expect(page.locator('#pct-title')).toBeVisible();
 }
 
 /**

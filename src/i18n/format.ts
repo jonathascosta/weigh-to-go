@@ -6,7 +6,17 @@ import { isIsoDay, parseDay } from '../analysis/dates';
 import { fromKg, toFeetInches, type HeightUnit, type WeightUnit } from '../units';
 
 export type DayStyle =
-  'short' | 'medium' | 'long' | 'dayMonth' | 'monthYear' | 'weekday' | 'weekdayLong' | 'weekdayNarrow';
+  | 'short'
+  | 'medium'
+  | 'long'
+  | 'dayMonth'
+  | 'monthYear'
+  | 'weekday'
+  | 'weekdayLong'
+  | 'weekdayNarrow'
+  | 'dayMonthShort'
+  | 'weekdayDayMonth'
+  | 'weekdayDayMonthLong';
 
 const DAY_OPTIONS: Record<DayStyle, Intl.DateTimeFormatOptions> = {
   short: { day: '2-digit', month: '2-digit', year: 'numeric' },
@@ -17,6 +27,12 @@ const DAY_OPTIONS: Record<DayStyle, Intl.DateTimeFormatOptions> = {
   weekday: { weekday: 'short' },
   weekdayLong: { weekday: 'long' },
   weekdayNarrow: { weekday: 'narrow' },
+  /** "21 Oct": the date chip's day. */
+  dayMonthShort: { day: 'numeric', month: 'short' },
+  /** "Mon, 19 Oct". */
+  weekdayDayMonth: { weekday: 'short', day: 'numeric', month: 'short' },
+  /** "Wednesday 21 October". */
+  weekdayDayMonthLong: { weekday: 'long', day: 'numeric', month: 'long' },
 };
 
 export interface Formatter {
@@ -41,6 +57,8 @@ export interface Formatter {
   height(cm: number, unit: HeightUnit): string;
   /** A calendar day, YYYY-MM-DD (a TypeError for anything else, which is a bug upstream). */
   day(iso: string, style?: DayStyle): string;
+  /** How long ago, in days, in words: "yesterday", "3 days ago" ("ontem", "há 3 dias"). */
+  daysAgo(days: number): string;
 }
 
 /**
@@ -87,6 +105,7 @@ export function formatter(tag: string, signNegative = SIGN_NEGATIVE): Formatter 
     }
     return format;
   };
+  let relative: Intl.RelativeTimeFormat | undefined;
   // A minus sign, not a hyphen, as typography (and screen readers) expect.
   const minus = (text: string) => text.replace('-', '−');
 
@@ -109,5 +128,6 @@ export function formatter(tag: string, signNegative = SIGN_NEGATIVE): Formatter 
       if (!isIsoDay(iso)) throw new TypeError(`Not a day: ${iso}`);
       return dayFormat(style).format(parseDay(iso));
     },
+    daysAgo: (n) => (relative ??= new Intl.RelativeTimeFormat(tag, { numeric: 'auto' })).format(-n, 'day'),
   };
 }
