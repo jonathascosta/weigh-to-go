@@ -142,3 +142,127 @@ Numbered H1 to H12 so they don't clash with the design's.
 - **H11. Health data is never used for ads**, nor for anything but the diary on this phone.
 - **H12. Write permission is checked again** on every opening and return; when iOS says no, the card
   says where to allow it, and the days are still read if Health lets the app read.
+
+## 21 October 2026 · The phone experience: the design's decisions
+
+DaVinci's design ([ux/design.md](ux/design.md), Sprint 2, story 2), revised after Atlas's and
+Spock's two reviews, takes the choices below. Under decision 9 above, each is DaVinci's
+recommendation, recorded here as **open to the owner**, who can change any of them; each has its
+alternative. Those that shape what the person sees, the ads or the wording are **for the owner**;
+the technical ones are **taken by the team**, open to the owner all the same. Strings the product
+already has are used word for word; where the design would word one differently, it is listed under
+**proposed string changes**, and nothing changes until the owner agrees. Numbered on from the
+decisions above; the design's own labels (O for the owner, S for strings, B for the team) are in
+brackets.
+
+### For the owner
+
+18. (O1) **Today's three figures** are the built tiles 7-day average, Total loss and Average pace;
+    the current weight is the weigh-in card's hint. _Alternative:_ current weight, 7-day average and
+    pace.
+19. (O2) **A 30-day sparkline on Today**, hidden on screens shorter than 700 px. _Alternative:_ no
+    chart.
+20. (O3) **Save beside the weight field**, half the card's inner width and at least 120 px, so the
+    decimal keypad (with no Return key on an iPhone) never hides it; [principles](ux/principles.md)
+    §1 says so. _Alternative:_ a full-width Save under the field.
+21. (O4) **After saving, the card shows the saved state** (Undo, Change, Another day) until Today is
+    left or the date changes. _Alternative:_ the field stays open for another entry.
+22. (O5) **Undo lasts 10 seconds**, paused while Undo has focus; undoing a new day puts the weight
+    back in the field. _Alternative:_ 5 seconds.
+23. (O6) **Presets:** Essential is today's "Just the essentials", Detailed is today's default view;
+    the default follows the screen width only the first time; "All on" stays inside the sheet.
+    _Alternative:_ one default everywhere, or a fourth preset, "Everything".
+24. (O7) **Goal and Weekly averages live on Progress**, with the chart. _Alternative:_ with the
+    analysis cards.
+25. (O8) **Analysis cards start closed on every phone visit** and open on the desktop.
+    _Alternative:_ remember which cards were open.
+26. (O9) **Each card's Essential and Detailed contents** as in the design's section 5.
+    _Alternative:_ Essential shows the figures only.
+27. (O10) **The calendar shows the last 3 months by default on a narrow screen.** _Alternative:_ 12.
+28. (O11) **A day opens in a sheet to edit or delete**, replacing the log's 100 Delete buttons.
+    _Alternative:_ a larger Delete per row, with Undo.
+29. (O12) **Your data's order:** Weigh-ins, Backup, Settings, iPhone app, About, Erase.
+    _Alternative:_ Settings first.
+30. (O13) **The ad banner sits at the top** of the app, under the status bar, 50 pt reserved, away
+    from Save and the tab bar. _Alternative:_ above the tab bar.
+31. (O14) **When ads first show:** never while the diary is empty, and not in the first 7 days after
+    the app's first launch. _Alternative:_ from the first day with data, or after 14 days.
+32. (O15) **The banner is hidden while a sheet or dialog is open, while the keypad is up and during
+    the purchase.** _Alternative:_ keep it shown, with only the empty band between it and the page.
+33. (O16) **Remove ads is offered only in Your data**, as "One payment, for good; no subscription.",
+    with a line for each state (waiting for approval, failed, offline, bought, nothing to restore).
+    _Alternative:_ a small "Remove ads" link under the banner.
+34. (O17) **The app's About text** keeps the built backup condition ("and in your iPhone's backup if
+    you use iCloud Backup or back up to a computer"), says we keep nothing, names Apple Health and
+    Google AdMob and what an ad request carries, and links the privacy policy. _Alternative:_ the
+    policy link alone.
+35. (O18) **Apple Health stays the built card**, off by default, in the iPhone app group, hidden
+    where Health is unavailable. _Alternative:_ a row that opens it in a sheet.
+36. (O19) **The backup reminder** is a compact line on Today and a dot on the Your data tab.
+    _Alternative:_ the dot only.
+37. (O20) **Direction colours:** falls blue `#2c5d9a`, rises orange `#9a5410`; the total loss is no
+    longer green. _Alternative:_ ink and muted grey, with no hue.
+38. (O21) **The footer moves into About on a phone.** _Alternative:_ keep it under every view.
+39. (O22) **iOS 16 as the app's minimum** from Sprint 3 (container queries, `showPicker()`). It
+    leaves out the iPhone 6s and 6s Plus, the iPhone 7 and 7 Plus, and the first-generation iPhone
+    SE, which stop at iOS 15. _Alternative:_ keep iOS 15.0 with `@supports` fallbacks.
+
+### Proposed string changes
+
+None is used until the owner agrees; the built strings are.
+
+40. (S1) `kpi.loss` "Total loss" / "Perda total" with a positive value becomes a signed "Total
+    change" / "Variação total" ("−7.3 kg"), and "Since the start" / "Desde o início" on Today.
+41. (S2) Portuguese `kpi.vsWeekBefore` and `kpi.vsPrevious`: "vs." becomes "em relação a".
+42. (S3) `entry.saved` on today's date: "Saved: 95.8 kg on 21 Oct 2026." / "Salvo: 95,8 kg em 21 de
+    out. de 2026." becomes "Saved: 95.8 kg for today" / "Salvo: 95,8 kg hoje".
+43. (S4) On Today, a shorter backup line, "Last backup 45 days ago. Export a backup" / "Último
+    backup há 45 dias. Exportar um backup", instead of the built `notice.oldBackup` and
+    `notice.noBackup`, which stay on Your data.
+
+### Taken by the team
+
+44. (B1) **Breakpoint 960 px** between the tabs and the one-page desktop. _Alternative:_ 720 or 1024
+    px.
+45. (B2) **The tab bar is links** with `aria-current` (`page` on a phone, `location` on the
+    desktop), before `main` in the source; its labels stop growing at 150%. _Alternative:_ an ARIA
+    tablist.
+46. (B3) **Routes are the four hashes only**, view ids differ from them, scroll restoration is
+    manual, a sheet adds one history entry on the website, and WKWebView's back gesture stays off in
+    the app. _Alternative:_ turn the gesture on.
+47. (B4) **The date control** is a chip over a transparent native date input on touch (with
+    `showPicker()` as a fallback) and a visible date field with a mouse or on the desktop.
+    _Alternative:_ a visible field everywhere.
+48. (B5) **Settings rows** show their value as text with the native select laid over the row.
+    _Alternative:_ visible selects.
+49. (B6) **A chart's or card's options are one node**: a modal `<dialog>` on a phone, a plain panel
+    in place on the desktop. _Alternative:_ a non-modal `<dialog>` in place.
+50. (B7) **A fixed readout strip above every chart**, measured on every draw from
+    `CursorSpec.longest()`; the tooltip stays for the mouse; a hidden range input beside the `<svg>`
+    serves VoiceOver. _Alternative:_ a tooltip kept 48 px above the finger.
+51. (B8) **Narrow charts (below 17 rem) drop the projection's end label.** _Alternative:_ keep it.
+52. (B9) **Today's three figures stack below 20 rem of row.** _Alternative:_ shorter labels.
+53. (B10) **The tab bar's height is measured** into `--tab-h` (ignoring 0), with `scroll-padding` at
+    both ends; the bar and the banner hide while typing; heights use `svh`. _Alternative:_ a fixed
+    height.
+54. (B11) **Dynamic Type in the app** from a probe with `font: -apple-system-body`, the root set
+    through the CSSOM to min(probe, 34 px), 200% of the app's 17 px default, starting from `.app {
+font-size: 17px }`, and fit tested at that cap. _Alternative:_ cap at 32 px and not claim
+    "Larger Text"; or no cap, with layouts of our own for the accessibility sizes.
+55. (B12) **A dirty flag per part and one `isShown(part)`**, cross-part redraws included.
+    _Alternative:_ redraw the view on every switch.
+56. (B13) **The 7-day average keeps its orange** beside the orange of rises, told apart by form and
+    the legend. _Alternative:_ a hue of its own.
+57. (B14) **Undo restores exactly** through a new `app.restore`, keeping `savedAt`, and only if
+    nothing changed since. _Alternative:_ a new save with a fresh `savedAt`.
+58. (B15) **View titles are `h1`s** (four on the desktop page). _Alternative:_ one page `h1` and
+    `h2` view titles.
+59. (B16) **Analysis card buttons are named by the title**, with the summary as their description.
+    _Alternative:_ the whole summary inside the button.
+60. (B17) iOS 16 as the minimum moved to the owner's list, 39 (O22).
+61. (B18) **The Keyboard plugin's `resize: 'body'`**, so the viewport and `svh` don't change while
+    typing; `@capacitor/keyboard` and `@capacitor/app` join in Sprint 3. _Alternative:_ `native`,
+    with Today's layout decided from values stored while not typing.
+62. (B19) **Screenshots of stories 3 to 7 go to an ignored folder** and are attached to the pull
+    requests; only reference shots stay in the repository. _Alternative:_ commit them beside the
+    code.

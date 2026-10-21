@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Weigh to Go · prototypes</title>
+    <style>
+      body {
+        margin: 0 auto;
+        max-width: 720px;
+        padding: 24px 16px 48px;
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        color: #1a2227;
+        background: #f2f5f6;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-size: 1.05rem;
+        margin: 24px 0 4px;
+      }
+      ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+      li {
+        margin: 6px 0;
+      }
+      a {
+        color: #2f6690;
+      }
+      p {
+        margin: 8px 0;
+        color: #5b6870;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #0f1417;
+          color: #e3e9ec;
+        }
+        a {
+          color: #74aad9;
+        }
+        p {
+          color: #92a0a8;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Weigh to Go · prototypes of the phone experience</h1>
+    <p>
+      Sprint 2, story 2. One responsive prototype, <code>app.html</code>: tabs below 960 px wide, one page
+      above it. Open it on a phone, or in a desktop browser with the device toolbar at 390 × 844 or 320 × 568.
+      Made-up data only. The design is in <a href="../design.md">design.md</a>; screenshots are in
+      <a href="../design/">design/</a>.
+    </p>
+
+    <h2>Today</h2>
+    <ul>
+      <li>
+        <a href="app.html?tab=today">With a year of weigh-ins</a> (type a weight and press Save, then Undo)
+      </li>
+      <li><a href="app.html?tab=today&amp;empty=1">Empty diary, first visit</a></li>
+      <li>
+        <a href="app.html?tab=today&amp;saved=1">Just saved, with Undo</a> ·
+        <a href="app.html?tab=today&amp;logged=1">today already logged</a>
+      </li>
+      <li>
+        <a href="app.html?tab=today&amp;lang=pt">In Portuguese</a> ·
+        <a href="app.html?tab=today&amp;unit=lb">in pounds</a> ·
+        <a href="app.html?tab=today&amp;text=150">text at 150%</a> ·
+        <a href="app.html?tab=today&amp;theme=dark">dark</a>
+      </li>
+      <li>
+        <a href="app.html?tab=today&amp;ad=1">In the iPhone app, with the banner's space</a> ·
+        <a href="app.html?tab=today&amp;app=1&amp;aside=1">with the "kept aside" notice</a> ·
+        <a href="app.html?tab=today&amp;app=1&amp;reload=1">with "Try again"</a> ·
+        <a href="app.html?tab=today&amp;app=1&amp;dt=53">at the 200% text cap</a>
+      </li>
+    </ul>
+    <h2>Progress</h2>
+    <ul>
+      <li>
+        <a href="app.html?tab=progress">The main chart, Essential</a> (drag along the chart; the readout stays
+        above it and never changes height)
+      </li>
+      <li><a href="app.html?tab=progress&amp;sheet=chart">The chart's settings sheet</a> (Back closes it)</li>
+      <li>
+        <a href="app.html?tab=progress&amp;scrub=40&amp;finger=1">The cursor under a drawn finger</a> ·
+        <a href="app.html?tab=progress&amp;lang=pt&amp;text=150">Portuguese at 150%</a>
+      </li>
+    </ul>
+    <h2>Analysis</h2>
+    <ul>
+      <li>
+        <a href="app.html?tab=analysis">Cards closed to one line</a> ·
+        <a href="app.html?tab=analysis&amp;lang=pt">in Portuguese</a>
+      </li>
+      <li>
+        <a href="app.html?tab=analysis&amp;open=pct">Percentage loss open</a> ·
+        <a href="app.html?tab=analysis&amp;sheet=pct">its options</a>
+      </li>
+      <li><a href="app.html?tab=analysis&amp;all=1">Every card open</a></li>
+    </ul>
+    <h2>Your data</h2>
+    <ul>
+      <li>
+        <a href="app.html?tab=data">On the website</a> ·
+        <a href="app.html?tab=data&amp;lang=pt&amp;text=150">Portuguese at 150%</a>
+      </li>
+      <li>
+        <a href="app.html?tab=data&amp;app=1&amp;ad=1&amp;consent=1">In the iPhone app</a> (banner space,
+        reminder, Apple Health, Remove ads, Restore purchases, Privacy choices)
+      </li>
+      <li>
+        Remove ads states: <a href="app.html?tab=data&amp;app=1&amp;iap=buying">buying</a> ·
+        <a href="app.html?tab=data&amp;app=1&amp;iap=pending">waiting for approval</a> ·
+        <a href="app.html?tab=data&amp;app=1&amp;iap=failed">failed</a> ·
+        <a href="app.html?tab=data&amp;app=1&amp;iap=offline">offline</a> ·
+        <a href="app.html?tab=data&amp;app=1&amp;iap=bought">bought</a> ·
+        <a href="app.html?tab=data&amp;app=1&amp;iap=restore-none">nothing to restore</a>
+      </li>
+      <li>
+        <a href="app.html?tab=data&amp;app=1&amp;notif=denied">Notifications turned off in iOS</a> · Apple
+        Health <a href="app.html?tab=data&amp;app=1&amp;health=on">on</a> ·
+        <a href="app.html?tab=data&amp;app=1&amp;health=denied">denied</a> ·
+        <a href="app.html?tab=data&amp;app=1&amp;health=none">unavailable (card hidden)</a> ·
+        <a href="app.html?tab=data&amp;app=1&amp;health=zero">no days yet</a> ·
+        <a href="app.html?tab=data&amp;app=1&amp;health=readfail">read failed</a> ·
+        <a href="app.html?tab=data&amp;app=1&amp;notif=failed">reminder failed</a> ·
+        <a href="app.html?tab=data&amp;app=1&amp;empty=1&amp;erased=nothealth">erased, but not from Health</a>
+      </li>
+      <li>
+        <a href="app.html?tab=data&amp;sheet=day">A day opened to edit or delete</a> ·
+        <a href="app.html?tab=data&amp;sheet=sections">Sections</a> ·
+        <a href="app.html?tab=data&amp;sheet=paste">Paste several days</a>
+      </li>
+      <li>
+        <a href="app.html?tab=data&amp;app=1&amp;health=on&amp;sheet=erase"
+          >Erase in the app, with Apple Health on</a
+        >
+      </li>
+    </ul>
+    <h2>Desktop</h2>
+    <ul>
+      <li>
+        <a href="app.html">The whole page</a> (open at 1280 px or wider; the date is a visible field; Sections
+        are inline in Your data)
+      </li>
+    </ul>
+  </body>
+</html>

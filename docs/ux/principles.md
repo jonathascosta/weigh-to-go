@@ -23,7 +23,8 @@ wide; "desktop" means 1280 px with a mouse and a keyboard.
 3. Go through the checklist. Every item that fails is a finding, at the priority given in brackets
    unless the case is worse.
 4. The pull request shows before and after screenshots at 390 × 844 and 320 × 568, light and dark,
-   and at 1280 × 900 where the desktop changed; an MP4 for anything that moves.
+   and at 1280 × 900 where the desktop changed; a short video for anything that moves (MP4, or WebM
+   where the session's ffmpeg has no H.264 encoder, as in the cloud sessions).
 
 ## 1 · The weigh-in comes first
 
@@ -33,8 +34,12 @@ wide; "desktop" means 1280 px with a mouse and a keyboard.
       scrolling away (P2, F1).
 - [ ] Logging today's weight is **two taps**: the field, then Save. Today's date is already in; the
       digits are typed on the decimal keypad (`inputmode="decimal"`, comma or point) (P1, F1).
-- [ ] Save is at least **44 px high and half the screen wide or more**, in the lower half of the
-      screen, and stays visible above the keyboard (P2, F22).
+- [ ] Save is at least **44 px high** and either **half the screen wide or more**, or **half the
+      card's inner width beside the weight field** (less half the gap between them) and **at least
+      120 px wide**, so that the keyboard can't hide it while the field is in view. It sits in the
+      lower half of the screen and stays visible above the keyboard (P2, F22). (Amended by the design,
+      [design.md](design.md) §3: the decimal keypad has no Return key, so Save beside the field is
+      the safer layout; it measures 122 px at 320 px and 157 px at 390 px.)
 - [ ] The last weigh-in (weight and day) is shown near the field (P3, F3).
 - [ ] After Save, a confirmation appears **within the visible screen** within 100 ms, says the
       weight and the day, and offers **Undo for at least 5 seconds** where the action can be undone
