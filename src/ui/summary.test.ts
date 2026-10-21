@@ -4,7 +4,7 @@ import { addDays, isoDay, parseDay } from '../analysis/dates';
 import type { State } from '../app/app';
 import { EMPTY_PROFILE } from '../data/records';
 import { resolveSettings } from '../i18n';
-import { kpis, periodLine, takeLine } from './summary';
+import { kpis, periodLine, takeLine, todayKpis, todayTake } from './summary';
 
 const none = { lang: null, weightUnit: null, heightUnit: null };
 const pt = resolveSettings(['pt-BR'], none);
@@ -79,5 +79,43 @@ describe('kpis', () => {
     const k = kpis(analyze(series(2)), en);
     expect(k[2]).toMatchObject({ value: '—', sub: ['needs 3 weigh-ins'] });
     expect(k[3]).toMatchObject({ value: '—', sub: ['needs 7 days of weigh-ins'] });
+  });
+});
+
+describe('todayTake', () => {
+  it('says the change since the start and the weekly pace, in a short line', () => {
+    const s = state(series(30));
+    expect(todayTake(s, en)).toBe('**−2.9 kg** since Sep 1, 2026, about 0.70 kg a week.');
+    expect(todayTake(s, pt)).toBe('**−2,9 kg** desde 1 de set. de 2026, cerca de 0,70 kg por semana.');
+  });
+
+  it('signs a gain, and leaves the pace out until there is one', () => {
+    expect(todayTake(state(series(30, -0.05)), en)).toMatch(
+      /^\*\*\+1\.5 kg\*\* since .*, about 0\.35 kg a week\.$/,
+    );
+    expect(todayTake(state(series(2)), en)).toBe('**−0.1 kg** since Sep 1, 2026.');
+  });
+
+  it('greets the first weigh-in, invites one, and says nothing while loading', () => {
+    expect(todayTake(state(series(1)), en)).toBe(takeLine(state(series(1)), en));
+    expect(todayTake(state([]), en)).toMatch(/^Log your first weigh-in/);
+    expect(todayTake(state([], 'loading'), en)).toBe('');
+  });
+});
+
+describe('todayKpis', () => {
+  it('picks three of the six: the 7-day average, the total loss and the average pace', () => {
+    expect(todayKpis(analyze(series(30)), en).map((k) => k.label)).toEqual([
+      '7-day average',
+      'Total loss',
+      'Average pace',
+    ]);
+    expect(todayKpis(analyze(series(30)), pt).map((k) => k.value)).toEqual(['97,4', '2,9', '−0,70']);
+    expect(todayKpis(null, en).map((k) => k.value)).toEqual(['—', '—', '—']);
+  });
+
+  it('gives each change its direction, down for a fall and up for a rise', () => {
+    expect(todayKpis(analyze(series(30)), en).map((k) => k.tone)).toEqual([null, 'down', 'down']);
+    expect(todayKpis(analyze(series(30, -0.05)), en).map((k) => k.tone)).toEqual([null, 'up', 'up']);
   });
 });

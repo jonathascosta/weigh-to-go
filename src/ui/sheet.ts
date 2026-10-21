@@ -57,7 +57,11 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function theSheet(): Sheet {
-  if (sheet) return sheet;
+  if (sheet) {
+    // Put back if the page lost it (a test's fresh body).
+    if (!sheet.root.isConnected) document.body.append(sheet.root);
+    return sheet;
+  }
   const title = h('h2', { class: 'sheet-title', attrs: { id: 'sheet-title', tabindex: -1 } });
   const done = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
   const body = h('div', { class: 'sheet-body' });
