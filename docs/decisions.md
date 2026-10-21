@@ -433,3 +433,74 @@ Choices made while building story 4, open to the owner under decision 9.
     scrolls away with the content, with Done again at the end. A sheet that becomes the panel on a
     wider screen gives focus to its button when it was on the title. _Alternative:_ none needed
     once the native `<dialog>` can be used (74).
+
+## 21 October 2026 · The analysis cards on a phone, as built (Sprint 2, story 5)
+
+Choices made while building story 5, open to the owner under decision 9.
+
+87. **Goal and Weekly averages stay open cards on Progress**, not disclosures (design §1): the
+    eight cards on Analysis close to their line. The goal's field moves behind **Change goal**, and
+    the BMI card's height (with its unit chips, until story 6 moves the unit to Your data) behind
+    **Change height**: a sheet on a phone, a panel open in place on the one page, through
+    `optionsPanel`. _Alternative:_ the goal field on the card, as in Sprint 1.
+88. **A card opens by the screen only.** Closed on every phone visit (O8), open on the one page; a
+    card's View does not open it (the implementation map's "or the view is Detailed" would have
+    reopened cards the person closed). What is opened stays open across tab switches during the
+    visit, and a change of width opens or closes none. _Alternative:_ open on a phone when the
+    card's View is Detailed.
+89. **The cards' Views.** Percentage loss: Essential is the % chart, with the main chart's Essential
+    layers (weigh-ins, 7-day average, projection, goal), and four figures (lost, pace, last 3 weeks,
+    and the goal in %, or the next milestone without a goal); Detailed is Sprint 1's default (every
+    block, every layer but the trend line, all six figures). Compound daily rate: Essential is each
+    day's rate and four figures (mean, fitted, last 3 weeks, the rate in kg today); Detailed adds
+    the constant-% curve and the simulator, and every figure. The method, horizon and window are not
+    part of a View. They are kept as `pct.preset`/`rate.preset` and `pct.custom`/`rate.custom` beside
+    Sprint 1's preferences, which keep the sets in force; Sprint 1's saved sets read as the View
+    they make, and with nothing saved the default follows the screen the first time, as the main
+    chart's (decision 23). _Alternative:_ Essential shows the figures only (O9's alternative).
+90. **The lines' words where the design left them open.** Compound rate: "Losing **0.037% a day**
+    over the last 3 weeks, about 0.24 kg a week" (or "Gaining", or "Steady"), three decimals as its
+    figures, over the whole period when the last 3 weeks hold too few weigh-ins. BMI: "now" rather
+    than "today", since the last weigh-in can be days old. Weekdays: what the card shows, the mean
+    change from the day before ("Biggest fall: **Sunday** (−0.06 kg on average); biggest rise:
+    **Monday** (+0.01 kg)"), not the design's highest and lowest reading. Day-to-day variation: the
+    median one-day change and the range that holds 8 days in 10, over consecutive days in the main
+    chart's period. Calendar: counted from the first weigh-in, "Since 1 Sept 2026: …" when the months
+    shown hold every weigh-in; the first weigh-in counts as steady (nothing to compare with, as the
+    key says). Percentage loss says "gained" for a gain; Hiccups words a single climb on its own.
+    Proposed wording, open to the owner. _Alternative:_ the design's examples as written.
+91. **Inside an open card**: the chart first, then the figures and tables, then the card's own note
+    (how to read it, Sprint 1's `*.note`), then Options on the right; the compound rate's daily chart
+    has its note under it. _Alternative:_ the note under the title, as on the one page in Sprint 1.
+92. **The card charts' readouts** (closing decision 78's interim): a short day ("Tue, 20 Oct"), the
+    value with its layer's swatch, and only the rows that matter (the % chart: share lost, the 7-day
+    average, or the estimate with a short range, "likely 8.0–8.7%"; each day's rate: the rate,
+    signed as the weight moved, and the window's average). At 320 px in Portuguese with text at 150%
+    the strips are 98 px, the design's height, except the % chart and the daily rate at 126 px (the
+    named 7-day and window averages). Measured on every draw as before, and one height over every
+    stop (Playwright). The main chart's 154 px there is issue #52's. _Alternative:_ unnamed average
+    rows, at 98 px, with colour and form alone to tell them apart.
+93. **Falls blue, rises orange in the analysis charts too** (design §11, O20): the bars of the daily
+    variation, the weekdays, the daily rate and the weekly pace, and the hiccups' peaks, were green
+    and red. Every legend, switch and readout swatch draws its layer's form from the main chart's
+    `SWATCH` (issue #51): a dot, a line, a dashed line, a pale area, or a bar. _Alternative:_ keep
+    green and red for the bars.
+94. **Tables and lists on a phone** show their first rows, then 20 more with Show more and a count
+    ("4 of 52 weeks"): weeks 4, hiccups 5, milestones 3, facts 5 (`moreRows` in `dom.ts`). They lose
+    their scrolling box, share the width (`table-layout: fixed`), and break a date after its slashes
+    only. The one page keeps Sprint 1's counts (weeks a year at a time, the rest whole). The log's
+    rows are story 6's. _Alternative:_ a box that scrolls inside the page.
+95. **The empty diary on Progress and Analysis**: one card, "The chart and figures appear from the
+    second weigh-in." on Progress and "The analysis cards appear from the second weigh-in." on
+    Analysis, with Log a weigh-in (to Today); the chart, the weekly averages and the cards step
+    aside, the Goal stays (a goal can be set before the first weigh-in). With one weigh-in or more,
+    each card's line says what it needs. _Alternative:_ the design's one sentence on both tabs.
+96. **Every card hidden** says "Every analysis card is hidden. Show them in Your data › Settings",
+    linking to Your data, where the Sections chips are until story 6. _Alternative:_ none until
+    story 6 builds the Sections sheet.
+97. **The calendar's months until the person picks follow the screen on each draw** (3 narrow, 12 on
+    the one page, O10); once picked, the pick holds at every width. The Months choice is a
+    segmented control under the squares. _Alternative:_ read the width once, as the Views do.
+98. **Safari 15 without `:has()`**: the card head's focus ring is the stretched `::after`'s outline,
+    and the chevron turns by an `is-open` class on the card. _Alternative:_ `:has(:focus-visible)`
+    as in the design, from iOS 15.4.
