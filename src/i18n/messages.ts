@@ -815,7 +815,7 @@ export const en = {
     'Turning this off stops reading and saving. To take back the app’s access, open the Health app, tap your picture, then Apps under Privacy, Weigh to Go.',
   'data.eraseHealth': 'Also delete the weights this app saved in Apple Health',
   'data.eraseHealthNote':
-    'The app can’t take back its own access to Apple Health. To do it: in the Health app, tap your picture, then Apps under Privacy, Weigh to Go.',
+    'Readings from your scale or other apps stay in Apple Health. The app can’t take back its own access to Health: to do it, in the Health app tap your picture, then Apps under Privacy, Weigh to Go.',
   'data.erasedNotHealth':
     'Everything here was erased, but the weights in Apple Health couldn’t be deleted. In the Health app: Browse, Body Measurements, Weight, Show All Data.',
   'notice.reloadButton': 'Reload',
@@ -1474,7 +1474,7 @@ export const pt: Messages = {
     'Ao desligar, o app deixa de ler e de salvar. Para tirar o acesso do app, abra o app Saúde, toque na sua foto, depois em Apps, em Privacidade, e em Weigh to Go.',
   'data.eraseHealth': 'Apagar também os pesos que este app salvou no app Saúde',
   'data.eraseHealthNote':
-    'O app não consegue tirar o próprio acesso ao app Saúde. Para isso: no app Saúde, toque na sua foto, depois em Apps, em Privacidade, e em Weigh to Go.',
+    'As medições da sua balança ou de outros apps continuam no app Saúde. O app não consegue tirar o próprio acesso ao app Saúde: para isso, no app Saúde toque na sua foto, depois em Apps, em Privacidade, e em Weigh to Go.',
   'data.erasedNotHealth':
     'Tudo aqui foi apagado, mas os pesos no app Saúde não puderam ser apagados. No app Saúde: Buscar, Medidas Corporais, Peso, Mostrar Todos os Dados.',
   'notice.reloadButton': 'Recarregar',

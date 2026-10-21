@@ -19,11 +19,12 @@ export function mountHealth(container: HTMLElement): (state: State, s: Settings)
   const toggleText = h('span');
   const ruleLabel = h('label', { attrs: { for: 'health-rule' } });
   const rule = h('select', { attrs: { id: 'health-rule' } });
+  const ruleField = h('div', { class: 'field' }, ruleLabel, rule);
   const status = h('p', { class: 'status', attrs: { role: 'status' } });
   container.replaceChildren(
     h('div', { class: 'card-head' }, h('div', {}, title, note)),
     h('label', { class: 'check' }, toggle, toggleText),
-    h('div', { class: 'field' }, ruleLabel, rule),
+    ruleField,
     status,
     revoke,
   );
@@ -41,8 +42,12 @@ export function mountHealth(container: HTMLElement): (state: State, s: Settings)
     const state = store.health.status();
     toggle.checked = busy ? toggle.checked : setting.on;
     toggle.disabled = busy;
-    rule.disabled = busy || !setting.on;
+    rule.disabled = busy;
     rule.value = setting.rule;
+    // The rule and the way to take back access matter only while it's on: detail when needed.
+    ruleField.hidden = !setting.on;
+    revoke.hidden = !setting.on;
+    status.hidden = state.kind === 'off';
     const lines =
       state.kind === 'on'
         ? [
