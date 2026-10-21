@@ -116,6 +116,76 @@ export interface RulesParts {
   readonly tolerance: string | null;
 }
 
+/** The parts of the Percentage loss card's line, formatted. */
+export type PctSumParts =
+  | { readonly kind: 'since'; readonly pct: string; readonly day: string }
+  | { readonly kind: 'gained'; readonly pct: string; readonly day: string }
+  | { readonly kind: 'goal'; readonly pct: string; readonly progress: string; readonly goal: string }
+  | { readonly kind: 'reached'; readonly pct: string; readonly goal: string };
+
+/** The parts of the Compound daily rate card's line, formatted. */
+export interface RateSumParts {
+  /** "0.032%", without a sign. */
+  readonly rate: string;
+  /** "0.21 kg", without a sign. */
+  readonly week: string;
+  readonly way: 'losing' | 'gaining' | 'steady';
+  /** Over the last 3 weeks, or the whole period when they hold too few weigh-ins. */
+  readonly recent: boolean;
+}
+
+/** The parts of the Hiccups card's line, formatted. */
+export interface HiccupSumParts {
+  /** "3 climbs". */
+  readonly climbs: string;
+  readonly single: boolean;
+  /** "365 days": the period. */
+  readonly days: string;
+  /** The last climb: when it ended and how long it lasted ("5 days"), or null while it goes on. */
+  readonly end: string | null;
+  readonly lasted: string | null;
+  /** While the last climb goes on: since when; else null. */
+  readonly since: string | null;
+}
+
+/** The parts of the Calendar card's line, formatted. */
+export interface CalendarSumParts {
+  /** "3 months" for the last months, or null when the months shown hold every weigh-in. */
+  readonly months: string | null;
+  /** The first weigh-in, for "Since …". */
+  readonly from: string;
+  /** "41 days". */
+  readonly down: string;
+  readonly up: string;
+  /** Days with no change worth a colour; null for none. */
+  readonly flat: string | null;
+  readonly none: string;
+}
+
+/** The parts of the Weekdays card's line, formatted. */
+export interface WeekdaySumParts {
+  /** The weekday of the lowest mean change, the change, and whether it is a fall. */
+  readonly low: string;
+  readonly lowChange: string;
+  readonly lowFalls: boolean;
+  /** The weekday of the highest, and whether it is a rise. */
+  readonly high: string;
+  readonly highChange: string;
+  readonly highRises: boolean;
+}
+
+const enCalendarSum = (p: CalendarSumParts): string => {
+  const head = p.months === null ? `Since ${p.from}` : `Last ${p.months}`;
+  const flat = p.flat === null ? '' : `, ${p.flat} steady`;
+  return `${head}: ${p.down} down, ${p.up} up${flat} and ${p.none} without a weigh-in.`;
+};
+
+const ptCalendarSum = (p: CalendarSumParts): string => {
+  const head = p.months === null ? `Desde ${p.from}` : `Últimos ${p.months}`;
+  const flat = p.flat === null ? '' : `, ${p.flat} estáveis`;
+  return `${head}: ${p.down} de queda, ${p.up} de subida${flat} e ${p.none} sem pesagem.`;
+};
+
 const enSim = (p: SimParts): string => {
   let text = `**${p.rate} a day** is ${p.week} a week, ${p.month} in 30 days and ${p.year} in a year. On the first day that is ${p.firstDay}; after 90 days the same rate means ${p.day90} a day.`;
   if (p.reach) {
@@ -867,6 +937,71 @@ export const en = {
   'weeks.more': (shown: string, total: string) => `Showing the latest ${shown} weeks of ${total}.`,
 
   'table.label': (title: string) => `Table: ${title}`,
+  'table.count': (shown: string, total: string) => `${shown} of ${total}`,
+  'analysis.lede': 'Each card says its point. Open one for the detail.',
+  'analysis.allHidden': 'Every analysis card is hidden.',
+  'analysis.showThem': 'Show them in Your data › Settings',
+  'empty.progress': 'The chart and figures appear from the second weigh-in.',
+  'empty.analysis': 'The analysis cards appear from the second weigh-in.',
+  'empty.log': 'Log a weigh-in',
+  'card.options': 'Options',
+  'card.rules': 'Rules',
+  'card.optionsOf': (title: string) => `Options: ${title}`,
+  'card.blocks': 'Show',
+  'card.preset.custom': 'Your own choice of blocks and layers, kept on this device.',
+  'card.needsFirst': 'Appears from the first weigh-in.',
+  'card.needsSecond': 'Appears from the second weigh-in.',
+  'card.needsThird': 'Appears from the third weigh-in.',
+  'pct.preset.essential': 'The figures and the % chart.',
+  'pct.preset.detailed': 'Adds the weekly pace in % and the milestones table.',
+  'pct.sum': (p: PctSumParts) =>
+    p.kind === 'since'
+      ? `**${p.pct}** lost since ${p.day}.`
+      : p.kind === 'gained'
+        ? `**${p.pct}** gained since ${p.day}.`
+        : p.kind === 'goal'
+          ? `**${p.pct}** lost; ${p.progress} of the way to the ${p.goal} goal.`
+          : `**${p.pct}** lost; the ${p.goal} goal is reached.`,
+  'rate.preset.essential': 'The rate figures and each day’s rate.',
+  'rate.preset.detailed': 'Adds the constant-% curve and the simulator.',
+  'rate.sum': (p: RateSumParts) => {
+    const over = p.recent ? 'over the last 3 weeks' : 'over the whole period';
+    if (p.way === 'steady') return `Steady ${over}: **${p.rate} a day**.`;
+    return `${p.way === 'losing' ? 'Losing' : 'Gaining'} **${p.rate} a day** ${over}, about ${p.week} a week.`;
+  },
+  'word.climb': { one: 'climb', other: 'climbs' },
+  'hiccups.rulesTitle': 'Hiccup rules',
+  'hiccups.sum': (p: HiccupSumParts) => {
+    if (p.single)
+      return p.since === null
+        ? `**${p.climbs}** back up in ${p.days}: it ended on ${String(p.end)} and lasted ${String(p.lasted)}.`
+        : `**${p.climbs}** back up in ${p.days}, since ${p.since} and still going on.`;
+    return p.since === null
+      ? `**${p.climbs}** back up in ${p.days}; the last, ending on ${String(p.end)}, lasted ${String(p.lasted)}.`
+      : `**${p.climbs}** back up in ${p.days}; the last, since ${p.since}, is still going on.`;
+  },
+  'hiccups.sumNone': 'No climbs back up under the current rules.',
+  'goal.change': 'Change goal',
+  'bmi.change': 'Change height',
+  'bmi.sum': (now: string, diff: string, way: 'lower' | 'higher' | 'same') =>
+    way === 'same'
+      ? `**${now}** now, the same as at the start.`
+      : `**${now}** now, ${diff} ${way} than at the start.`,
+  'bmi.sumNone': 'Add your height to see it.',
+  'facts.sum': (n: string, days: string, drop: { value: string; over: string | null } | null) =>
+    drop === null
+      ? `${n} in ${days}.`
+      : drop.over === null
+        ? `${n} in ${days}; the biggest one-day drop was ${drop.value}.`
+        : `${n} in ${days}; the biggest drop was ${drop.value}, over ${drop.over}.`,
+  'variation.sum': (typical: string, within: string) =>
+    `A typical day moves **±${typical}**; 8 days in 10 stay within ±${within}.`,
+  'variation.sumNeeds': 'Appears once there are weigh-ins on consecutive days.',
+  'weekdays.sum': (p: WeekdaySumParts) =>
+    `${p.lowFalls ? 'Biggest fall' : 'Smallest rise'}: **${p.low}** (${p.lowChange} on average); ` +
+    `${p.highRises ? 'biggest rise' : 'smallest fall'}: **${p.high}** (${p.highChange}).`,
+  'weekdays.sumNeeds': 'Needs two weeks of weigh-ins.',
+  'calendar.sum': enCalendarSum,
   'log.title': 'Weigh-ins',
   'log.note': 'Every weigh-in saved, newest first. To correct one, log the same day again.',
   'log.date': 'Date',
@@ -1665,6 +1800,71 @@ export const pt: Messages = {
   'weeks.more': (shown: string, total: string) => `Mostrando as últimas ${shown} semanas de ${total}.`,
 
   'table.label': (title: string) => `Tabela: ${title}`,
+  'table.count': (shown: string, total: string) => `${shown} de ${total}`,
+  'analysis.lede': 'Cada cartão diz o essencial. Abra um para ver os detalhes.',
+  'analysis.allHidden': 'Todos os cartões de análise estão ocultos.',
+  'analysis.showThem': 'Mostre-os em Seus dados › Configurações',
+  'empty.progress': 'O gráfico e os indicadores aparecem a partir da segunda pesagem.',
+  'empty.analysis': 'Os cartões de análise aparecem a partir da segunda pesagem.',
+  'empty.log': 'Registrar pesagem',
+  'card.options': 'Opções',
+  'card.rules': 'Regras',
+  'card.optionsOf': (title: string) => `Opções: ${title}`,
+  'card.blocks': 'Mostrar',
+  'card.preset.custom': 'Sua escolha de blocos e camadas, guardada neste aparelho.',
+  'card.needsFirst': 'Aparece a partir da primeira pesagem.',
+  'card.needsSecond': 'Aparece a partir da segunda pesagem.',
+  'card.needsThird': 'Aparece a partir da terceira pesagem.',
+  'pct.preset.essential': 'Os indicadores e o gráfico em %.',
+  'pct.preset.detailed': 'Acrescenta o ritmo semanal em % e a tabela de marcos.',
+  'pct.sum': (p: PctSumParts) =>
+    p.kind === 'since'
+      ? `**${p.pct}** perdidos desde ${p.day}.`
+      : p.kind === 'gained'
+        ? `**${p.pct}** ganhos desde ${p.day}.`
+        : p.kind === 'goal'
+          ? `**${p.pct}** perdidos; ${p.progress} do caminho até a meta de ${p.goal}.`
+          : `**${p.pct}** perdidos; a meta de ${p.goal} foi atingida.`,
+  'rate.preset.essential': 'Os indicadores da taxa e a taxa de cada dia.',
+  'rate.preset.detailed': 'Acrescenta a curva de % constante e o simulador.',
+  'rate.sum': (p: RateSumParts) => {
+    const over = p.recent ? 'nas últimas 3 semanas' : 'em todo o período';
+    if (p.way === 'steady') return `Estável ${over}: **${p.rate} ao dia**.`;
+    return `${p.way === 'losing' ? 'Perdendo' : 'Ganhando'} **${p.rate} ao dia** ${over}, cerca de ${p.week} por semana.`;
+  },
+  'word.climb': { one: 'subida', other: 'subidas' },
+  'hiccups.rulesTitle': 'Regras dos soluços',
+  'hiccups.sum': (p: HiccupSumParts) => {
+    if (p.single)
+      return p.since === null
+        ? `**${p.climbs}** em ${p.days}: terminou em ${String(p.end)} e durou ${String(p.lasted)}.`
+        : `**${p.climbs}** em ${p.days}, desde ${p.since}, ainda em curso.`;
+    return p.since === null
+      ? `**${p.climbs}** em ${p.days}; a última, até ${String(p.end)}, durou ${String(p.lasted)}.`
+      : `**${p.climbs}** em ${p.days}; a última, desde ${p.since}, ainda está em curso.`;
+  },
+  'hiccups.sumNone': 'Nenhuma subida com as regras atuais.',
+  'goal.change': 'Alterar meta',
+  'bmi.change': 'Alterar altura',
+  'bmi.sum': (now: string, diff: string, way: 'lower' | 'higher' | 'same') =>
+    way === 'same'
+      ? `**${now}** agora, o mesmo do início.`
+      : `**${now}** agora, ${diff} ${way === 'lower' ? 'abaixo' : 'acima'} do início.`,
+  'bmi.sumNone': 'Informe sua altura para vê-lo.',
+  'facts.sum': (n: string, days: string, drop: { value: string; over: string | null } | null) =>
+    drop === null
+      ? `${n} em ${days}.`
+      : drop.over === null
+        ? `${n} em ${days}; a maior queda num dia foi de ${drop.value}.`
+        : `${n} em ${days}; a maior queda foi de ${drop.value}, em ${drop.over}.`,
+  'variation.sum': (typical: string, within: string) =>
+    `Num dia típico o peso muda **±${typical}**; 8 em cada 10 dias ficam dentro de ±${within}.`,
+  'variation.sumNeeds': 'Aparece quando houver pesagens em dias seguidos.',
+  'weekdays.sum': (p: WeekdaySumParts) =>
+    `${p.lowFalls ? 'Maior queda' : 'Menor alta'}: **${p.low}** (${p.lowChange} em média); ` +
+    `${p.highRises ? 'maior alta' : 'menor queda'}: **${p.high}** (${p.highChange}).`,
+  'weekdays.sumNeeds': 'Precisa de duas semanas de pesagens.',
+  'calendar.sum': ptCalendarSum,
   'log.title': 'Registros',
   'log.note':
     'Todas as pesagens salvas, da mais recente para a mais antiga. Para corrigir uma, registre o mesmo dia de novo.',

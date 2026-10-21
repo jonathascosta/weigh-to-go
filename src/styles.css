@@ -2518,11 +2518,12 @@ main {
   fill: var(--ok);
   fill-opacity: 0.1;
 }
+/* A fall is blue and a rise orange, as everywhere (design §11): red is for errors. */
 .bar-good {
-  fill: var(--ok);
+  fill: var(--down);
 }
 .bar-bad {
-  fill: var(--bad);
+  fill: var(--up);
 }
 .bar-flat {
   fill: var(--axis);
@@ -2582,7 +2583,7 @@ main {
   fill: var(--ok);
 }
 .peak-dot {
-  fill: var(--bad);
+  fill: var(--up);
   stroke: var(--panel);
   stroke-width: 1.5;
 }
@@ -2935,4 +2936,258 @@ span.cal-none {
 /* Three-letter weekday headings over a square: a little smaller. */
 .cal-weekday {
   font-size: 9px;
+}
+
+/* ---------- The analysis cards: one line, then the detail (design §5) ---------- */
+
+/* The head is one target: the button's ::after stretches over it, title, line and chevron. */
+.card.acard {
+  padding: 0;
+}
+
+.acard-head {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  gap: 2px 8px;
+  align-items: center;
+  min-height: 64px;
+  padding: 14px 14px 14px 16px;
+}
+
+.acard-head h2 {
+  grid-column: 1;
+  margin: 0;
+}
+
+.acard-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.15;
+}
+
+.acard-toggle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r);
+}
+
+/* The ring is on the whole head, and only for the keyboard. */
+.acard-toggle:focus-visible {
+  outline: none;
+}
+
+.acard-toggle:focus-visible::after {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.acard-sum {
+  grid-column: 1;
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+}
+
+.acard-sum b {
+  font-weight: 600;
+}
+
+.chev {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 150ms ease-out;
+}
+
+.acard.is-open .chev {
+  transform: rotate(180deg);
+}
+
+.acard-body {
+  min-width: 0;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.acard-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.acard-tools:empty {
+  display: none;
+}
+
+/* How to read the card: last, under its detail. */
+.card-note {
+  margin-top: 12px;
+}
+
+/* The Analysis tab's line on a phone, its message when every card is hidden, and the empty diary's
+   card on Progress and Analysis. */
+.lede {
+  margin: 0;
+  color: var(--muted);
+}
+
+.all-hidden {
+  margin: 0;
+}
+
+.all-hidden a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.empty-card .empty-text {
+  margin: 0;
+  font-size: 1.0625rem;
+}
+
+.empty-card p:last-child {
+  margin: 12px 0 0;
+}
+
+.view.is-empty .lede,
+.view.is-empty > .grid,
+.view.is-empty > section[aria-labelledby='chart-title'],
+.view.is-empty section[aria-labelledby='weeks-title'] {
+  display: none;
+}
+
+/* A card's options on the one page: its sections side by side where they fit. */
+.options-inline.options-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 24px;
+}
+
+.options-inline.options-card > .options-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 24px;
+  width: 100%;
+}
+
+.options-card .options-section {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+/* A labelled control inside an options section: its label over it. */
+.options-section .control {
+  flex-direction: column;
+  align-items: stretch;
+  margin-bottom: 10px;
+}
+
+.options-section .control .segmented {
+  width: 100%;
+}
+
+/* The goal's and the height's fields in the sheet keep their row. */
+.options-content > form {
+  margin-top: 8px;
+}
+
+/* The calendar's months under the squares. */
+.controls.span {
+  margin: 10px 0 0;
+}
+
+/* Bars in a legend or a readout: a solid block of the bars' colour. */
+.sw-down {
+  background: var(--down);
+}
+
+.swatch.sw-bar {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+/* "4 of 52 weeks" and Show more, under a long table or list. */
+.more-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 8px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.more-button {
+  min-height: 32px;
+  font-weight: 600;
+}
+
+@media (pointer: coarse) {
+  .more-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* A phone: figures in two columns, one below 15 rem (summary.ts, stackBelow); tables that share
+   the width and wrap, with no box of their own to scroll (issue #51). */
+@media (max-width: 959.98px) {
+  .kpis.kpis-in {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .kpis.kpis-in.kpis-stacked {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kpis-in .kpi {
+    padding: 10px 12px;
+  }
+
+  .table-box {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .table-fit {
+    table-layout: fixed;
+  }
+
+  /* A figure may break only at its space ("−0.52 / kg"); a date or a word anywhere it must. */
+  .table-fit th,
+  .table-fit td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .table-fit td.num,
+  .table-fit th.num {
+    white-space: normal;
+    overflow-wrap: normal;
+  }
+
+  .table-fit thead th {
+    position: static;
+  }
+
+  .week-bar-cell {
+    width: auto;
+    min-width: 0;
+  }
 }

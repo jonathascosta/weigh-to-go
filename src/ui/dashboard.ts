@@ -7,21 +7,37 @@
  */
 import type { App, State } from '../app/app';
 import type { Notifier } from '../reminders/keeper';
-import { SECTIONS, sections, viewGeneration, watchView, type Section } from '../app/view';
+import {
+  calendarSpan,
+  chartPeriod,
+  SECTIONS,
+  sections,
+  viewGeneration,
+  watchView,
+  type Section,
+} from '../app/view';
 import { onSettingsChange, settings, type Settings } from '../i18n';
-import { mountChart } from './chart';
+import { disclosure, type Disclosure } from './card';
+import { mountChart, periodStart } from './chart';
 import { manyChips } from './controls';
 import { mountData, mountNotices } from './data';
-import { mountCalendar, mountVariation, mountWeekdays } from './days';
+import {
+  calendarSummary,
+  mountCalendar,
+  mountVariation,
+  mountWeekdays,
+  variationSummary,
+  weekdaysSummary,
+} from './days';
 import { h } from './dom';
 import { mountEntry, mountPaste } from './entry';
-import { mountFacts } from './facts';
-import { mountHiccups } from './hiccups';
+import { factsSummary, mountFacts } from './facts';
+import { hiccupsSummary, mountHiccups } from './hiccups';
 import { mountLog } from './log';
-import { mountPercent } from './percent';
-import { mountBmi, mountGoal } from './profile';
+import { mountPercent, percentSummary } from './percent';
+import { bmiSummary, mountBmi, mountGoal } from './profile';
 import { mountHealth } from './health';
-import { mountRates } from './rates';
+import { mountRates, rateSummary } from './rates';
 import { mountReminder } from './reminder';
 import { mountShell, type Shell, type View } from './shell';
 import { isStandalone } from './standalone';
@@ -37,6 +53,8 @@ interface Part {
   readonly view: View | null;
   readonly section: Section | null;
   readonly draw: Draw;
+  /** For an analysis card's body: whether its card is open (a closed body isn't drawn). */
+  readonly open?: () => boolean;
   dirty: boolean;
 }
 
@@ -175,26 +193,70 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   // columns, below 15 rem.
   stackBelow(el.kpis, 20);
   stackBelow(progressKpis, 15);
+  // The empty diary: one card says what appears when, with a way to the weigh-in (design §9).
+  const emptyCard = (id: string) => {
+    const text = h('p', { class: 'empty-text' });
+    const link = h('a', { class: 'button', attrs: { href: '#today' } });
+    const card = h('div', { class: 'card empty-card', attrs: { id, hidden: true } }, text, h('p', {}, link));
+    return { card, text, link };
+  };
+  const progressEmpty = emptyCard('progress-empty');
+  const analysisEmpty = emptyCard('analysis-empty');
   views.progress.append(
+    progressEmpty.card,
     progressSummary,
     el.chart,
     progressKpis,
     h('div', { class: 'grid' }, el.goal, el.weeks),
   );
-  views.analysis.append(
-    h(
-      'div',
-      { class: 'grid' },
-      el.percent,
-      el.rate,
-      el.hiccups,
-      el.bmi,
-      el.facts,
-      el.variation,
-      el.weekdays,
-      el.calendar,
-    ),
+  // The analysis cards, each closed to its line on a phone and open on the one page (design §5).
+  const ANALYSIS = [
+    'percent',
+    'rate',
+    'hiccups',
+    'bmi',
+    'facts',
+    'variation',
+    'weekdays',
+    'calendar',
+  ] as const;
+  const CARD_ID: Record<(typeof ANALYSIS)[number], string> = {
+    percent: 'pct',
+    rate: 'rate',
+    hiccups: 'hiccups',
+    bmi: 'bmi',
+    facts: 'facts',
+    variation: 'variation',
+    weekdays: 'weekdays',
+    calendar: 'calendar',
+  };
+  const cards = Object.fromEntries(
+    ANALYSIS.map((k) => [k, disclosure(el[k], { id: CARD_ID[k], open: shell.isWide() })]),
+  ) as Record<(typeof ANALYSIS)[number], Disclosure>;
+  const analysisLede = h('p', { class: 'lede phone-only' });
+  // Every card hidden in Sections: the tab says where to show them, and keeps its place in the bar.
+  const allHiddenText = h('span');
+  const showThem = h('a', { attrs: { href: '#data' } });
+  const allHidden = h(
+    'p',
+    { class: 'card all-hidden', attrs: { hidden: true } },
+    allHiddenText,
+    ' ',
+    showThem,
   );
+  const analysisGrid = h(
+    'div',
+    { class: 'grid' },
+    el.percent,
+    el.rate,
+    el.hiccups,
+    el.bmi,
+    el.facts,
+    el.variation,
+    el.weekdays,
+    el.calendar,
+  );
+  views.analysis.append(analysisLede, analysisEmpty.card, allHidden, analysisGrid);
   views.data.append(
     dataNotice,
     h(
@@ -222,15 +284,19 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   };
 
   const parts: Part[] = [];
-  const add = (view: View | null, section: Section | null, draw: Draw): Part => {
-    const part = { view, section, draw, dirty: true };
+  const add = (view: View | null, section: Section | null, draw: Draw, open?: () => boolean): Part => {
+    const part: Part = { view, section, draw, dirty: true, ...(open ? { open } : {}) };
     parts.push(part);
     return part;
   };
-  /** Whether a part shows: its view is on screen (or the page is one), and its section is on. */
+  /**
+   * Whether a part shows: its view is on screen (or the page is one), its section is on, and for a
+   * card's body, the card is open.
+   */
   const isShown = (part: Part): boolean =>
     (part.view === null || shell.isWide() || shell.currentView() === part.view) &&
-    (part.section === null || sections.has(part.section));
+    (part.section === null || sections.has(part.section)) &&
+    (part.open === undefined || part.open());
   /** Draws the dirty parts that show. */
   const drawShown = () => {
     const state = app.state();
@@ -242,12 +308,15 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     }
   };
   /** For a part that follows another: marks it, and draws it now if it shows, else when it does. */
-  const follow = (get: () => Part | undefined) => () => {
-    const part = get();
-    if (!part) return;
-    part.dirty = true;
-    drawShown();
-  };
+  const follow =
+    (...get: (() => Part | undefined)[]) =>
+    () => {
+      for (const one of get) {
+        const part = one();
+        if (part) part.dirty = true;
+      }
+      drawShown();
+    };
 
   add(
     null,
@@ -276,31 +345,93 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   });
   const weighIn = mountEntry(entry, app);
   add('today', null, weighIn.draw);
-  // The daily variation follows the main chart's period.
+  // The daily variation (its line and its chart) follows the main chart's period.
   const chart = add(
     'progress',
     'chart',
-    mountChart(el.chart, app, { layout: shell, onPeriod: follow(() => variation) }),
+    mountChart(el.chart, app, {
+      layout: shell,
+      onPeriod: follow(
+        () => variation,
+        () => variationLine,
+      ),
+    }),
   );
-  add('progress', 'goal', mountGoal(el.goal, app));
-  add('progress', 'weeks', mountWeeks(el.weeks, app));
-  add('analysis', 'percent', mountPercent(el.percent, app));
-  add('analysis', 'rate', mountRates(el.rate, app));
-  // The main chart's hiccups follow the rules chosen here.
-  add(
-    'analysis',
+  add('progress', 'goal', mountGoal(el.goal, app, shell));
+  add('progress', 'weeks', mountWeeks(el.weeks, shell));
+  /** A card's title and line: drawn whenever its view shows, open or not. */
+  const line = (k: (typeof ANALYSIS)[number], title: (m: Settings['messages']) => string, text: Draw) =>
+    add('analysis', k, (state, s) => {
+      cards[k].title(title(s.messages));
+      text(state, s);
+    });
+  /** A card's body: drawn only while open. */
+  const detail = (k: (typeof ANALYSIS)[number], draw: Draw) =>
+    add('analysis', k, draw, () => cards[k].isOpen());
+  const say =
+    (k: (typeof ANALYSIS)[number], summary: (state: State, s: Settings) => string): Draw =>
+    (state, s) => {
+      cards[k].summary(summary(state, s));
+    };
+  line('percent', (m) => m['pct.title'], say('percent', percentSummary));
+  detail('percent', mountPercent(cards.percent, app, shell));
+  line('rate', (m) => m['rate.title'], say('rate', rateSummary));
+  detail('rate', mountRates(cards.rate, app, shell));
+  const hiccupsLine = line(
+    'hiccups',
+    (m) => m['hiccups.title'],
+    say('hiccups', (state, s) => hiccupsSummary(state, s)),
+  );
+  // The main chart's hiccups, and the card's line, follow the rules chosen here.
+  detail(
     'hiccups',
     mountHiccups(
-      el.hiccups,
+      cards.hiccups,
       app,
-      follow(() => chart),
+      shell,
+      follow(
+        () => chart,
+        () => hiccupsLine,
+      ),
     ),
   );
-  add('analysis', 'bmi', mountBmi(el.bmi, app));
-  add('analysis', 'facts', mountFacts(el.facts));
-  const variation = add('analysis', 'variation', mountVariation(el.variation, app));
-  add('analysis', 'weekdays', mountWeekdays(el.weekdays, app));
-  add('analysis', 'calendar', mountCalendar(el.calendar, app));
+  line('bmi', (m) => m['bmi.title'], say('bmi', bmiSummary));
+  detail('bmi', mountBmi(cards.bmi, app, shell));
+  line('facts', (m) => m['facts.title'], say('facts', factsSummary));
+  detail('facts', mountFacts(cards.facts, shell));
+  const variationLine = line(
+    'variation',
+    (m) => m['variation.title'],
+    say('variation', (state, s) =>
+      variationSummary(
+        state,
+        s,
+        state.analysis ? periodStart(state.analysis, chartPeriod.get()) : new Date(0),
+      ),
+    ),
+  );
+  const variation = detail('variation', mountVariation(cards.variation, app));
+  line('weekdays', (m) => m['weekdays.title'], say('weekdays', weekdaysSummary));
+  detail('weekdays', mountWeekdays(cards.weekdays, app));
+  const calendarLine = line(
+    'calendar',
+    (m) => m['calendar.title'],
+    say('calendar', (state, s) => calendarSummary(state, s, calendarSpan.get())),
+  );
+  detail(
+    'calendar',
+    mountCalendar(
+      cards.calendar,
+      app,
+      shell,
+      follow(() => calendarLine),
+    ),
+  );
+  // A card opened draws its body if it has changed since (or was never drawn).
+  for (const k of ANALYSIS)
+    cards[k].onToggle((open) => {
+      if (open) drawShown();
+    });
   add('data', 'log', mountLog(el.log, app));
   add('data', null, mountData(data, app));
   const paste = mountPaste(pasteCard, app);
@@ -324,6 +455,9 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   const on = new Set<Section>(SECTIONS.filter((k) => sections.has(k)));
   const showSections = () => {
     progressKpis.hidden = !sections.has('kpis');
+    const none = ANALYSIS.every((k) => !sections.has(k));
+    allHidden.hidden = !none;
+    analysisLede.hidden = none;
     for (const k of SECTIONS) {
       el[k].hidden = !sections.has(k);
       if (sections.has(k) === on.has(k)) continue;
@@ -369,8 +503,18 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     // The empty diary opens on the intro and the weigh-in, with nothing to sum up yet.
     const empty = state.status === 'ready' && state.weighIns.length === 0;
     views.today.classList.toggle('is-empty', empty);
-    // Progress too: no sentence or figures to show, only the chart's line that says what comes.
+    // Progress and Analysis too: one card says what appears when, with a way to the weigh-in.
     views.progress.classList.toggle('is-empty', empty);
+    views.analysis.classList.toggle('is-empty', empty);
+    progressEmpty.card.hidden = !empty;
+    analysisEmpty.card.hidden = !empty;
+    progressEmpty.text.textContent = m['empty.progress'];
+    analysisEmpty.text.textContent = m['empty.analysis'];
+    progressEmpty.link.textContent = m['empty.log'];
+    analysisEmpty.link.textContent = m['empty.log'];
+    analysisLede.textContent = m['analysis.lede'];
+    allHiddenText.textContent = m['analysis.allHidden'];
+    showThem.textContent = m['analysis.showThem'];
     emptyLinks.hidden = !empty;
     if (intro) {
       intro.hidden = !empty;

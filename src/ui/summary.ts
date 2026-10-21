@@ -22,6 +22,14 @@ export function dayShort(date: string, analysis: Analysis, s: Settings, today = 
   return s.format.day(date, sameYear ? 'dayMonth' : 'short');
 }
 
+/**
+ * A day inside a sentence: "26 Sept" ("26 de set.") in this year, "26 Sept 2025" otherwise. Put
+ * mid-sentence (design §5): `rich()` mends a short date that ends one.
+ */
+export function sentenceDay(date: string, s: Settings, today = new Date()): string {
+  return s.format.day(date, date.slice(0, 4) === String(today.getFullYear()) ? 'dayMonthShort' : 'medium');
+}
+
 /** The line above the sentence: the period and how many weigh-ins. */
 export function periodLine(state: State, s: Settings): string {
   const { analysis } = state;

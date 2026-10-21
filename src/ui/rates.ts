@@ -8,7 +8,7 @@ import { extent, range } from 'd3-array';
 import { scaleBand, scaleLinear, scaleUtc } from 'd3-scale';
 import { line } from 'd3-shape';
 import { utcDay } from 'd3-time';
-import type { Analysis } from '../analysis/analyze';
+import { STABLE_KG_PER_WEEK, type Analysis } from '../analysis/analyze';
 import { addDays, DAY, daysBetween, isoDay } from '../analysis/dates';
 import { project } from '../analysis/fit';
 import { isGoal } from '../analysis/goals';
@@ -35,8 +35,10 @@ import {
   RATE_BLOCKS,
   RATE_LAYERS,
   RATE_WINDOWS,
+  PRESETS,
   rateBlocks,
   rateLayers,
+  rateView,
   rateWindow as rateWindowHeld,
   simRate as simRateHeld,
   simStart as simStartHeld,
@@ -47,8 +49,10 @@ import {
 } from '../app/view';
 import { parseNumber, toKg } from '../data/paste';
 import { count, plural, settings, type Settings } from '../i18n';
-import { control, controlRow, manyChips, oneChips } from './controls';
-import { h, rich, s as svg } from './dom';
+import type { Disclosure } from './card';
+import { SWATCH as CHART_SWATCH } from './chart';
+import { control, oneChips, optionsSection, toggleList } from './controls';
+import { chips, h, rich, s as svg } from './dom';
 import {
   barsPath,
   createPlot,
@@ -56,13 +60,15 @@ import {
   barTimeAxis,
   leftFor,
   plotGroups,
+  readoutDay,
   textWidth,
   timeAxis,
   yGrid,
   type TipRow,
 } from './plot';
+import { optionsPanel, type Layout } from './sheet';
 import { fromKg } from '../units';
-import { kpiTiles, missing, toneOf, type Kpi } from './summary';
+import { kpiTiles, missing, stackBelow, toneOf, type Kpi } from './summary';
 
 /** The rate figures: mean, fitted, last 3 weeks and, while losing, what the rate means in weight. */
 export function rateKpiList(analysis: Analysis, s: Settings): Kpi[] {
@@ -254,20 +260,54 @@ export function rateText(rate: number, s: Settings): string {
   return s.format.number(rate, 3).replace(/[.,]?0+$/, '');
 }
 
+/** The daily-rate chart's layers in their drawn forms: bars, the rolling line, the dashed mean. */
 const RATE_SWATCH: Record<RateLayer, string> = {
-  bars: 'sw-ok',
-  rolling: 'sw-avg7 sw-dash',
+  bars: 'sw-down sw-bar',
+  rolling: CHART_SWATCH.avg7 ?? 'sw-avg7',
   mean: 'sw-trend sw-dash',
 };
+/** The curve chart's: the weigh-ins' dots, the curve, the dashed line, the dotted simulation. */
 const CURVE_SWATCH: Partial<Record<CurveLayer, string>> = {
-  points: 'sw-weight',
+  points: CHART_SWATCH.points,
   constantPct: 'sw-proj',
   constantKg: 'sw-reg sw-dash',
   simulation: 'sw-week sw-dash',
-  goal: 'sw-ok sw-dash',
+  goal: CHART_SWATCH.goal,
 };
 
-export function mountRates(container: HTMLElement, app: App): (state: State, s: Settings) => void {
+/** The figures Essential shows: the mean, fitted and recent rates, and the rate in kg today. */
+const ESSENTIAL_KPIS = 4;
+
+/**
+ * The card's line (design §5): the rate over the last 3 weeks (or the whole period, when they hold
+ * too few weigh-ins), and what it makes in a week; what it needs before the third weigh-in.
+ */
+export function rateSummary(state: State, s: Settings): string {
+  const m = s.messages;
+  const { format: f, weightUnit: unit } = s;
+  const { analysis } = state;
+  if (!analysis || analysis.series.length < RATE_MIN_WEIGHINS) return m['card.needsThird'];
+  const r = rates(analysis);
+  const model = r.recent ?? r.full;
+  if (!model) return m['card.needsThird'];
+  // What the rate takes off today's weight in a week, compounded.
+  const week = analysis.last.kg * (1 - (1 - model.rate / 100) ** 7);
+  return m['rate.sum']({
+    rate: f.percent(Math.abs(model.rate) / 100, 3),
+    week: f.weight(Math.abs(week), unit, 2),
+    way: Math.abs(week) < STABLE_KG_PER_WEEK ? 'steady' : model.rate > 0 ? 'losing' : 'gaining',
+    recent: r.recent !== null,
+  });
+}
+
+export function mountRates(
+  card: Pick<Disclosure, 'body' | 'tools'>,
+  app: App,
+  layout: Layout,
+): (state: State, s: Settings) => void {
+  const view = rateView;
+  // With nothing saved, a phone starts on Essential and the one page on Detailed.
+  view.useWidth(() => layout.isWide());
   const blocks = rateBlocks;
   const layers = rateLayers;
   const curveLayers = curveLayersHeld;
@@ -277,10 +317,9 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
   const simStart = simStartHeld;
   const simTarget = simTargetHeld;
 
-  const title = h('h2', { attrs: { id: 'rate-title' } });
-  const note = h('p', { class: 'note' });
-  const controls = h('div', { class: 'controls' });
+  const note = h('p', { class: 'note card-note' });
   const kpis = h('div', { class: 'kpis kpis-in' });
+  stackBelow(kpis, 15);
   const redraw = () => {
     render(app.state(), settings());
   };
@@ -288,28 +327,17 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
   const daysPlot = createPlot(redraw);
   const daysTitle = h('h3', { attrs: { id: 'rate-days-title' } });
   const daysNote = h('p', { class: 'note' });
-  const daysControls = h('div', { class: 'controls' });
-  const daysBlock = h(
-    'div',
-    { class: 'block sub' },
-    daysTitle,
-    daysNote,
-    daysControls,
-    daysPlot.element,
-    daysPlot.live,
-  );
+  const daysBlock = h('div', { class: 'block' }, daysTitle, daysNote, daysPlot.element, daysPlot.live);
 
   const curvePlot = createPlot(redraw);
   const curveTitle = h('h3', { attrs: { id: 'rate-curve-title' } });
   const curveNote = h('p', { class: 'note' });
-  const curveControls = h('div', { class: 'controls' });
   const curveFootLine = h('p', { class: 'foot' });
   const curveBlock = h(
     'div',
     { class: 'block sub' },
     curveTitle,
     curveNote,
-    curveControls,
     curvePlot.element,
     curvePlot.live,
     curveFootLine,
@@ -353,14 +381,11 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
     simTable,
   );
 
-  container.replaceChildren(
-    h('div', { class: 'card-head' }, h('div', {}, title, note)),
-    controls,
-    kpis,
-    daysBlock,
-    curveBlock,
-    simBlock,
-  );
+  const options = optionsPanel('rate-options', layout);
+  options.panel.classList.add('options-card');
+  card.tools.replaceChildren(options.button);
+  // The chart first, then the figures (design §5).
+  card.body.replaceChildren(daysBlock, kpis, curveBlock, simBlock, note, options.panel, card.tools);
 
   /** What the weight fields hold: a weight in kg, null when empty, undefined when not a weight. */
   const typedKg = (text: string): number | null | undefined => {
@@ -407,25 +432,69 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
     redraw();
   });
 
+  /** Brings every pressed state and the button's words up to date after a choice. */
+  let syncOptions: () => void = () => undefined;
+  const changed = () => {
+    syncOptions();
+    redraw();
+  };
+
   const buildControls = (s: Settings) => {
     const m = s.messages;
     const unitName = m[`unit.${s.weightUnit}`];
-    controls.replaceChildren(
-      control(
-        m['section.blocks'],
-        manyChips(
-          m['section.blocks'],
-          RATE_BLOCKS.map((b) => ({
-            value: b,
-            label: b === 'curve' ? m['rate.block.curve'](unitName) : m[`rate.block.${b}`],
-          })),
-          blocks,
-          redraw,
-        ),
-      ),
+    options.words(m['card.optionsOf'](m['rate.title']), m['chart.done']);
+    const presets = chips(
+      m['chart.view'],
+      PRESETS.map((preset) => ({ value: preset, label: m[`preset.${preset}`] })),
+      (preset) => view.preset() === preset,
+      (preset) => {
+        view.choose(preset);
+        changed();
+      },
+      'segmented',
     );
-    daysControls.replaceChildren(
-      controlRow(
+    const presetNote = h('p', { class: 'preset-note' });
+    const blockList = toggleList(
+      m['card.blocks'],
+      RATE_BLOCKS.map((b) => ({
+        value: b,
+        label: b === 'curve' ? m['rate.block.curve'](unitName) : m[`rate.block.${b}`],
+      })),
+      blocks,
+      changed,
+    );
+    const dayLayers = toggleList(
+      m['chart.layers'],
+      RATE_LAYERS.map((layer) => ({
+        value: layer,
+        label: m[`rate.layer.${layer}`],
+        swatch: RATE_SWATCH[layer],
+      })),
+      layers,
+      changed,
+    );
+    const curveList = toggleList(
+      m['chart.layers'],
+      CURVE_LAYERS.map((layer) => ({
+        value: layer,
+        label:
+          layer === 'constantKg'
+            ? m['rate.curve.constantKg'](unitName)
+            : layer === 'points'
+              ? m['layer.points']
+              : layer === 'goal'
+                ? m['layer.goal']
+                : m[`rate.curve.${layer}`],
+        swatch: CURVE_SWATCH[layer],
+      })),
+      curveLayers,
+      changed,
+    );
+    options.content.replaceChildren(
+      optionsSection(m['chart.view'], presets.element, presetNote),
+      optionsSection(m['card.blocks'], blockList.element),
+      optionsSection(
+        m['rate.block.days'],
         control(
           m['rate.window'],
           oneChips(
@@ -433,25 +502,13 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
             RATE_WINDOWS.map((d) => ({ value: d, label: count(d, m['word.day'], s) })),
             rateWindow,
             redraw,
+            'segmented',
           ),
         ),
-        control(
-          m['chart.layers'],
-          manyChips(
-            m['chart.layers'],
-            RATE_LAYERS.map((layer) => ({
-              value: layer,
-              label: m[`rate.layer.${layer}`],
-              swatch: RATE_SWATCH[layer],
-            })),
-            layers,
-            redraw,
-          ),
-        ),
+        dayLayers.element,
       ),
-    );
-    curveControls.replaceChildren(
-      controlRow(
+      optionsSection(
+        m['rate.block.curve'](unitName),
         control(
           m['chart.horizon'],
           oneChips(
@@ -459,30 +516,22 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
             CURVE_HORIZONS.map((d) => ({ value: d, label: horizonLabel(d, s) })),
             horizon,
             redraw,
+            'segmented',
           ),
         ),
-        control(
-          m['chart.layers'],
-          manyChips(
-            m['chart.layers'],
-            CURVE_LAYERS.map((layer) => ({
-              value: layer,
-              label:
-                layer === 'constantKg'
-                  ? m['rate.curve.constantKg'](unitName)
-                  : layer === 'points'
-                    ? m['layer.points']
-                    : layer === 'goal'
-                      ? m['layer.goal']
-                      : m[`rate.curve.${layer}`],
-              swatch: CURVE_SWATCH[layer],
-            })),
-            curveLayers,
-            redraw,
-          ),
-        ),
+        curveList.element,
       ),
     );
+    syncOptions = () => {
+      const preset = view.preset();
+      presets.sync();
+      blockList.sync();
+      dayLayers.sync();
+      curveList.sync();
+      presetNote.textContent = preset === 'custom' ? m['card.preset.custom'] : m[`rate.preset.${preset}`];
+      options.label.replaceChildren(`${m['card.options']}: `, h('b', { text: m[`preset.${preset}`] }));
+    };
+    syncOptions();
   };
 
   const drawDays = (state: State, s: Settings, r: Rates | null) => {
@@ -622,6 +671,27 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
               swatch: 'sw-avg7',
             });
           return { heading: f.day(d.day.date, 'long'), rows };
+        },
+        // The strip: the day, its rate and the rolling average's.
+        readout: (i) => {
+          const d = at(i);
+          const gap = d.day.index - d.previous.index;
+          const pct = f.percent(Math.abs(d.rate) / 100, 3);
+          const rows: TipRow[] = [
+            {
+              name: d.rate >= 0 ? m['rate.tip.loss'] : m['rate.tip.gain'],
+              value: gap > 1 ? m['rate.tip.perDay'](pct) : pct,
+              swatch: d.rate >= 0 ? 'sw-down sw-bar' : 'sw-up sw-bar',
+            },
+          ];
+          const v = roll(i);
+          if (showRolling && v !== null)
+            rows.push({
+              name: m['rate.tip.rolling'](count(rateWindow.get(), m['word.day'], s)),
+              value: f.percent(v / 100, 3),
+              swatch: RATE_SWATCH.rolling,
+            });
+          return { heading: readoutDay(d.day.date, f), rows };
         },
         near: (px) => {
           const i = Math.floor((px - left) / x.step());
@@ -787,6 +857,33 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
             rows,
           };
         },
+        // The strip: the day, its weigh-in, and each line's weight that day.
+        readout: (i) => {
+          const d = byIndex.get(i);
+          const rows: TipRow[] = [];
+          if (d) rows.push({ name: '', value: w(d.kg), swatch: CURVE_SWATCH.points });
+          if (on('constantPct'))
+            rows.push({
+              name: m['rate.tip.constantPct'],
+              value: w(expV(i)),
+              swatch: CURVE_SWATCH.constantPct,
+            });
+          const lv = linV(i);
+          if (on('constantKg') && lv !== null)
+            rows.push({
+              name: m['rate.tip.constantKg'](m[`unit.${unit}`]),
+              value: w(lv),
+              swatch: CURVE_SWATCH.constantKg,
+            });
+          if (sim && i >= last.index)
+            rows.push({
+              name: m['rate.curve.simulation'],
+              value: w(simV(i)),
+              swatch: CURVE_SWATCH.simulation,
+            });
+          const day = readoutDay(isoDay(addDays(first.t, i)), f);
+          return { heading: i > last.index ? `${day} · ${m['chart.estimate']}` : day, rows };
+        },
         near: (px) => {
           const i = daysBetween(first.t, utcDay.round(x.invert(px)));
           return i >= 0 && i <= total ? i : -1;
@@ -868,7 +965,6 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
   const render = (state: State, s: Settings) => {
     const m = s.messages;
     const unitName = m[`unit.${s.weightUnit}`];
-    title.textContent = m['rate.title'];
     note.textContent = m['rate.note'](unitName);
     daysTitle.textContent = m['rate.block.days'];
     daysNote.textContent = m['rate.days.note'];
@@ -887,7 +983,7 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
     if (built !== key) {
       buildControls(s);
       built = key;
-    }
+    } else syncOptions();
     kpis.setAttribute('aria-label', m['rate.block.kpis']);
     kpis.hidden = !blocks.has('kpis');
     daysBlock.hidden = !blocks.has('days');
@@ -896,10 +992,12 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
     const { analysis } = state;
     // Rates need a few weigh-ins before they mean anything.
     const r = analysis && analysis.series.length >= RATE_MIN_WEIGHINS ? rates(analysis) : null;
-    if (blocks.has('kpis'))
+    if (blocks.has('kpis')) {
+      const list = analysis && r ? rateKpiList(analysis, s) : null;
+      const shown = list && view.preset() === 'essential' ? list.slice(0, ESSENTIAL_KPIS) : list;
       kpis.replaceChildren(
-        ...(analysis && r
-          ? kpiTiles(rateKpiList(analysis, s))
+        ...(shown
+          ? kpiTiles(shown)
           : [
               h('p', {
                 class: 'empty',
@@ -907,6 +1005,7 @@ export function mountRates(container: HTMLElement, app: App): (state: State, s: 
               }),
             ]),
       );
+    }
     if (blocks.has('days')) drawDays(state, s, r);
     if (blocks.has('curve')) drawCurve(state, s, r);
     if (blocks.has('simulator')) renderSim(state, s, r);

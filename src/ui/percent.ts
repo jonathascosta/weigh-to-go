@@ -30,12 +30,16 @@ import {
   pctHorizon,
   pctLayers,
   pctMethod,
+  pctView,
+  PRESETS,
   viewGeneration,
   type PctLayer,
 } from '../app/view';
 import { count, settings, type Settings } from '../i18n';
-import { control, controlRow, manyChips, oneChips } from './controls';
-import { h, rich, s as svg } from './dom';
+import type { Disclosure } from './card';
+import { SWATCH as CHART_SWATCH } from './chart';
+import { oneChips, optionsSection, toggleList } from './controls';
+import { chips, h, moreRows, rich, s as svg } from './dom';
 import {
   barsPath,
   barTimeAxis,
@@ -44,12 +48,14 @@ import {
   leftFor,
   nearDay,
   plotGroups,
+  readoutDay,
   textWidth,
   timeAxis,
   yGrid,
   type TipRow,
 } from './plot';
-import { kpiTiles, missing, toneOf, type Kpi, type Tone } from './summary';
+import { optionsPanel, type Layout } from './sheet';
+import { kpiTiles, missing, sentenceDay, stackBelow, toneOf, type Kpi, type Tone } from './summary';
 
 /** The share of `first` that `kg` is below it, in % (5 is 5%). */
 export { lostPct };
@@ -255,29 +261,61 @@ export function pctProjection(analysis: Analysis, method: Method, horizon: numbe
   });
 }
 
+/** The % chart's layers, in the main chart's forms (the milestones are reference lines, as BMI's). */
 const SWATCH: Partial<Record<PctLayer, string>> = {
-  points: 'sw-weight',
-  avg7: 'sw-avg7 sw-dash',
-  regression: 'sw-reg sw-dash',
-  projection: 'sw-proj sw-dash',
-  band: 'sw-proj',
-  goal: 'sw-ok sw-dash',
+  points: CHART_SWATCH.points,
+  avg7: CHART_SWATCH.avg7,
+  regression: CHART_SWATCH.regression,
+  projection: CHART_SWATCH.projection,
+  band: CHART_SWATCH.band,
+  milestones: 'sw-none',
+  goal: CHART_SWATCH.goal,
 };
 
+/** The figures Essential shows: lost, the pace, the last 3 weeks, and the goal (or the next milestone). */
+const ESSENTIAL_KPIS = 4;
+
+/**
+ * The card's line (design §5): the share lost and the way to the goal, or since when without one;
+ * what it needs before the second weigh-in.
+ */
+export function percentSummary(state: State, s: Settings): string {
+  const m = s.messages;
+  const { format: f } = s;
+  const { analysis, profile } = state;
+  if (!analysis || analysis.series.length < 2) return m['card.needsSecond'];
+  const k = pctKpis(analysis, 'linear', profile.goalKg);
+  const pct = f.percent(Math.abs(k.lossPct) / 100, 1);
+  const day = f.day(analysis.first.date, 'medium');
+  // A gain says so, in words: the sign alone would read as a loss here.
+  if (k.lossPct < 0 && pct !== f.percent(0, 1)) return m['pct.sum']({ kind: 'gained', pct, day });
+  if (k.goal) {
+    const goal = f.percent(k.goal.pct / 100, 1);
+    return k.goal.progress >= 1
+      ? m['pct.sum']({ kind: 'reached', pct, goal })
+      : m['pct.sum']({ kind: 'goal', pct, goal, progress: f.percent(Math.max(0, k.goal.progress), 0) });
+  }
+  return m['pct.sum']({ kind: 'since', pct, day });
+}
+
 export function mountPercent(
-  container: HTMLElement,
+  card: Pick<Disclosure, 'body' | 'tools'>,
   app: { state(): State },
+  layout: Layout,
 ): (state: State, s: Settings) => void {
+  const view = pctView;
+  // With nothing saved, a phone starts on Essential and the one page on Detailed.
+  view.useWidth(() => layout.isWide());
   const blocks = pctBlocks;
   const layers = pctLayers;
   const method = pctMethod;
   const horizon = pctHorizon;
   const on = (layer: PctLayer) => layers.has(layer);
+  const wide = () => layout.isWide();
 
-  const title = h('h2', { attrs: { id: 'pct-title' } });
-  const note = h('p', { class: 'note' });
-  const controls = h('div', { class: 'controls' });
+  const note = h('p', { class: 'note card-note' });
   const kpis = h('div', { class: 'kpis kpis-in' });
+  stackBelow(kpis, 15);
   const redraw = () => {
     render(app.state(), settings());
   };
@@ -302,6 +340,12 @@ export function mountPercent(
   const msHead = h('thead');
   const msBody = h('tbody');
   const msFoot = h('p', { class: 'foot' });
+  // On a phone the first 3 milestones, then more on request; the one page shows them all.
+  const msMore = moreRows(
+    msBody,
+    () => (wide() ? Infinity : 3),
+    () => 20,
+  );
   const msBlock = h(
     'div',
     { class: 'block sub' },
@@ -312,68 +356,90 @@ export function mountPercent(
       { class: 'table-box', attrs: { tabindex: 0, role: 'region', 'aria-labelledby': 'pct-ms-title' } },
       h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'pct-ms-title' } }, msHead, msBody),
     ),
+    msMore.element,
     msFoot,
   );
-  container.replaceChildren(
-    h('div', { class: 'card-head' }, h('div', {}, title, note)),
-    controls,
-    kpis,
-    chartBlock,
-    weeklyBlock,
-    msBlock,
-  );
+  const options = optionsPanel('pct-options', layout);
+  options.panel.classList.add('options-card');
+  card.tools.replaceChildren(options.button);
+  card.body.replaceChildren(kpis, chartBlock, weeklyBlock, msBlock, note, options.panel, card.tools);
+
+  /** Brings every pressed state and the button's words up to date after a choice. */
+  let syncOptions: () => void = () => undefined;
+  const changed = () => {
+    syncOptions();
+    redraw();
+  };
 
   const buildControls = (s: Settings) => {
     const m = s.messages;
-    controls.replaceChildren(
-      control(
-        m['section.blocks'],
-        manyChips(
-          m['section.blocks'],
-          PCT_BLOCKS.map((b) => ({ value: b, label: m[`pct.block.${b}`] })),
-          blocks,
-          redraw,
-        ),
-      ),
-      control(
-        m['chart.layers'],
-        manyChips(
-          m['chart.layers'],
-          PCT_LAYERS.map((layer) => ({
-            value: layer,
-            label:
-              layer === 'milestones'
-                ? m['layer.milestones'](
-                    ...([5, 10, 15].map((v) => s.format.percent(v / 100, 0)) as [string, string, string]),
-                  )
-                : m[`layer.${layer}`],
-            swatch: SWATCH[layer],
-          })),
-          layers,
-          redraw,
-        ),
-      ),
-      controlRow(
-        control(
+    options.words(m['card.optionsOf'](m['pct.title']), m['chart.done']);
+    const presets = chips(
+      m['chart.view'],
+      PRESETS.map((preset) => ({ value: preset, label: m[`preset.${preset}`] })),
+      (preset) => view.preset() === preset,
+      (preset) => {
+        view.choose(preset);
+        changed();
+      },
+      'segmented',
+    );
+    const presetNote = h('p', { class: 'preset-note' });
+    const blockList = toggleList(
+      m['card.blocks'],
+      PCT_BLOCKS.map((b) => ({ value: b, label: m[`pct.block.${b}`] })),
+      blocks,
+      changed,
+    );
+    const layerList = toggleList(
+      m['chart.layers'],
+      PCT_LAYERS.map((layer) => ({
+        value: layer,
+        label:
+          layer === 'milestones'
+            ? m['layer.milestones'](
+                ...([5, 10, 15].map((v) => s.format.percent(v / 100, 0)) as [string, string, string]),
+              )
+            : m[`layer.${layer}`],
+        swatch: SWATCH[layer],
+      })),
+      layers,
+      changed,
+    );
+    options.content.replaceChildren(
+      optionsSection(m['chart.view'], presets.element, presetNote),
+      optionsSection(m['card.blocks'], blockList.element),
+      optionsSection(m['chart.layers'], layerList.element),
+      optionsSection(
+        m['chart.method'],
+        oneChips(
           m['chart.method'],
-          oneChips(
-            m['chart.method'],
-            METHODS.map((k) => ({ value: k, label: m[`method.${k}`] })),
-            method,
-            redraw,
-          ),
+          METHODS.map((k) => ({ value: k, label: m[`method.${k}`] })),
+          method,
+          redraw,
+          'segmented',
         ),
-        control(
+      ),
+      optionsSection(
+        m['chart.horizon'],
+        oneChips(
           m['chart.horizon'],
-          oneChips(
-            m['chart.horizon'],
-            HORIZONS.map((d) => ({ value: d, label: count(d, m['word.day'], s) })),
-            horizon,
-            redraw,
-          ),
+          HORIZONS.map((d) => ({ value: d, label: count(d, m['word.day'], s) })),
+          horizon,
+          redraw,
+          'segmented',
         ),
       ),
     );
+    syncOptions = () => {
+      const preset = view.preset();
+      presets.sync();
+      blockList.sync();
+      layerList.sync();
+      presetNote.textContent = preset === 'custom' ? m['card.preset.custom'] : m[`pct.preset.${preset}`];
+      options.label.replaceChildren(`${m['card.options']}: `, h('b', { text: m[`preset.${preset}`] }));
+    };
+    syncOptions();
   };
 
   const drawChart = (state: State, s: Settings) => {
@@ -586,6 +652,24 @@ export function mountPercent(
           rows.push({ name: m['tip.in'], value: count(p.h, m['word.day'], s) });
           return { heading: m['tip.projectionOn'](f.day(isoDay(p.t), 'long')), rows };
         },
+        // The strip's shorter words, as the main chart's: the day, the share lost (and the
+        // 7-day average's), or the estimate with its range.
+        readout: (i) => {
+          const item = at(i);
+          if (item.day) {
+            const d = item.day;
+            const day = readoutDay(d.date, f);
+            const rows: TipRow[] = [{ name: '', value: pt(pc(d.kg), 2), swatch: SWATCH.points }];
+            if (on('avg7') && d.avg7 !== null)
+              rows.push({ name: m['tip.avg7'], value: pt(pc(d.avg7), 2), swatch: SWATCH.avg7 });
+            return { heading: d === last ? `${day} · ${m['chart.lastWeighIn']}` : day, rows };
+          }
+          const p = item.p ?? { t: last.t, v: 0, lo: null, hi: null, h: 0 };
+          const rows: TipRow[] = [{ name: '', value: pt(p.v, 2), swatch: SWATCH.projection }];
+          if (p.lo !== null && p.hi !== null)
+            rows.push({ name: '', value: m['chart.rangeLabel'](pt(p.lo), pt(p.hi)) });
+          return { heading: `${readoutDay(isoDay(p.t), f)} · ${m['chart.estimate']}`, rows };
+        },
         near: nearDay(
           x,
           days.map((d) => d.t),
@@ -721,6 +805,20 @@ export function mountPercent(
             rows: tipRows,
           };
         },
+        // The strip: the week's Monday, and the change in % with the week's average.
+        readout: (i) => {
+          const r = at(i);
+          return {
+            heading: m['pct.weekly.week'](sentenceDay(r.week.week, s), sentenceDay(isoDay(r.week.end), s)),
+            rows: [
+              {
+                name: r.pct >= 0 ? m['pct.weekly.drop'] : m['pct.weekly.rise'],
+                value: pt(Math.abs(r.pct), 2),
+              },
+              { name: m['pct.weekly.mean'], value: f.weight(r.week.mean, unit, 2) },
+            ],
+          };
+        },
         near: (px) => {
           const i = Math.floor((px - left) / x.step());
           return i >= 0 && i < rows.length ? i : -1;
@@ -733,6 +831,7 @@ export function mountPercent(
 
   const renderMilestones = (state: State, s: Settings) => {
     const m = s.messages;
+    const f = s.format;
     const chosen = method.get();
     const col = (k: Method) => (k === chosen ? '' : 'col-wide');
     msHead.replaceChildren(
@@ -752,6 +851,7 @@ export function mountPercent(
       msBody.replaceChildren(
         h('tr', {}, h('td', { attrs: { colspan: 6 }, class: 'empty', text: m['pct.ms.empty'] })),
       );
+      msMore.apply({ more: '', count: () => '' });
       return;
     }
     const dayCell = (d: DayText) => [
@@ -782,6 +882,10 @@ export function mountPercent(
         ),
       ),
     );
+    msMore.apply({
+      more: m['log.showMore'],
+      count: (shown, total) => m['table.count'](f.number(shown, 0), f.number(total, 0)),
+    });
     if (analysis.recentIsFallback && analysis.models.recent !== null)
       msFoot.textContent = m['pct.ms.fallback'];
   };
@@ -789,7 +893,6 @@ export function mountPercent(
   let built = '';
   const render = (state: State, s: Settings) => {
     const m = s.messages;
-    title.textContent = m['pct.title'];
     note.textContent = m['pct.note'];
     weeklyTitle.textContent = m['pct.weekly.title'];
     const [bandLo, bandHi] = SUSTAINABLE_WEEKLY_PCT;
@@ -801,13 +904,13 @@ export function mountPercent(
       h(
         'span',
         {},
-        h('span', { class: 'swatch sw-ok', attrs: { 'aria-hidden': 'true' } }),
+        h('span', { class: 'swatch sw-down sw-bar', attrs: { 'aria-hidden': 'true' } }),
         m['pct.weekly.legendFull'],
       ),
       h(
         'span',
         {},
-        h('span', { class: 'swatch sw-ok sw-faded', attrs: { 'aria-hidden': 'true' } }),
+        h('span', { class: 'swatch sw-down sw-bar sw-faded', attrs: { 'aria-hidden': 'true' } }),
         m['pct.weekly.legendPartial'],
       ),
     );
@@ -817,17 +920,26 @@ export function mountPercent(
     if (built !== key) {
       buildControls(s);
       built = key;
-    }
+    } else syncOptions();
     kpis.setAttribute('aria-label', m['pct.block.kpis']);
     kpis.hidden = !blocks.has('kpis');
     chartBlock.hidden = !blocks.has('chart');
     weeklyBlock.hidden = !blocks.has('weekly');
     msBlock.hidden = !blocks.has('milestones');
     const { analysis } = state;
-    if (blocks.has('kpis'))
+    if (blocks.has('kpis')) {
+      const list =
+        analysis && analysis.series.length >= 2
+          ? pctKpiList(analysis, method.get(), state.profile.goalKg, s)
+          : null;
+      // Essential: lost, the pace, the last 3 weeks and the goal (or the next milestone).
+      const shown =
+        list && view.preset() === 'essential'
+          ? [...list.slice(0, 3), ...list.slice(5)].slice(0, ESSENTIAL_KPIS)
+          : list;
       kpis.replaceChildren(
-        ...(analysis && analysis.series.length >= 2
-          ? kpiTiles(pctKpiList(analysis, method.get(), state.profile.goalKg, s))
+        ...(shown
+          ? kpiTiles(shown)
           : [
               h('p', {
                 class: 'empty',
@@ -835,6 +947,7 @@ export function mountPercent(
               }),
             ]),
       );
+    }
     if (blocks.has('chart')) drawChart(state, s);
     if (blocks.has('weekly')) drawWeekly(state, s);
     if (blocks.has('milestones')) renderMilestones(state, s);

@@ -5,8 +5,9 @@
 import { FLAT_KG, type Analysis } from '../analysis/analyze';
 import { isoDay } from '../analysis/dates';
 import type { State } from '../app/app';
-import { settings, type Settings } from '../i18n';
-import { h, tone } from './dom';
+import { count, type Settings } from '../i18n';
+import { h, moreRows, tone } from './dom';
+import type { Layout } from './sheet';
 import { dayShort } from './summary';
 
 /** Weeks shown at first, and added by each "Show more". */
@@ -49,13 +50,18 @@ export function weekRows(analysis: Analysis, s: Settings): WeekRow[] {
 
 export function mountWeeks(
   container: HTMLElement,
-  app: { state(): State },
+  layout: Pick<Layout, 'isWide'>,
 ): (state: State, s: Settings) => void {
   const title = h('h2', { attrs: { id: 'weeks-title' } });
   const note = h('p', { class: 'note' });
   const head = h('thead');
   const body = h('tbody');
-  const more = h('div', { class: 'log-more' });
+  // The last 4 weeks on a phone, 20 more at a time; on the one page a year at a time, as before.
+  const more = moreRows(
+    body,
+    () => (layout.isWide() ? WEEKS_PAGE : 4),
+    () => (layout.isWide() ? WEEKS_PAGE : 20),
+  );
   container.replaceChildren(
     h('div', { class: 'card-head' }, h('div', {}, title, note)),
     h(
@@ -63,11 +69,10 @@ export function mountWeeks(
       { class: 'table-box', attrs: { tabindex: 0, role: 'region', id: 'weeks-table-box' } },
       h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'weeks-title' } }, head, body),
     ),
-    more,
+    more.element,
   );
-  let shown = WEEKS_PAGE;
 
-  const render = (state: State, s: Settings) => {
+  return (state: State, s: Settings) => {
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
     title.textContent = m['weeks.title'];
@@ -80,26 +85,30 @@ export function mountWeeks(
       h(
         'tr',
         {},
-        h('th', { attrs: { scope: 'col' }, text: m['weeks.week'] }),
+        h('th', { class: 'col-week', attrs: { scope: 'col' }, text: m['weeks.week'] }),
         h('th', { class: 'num', attrs: { scope: 'col' }, text: m['weeks.mean'](m[`unit.${unit}`]) }),
-        h('th', { attrs: { scope: 'col' }, text: m['weeks.bar'] }),
+        h('th', { class: 'col-bar', attrs: { scope: 'col' }, text: m['weeks.bar'] }),
         h('th', { class: 'num col-wide', attrs: { scope: 'col' }, text: m['weeks.min'] }),
         h('th', { class: 'num col-wide', attrs: { scope: 'col' }, text: m['weeks.max'] }),
         h('th', { class: 'num col-wide', attrs: { scope: 'col' }, text: m['weeks.n'] }),
         h('th', { class: 'num', attrs: { scope: 'col' }, text: m['weeks.delta'] }),
       ),
     );
+    const words = {
+      more: m['log.showMore'],
+      count: (shown: number, total: number) =>
+        m['table.count'](f.number(shown, 0), count(total, m['word.week'], s)),
+    };
     const { analysis } = state;
     if (!analysis) {
       body.replaceChildren(
         h('tr', {}, h('td', { attrs: { colspan: 7 }, class: 'empty', text: m['weeks.empty'] })),
       );
-      more.replaceChildren();
+      more.apply(words);
       return;
     }
-    const rows = weekRows(analysis, s);
     body.replaceChildren(
-      ...rows.slice(0, shown).map((r) => {
+      ...weekRows(analysis, s).map((r) => {
         const range = h('span', { class: 'week-bar-range' });
         range.style.left = `${String(r.bar.from * 100)}%`;
         range.style.width = `${String(Math.max(1.5, r.bar.width * 100))}%`;
@@ -129,25 +138,6 @@ export function mountWeeks(
         );
       }),
     );
-    if (rows.length > shown) {
-      const button = h('button', { class: 'link', attrs: { type: 'button' }, text: m['log.showMore'] });
-      button.addEventListener('click', () => {
-        const firstNew = rows[shown]?.key;
-        shown += WEEKS_PAGE;
-        render(app.state(), settings());
-        // Keyboard readers go on from the first week that just appeared (the button is gone).
-        const heading = firstNew ? body.querySelector<HTMLElement>(`tr[data-key="${firstNew}"] th`) : null;
-        if (heading) {
-          heading.setAttribute('tabindex', '-1');
-          heading.focus();
-        }
-      });
-      more.replaceChildren(
-        h('span', { class: 'note', text: m['weeks.more'](f.number(shown, 0), f.number(rows.length, 0)) }),
-        ' ',
-        button,
-      );
-    } else more.replaceChildren();
+    more.apply(words);
   };
-  return render;
 }

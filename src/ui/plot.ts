@@ -216,6 +216,10 @@ export interface Plot {
   show(root: SVGSVGElement, cursor: CursorSpec | null, height: number): void;
 }
 
+/** A readout's day: "Tue, 20 Oct", with the year only when it isn't this year. */
+export const readoutDay = (iso: string, f: Formatter, today = new Date()): string =>
+  f.day(iso, iso.slice(0, 4) === String(today.getFullYear()) ? 'weekdayDayMonth' : 'weekdayDayMonthYear');
+
 /** The text a readout says aloud: "Tue, 20 Oct: 96.2 kg; 7-day average 96.3 kg". */
 export const spoken = ({ heading, rows }: TipContent): string =>
   `${heading}: ${rows.map((r) => (r.name ? `${r.name} ${r.value}` : r.value)).join('; ')}`;

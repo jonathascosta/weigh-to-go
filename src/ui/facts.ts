@@ -6,8 +6,10 @@ import { FLAT_KG, type Analysis } from '../analysis/analyze';
 import { BOTTLE_KG, DIET_KCAL, facts, KCAL_PER_KG } from '../analysis/facts';
 import type { State } from '../app/app';
 import { count, type Settings } from '../i18n';
-import { h, tone } from './dom';
+import type { Disclosure } from './card';
+import { h, moreRows, tone } from './dom';
 import { flatSeries } from './rates';
+import type { Layout } from './sheet';
 import { dayShort } from './summary';
 
 /** The energy usually equated with a pound of body fat (7,700 kcal a kg, rounded as it is quoted). */
@@ -106,16 +108,51 @@ export function factList(analysis: Analysis, s: Settings): Fact[] {
   return list;
 }
 
-export function mountFacts(container: HTMLElement): (state: State, s: Settings) => void {
-  const title = h('h2', { attrs: { id: 'facts-title' } });
-  const note = h('p', { class: 'note' });
+/**
+ * The card's line (design §5): how many weigh-ins over how many days, and the biggest drop; what
+ * it needs before the second weigh-in.
+ */
+export function factsSummary(state: State, s: Settings): string {
+  const m = s.messages;
+  const { format: f, weightUnit: unit } = s;
+  const { analysis } = state;
+  if (!analysis || analysis.summary.n < 2) return m['card.needsSecond'];
+  const r = analysis.summary;
+  const drop = r.biggestDrop;
+  return m['facts.sum'](
+    count(r.n, m['word.weighIn'], s),
+    count(r.days, m['word.day'], s),
+    drop?.change != null && drop.change < 0
+      ? {
+          value: f.weight(Math.abs(drop.change), unit),
+          over: drop.gap !== null && drop.gap > 1 ? count(drop.gap, m['word.day'], s) : null,
+        }
+      : null,
+  );
+}
+
+export function mountFacts(
+  card: Pick<Disclosure, 'body'>,
+  layout: Pick<Layout, 'isWide'>,
+): (state: State, s: Settings) => void {
+  const note = h('p', { class: 'note card-note' });
   const list = h('ul', { class: 'facts' });
-  container.replaceChildren(h('div', { class: 'card-head' }, h('div', {}, title, note)), list);
+  // On a phone the first 5 facts, then the rest; the one page shows them all.
+  const more = moreRows(
+    list,
+    () => (layout.isWide() ? Infinity : 5),
+    () => 20,
+  );
+  card.body.replaceChildren(list, more.element, note);
   return (state, s) => {
     const m = s.messages;
-    title.textContent = m['facts.title'];
     note.textContent = m['facts.note'];
     const { analysis } = state;
+    const words = {
+      more: m['log.showMore'],
+      count: (shown: number, total: number) =>
+        m['table.count'](s.format.number(shown, 0), s.format.number(total, 0)),
+    };
     if (!analysis) {
       list.replaceChildren(
         h('li', {
@@ -123,6 +160,7 @@ export function mountFacts(container: HTMLElement): (state: State, s: Settings) 
           text: state.status === 'loading' ? m['home.placeholder'] : m['facts.empty'],
         }),
       );
+      more.apply(words);
       return;
     }
     list.replaceChildren(
@@ -136,5 +174,6 @@ export function mountFacts(container: HTMLElement): (state: State, s: Settings) 
         ),
       ),
     );
+    more.apply(words);
   };
 }
