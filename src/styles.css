@@ -665,10 +665,30 @@ main {
      weigh-in sits low, in the thumb's reach (svh, so nothing jumps as Safari's bars move). Above
      the view: the header (16 + 2 rem + 8 px) and main's top padding (12 px); below it, main's
      bottom padding (48 px). */
-  #view-today:not(.is-empty) {
+  #view-today:not(.is-empty):not(.spark-off) {
     min-height: calc(100vh - var(--tab-h) - var(--ad-h) - env(safe-area-inset-top, 0px) - 2rem - 84px);
     min-height: calc(100svh - var(--tab-h) - var(--ad-h) - env(safe-area-inset-top, 0px) - 2rem - 84px);
   }
+}
+
+/* The narrowest phones: the date chip says the day in figures. */
+@media (pointer: coarse) and (max-width: 359.98px) {
+  .card.entry h2 {
+    font-size: 1.25rem;
+  }
+
+  .date-control .chip-text:not(.chip-short) {
+    display: none;
+  }
+
+  .date-control .chip-text.chip-short {
+    display: inline;
+  }
+}
+
+/* No sparkline where the weigh-in wouldn't fit above the bar with it (measured: dashboard.ts). */
+.view.spark-off .spark {
+  display: none;
 }
 
 /* A short screen keeps the weigh-in on the first screen: no sparkline. */
@@ -1105,6 +1125,10 @@ main {
     display: inline;
   }
 
+  .date-control .chip-short {
+    display: none;
+  }
+
   .date-control .chip-icon {
     display: block;
     width: 18px;
@@ -1328,11 +1352,19 @@ main {
 }
 
 .kpis.kpis-three .kpi {
-  padding: 10px 12px;
+  padding: 8px 10px;
+  line-height: 1.3;
 }
 
+/* The value and its unit on one line, as in the prototype. */
 .kpis.kpis-three .kpi-value {
-  font-size: 1.625rem;
+  font-size: 1.375rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.kpis.kpis-three .kpi-unit {
+  font-size: 0.875rem;
 }
 
 .kpis.kpis-three.kpis-stacked {
@@ -1607,11 +1639,17 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
+/* A row's swatch has its layer's form, as in the legend: a dot, or a line. */
 .readout-row .swatch,
 .tip-row .swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+  width: 14px;
+  height: 3px;
+}
+
+.readout-row .swatch.sw-dot,
+.tip-row .swatch.sw-dot {
+  width: 9px;
+  height: 9px;
 }
 
 .readout-name {
@@ -1692,6 +1730,11 @@ main {
 .reflabel {
   fill: var(--muted);
   font-size: 0.8125rem;
+  /* A halo in the card's colour, so a line through a label (the last weigh-in's) doesn't cross it. */
+  paint-order: stroke;
+  stroke: var(--panel);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 .goal-label {
   fill: var(--ok);
@@ -1874,9 +1917,24 @@ main {
   margin-top: 10px;
 }
 
-/* A segmented control: one choice of a few, sharing the row. */
+/* On the one page the period's four choices take their own width, not the chart's. */
+@media (min-width: 960px) {
+  .period .segmented {
+    display: inline-flex;
+  }
+
+  .period .segment {
+    flex: 0 0 auto;
+    padding: 4px 18px;
+  }
+}
+
+/* A segmented control: one choice of a few, sharing the row. A word is never broken: when the
+   longest words can't share one row (320 px in Portuguese, large text), the buttons wrap onto
+   another row. */
 .segmented {
   display: flex;
+  flex-wrap: wrap;
   border: 1px solid var(--ref);
   border-radius: 10px;
   padding: 2px;
@@ -1886,7 +1944,8 @@ main {
 
 .segment {
   flex: 1 1 0;
-  min-width: 0;
+  /* As narrow as its longest word, never narrower. */
+  min-width: min-content;
   min-height: 36px;
   border: 0;
   border-radius: 8px;
@@ -1896,8 +1955,9 @@ main {
   font-size: 0.875rem;
   cursor: pointer;
   padding: 4px;
-  /* A long word ("Personalizado") wraps only when it can't fit whole. */
-  overflow-wrap: break-word;
+  overflow-wrap: normal;
+  -webkit-hyphens: manual;
+  hyphens: manual;
 }
 
 .segment[aria-pressed='true'] {
@@ -2225,10 +2285,30 @@ main {
 .sheet-title {
   margin: 0;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   font-family: var(--f-num);
   font-weight: 500;
-  font-size: 1.375rem;
+  /* Grows with the text, but not so far that the head fills the sheet. */
+  font-size: min(1.375rem, 26px);
+}
+
+/* The dialog takes focus from a click on its text (so its keys keep working), drawing no ring. */
+.sheet:focus {
+  outline: none;
+}
+
+/* Done again at the end, shown when the head is too tall to stay on top (large text). */
+.sheet-done-end {
+  display: none;
+}
+
+.sheet-loose .sheet-head {
+  position: static;
+}
+
+.sheet-loose .sheet-done-end {
+  display: flex;
+  margin: 0 16px 20px auto;
 }
 
 .sheet-title:focus {

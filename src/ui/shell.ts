@@ -310,7 +310,18 @@ export function mountShell(root: HTMLElement, nav: HTMLElement, win: Window = wi
     show();
     placeAll();
     notify(wideListeners, wide);
-    if (focused && (!focused.isConnected || focused.closest('[hidden]') !== null)) {
+    // A part that moved focus on purpose (a sheet that became a panel gives it to its button)
+    // keeps it.
+    const after = doc.activeElement;
+    const placed =
+      after instanceof HTMLElement &&
+      after !== doc.body &&
+      after !== focused &&
+      after.isConnected &&
+      after.closest('[hidden]') === null;
+    if (placed) {
+      // Left where the part put it.
+    } else if (focused && (!focused.isConnected || focused.closest('[hidden]') !== null)) {
       headingOf(views[current])?.focus({ preventScroll: true });
     } else if (focused && doc.activeElement !== focused) {
       focused.focus({ preventScroll: true });

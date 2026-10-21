@@ -368,16 +368,25 @@ Choices made while building story 4, open to the owner under decision 9.
     which says "First weigh-in logged", as the full sentence does. _Alternative:_ the design's
     `summary.first` below three weigh-ins.
 77. **The readout's words.** A weigh-in reads "Tue, 20 Oct · last weigh-in", then the weight with its
-    dot and, when that layer is on, "7-day average 96.3 kg"; a projected day reads "Thu, 19 Nov ·
-    estimate", the estimate and "likely 94.8 kg to 96.4 kg" (`chart.rangeLabel`, with the band
-    layer). The weight carries no name, so the strip keeps two lines at 320 px; the keyboard's live
-    line and VoiceOver's range read the same words. _Alternative:_ the prototype's shorter "7-day"
+    dot and, when that layer is on, "7-day average 96.3 kg" with its line; a projected day reads "Thu,
+    19 Nov · estimate", the estimate and "likely 94.8 kg to 96.4 kg" (`chart.rangeLabel`) whenever
+    the projection has a range, whether the range layer is drawn or not (principle 6: an estimate
+    comes with its range). The weight carries no name, so the strip keeps two lines at 320 px; the
+    keyboard's live line and VoiceOver's range read the same words, the rows joined by semicolons
+    ("Tue, 20 Oct: 96.2 kg; 7-day average 96.3 kg"). _Alternative:_ the prototype's shorter "7-day"
     for the average, or the tooltip's fuller rows.
+
 78. **Every chart gets the readout strip now**, the analysis cards' charts too, with their tooltip's
     rows until story 5 gives each a shorter readout: the tooltip is for a mouse only, so a finger
-    needs the strip on every chart. Taps and drags snap to the nearest stop on every time chart
-    (`nearDay`). _Alternative:_ the strip on the main chart only until story 5, leaving the cards
-    without a readout under a finger meanwhile.
+    needs the strip on every chart. Its height is fixed on every draw from the stops a chart names
+    (`longest()`: the main chart's projection end and its first day with a year and a 7-day
+    average) and, for every chart, the stops with the most text among all of them (`longestStops`
+    in `plot.ts`, which reads every stop's readout), so no chart's strip grows while scrubbing,
+    the analysis charts included, without a `longest()` of their own. Taps and drags snap to the
+    nearest stop on every time chart (`nearDay`); a vertical pan that takes the finger puts the
+    cursor back where it was. _Alternative:_ a `longest()` written for each analysis chart, or a
+    fixed strip height for them until story 5.
+
 79. **The chart's legend leaves out** the layers that label themselves (highest and lowest, biggest
     drop and rise, BMI lines) and the areas the lines explain (projection range, weekly low–high
     range); the layer switches show every layer's form (dot, line, dashed line, pale area).
@@ -392,11 +401,33 @@ Choices made while building story 4, open to the owner under decision 9.
     (not the last weigh-in), hidden with fewer than two weigh-ins in them. _Alternative:_ the 30 days
     up to the last weigh-in, which can be weeks old.
 82. **Month ticks fit their labels.** The time axis takes as many months as fit with room between
-    their labels, measured in the reader's language and text size: four on a 320 px phone where the
-    rough spacing gave "Jan 2026" alone, and fewer, never touching, for "jan. de 2026" at 150%; a
-    label that would still touch the one before is left out. _Alternative:_ the design's month names
-    without the year.
-83. **The date chip sits beside the title at 320 px**: the weigh-in card's head and the chip are a
-    few pixels tighter (8 px gap, 8–10 px padding), so "Log a weigh-in" and "Today, 21 Oct" share a
-    row and the field and Save stay above the tab bar at 320 × 568 in English. In Portuguese the
-    longer chip still wraps, and Save needs a short scroll there (principle 1 allows one).
+    their labels, measured in the reader's language and text size. Quarterly or denser with their
+    year when they fit ("Jan 2026", "Apr 2026"…); otherwise compact, the year only on January (or on
+    the first tick when no January shows) and the short month elsewhere ("out.", "jan. de 2026",
+    "abr.", "jul."), thinned to every other tick or fewer if need be; a label that would still touch
+    the one before is left out. A year at 254 to 330 px, in Portuguese, at 100% and 150%, keeps at
+    least two labels (a unit test). _Alternative:_ the design's month names without the year.
+
+83. **The weigh-in card's head fits 320 px.** The title and the date chip are a few pixels tighter
+    (8 px gap, 8–10 px padding), and below 360 px wide on touch the title is 1.25 rem and the chip
+    says the day in figures ("Hoje, 21/10", "Today, 21/10"; a past day "19/10"), so they share a
+    row. The field and Save are then on the first screen at 320 × 568 in English (433–489) and in
+    Portuguese (450–506), above the tab bar (from 512). _Alternative:_ the chip's words at every
+    width, with Save under the bar in Portuguese at 320 px.
+84. **Today's short line says the pace's direction when the change doesn't.** "**−0.5 lb** since 21
+    Oct 2025, gaining about 0.37 lb a week." / "ganhando cerca de"; "losing about" / "perdendo cerca
+    de" the other way; when the change and the pace agree, the design's "about 0.15 kg a week".
+    Proposed wording, open to the owner. _Alternative:_ a signed pace ("about +0.37 lb a week").
+85. **The sparkline gives way to the weigh-in.** Media queries see the viewport, not the root's
+    text size, so the page measures it: when the weight field, with the sparkline at its smallest
+    (120 px), would end under the tab bar, Today drops the sparkline (`spark-off`), as on screens
+    shorter than 700 px. At 390 × 844 with text at 150% the field and Save are then on the first
+    screen (628–685). _Alternative:_ keep the sparkline and scroll to the field.
+86. **The sheet, robust on iOS 15.** Escape and Tab work wherever focus is while a sheet is open
+    (the keys are heard on the document, and the dialog itself takes focus from a click on its
+    text); the page behind it is held in place by fixing the body at its scroll position (iOS 15
+    scrolls past `overflow: hidden`); a reload with a sheet open takes its leftover history entry
+    back once; the title stops growing at 26 px, and a head still taller than a fifth of the screen
+    scrolls away with the content, with Done again at the end. A sheet that becomes the panel on a
+    wider screen gives focus to its button when it was on the title. _Alternative:_ none needed
+    once the native `<dialog>` can be used (74).

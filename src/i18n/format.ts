@@ -11,6 +11,7 @@ export type DayStyle =
   | 'long'
   | 'dayMonth'
   | 'monthYear'
+  | 'month'
   | 'weekday'
   | 'weekdayLong'
   | 'weekdayNarrow'
@@ -25,6 +26,8 @@ const DAY_OPTIONS: Record<DayStyle, Intl.DateTimeFormatOptions> = {
   long: { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' },
   dayMonth: { day: '2-digit', month: '2-digit' },
   monthYear: { month: 'short', year: 'numeric' },
+  /** "Oct": a month on a compact time axis, whose January carries the year. */
+  month: { month: 'short' },
   weekday: { weekday: 'short' },
   weekdayLong: { weekday: 'long' },
   weekdayNarrow: { weekday: 'narrow' },

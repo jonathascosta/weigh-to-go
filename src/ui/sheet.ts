@@ -40,8 +40,11 @@ export interface OptionsPanel {
 interface Sheet {
   readonly root: HTMLElement;
   readonly dialog: HTMLElement;
+  readonly head: HTMLElement;
   readonly title: HTMLElement;
   readonly done: HTMLButtonElement;
+  /** Done again at the end, for a head too tall to stay on top (large text). */
+  readonly doneEnd: HTMLButtonElement;
   readonly body: HTMLElement;
 }
 
@@ -64,50 +67,69 @@ function theSheet(): Sheet {
   }
   const title = h('h2', { class: 'sheet-title', attrs: { id: 'sheet-title', tabindex: -1 } });
   const done = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
+  const doneEnd = h('button', { class: 'button button-ghost sheet-done-end', attrs: { type: 'button' } });
   const body = h('div', { class: 'sheet-body' });
+  const head = h('div', { class: 'sheet-head' }, title, done);
+  // A click on the sheet's text keeps focus in it (and its keys working): the dialog takes it.
   const dialog = h(
     'div',
     {
       class: 'sheet',
-      attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sheet-title' },
+      attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sheet-title', tabindex: -1 },
     },
-    h('div', { class: 'sheet-head' }, title, done),
+    head,
     body,
+    doneEnd,
   );
   const scrim = h('div', { class: 'scrim' });
   const root = h('div', { class: 'sheet-layer', attrs: { hidden: true } }, scrim, dialog);
   document.body.append(root);
-  sheet = { root, dialog, title, done, body };
+  sheet = { root, dialog, head, title, done, doneEnd, body };
 
   const closeOpen = () => {
     openNow?.close('other', true);
   };
   done.addEventListener('click', closeOpen);
+  doneEnd.addEventListener('click', closeOpen);
   scrim.addEventListener('click', closeOpen);
-  root.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeOpen();
-      return;
-    }
-    if (event.key !== 'Tab') return;
-    // Focus stays inside: Tab from the last control goes to the first, and back.
-    const items = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
-      (el) => el.closest('[hidden]') === null,
-    );
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (!first || !last) return;
-    const active = document.activeElement;
-    if (event.shiftKey && (active === first || active === title)) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && active === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  });
+  // A head that takes much of the sheet (large text, a long title) scrolls away with the content,
+  // and Done waits at the end too.
+  const fit = () => {
+    if (root.hidden) return;
+    dialog.classList.remove('sheet-loose');
+    dialog.classList.toggle('sheet-loose', head.getBoundingClientRect().height > 0.2 * window.innerHeight);
+  };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(fit).observe(head);
+  window.addEventListener('resize', fit);
   return sheet;
+}
+
+/** Escape and Tab while a sheet is open, wherever focus is (even on the page's body). */
+function onKey(event: KeyboardEvent): void {
+  if (!openNow || !sheet) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    openNow.close('other', true);
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const { dialog, title } = sheet;
+  // Focus stays inside: Tab from the last control goes to the first, and back.
+  const items = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+    (el) => el.closest('[hidden]') === null && el.getClientRects().length > 0,
+  );
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (!first || !last) return;
+  const active = document.activeElement;
+  const inside = active instanceof Node && dialog.contains(active);
+  if (event.shiftKey && (!inside || active === first || active === title || active === dialog)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (!inside || active === last)) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function wire(): void {
@@ -121,12 +143,46 @@ function wire(): void {
     }
     openNow?.close('back', true);
   });
+  document.addEventListener('keydown', onKey);
   // Focus that wanders out of the open sheet (a click through, a screen reader) comes back to it.
   document.addEventListener('focusin', (event) => {
     if (!openNow || !sheet) return;
     if (event.target instanceof Node && sheet.dialog.contains(event.target)) return;
     sheet.title.focus({ preventScroll: true });
   });
+}
+
+/**
+ * Keeps the page behind the sheet where it is: `overflow: hidden` alone doesn't stop Safari on
+ * iOS 15 scrolling it, so the body is fixed at its scroll position, and put back on closing.
+ */
+function lockScroll(): () => void {
+  const y = window.scrollY;
+  const body = document.body.style;
+  body.position = 'fixed';
+  body.top = `${String(-y)}px`;
+  body.left = '0';
+  body.right = '0';
+  return () => {
+    body.position = '';
+    body.top = '';
+    body.left = '';
+    body.right = '';
+    window.scrollTo(0, y);
+  };
+}
+
+/** A reload with a sheet open leaves its history entry, with no sheet: it is taken back once. */
+let staleChecked = false;
+function dropStaleEntry(): void {
+  if (staleChecked) return;
+  staleChecked = true;
+  const state: unknown = history.state;
+  if (openNow || typeof state !== 'object' || state === null) return;
+  if ((state as { sheet?: unknown }).sheet !== true) return;
+  wire();
+  ownBacks++;
+  history.back();
 }
 
 /** Hides everything but the sheet from screen readers; returns how to put it back. */
@@ -166,6 +222,7 @@ const icon = (): SVGSVGElement => {
  * again on a change of language) and places `button` and `panel`.
  */
 export function optionsPanel(id: string, layout: Layout): OptionsPanel {
+  dropStaleEntry();
   const label = h('span', { class: 'options-label' });
   const button = h(
     'button',
@@ -222,8 +279,14 @@ export function optionsPanel(id: string, layout: Layout): OptionsPanel {
     const layer = theSheet();
     layer.title.textContent = words.title;
     layer.done.textContent = words.done;
+    layer.doneEnd.textContent = words.done;
     layer.body.replaceChildren(content);
-    restore = hideRest(layer.root);
+    const shown = hideRest(layer.root);
+    const unlock = lockScroll();
+    restore = () => {
+      shown();
+      unlock();
+    };
     layer.root.hidden = false;
     document.documentElement.classList.add('sheet-open');
     openNow = { owner, close };
@@ -271,6 +334,7 @@ export function optionsPanel(id: string, layout: Layout): OptionsPanel {
       if (openNow?.owner === owner && sheet) {
         sheet.title.textContent = title;
         sheet.done.textContent = done;
+        sheet.doneEnd.textContent = done;
       }
     },
     isOpen: () => openNow?.owner === owner,

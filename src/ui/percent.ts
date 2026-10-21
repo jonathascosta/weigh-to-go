@@ -567,7 +567,7 @@ export function mountPercent(
           const rows: TipRow[] = [];
           if (item.day) {
             const d = item.day;
-            rows.push({ name: m['pct.tip.loss'], value: pt(pc(d.kg), 2), swatch: 'sw-weight' });
+            rows.push({ name: m['pct.tip.loss'], value: pt(pc(d.kg), 2), swatch: 'sw-weight sw-dot' });
             rows.push({ name: m['tip.weight'], value: w(d.kg) });
             if (on('avg7') && d.avg7 !== null)
               rows.push({ name: m['tip.avg7'], value: pt(pc(d.avg7), 2), swatch: 'sw-avg7' });
@@ -579,7 +579,7 @@ export function mountPercent(
             return { heading: f.day(d.date, 'long'), rows };
           }
           const p = item.p ?? { t: last.t, v: 0, lo: null, hi: null, h: 0 };
-          rows.push({ name: m['tip.projection'], value: pt(p.v, 2), swatch: 'sw-proj' });
+          rows.push({ name: m['tip.projection'], value: pt(p.v, 2), swatch: 'sw-proj sw-dash' });
           rows.push({ name: m['pct.tip.weight'], value: w(F * (1 - p.v / 100)) });
           if (band && p.lo !== null && p.hi !== null)
             rows.push({ name: m['tip.band'], value: m['tip.range'](pt(p.lo), pt(p.hi)) });

@@ -35,6 +35,11 @@ export interface TodayParts {
   readonly from: string;
   /** The weekly pace over the whole period, without a sign; null without one. */
   readonly pace: string | null;
+  /**
+   * The pace's direction when it isn't the change's (a diary that fell, then climbed back up):
+   * "gaining" or "losing"; null when they agree, and the sign of the change says it.
+   */
+  readonly paceWay: 'gaining' | 'losing' | null;
 }
 
 /** The parts of the line under the chart, formatted. */
@@ -345,7 +350,7 @@ export const en = {
   'today.take': (p: TodayParts) =>
     p.pace === null
       ? `**${p.change}** since ${p.from}.`
-      : `**${p.change}** since ${p.from}, about ${p.pace} a week.`,
+      : `**${p.change}** since ${p.from}, ${p.paceWay === null ? '' : `${p.paceWay} `}about ${p.pace} a week.`,
   'today.spark': 'Last 30 days',
   'today.sparkMore': 'Progress',
   'today.sparkLink': 'Last 30 days, see Progress',
@@ -1136,7 +1141,7 @@ export const pt: Messages = {
   'today.take': (p: TodayParts) =>
     p.pace === null
       ? `**${p.change}** desde ${p.from}.`
-      : `**${p.change}** desde ${p.from}, cerca de ${p.pace} por semana.`,
+      : `**${p.change}** desde ${p.from}, ${p.paceWay === 'gaining' ? 'ganhando ' : p.paceWay === 'losing' ? 'perdendo ' : ''}cerca de ${p.pace} por semana.`,
   'today.spark': 'Últimos 30 dias',
   'today.sparkMore': 'Progresso',
   'today.sparkLink': 'Últimos 30 dias, ver Progresso',

@@ -278,7 +278,7 @@ export function mountVariation(
                   ? f.weightChange(d.change, unit)
                   : m['chart.inDays'](f.weightChange(d.change, unit), count(d.gap, m['word.day'], s)),
             },
-            { name: m['tip.weight'], value: f.weight(d.kg, unit), swatch: 'sw-weight' },
+            { name: m['tip.weight'], value: f.weight(d.kg, unit), swatch: 'sw-weight sw-dot' },
           ];
           return { heading: f.day(d.date, 'long'), rows: tipRows };
         },
@@ -589,7 +589,7 @@ export function mountCalendar(
           const d = at(i);
           const rows: TipRow[] = d.day
             ? [
-                { name: m['tip.weight'], value: f.weight(d.day.kg, unit), swatch: 'sw-weight' },
+                { name: m['tip.weight'], value: f.weight(d.day.kg, unit), swatch: 'sw-weight sw-dot' },
                 ...(d.day.change === null
                   ? []
                   : [

@@ -408,7 +408,7 @@ export function mountHiccups(
         stop: (i) => ({ x: x(at(i).t), y: y(u(at(i).kg)), key: at(i).t.getTime(), dot: 'hoverdot' }),
         tip: (i) => {
           const d = at(i);
-          const rows: TipRow[] = [{ name: m['tip.weight'], value: w(d.kg), swatch: 'sw-weight' }];
+          const rows: TipRow[] = [{ name: m['tip.weight'], value: w(d.kg), swatch: 'sw-weight sw-dot' }];
           const v = b === 'kg' ? null : d[b];
           if (b !== 'kg' && v !== null)
             rows.push({ name: m[`tip.${b}`], value: w(v), swatch: b === 'avg7' ? 'sw-avg7' : 'sw-trend' });

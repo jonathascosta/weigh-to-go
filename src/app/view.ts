@@ -245,7 +245,8 @@ function chartView(): ChartView {
     has: (layer) => get().layers.has(layer),
     choose: (preset) => {
       const now = get();
-      if (preset === 'custom') keep(preset, now.custom ?? now.layers);
+      // Custom with none of the reader's own yet: the layers in force become theirs.
+      if (preset === 'custom') keep(preset, now.custom ?? now.layers, now.custom ?? [...now.layers]);
       else keep(preset, PRESET_LAYERS[preset]);
     },
     toggle: (layer) => {

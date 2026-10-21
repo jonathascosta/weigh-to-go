@@ -144,6 +144,29 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   // The weigh-in beside the summary on the one page; on a phone low on the screen, under the
   // figures and the last 30 days, where the thumb is (design §2). The backup line follows it.
   shell.place(entry, { parent: top }, { parent: views.today, before: emptyLinks });
+  // The sparkline only where the weigh-in still fits above the tab bar with it, at its smallest:
+  // media queries don't see the root's text size, so this is measured (large text, a short phone).
+  const fitSpark = () => {
+    if (shell.isWide() || shell.currentView() !== 'today') return;
+    if (document.documentElement.classList.contains('typing')) return;
+    const field = entry.querySelector<HTMLElement>('#entry-weight') ?? entry;
+    const bottom = field.getBoundingClientRect().bottom + window.scrollY;
+    if (bottom <= window.scrollY) return;
+    const off = views.today.classList.contains('spark-off');
+    const gap = 16;
+    const now = off || spark.element.hidden ? 0 : spark.element.getBoundingClientRect().height + gap;
+    const tab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tab-h')) || 56;
+    // With the sparkline at its smallest (120 px).
+    const at = bottom - now + 120 + gap;
+    views.today.classList.toggle('spark-off', at > window.innerHeight - tab);
+  };
+  if (typeof ResizeObserver === 'function') {
+    const watch = new ResizeObserver(() => {
+      fitSpark();
+    });
+    watch.observe(entry);
+    watch.observe(summary);
+  }
   // Three figures stack as a list when their row is narrower than 20 rem; Progress's six, in two
   // columns, below 15 rem.
   stackBelow(el.kpis, 20);
@@ -375,7 +398,15 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
       // Leaving Today ends the saved notice: back there, the card offers the field again.
       if (view !== 'today') weighIn.leave();
       drawShown();
+      if (view === 'today') fitSpark();
     }),
+    (() => {
+      // A rotated phone, or Safari's bars: the room left for the weigh-in changes.
+      window.addEventListener('resize', fitSpark);
+      return () => {
+        window.removeEventListener('resize', fitSpark);
+      };
+    })(),
     shell.onWide(() => {
       // What these draw follows the layout: three figures or six, the chart's height and labels.
       todaySummary.dirty = true;

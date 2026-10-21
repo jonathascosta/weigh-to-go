@@ -61,9 +61,16 @@ function measures(): Probe | null {
       if (now > 0) size = now;
     }).observe(em);
   }
-  // The charts' font, once it has loaded, is narrower than the fallback the first draw measured.
+  // The charts' font, once it has loaded, may be narrower than the fallback the first draw
+  // measured: the charts are drawn again only if a label's width changed.
   const fonts = (document as { fonts?: { ready?: Promise<unknown> } }).fonts;
-  fonts?.ready?.then(redrawAll, () => undefined);
+  fonts?.ready?.then(
+    () => {
+      const now = tick.getBoundingClientRect().width / 10;
+      if (now > 0 && charWidth > 0 && Math.abs(now - charWidth) > 0.01) redrawAll();
+    },
+    () => undefined,
+  );
   return probe;
 }
 
@@ -109,7 +116,10 @@ const rootPx = (name: string): number => {
 export function plotHeight(strip: number): number {
   const rem = remPx();
   if (isWideNow()) return Math.round(22 * rem);
-  const viewport = measures()?.svh.getBoundingClientRect().height || window.innerHeight;
+  // iOS 15.0 to 15.3 have no svh: the visible height then.
+  const svh =
+    typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('height', '100svh');
+  const viewport = (svh ? measures()?.svh.getBoundingClientRect().height : 0) || window.innerHeight;
   const room = viewport - (rootPx('--tab-h') || 56) - rootPx('--ad-h') - strip - 3 * rem;
   return Math.round(Math.max(160, Math.min(15.5 * rem, room)));
 }
@@ -146,9 +156,9 @@ export interface ReadoutSpec {
   /** The strip's shorter content for a stop, if it differs from the tooltip's. */
   readout?(i: number): TipContent;
   /**
-   * The few stops whose strip text is longest (the projection's end, an older day with its year,
-   * the last weigh-in): the strip is measured with each and keeps the tallest height, so it never
-   * moves while the cursor does. The first, `from` and the last when not given.
+   * Stops whose strip text is long (the projection's end, an older day with its year): the strip
+   * is measured with each, and with the stops of most text among all (`longestStops`), and keeps
+   * the tallest height, so it never moves while the cursor does.
    */
   longest?(): readonly number[];
   /** Where the arrow keys start when nothing is picked (where the reader's eye is). */
@@ -206,9 +216,41 @@ export interface Plot {
   show(root: SVGSVGElement, cursor: CursorSpec | null, height: number): void;
 }
 
-/** The text a readout says aloud: "Tue, 20 Oct: Weight 96.2 kg, 7-day average 96.3 kg". */
+/** The text a readout says aloud: "Tue, 20 Oct: 96.2 kg; 7-day average 96.3 kg". */
 export const spoken = ({ heading, rows }: TipContent): string =>
-  `${heading}: ${rows.map((r) => (r.name ? `${r.name} ${r.value}` : r.value)).join(', ')}`;
+  `${heading}: ${rows.map((r) => (r.name ? `${r.name} ${r.value}` : r.value)).join('; ')}`;
+
+/**
+ * The stops whose readout is longest, to measure the strip with: those `longest()` names, and the
+ * few with the most text in their heading, their rows and in all (a day with its year, a 7-day
+ * average, the projection's range), found over every stop, so no stop can make the strip grow.
+ */
+export function longestStops(spec: ReadoutSpec): number[] {
+  const content = (i: number) => spec.readout?.(i) ?? spec.tip(i);
+  const scored: { i: number; heading: number; rows: number }[] = [];
+  for (let i = 0; i < spec.count; i++) {
+    const { heading, rows } = content(i);
+    scored.push({
+      i,
+      heading: heading.length,
+      rows: rows.reduce((n, r) => n + r.name.length + r.value.length + 3, 0),
+    });
+  }
+  const top = (score: (x: (typeof scored)[number]) => number) =>
+    [...scored]
+      .sort((a, b) => score(b) - score(a) || a.i - b.i)
+      .slice(0, 3)
+      .map((x) => x.i);
+  return [
+    ...new Set([
+      ...(spec.longest?.() ?? []),
+      ...top((x) => x.heading),
+      ...top((x) => x.rows),
+      ...top((x) => x.heading + x.rows),
+      spec.from,
+    ]),
+  ];
+}
 
 /** The rows of a readout or a tooltip, with their swatches. */
 const rowsOf = (rows: readonly TipRow[], kind: 'tip' | 'readout'): HTMLElement[] =>
@@ -309,9 +351,8 @@ export function createPlot(redraw: () => void): Plot {
     }
     strip.hidden = false;
     strip.style.minHeight = '';
-    const stops = spec.longest?.() ?? [0, spec.from, spec.count - 1];
     let tallest = 0;
-    for (const i of new Set(stops)) {
+    for (const i of longestStops(spec)) {
       if (i < 0 || i >= spec.count) continue;
       fillStrip(readoutOf(spec, i));
       // Whole pixels, so a fraction can't shift the plot under the strip.
@@ -355,7 +396,12 @@ export function createPlot(redraw: () => void): Plot {
     },
     show: (root, spec, height) => {
       // Read before the old chart leaves the page: was the reader on it, and on which day?
-      const keep = current && document.activeElement === current.root ? { key: current.key() } : null;
+      // VoiceOver's range counts as being on it too.
+      const on = document.activeElement;
+      const keep =
+        current && (on === current.root || on === range)
+          ? { key: current.key(), root: on === current.root }
+          : null;
       tip.hidden = true;
       sized(height);
       // Drawn at this width: the observer's next call, for the same width, has nothing to do.
@@ -368,7 +414,7 @@ export function createPlot(redraw: () => void): Plot {
       replace(root);
       current = cursor ? { root, key: cursor.key, show: cursor.show } : null;
       if (keep) {
-        root.focus();
+        if (keep.root) root.focus();
         // The same day, not the same position: a day added before it moves it along.
         if (spec && cursor && keep.key !== null) {
           for (let i = 0; i < spec.count; i++) {
@@ -502,7 +548,17 @@ function attachCursor(
   // On the whole chart, not just the plot area: a finger lands on a label or a margin as often as
   // on the space between. A tap shows the day too (touch has no hover); a drag across scrubs.
   root.addEventListener('pointermove', point);
-  root.addEventListener('pointerdown', point);
+  /** Where the cursor was before a finger came down: a vertical pan that takes over puts it back. */
+  let before = -1;
+  root.addEventListener('pointerdown', (event) => {
+    before = cursor;
+    point(event);
+  });
+  root.addEventListener('pointercancel', (event) => {
+    if (event.pointerType === 'mouse') return;
+    if (before >= 0) show(before, 'restore');
+    else hide();
+  });
   root.addEventListener('pointerleave', (event) => {
     if (event.pointerType === 'mouse') hide();
   });
@@ -599,16 +655,31 @@ export function needsYear(from: Date, to: Date, today = new Date()): boolean {
 }
 
 /**
- * The days the time axis labels and how: over months, the 1st of each, read as a month and its
- * year ("Jan 2026"); over weeks, days, with their year when `needsYear` says so.
+ * How a time axis writes its ticks: months with their year ("Jan 2026"), months compact (the year
+ * only on January, or on the first tick when no January shows: "Oct", "Jan 2026", "Apr"), or days.
+ */
+export type TickStyle = 'monthYear' | 'monthCompact' | 'dayMonth' | 'short';
+
+/** The day style of tick `i` among `ticks`. */
+export function tickDayStyle(style: TickStyle, ticks: readonly Date[], i: number): DayStyle {
+  if (style !== 'monthCompact') return style;
+  const january = ticks.some((t) => t.getUTCMonth() === 0);
+  return ticks[i]?.getUTCMonth() === 0 || (!january && i === 0) ? 'monthYear' : 'month';
+}
+
+/**
+ * The days the time axis labels and how: over months, the 1st of each, as many as fit with room
+ * between their labels (`labelWidth` measures one, in the reader's language and text size): with
+ * their year, or compact when that leaves more of them, every other one if need be; over weeks,
+ * days, with their year when `needsYear` says so.
  */
 export function timeTicks(
   x: ScaleTime<number, number>,
   plotWidth: number,
   today = new Date(),
-  /** A month label's width, from its text; a long one ("Sept 2026") when not given. */
-  monthWidth: (t: Date) => number = () => textWidth('Sept 2026'),
-): { ticks: Date[]; style: 'monthYear' | 'dayMonth' | 'short' } {
+  labelWidth: (t: Date, style: DayStyle) => number = (_t, style) =>
+    textWidth(style === 'month' ? 'Sept' : 'Sept 2026'),
+): { ticks: Date[]; style: TickStyle } {
   const pick = (spacing: number) =>
     x.ticks(Math.max(2, Math.floor(plotWidth / spacing))).filter((t) => +t === +utcDay.floor(t));
   const [from, to] = x.domain() as [Date, Date];
@@ -618,21 +689,41 @@ export function timeTicks(
     (ticks.length > 1 || (long && ticks.length === 1)) && ticks.every((t) => t.getUTCDate() === 1);
   let ticks = pick(74);
   if (monthly(ticks)) {
-    // As many months as fit with room between their labels, which grow with the text size and
-    // the language ("jan. de 2026"): more than the rough spacing gives on a phone, fewer at 150%.
-    const fits = (list: readonly Date[]) =>
+    const fits = (list: readonly Date[], style: TickStyle) =>
       list.every((t, i) => {
         const before = list[i - 1];
-        return !before || x(t) - x(before) >= (monthWidth(before) + monthWidth(t)) / 2 + 8;
+        if (!before) return true;
+        const room =
+          (labelWidth(before, tickDayStyle(style, list, i - 1)) +
+            labelWidth(t, tickDayStyle(style, list, i))) /
+          2;
+        return x(t) - x(before) >= room + 8;
       });
-    let best: Date[] | null = null;
+    const lists: Date[][] = [];
     for (let n = 1; n <= ticks.length + 6; n++) {
       const some = x.ticks(n).filter((t) => +t === +utcDay.floor(t));
-      if (!monthly(some)) continue;
-      if (fits(some) ? some.length > (best?.length ?? 0) : best === null && some.length < ticks.length)
-        best = some;
+      if (monthly(some) && !lists.some((l) => l.length === some.length)) lists.push(some);
     }
-    return { ticks: best ?? ticks, style: 'monthYear' };
+    const largest = (style: TickStyle, from: readonly Date[][]) =>
+      from.filter((l) => fits(l, style)).sort((a, b) => b.length - a.length)[0] ?? null;
+    const full = largest('monthYear', lists);
+    // At least quarterly with their year, as long as the span has four quarters; else compact,
+    // thinned to every other tick (or fewer) if need be.
+    const quarters = Math.min(4, Math.floor((to.getTime() - from.getTime()) / (91 * 86_400_000)));
+    if (full && full.length >= Math.max(2, quarters)) return { ticks: full, style: 'monthYear' };
+    const thinned = lists.flatMap((list) =>
+      [2, 3, 4, 6].flatMap((k) =>
+        Array.from({ length: k }, (_, offset) => list.filter((_t, i) => i % k === offset)),
+      ),
+    );
+    const compact = largest(
+      'monthCompact',
+      [...lists, ...thinned].filter((l) => l.length > 1),
+    );
+    if (compact && compact.length > (full?.length ?? 0)) return { ticks: compact, style: 'monthCompact' };
+    if (full) return { ticks: full, style: 'monthYear' };
+    // Nothing fits: the fewest, with their year.
+    return { ticks: [...lists].sort((a, b) => a.length - b.length)[0] ?? ticks, style: 'monthYear' };
   }
   if (!needsYear(from, to, today)) return { ticks, style: 'dayMonth' };
   // A day with its year is wider: fewer of them.
@@ -649,14 +740,14 @@ export function timeAxis(
 ): void {
   parent.append(svg('line', { class: 'axisline', x1: left, x2: right, y1: bottom, y2: bottom }));
   const label = (t: Date, style: DayStyle) => f.day(t.toISOString().slice(0, 10), style);
-  const { ticks, style } = timeTicks(x, right - left, new Date(), (t) => textWidth(label(t, 'monthYear')));
+  const { ticks, style } = timeTicks(x, right - left, new Date(), (t, st) => textWidth(label(t, st)));
   // A label that would touch the one before is left out (large text, a long language).
   const room = labelRow(8);
-  for (const t of ticks) {
-    const text = label(t, style);
-    if (!room(x(t), textWidth(text))) continue;
+  ticks.forEach((t, i) => {
+    const text = label(t, tickDayStyle(style, ticks, i));
+    if (!room(x(t), textWidth(text))) return;
     parent.append(svg('text', { class: 'tick', x: x(t), y: height - 9, 'text-anchor': 'middle' }, text));
-  }
+  });
 }
 
 /** A clipped group for the plot area, and a group above it for labels that may overflow it. */
@@ -744,12 +835,15 @@ export function barTimeAxis(
   const first = dates[0];
   const last = dates[dates.length - 1];
   if (first === undefined || last === undefined) return;
-  const { ticks, style } = timeTicks(scaleUtc([first, last], [left, right]), right - left, today);
+  const label = (t: Date, style: DayStyle) => f.day(t.toISOString().slice(0, 10), style);
+  const { ticks, style } = timeTicks(scaleUtc([first, last], [left, right]), right - left, today, (t, st) =>
+    textWidth(label(t, st)),
+  );
   const room = labelRow(8);
   let written = 0;
   let previous = -1;
-  const write = (i: number, day: Date) => {
-    const text = f.day(day.toISOString().slice(0, 10), style);
+  const write = (i: number, day: Date, dayStyle: DayStyle) => {
+    const text = label(day, dayStyle);
     const width = textWidth(text);
     if (!room(centre(i), width)) return;
     written++;
@@ -766,13 +860,14 @@ export function barTimeAxis(
       ),
     );
   };
-  for (const t of ticks) {
+  ticks.forEach((t, n) => {
     const i = byTime(dates, t.getTime());
     const bar = dates[i];
-    if (bar === undefined || i === previous) continue;
+    if (bar === undefined || i === previous) return;
     previous = i;
     // A month is named by its tick; a day by the bar's own day (a gap can move it along).
-    write(i, style === 'monthYear' ? t : bar);
-  }
-  if (written === 0) write(dates.length - 1, last);
+    const months = style === 'monthYear' || style === 'monthCompact';
+    write(i, months ? t : bar, tickDayStyle(style, ticks, n));
+  });
+  if (written === 0) write(dates.length - 1, last, style === 'monthCompact' ? 'monthYear' : style);
 }

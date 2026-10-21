@@ -181,6 +181,15 @@ describe('the main chart’s views', () => {
     expect(presetOf([])).toBe('custom');
   });
 
+  it('keep the layers in force as the reader’s own when Custom is picked with none saved', () => {
+    chartLayers.choose('detailed');
+    chartLayers.choose('custom');
+    expect(saved('chart.custom')).toEqual(LAYERS.filter((l) => DETAILED_LAYERS.includes(l)));
+    chartLayers.choose('essential');
+    chartLayers.choose('custom');
+    expect(chartLayers.has('hiccups')).toBe(true);
+  });
+
   it('fall back to the width’s default on a saved value that makes no sense', () => {
     save('chart.preset', 'everything');
     expect(chartLayers.preset()).toBe('essential');

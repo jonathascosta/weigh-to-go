@@ -96,6 +96,27 @@ describe('todayTake', () => {
     expect(todayTake(state(series(2)), en)).toBe('**−0.1 kg** since Sep 1, 2026.');
   });
 
+  it('says the pace’s direction when it isn’t the total change’s', () => {
+    // Down from the first weigh-in, but climbing back up since: the fit's pace is a gain.
+    const back = state([
+      { date: '2026-09-01', kg: 100 },
+      ...series(20, -0.2, 95).map((w, i) => ({ ...w, date: isoDay(addDays(parseDay('2026-09-02'), i)) })),
+    ]);
+    expect(todayTake(back, en)).toMatch(
+      /^\*\*−1\.2 kg\*\* since Sep 1, 2026, gaining about \d\.\d\d kg a week\.$/,
+    );
+    expect(todayTake(back, pt)).toMatch(
+      /^\*\*−1,2 kg\*\* desde 1 de set\. de 2026, ganhando cerca de \d,\d\d kg por semana\.$/,
+    );
+    // Up from the first, but falling since.
+    const fall = state([
+      { date: '2026-09-01', kg: 90 },
+      ...series(20, 0.2, 95).map((w, i) => ({ ...w, date: isoDay(addDays(parseDay('2026-09-02'), i)) })),
+    ]);
+    expect(todayTake(fall, en)).toMatch(/^\*\*\+1\.2 kg\*\* since .*, losing about /);
+    expect(todayTake(fall, pt)).toMatch(/, perdendo cerca de /);
+  });
+
   it('greets the first weigh-in, invites one, and says nothing while loading', () => {
     expect(todayTake(state(series(1)), en)).toBe(takeLine(state(series(1)), en));
     expect(todayTake(state([]), en)).toMatch(/^Log your first weigh-in/);

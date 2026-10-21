@@ -74,10 +74,15 @@ export function todayTake(state: State, s: Settings): string {
   const { format: f, weightUnit: unit } = s;
   if (summary.n < 2) return s.messages['summary.first'](f.weight(last.kg, unit));
   const linear = models.linear;
+  // The pace's own direction when the total change says the other one (down overall, but climbing
+  // over the whole period's fit, say), so the line never contradicts Average pace.
+  const gaining = linear !== null && linear.slope > 0;
+  const fell = summary.loss > 0;
   return s.messages['today.take']({
     change: f.weightChange(-summary.loss, unit),
     from: f.day(summary.first.date, 'medium'),
     pace: linear ? f.weight(Math.abs(linear.slope * 7), unit, 2) : null,
+    paceWay: !linear || gaining !== fell ? null : gaining ? 'gaining' : 'losing',
   });
 }
 

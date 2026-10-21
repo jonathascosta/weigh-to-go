@@ -90,6 +90,8 @@ describe('the weigh-in card, ready', () => {
     expect(date().value).toBe('2026-10-21');
     expect(date().max).toBe('2026-10-22');
     expect(el('.chip-text').textContent).toBe('Today, 21 Oct');
+    // In figures for the narrowest phones (CSS picks one).
+    expect(el('.chip-short').textContent).toBe('Today, 21/10');
     expect(el('label[for="entry-date"]').textContent).toBe('Date: Today, Wednesday 21 October');
     expect(hint()).toBe('Today is already in. Type your weight and press Save.');
     expect(weight().placeholder).toBe('');

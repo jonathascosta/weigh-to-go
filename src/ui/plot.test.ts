@@ -2,7 +2,16 @@
 import { scaleUtc } from 'd3-scale';
 import { describe, expect, it } from 'vitest';
 import { formatter } from '../i18n/format';
-import { anchorWithin, barsPath, barTimeAxis, dotsPath, labelRow, needsYear, timeTicks } from './plot';
+import {
+  anchorWithin,
+  barsPath,
+  barTimeAxis,
+  dotsPath,
+  labelRow,
+  needsYear,
+  tickDayStyle,
+  timeTicks,
+} from './plot';
 
 const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const today = new Date(2026, 9, 19);
@@ -15,9 +24,9 @@ describe('the time axis', () => {
     expect(ticks.every((t) => t.getUTCDate() === 1)).toBe(true);
   });
 
-  it('reads one month alone on a narrow phone as a month too', () => {
+  it('reads a span of months on a narrow phone as months too', () => {
     const x = scaleUtc([day('2025-10-15'), day('2026-10-18')], [0, 150]);
-    expect(timeTicks(x, 150, today).style).toBe('monthYear');
+    expect(timeTicks(x, 150, today).style).toMatch(/^month/);
   });
 
   it('fits as many months as their labels leave room for', () => {
@@ -31,6 +40,36 @@ describe('the time axis', () => {
       list.forEach((t, i) => {
         if (i > 0) expect(x(t) - x(list[i - 1]!)).toBeGreaterThanOrEqual(width + 8);
       });
+    }
+  });
+
+  it('keeps at least two months for a year on a phone, in Portuguese, at 100% and 150%', () => {
+    const pt = formatter('pt-BR');
+    const from = day('2025-10-21');
+    for (const perChar of [6.6, 9.9]) {
+      for (const width of [254, 280, 300, 330]) {
+        const x = scaleUtc([from, day('2026-10-20')], [0, width]);
+        const label = (t: Date, style: Parameters<typeof pt.day>[1]) =>
+          pt.day(t.toISOString().slice(0, 10), style);
+        const { ticks, style } = timeTicks(x, width, today, (t, st) => label(t, st).length * perChar);
+        expect(ticks.length, `${String(width)} px, ${String(perChar)} px a letter`).toBeGreaterThanOrEqual(2);
+        const texts = ticks.map((t, i) => label(t, tickDayStyle(style, ticks, i)));
+        // None touches the next.
+        ticks.forEach((t, i) => {
+          const before = ticks[i - 1];
+          if (before)
+            expect(x(t) - x(before)).toBeGreaterThanOrEqual(
+              ((texts[i - 1]!.length + texts[i]!.length) * perChar) / 2 + 8,
+            );
+        });
+        if (style === 'monthCompact') {
+          // The year on January, or on the first when no January shows; the short month elsewhere.
+          const january = ticks.findIndex((t) => t.getUTCMonth() === 0);
+          texts.forEach((text, i) => {
+            expect(/\d{4}/.test(text)).toBe(january >= 0 ? i === january : i === 0);
+          });
+        }
+      }
     }
   });
 

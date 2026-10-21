@@ -307,14 +307,15 @@ export function mountChart(
       if (item.day) {
         const d = item.day;
         const day = readoutDay(d.date, s);
-        const rows: TipRow[] = [{ name: '', value: w(d.kg), swatch: 'sw-weight' }];
+        const rows: TipRow[] = [{ name: '', value: w(d.kg), swatch: SWATCH.points }];
         if (on('avg7') && d.avg7 !== null)
-          rows.push({ name: m['tip.avg7'], value: w(d.avg7), swatch: 'sw-avg7' });
+          rows.push({ name: m['tip.avg7'], value: w(d.avg7), swatch: SWATCH.avg7 });
         return { heading: d === last ? `${day} · ${m['chart.lastWeighIn']}` : day, rows };
       }
       const p = item.p ?? { t: last.t, v: last.kg, lo: null, hi: null, h: 0 };
-      const rows: TipRow[] = [{ name: '', value: w(p.v), swatch: 'sw-proj' }];
-      if (band && p.lo !== null && p.hi !== null)
+      const rows: TipRow[] = [{ name: '', value: w(p.v), swatch: SWATCH.projection }];
+      // An estimate always comes with its range, whether the band is drawn or not.
+      if (p.lo !== null && p.hi !== null)
         rows.push({ name: '', value: m['chart.rangeLabel'](w(p.lo), w(p.hi)) });
       return { heading: `${readoutDay(p.t.toISOString().slice(0, 10), s)} · ${m['chart.estimate']}`, rows };
     };
@@ -325,7 +326,7 @@ export function mountChart(
         const rows: TipRow[] = [];
         if (item.day) {
           const d = item.day;
-          rows.push({ name: m['tip.weight'], value: w(d.kg), swatch: 'sw-weight' });
+          rows.push({ name: m['tip.weight'], value: w(d.kg), swatch: SWATCH.points });
           if (d.change !== null)
             rows.push({
               name: d.gap === 1 ? m['tip.vsDay'] : m['tip.vsPrevious'],
@@ -340,16 +341,21 @@ export function mountChart(
           return { heading: f.day(d.date, 'long'), rows };
         }
         const p = item.p ?? { t: last.t, v: last.kg, lo: null, hi: null, h: 0 };
-        rows.push({ name: m['tip.projection'], value: w(p.v), swatch: 'sw-proj' });
-        if (band && p.lo !== null && p.hi !== null)
+        rows.push({ name: m['tip.projection'], value: w(p.v), swatch: SWATCH.projection });
+        if (p.lo !== null && p.hi !== null)
           rows.push({ name: m['tip.band'], value: m['tip.range'](w(p.lo), w(p.hi)) });
         rows.push({ name: m['tip.in'], value: count(p.h, m['word.day'], s) });
         return { heading: m['tip.projectionOn'](f.day(p.t.toISOString().slice(0, 10), 'long')), rows };
       },
       readout,
-      // The longest the strip can say: the projection's end (estimate and range), the first day
-      // shown (with its year when it has one), and the last weigh-in (with its label).
-      longest: () => [days.length - 1, 0, lastShown],
+      // The longest the strip can say: the projection's end (estimate and range), a day with its
+      // year and a 7-day average, the first day shown, and the last weigh-in (with its label).
+      // (plot.ts also measures the stops with the most text among all of them.)
+      longest: () => {
+        const thisYear = String(new Date().getFullYear());
+        const old = visible.findIndex((d) => d.avg7 !== null && d.date.slice(0, 4) !== thisYear);
+        return [days.length - 1, old, visible.findIndex((d) => d.avg7 !== null), 0, lastShown];
+      },
       // Start from the last weigh-in, where the reader's eye is.
       from: lastShown,
     };
@@ -622,12 +628,20 @@ export function mountChart(
     });
     plot.show(root, cursor, height);
 
-    // The legend: the layers shown, each with its form (dot, line, dashed line, area).
+    // The legend: the layers shown, each with its form (dot, line, dashed line, area), and only
+    // those that drew a mark (no 7-day average before its first week, say).
+    const drew: Partial<Record<Layer, boolean>> = {
+      line: visible.length > 1,
+      avg7: visible.some((d) => d.avg7 !== null),
+      weekly: shownWeeks.length > 0,
+      regression: regStart !== null,
+      projection: pj.length > 0,
+      hiccups: hiccups.length > 0,
+      goal: goal !== null && inY(u(goal)),
+    };
     for (const layer of LAYERS) {
       const swatch = SWATCH[layer];
-      if (!swatch || UNLISTED.has(layer) || !on(layer)) continue;
-      if (layer === 'projection' && pj.length === 0) continue;
-      if (layer === 'goal' && (goal === null || !inY(u(goal)))) continue;
+      if (!swatch || UNLISTED.has(layer) || !on(layer) || drew[layer] === false) continue;
       legend.append(
         h('span', { class: 'legend-item' }, h('span', { class: `swatch ${swatch}` }), m[`layer.${layer}`]),
       );

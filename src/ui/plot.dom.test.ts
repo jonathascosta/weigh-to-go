@@ -1,7 +1,15 @@
 // @vitest-environment happy-dom
 import { scaleUtc } from 'd3-scale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPlot, nearDay, spoken, type CursorSpec, type Plot, type TipContent } from './plot';
+import {
+  createPlot,
+  longestStops,
+  nearDay,
+  spoken,
+  type CursorSpec,
+  type Plot,
+  type TipContent,
+} from './plot';
 
 const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
@@ -102,7 +110,7 @@ describe('the readout strip', () => {
     expect(strip().textContent).toContain('estimate');
     expect(strip().textContent).toContain('likely 94.0 kg to 96.0 kg');
     // The keyboard's live line reads the strip.
-    expect(plot.live.textContent).toBe('Fri, 2 Oct · estimate: 95.0 kg, likely 94.0 kg to 96.0 kg');
+    expect(plot.live.textContent).toBe('Fri, 2 Oct · estimate: 95.0 kg; likely 94.0 kg to 96.0 kg');
   });
 
   it('shows the stop a tap snaps to, the projection’s end included, and keeps it after the finger lifts', () => {
@@ -121,6 +129,58 @@ describe('the readout strip', () => {
     expect(plot.element.querySelector<HTMLElement>('.tip')!.hidden).toBe(true);
     // A tap elsewhere on the page takes the cursor away.
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    expect(strip().textContent).toContain('last weigh-in');
+  });
+
+  it('never grows while scrubbing every stop, whatever stop is longest, with no longest() given', () => {
+    // A year of days: an old one with its year and a 7-day average is the longest, mid-series.
+    const many: TipContent[] = Array.from({ length: 120 }, (_, i) => ({
+      heading: i === 37 ? 'qua., 30 de set. de 2025' : `qua., ${String(i % 28)} de out.`,
+      rows:
+        i > 20
+          ? [
+              { name: '', value: '95,8 kg' },
+              { name: 'Média de 7 dias', value: '96,0 kg' },
+            ]
+          : [{ name: '', value: '95,8 kg' }],
+    }));
+    const long: CursorSpec = {
+      ...spec(),
+      count: many.length,
+      longest: undefined,
+      from: 119,
+      readout: (i) => many[i]!,
+    };
+    expect(longestStops(long)).toContain(37);
+    const root = svgRoot();
+    plot.show(root, long, 120);
+    const fixed = strip().style.minHeight;
+    const heights = new Set<number>();
+    for (let i = 0; i < many.length; i++) {
+      root.dispatchEvent(
+        new PointerEvent('pointermove', { clientX: i * 100, clientY: 50, pointerType: 'touch' }),
+      );
+      heights.add(strip().getBoundingClientRect().height);
+      expect(strip().style.minHeight).toBe(fixed);
+    }
+    expect(parseFloat(fixed)).toBe(Math.max(...heights));
+  });
+
+  it('puts the cursor back when a vertical pan takes the finger', () => {
+    const root = svgRoot();
+    plot.show(root, spec(), 120);
+    const finger = (type: string, clientX: number) =>
+      root.dispatchEvent(new PointerEvent(type, { clientX, clientY: 50, pointerType: 'touch' }));
+    finger('pointerdown', 100);
+    expect(strip().textContent).toContain('Tue, 2 Sept');
+    // A new touch that turns into a scroll: the day picked before stays.
+    finger('pointerdown', 0);
+    finger('pointercancel', 0);
+    expect(strip().textContent).toContain('Tue, 2 Sept');
+    // With nothing picked before, the strip rests on the last weigh-in.
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    finger('pointerdown', 0);
+    finger('pointercancel', 0);
     expect(strip().textContent).toContain('last weigh-in');
   });
 
@@ -158,6 +218,18 @@ describe('the range input for VoiceOver', () => {
     expect(strip().textContent).toContain('estimate');
     expect(input.getAttribute('aria-valuetext')).toBe(spoken(readouts[3]!));
     expect(plot.live.textContent).toBe('');
+  });
+
+  it('keeps its day across a redraw while VoiceOver is on it', () => {
+    plot.show(svgRoot(), spec(), 120);
+    const input = range();
+    input.focus();
+    input.value = '1';
+    input.dispatchEvent(new Event('input'));
+    plot.show(svgRoot(), spec(), 120);
+    expect(range().value).toBe('1');
+    expect(document.activeElement).toBe(input);
+    expect(strip().textContent).toContain('Tue, 2 Sept');
   });
 
   it('goes with the chart when a line of text is shown instead', () => {

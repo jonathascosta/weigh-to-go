@@ -118,6 +118,46 @@ describe('the options on a phone', () => {
   });
 });
 
+describe('the sheet’s keys and the page behind it', () => {
+  it('closes on Escape even when a click on its text left focus on the page’s body', () => {
+    mount(fakeLayout(false));
+    panel.button.click();
+    // The dialog itself can take focus, so a click on its text keeps focus in it.
+    expect(dialog()!.getAttribute('tabindex')).toBe('-1');
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(panel.isOpen()).toBe(false);
+    expect(document.activeElement).toBe(panel.button);
+  });
+
+  it('holds the page where it was while open, and puts it back on closing', () => {
+    mount(fakeLayout(false));
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    Object.defineProperty(window, 'scrollY', { value: 300, configurable: true });
+    panel.button.click();
+    expect([document.body.style.position, document.body.style.top]).toEqual(['fixed', '-300px']);
+    key(dialog()!, 'Escape');
+    expect(document.body.style.position).toBe('');
+    expect(scroll).toHaveBeenCalledWith(0, 300);
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+  });
+});
+
+describe('a reload with a sheet open', () => {
+  it('takes back the history entry the sheet left, once', async () => {
+    vi.resetModules();
+    history.replaceState({ sheet: true }, '');
+    const back = vi.spyOn(history, 'back').mockImplementation(() => undefined);
+    const fresh = await import('./sheet');
+    const one = fresh.optionsPanel('one', fakeLayout(false));
+    const two = fresh.optionsPanel('two', fakeLayout(false));
+    expect(back).toHaveBeenCalledTimes(1);
+    one.dispose();
+    two.dispose();
+  });
+});
+
 describe('the options on the desktop', () => {
   it('are a panel in place, open at first, that the button shows and hides', () => {
     mount(fakeLayout(true));
@@ -147,6 +187,16 @@ describe('a change of width', () => {
     expect(panel.panel.hidden).toBe(false);
     expect(document.activeElement).toBe(choice);
     expect(panel.button.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('gives focus to the button when it was on the sheet’s title', () => {
+    vi.spyOn(history, 'back').mockImplementation(() => undefined);
+    const layout = fakeLayout(false);
+    mount(layout);
+    panel.button.click();
+    expect(document.activeElement?.id).toBe('sheet-title');
+    layout.set(true);
+    expect(document.activeElement).toBe(panel.button);
   });
 
   it('simply closes an open panel when the screen narrows: no sheet pops up', () => {

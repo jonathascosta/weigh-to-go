@@ -129,7 +129,7 @@ test('opens the chart’s options in a sheet, picks a view, and gives focus back
   // Focus stays inside: Tab from Done's place wraps round.
   await page.locator('.sheet-head button').focus();
   await page.keyboard.press('Shift+Tab');
-  await expect(page.locator('.sheet button').last()).toBeFocused();
+  await expect(page.locator('.sheet-body button').last()).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.locator('.sheet-head button')).toBeFocused();
   // Done closes it, and focus is back on the button that opened it.
@@ -225,5 +225,78 @@ test('has the band under the status bar in the iPhone app’s build', async ({ p
       .toBe('block');
   } finally {
     server.stop();
+  }
+});
+
+test.describe('at 320 × 568 in Portuguese', () => {
+  test.use({ viewport: { width: 320, height: 568 }, locale: 'pt-BR' });
+
+  for (const text of [100, 150]) {
+    test(`keeps the readout one height over every day of the chart, text ${String(text)}%`, async ({
+      page,
+    }) => {
+      const { check } = await watch(page);
+      await page.goto('/');
+      await loadBackup(page);
+      if (text !== 100)
+        await page.evaluate((t) => {
+          document.documentElement.style.fontSize = `${String(t)}%`;
+        }, text);
+      await tab(page, 'progress').tap();
+      const chart = page.locator('svg[aria-labelledby="chart-title"]');
+      await expect(chart).toBeVisible();
+      // Every stop, from the first day to the projection's end, as the keys reach them.
+      const seen = await chart.evaluate((svg) => {
+        const strip = document.querySelector('section[aria-labelledby="chart-title"] .readout');
+        if (!strip) throw new Error('No strip');
+        (svg as SVGSVGElement).focus();
+        const press = (key: string) =>
+          svg.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+        const heights = new Set<number>();
+        const tops = new Set<number>();
+        press('Home');
+        let last = '';
+        for (let i = 0; i < 2000 && strip.textContent !== last; i++) {
+          last = strip.textContent;
+          heights.add(Math.round(strip.getBoundingClientRect().height * 10) / 10);
+          tops.add(Math.round(svg.getBoundingClientRect().top * 10) / 10);
+          press('ArrowRight');
+        }
+        return { heights: [...heights], tops: [...tops], end: last };
+      });
+      expect(seen.end).toContain('estimativa');
+      expect(seen.heights).toHaveLength(1);
+      expect(seen.tops).toHaveLength(1);
+      await check();
+    });
+
+    test(`breaks no word in the segmented controls, text ${String(text)}%`, async ({ page }) => {
+      await page.goto('/');
+      await loadBackup(page);
+      if (text !== 100)
+        await page.evaluate((t) => {
+          document.documentElement.style.fontSize = `${String(t)}%`;
+        }, text);
+      await tab(page, 'progress').tap();
+      await page.locator('#chart-options-button').tap();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      const segments = page.locator('.segment');
+      expect(await segments.count()).toBeGreaterThan(10);
+      const problems = await segments.evaluateAll((buttons) =>
+        buttons.flatMap((b) => {
+          const style = getComputedStyle(b);
+          // Each word on one line: a word wider than its button would overflow it instead.
+          const words = b.textContent.split(/\s+/).filter(Boolean);
+          const range = document.createRange();
+          range.selectNodeContents(b);
+          const lines = new Set([...range.getClientRects()].map((r) => Math.round(r.top)));
+          const fits = b.scrollWidth <= b.clientWidth + 1;
+          return style.overflowWrap === 'normal' && fits && lines.size <= words.length
+            ? []
+            : [`${b.textContent}: ${String(lines.size)} lines, fits ${String(fits)}`];
+        }),
+      );
+      expect(problems).toEqual([]);
+    });
   }
 });
