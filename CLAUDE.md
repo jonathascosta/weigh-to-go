@@ -7,10 +7,16 @@ version of a dashboard the owner first built as a claude.ai artifact.
 
 ## Ground rules
 
-- **Data stays on the device.** Weigh-ins and settings live in the browser (IndexedDB for data,
+- **Data stays on the device.** On the website, weigh-ins and settings live in the browser (IndexedDB for data,
   localStorage for screen preferences). No server, no analytics, no requests to other origins: the
   Content Security Policy (`scripts/csp.mjs`) has `connect-src 'none'`. Everyone starts from zero;
-  a JSON backup (export and import) is the only way data moves between devices.
+  a JSON backup (export and import) is the only way data moves between the website's devices. The
+  iPhone app (Sprint 3) keeps its data in files of its own and syncs through Apple Health
+  (`docs/decisions.md`).
+- **No server of ours.** Weights and dates are never sent to or kept by us. The iOS app (Sprint 3
+  on) may talk to Apple (Health, StoreKit) and, for ads, to Google AdMob, never with weigh-in data;
+  the website keeps `connect-src 'none'`. What changes this is decided by the owner and recorded in
+  `docs/decisions.md`.
 - **Two languages.** English and Portuguese, chosen by the browser and switchable; numbers and dates
   follow the reader's locale, and typed decimals take a comma or a point in either language. Every
   user-facing string goes through the dictionary.
@@ -26,6 +32,12 @@ version of a dashboard the owner first built as a claude.ai artifact.
 - Same quality bar as json2types: TypeScript strict, ESLint strictTypeChecked, Prettier, Vitest, and
   (from Sprint 1, story 8) Playwright, axe and Lighthouse in CI.
 
+## Plans
+
+What comes next is in `docs/sprint-N.md` (Sprint 2: mobile first; 3: the iOS app; 4: store and
+revenue; 5: Health insights), why in `docs/decisions.md`, and the owner's App Store steps in
+`docs/STORE.md` and `docs/STORE_PT.md`, which change together.
+
 ## Workflow for every task
 
 Follow these steps for each task, in order. They apply to this project and to any future project
@@ -36,7 +48,7 @@ of the owner's.
    (`date -u +%FT%TZ`) and report the durations in the pull request.
 2. **Develop.**
 3. **Test.** If anything goes wrong, go back to step 1: a new development round, timed again.
-4. **Review** with two independent agents:
+4. **Review** with two independent agents, three when the task changes what people see:
    - **Atlas** knows the business and the task: the development context, the decisions taken, the
      conversation;
    - **Spock** knows nothing of the business or the task, only the technology used, and reviews
@@ -47,6 +59,8 @@ of the owner's.
    | Priority | Short description | Resolved | How to resolve |
    | -------- | ----------------- | -------- | -------------- |
    | P0 to P4 | …                 | Yes / No | …              |
+   - **DaVinci** (`.claude/agents/davinci.md`), the user-experience specialist, knows the design
+     (`docs/ux/` once it exists) and reviews every task that changes what people see.
 
    After presenting the table, if any P0, P1 or P2 finding is still unresolved, go back to step 1.
    P3 and P4 findings that don't matter yet may instead be recorded as issues for later (the table
