@@ -402,12 +402,12 @@ Choices made while building story 4, open to the owner under decision 9.
     up to the last weigh-in, which can be weeks old.
 82. **Month ticks fit their labels.** The time axis takes as many months as fit with room between
     their labels, measured in the reader's language and text size. Quarterly or denser with their
-    year when they fit ("Jan 2026", "Apr 2026"…); otherwise compact, the year only on January (or on
-    the first tick when no January shows) and the short month elsewhere ("out.", "jan. de 2026",
-    "abr.", "jul."), thinned to every other tick or fewer if need be; a label that would still touch
-    the one before is left out. A year at 254 to 330 px, in Portuguese, at 100% and 150%, keeps at
-    least two labels (a unit test). _Alternative:_ the design's month names without the year.
-
+    year when they fit ("Jan 2026", "Apr 2026"…); otherwise compact, the year on the first tick of
+    each year (and on the very first unless a January follows) and the short month elsewhere
+    ("out.", "jan. de 2026", "abr.", "jul."; "nov. de 2025", "fev. de 2026", "mai.", "nov."),
+    thinned to every other tick or fewer if need be; a label that would still touch the one before
+    is left out. A year at 254 to 330 px, in Portuguese, at 100% and 150%, keeps at least two labels
+    (a unit test). _Alternative:_ the design's month names without the year.
 83. **The weigh-in card's head fits 320 px.** The title and the date chip are a few pixels tighter
     (8 px gap, 8–10 px padding), and below 360 px wide on touch the title is 1.25 rem and the chip
     says the day in figures ("Hoje, 21/10", "Today, 21/10"; a past day "19/10"), so they share a
@@ -419,8 +419,10 @@ Choices made while building story 4, open to the owner under decision 9.
     de" the other way; when the change and the pace agree, the design's "about 0.15 kg a week".
     Proposed wording, open to the owner. _Alternative:_ a signed pace ("about +0.37 lb a week").
 85. **The sparkline gives way to the weigh-in.** Media queries see the viewport, not the root's
-    text size, so the page measures it: when the weight field, with the sparkline at its smallest
-    (120 px), would end under the tab bar, Today drops the sparkline (`spark-off`), as on screens
+    text size, so the page measures it: when the weight field, with the sparkline at its real
+    smallest (its head, legend, 64 px plot and padding at the text size now, never under 120 px),
+    would end under the tab bar, measured against the layout viewport's height (which Safari's
+    toolbars don't change while scrolling), Today drops the sparkline (`spark-off`), as on screens
     shorter than 700 px. At 390 × 844 with text at 150% the field and Save are then on the first
     screen (628–685). _Alternative:_ keep the sparkline and scroll to the field.
 86. **The sheet, robust on iOS 15.** Escape and Tab work wherever focus is while a sheet is open

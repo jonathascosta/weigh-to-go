@@ -13,7 +13,7 @@ import { addDays, DAY, localToday, parseDay } from '../analysis/dates';
 import type { State } from '../app/app';
 import type { Settings } from '../i18n';
 import { h, s as svg } from './dom';
-import { dotsPath } from './plot';
+import { dotsPath, remPx } from './plot';
 
 /** How many days the sparkline shows, today included. */
 export const SPARK_DAYS = 30;
@@ -30,6 +30,11 @@ export interface Spark {
   /** The card: a link to Progress. */
   readonly element: HTMLAnchorElement;
   readonly draw: (state: State, s: Settings) => void;
+  /**
+   * The card's smallest height: its head and legend at the text size now, the plot's 64 px and
+   * the padding, and never under the 120 px the layout gives it.
+   */
+  minHeight(): number;
 }
 
 export function mountSpark(): Spark {
@@ -97,8 +102,26 @@ export function mountSpark(): Spark {
     }).observe(box);
   }
 
+  /** The heights last measured while shown, at a text size: hidden, the card has none to measure. */
+  const seen = new Map<string, number>();
+  const lineHeight = (el: HTMLElement, key: string, estimate: number, rem: number) => {
+    const measured = el.getBoundingClientRect().height;
+    const id = `${key}@${String(rem)}`;
+    if (measured > 0) seen.set(id, measured);
+    return seen.get(id) ?? estimate;
+  };
   return {
     element,
+    minHeight: () => {
+      const rem = remPx();
+      // 12 + 10 px of padding, 2 + 2 px between the rows, the borders, and the plot's 64 px.
+      const frame = 22 + 4 + 2 + 64;
+      const shown =
+        frame +
+        lineHeight(head, 'head', 0.875 * rem * 1.45, rem) +
+        lineHeight(legend, 'legend', 0.8125 * rem * 1.45, rem);
+      return Math.ceil(Math.max(120, shown));
+    },
     draw: (state, s) => {
       const m = s.messages;
       today = localToday();

@@ -656,15 +656,21 @@ export function needsYear(from: Date, to: Date, today = new Date()): boolean {
 
 /**
  * How a time axis writes its ticks: months with their year ("Jan 2026"), months compact (the year
- * only on January, or on the first tick when no January shows: "Oct", "Jan 2026", "Apr"), or days.
+ * only on each year's first tick, and on the very first when no January follows: "Oct",
+ * "Jan 2026", "Apr"; "Nov 2025", "Feb 2026", "May"), or days.
  */
 export type TickStyle = 'monthYear' | 'monthCompact' | 'dayMonth' | 'short';
 
 /** The day style of tick `i` among `ticks`. */
 export function tickDayStyle(style: TickStyle, ticks: readonly Date[], i: number): DayStyle {
   if (style !== 'monthCompact') return style;
-  const january = ticks.some((t) => t.getUTCMonth() === 0);
-  return ticks[i]?.getUTCMonth() === 0 || (!january && i === 0) ? 'monthYear' : 'month';
+  const tick = ticks[i];
+  if (!tick) return 'month';
+  // The first tick of each year carries it ("fev. de 2026" after "nov. de 2025"); the very first
+  // only when no January follows to say the year ("out.", "jan. de 2026").
+  if (i === 0) return ticks.some((t) => t.getUTCMonth() === 0) ? 'month' : 'monthYear';
+  const before = ticks[i - 1];
+  return before && before.getUTCFullYear() !== tick.getUTCFullYear() ? 'monthYear' : 'month';
 }
 
 /**

@@ -63,14 +63,30 @@ describe('the time axis', () => {
             );
         });
         if (style === 'monthCompact') {
-          // The year on January, or on the first when no January shows; the short month elsewhere.
-          const january = ticks.findIndex((t) => t.getUTCMonth() === 0);
+          // The year on each year's first tick, and on the very first unless a January follows.
+          const january = ticks.some((t) => t.getUTCMonth() === 0);
           texts.forEach((text, i) => {
-            expect(/\d{4}/.test(text)).toBe(january >= 0 ? i === january : i === 0);
+            const newYear = i > 0 && ticks[i - 1]!.getUTCFullYear() !== ticks[i]!.getUTCFullYear();
+            expect(/\d{4}/.test(text)).toBe(i === 0 ? !january : newYear);
           });
         }
       }
     }
+  });
+
+  it('marks a change of year when no January shows', () => {
+    const ticks = [day('2025-11-01'), day('2026-02-01'), day('2026-05-01'), day('2026-11-01')];
+    const pt = formatter('pt-BR');
+    const texts = ticks.map((t, i) =>
+      pt.day(t.toISOString().slice(0, 10), tickDayStyle('monthCompact', ticks, i)),
+    );
+    expect(texts).toEqual(['nov. de 2025', 'fev. de 2026', 'mai.', 'nov.']);
+    const withJanuary = [day('2025-10-01'), day('2026-01-01'), day('2026-04-01')];
+    expect(withJanuary.map((_t, i) => tickDayStyle('monthCompact', withJanuary, i))).toEqual([
+      'month',
+      'monthYear',
+      'month',
+    ]);
   });
 
   it('gives days their year only when they need it', () => {

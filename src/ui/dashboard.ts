@@ -144,7 +144,8 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   // The weigh-in beside the summary on the one page; on a phone low on the screen, under the
   // figures and the last 30 days, where the thumb is (design §2). The backup line follows it.
   shell.place(entry, { parent: top }, { parent: views.today, before: emptyLinks });
-  // The sparkline only where the weigh-in still fits above the tab bar with it, at its smallest:
+  // The sparkline only where the weigh-in still fits above the tab bar with it, at its smallest
+  // (its real minimum at this text size):
   // media queries don't see the root's text size, so this is measured (large text, a short phone).
   const fitSpark = () => {
     if (shell.isWide() || shell.currentView() !== 'today') return;
@@ -156,9 +157,10 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     const gap = 16;
     const now = off || spark.element.hidden ? 0 : spark.element.getBoundingClientRect().height + gap;
     const tab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tab-h')) || 56;
-    // With the sparkline at its smallest (120 px).
-    const at = bottom - now + 120 + gap;
-    views.today.classList.toggle('spark-off', at > window.innerHeight - tab);
+    // With the sparkline at its smallest, against the layout viewport's height, which Safari's
+    // toolbars don't change while scrolling (innerHeight does).
+    const at = bottom - now + spark.minHeight() + gap;
+    views.today.classList.toggle('spark-off', at > document.documentElement.clientHeight - tab);
   };
   if (typeof ResizeObserver === 'function') {
     const watch = new ResizeObserver(() => {
@@ -166,6 +168,8 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     });
     watch.observe(entry);
     watch.observe(summary);
+    // Shown, the sparkline measures its own rows: checked again with its real minimum.
+    watch.observe(spark.element);
   }
   // Three figures stack as a list when their row is narrower than 20 rem; Progress's six, in two
   // columns, below 15 rem.

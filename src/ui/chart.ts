@@ -77,6 +77,29 @@ const SWATCH: Partial<Record<Layer, string>> = {
 };
 /** Layers the legend leaves out: marks with their own labels, and areas the lines explain. */
 const UNLISTED: ReadonlySet<Layer> = new Set(['extremes', 'events', 'band', 'weekRange', 'bmi']);
+/** A label's box on the chart. */
+export interface Box {
+  readonly x0: number;
+  readonly x1: number;
+  readonly y0: number;
+  readonly y1: number;
+}
+
+/** The box of a line of text at `x`, `baseline`, `width` wide, in a font of `size` px. */
+export function textBox(
+  x: number,
+  baseline: number,
+  width: number,
+  size: number,
+  anchor: 'start' | 'middle' | 'end',
+): Box {
+  const x0 = anchor === 'start' ? x : anchor === 'end' ? x - width : x - width / 2;
+  return { x0, x1: x0 + width, y0: baseline - size, y1: baseline + size * 0.25 };
+}
+
+/** Whether two boxes touch. */
+export const overlaps = (a: Box, b: Box): boolean => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
 /** Below this width (in rem) a chart gives its end label's margin back to the plot. */
 const NARROW_REM = 17;
 
@@ -534,19 +557,6 @@ export function mountChart(
       g.append(
         svg('line', { class: 'refline goal', x1: left, x2: width - right, y1: y(u(goal)), y2: y(u(goal)) }),
       );
-      labels.append(
-        svg(
-          'text',
-          {
-            class: 'reflabel goal-label',
-            // Ends before the last weigh-in's line when the projection runs on past it.
-            x: pj.length > 0 ? Math.min(width - right - 6, x(last.t) - 6) : width - right - 6,
-            y: y(u(goal)) - 6,
-            'text-anchor': 'end',
-          },
-          m['chart.goal'](w(goal)),
-        ),
-      );
     }
     if (on('points')) {
       // Smaller when crowded, so a year of dots doesn't hide the lines drawn under them.
@@ -563,17 +573,21 @@ export function mountChart(
       );
     }
     const anchorAt = (px: number) => (px < left + 40 ? 'start' : px > width - right - 40 ? 'end' : 'middle');
+    /** The boxes the notes take (their text and ring), which the goal's label keeps clear of. */
+    const notes: Box[] = [];
     const annotate = (d: Day, text: string, above: boolean, kind = '') => {
       const px = x(d.t);
       const py = y(u(d.kg));
+      const anchor = anchorAt(px);
+      const baseline = above ? py - 11 : py + 20;
       g.append(svg('circle', { class: `ring ${kind}`, cx: px, cy: py, r: 6 }));
-      labels.append(
-        svg(
-          'text',
-          { class: `annot ${kind}`, x: px, y: above ? py - 11 : py + 20, 'text-anchor': anchorAt(px) },
-          text,
-        ),
-      );
+      labels.append(svg('text', { class: `annot ${kind}`, x: px, y: baseline, 'text-anchor': anchor }, text));
+      notes.push(textBox(px, baseline, textWidth(text), 0.75 * rem, anchor), {
+        x0: px - 7,
+        x1: px + 7,
+        y0: py - 7,
+        y1: py + 7,
+      });
     };
     // One weigh-in is both the highest and the lowest: it needs no marks.
     if (on('extremes') && r.n > 1 && r.max.kg !== r.min.kg) {
@@ -600,6 +614,35 @@ export function mountChart(
           ),
           true,
           'annot-up',
+        );
+    }
+    if (on('goal') && goal !== null && inY(u(goal))) {
+      // The goal's label: where it stays inside the plot and clear of the notes. On a phone the
+      // projection runs on past the last weigh-in, whose line would cross it at the right end, so
+      // it ends before that line when it has the room; else at the right end, or just after the
+      // line; above the goal's line, or under it.
+      const text = m['chart.goal'](w(goal));
+      const size = 0.8125 * rem;
+      const width0 = textWidth(text);
+      const line = x(last.t);
+      const ends: { at: number; anchor: 'start' | 'end' }[] = [
+        ...(pj.length > 0 ? [{ at: line - 6, anchor: 'end' as const }] : []),
+        { at: width - right - 6, anchor: 'end' },
+        ...(pj.length > 0 ? [{ at: line + 6, anchor: 'start' as const }] : []),
+      ];
+      const spots = [y(u(goal)) - 6, y(u(goal)) + size + 2].flatMap((baseline) =>
+        ends.map((end) => ({ ...end, baseline, box: textBox(end.at, baseline, width0, size, end.anchor) })),
+      );
+      const inside = spots.filter((p) => p.box.x0 >= left + 4 && p.box.x1 <= width - 2);
+      const spot =
+        inside.find((p) => !notes.some((n) => overlaps(n, p.box))) ?? inside[0] ?? spots[1] ?? spots[0];
+      if (spot)
+        labels.append(
+          svg(
+            'text',
+            { class: 'reflabel goal-label', x: spot.at, y: spot.baseline, 'text-anchor': spot.anchor },
+            text,
+          ),
         );
     }
     g.append(svg('circle', { class: 'point point-last', cx: x(last.t), cy: y(u(last.kg)), r: 5 }));
