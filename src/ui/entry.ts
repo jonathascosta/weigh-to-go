@@ -1,13 +1,14 @@
 /**
- * Logging weigh-ins: the form for one, and the box for pasting many. Weights are read in the unit
- * shown next to the field, stored in kg unrounded.
+ * Logging weigh-ins: the card for one, on Today, and the box for pasting many, in Your data. Weights
+ * are read in the unit shown in the field, stored in kg unrounded.
  */
-import { addDays, isIsoDay, isoDay, localToday, parseDay } from '../analysis/dates';
-import type { App, State } from '../app/app';
+import { addDays, daysBetween, isIsoDay, isoDay, localToday, parseDay } from '../analysis/dates';
+import type { App, Saved, State } from '../app/app';
 import { parsePaste, toKg, type PasteResult } from '../data/paste';
+import type { StoredWeighIn } from '../data/records';
 import { count, settings, type Settings } from '../i18n';
 import { dayMonthOrder, type DayMonthOrder } from '../i18n/locale';
-import { h, say } from './dom';
+import { h, s as svg } from './dom';
 
 /** Lines of the paste box's bad list shown at most; the count says how many there were. */
 const BAD_SHOWN = 5;
@@ -54,26 +55,443 @@ export function pasteChanges(
   return { added, replaced };
 }
 
-export function mountEntry(container: HTMLElement, app: App): (state: State, s: Settings) => void {
+/** How long Undo stays after a save, and the least it gets back when focus leaves it. */
+export const UNDO_MS = 10_000;
+export const UNDO_MIN_MS = 5_000;
+
+/** Whether two weigh-ins are the same record: the same weight, saved at the same moment. */
+const sameRecord = (a: StoredWeighIn, b: StoredWeighIn): boolean =>
+  a.kg === b.kg && Date.parse(a.savedAt) === Date.parse(b.savedAt);
+
+/**
+ * The line under the field: what is logged for the day chosen (saving replaces it), else the last
+ * weigh-in and how long ago, or, for an empty diary, that today is already in.
+ */
+export function entryHint(state: State, s: Settings, date: string, today: string): string {
+  const m = s.messages;
+  const { format: f, weightUnit: unit } = s;
+  const logged = state.weighIns.find((w) => w.date === date);
+  if (logged) {
+    const weight = f.weight(logged.kg, unit);
+    return date === today ? m['entry.loggedToday'](weight) : m['entry.exists'](weight);
+  }
+  const last = state.weighIns.at(-1);
+  if (!last) return date === today ? m['entry.firstHint'] : '';
+  const ago = daysBetween(parseDay(last.date), parseDay(today));
+  const when = ago >= 0 && ago <= 30 ? f.daysAgo(ago) : f.day(last.date, 'medium');
+  return m['entry.last'](f.weight(last.kg, unit), when);
+}
+
+/** The date chip's text: "Today, 21 Oct", or the day chosen, "Mon, 19 Oct". */
+export function chipText(date: string, today: string, s: Settings): string {
+  const f = s.format;
+  if (date === today) return s.messages['entry.today'](f.day(date, 'dayMonthShort'));
+  return date.slice(0, 4) === today.slice(0, 4) ? f.day(date, 'weekdayDayMonth') : f.day(date, 'medium');
+}
+
+/** The day as the date control's name says it: "Today, Wednesday 21 October". */
+export function spokenDay(date: string, today: string, s: Settings): string {
+  const f = s.format;
+  const long =
+    date.slice(0, 4) === today.slice(0, 4) ? f.day(date, 'weekdayDayMonthLong') : f.day(date, 'long');
+  return date === today ? s.messages['entry.today'](long) : long;
+}
+
+const checkIcon = () => {
+  const icon = svg('svg', {
+    viewBox: '0 0 24 24',
+    'aria-hidden': 'true',
+    focusable: 'false',
+    class: 'saved-icon',
+  });
+  icon.append(svg('circle', { cx: 12, cy: 12, r: 9.5 }), svg('path', { d: 'M7.5 12.5l3 3 6-6.5' }));
+  return icon;
+};
+
+const calendarIcon = () => {
+  const icon = svg('svg', {
+    viewBox: '0 0 24 24',
+    'aria-hidden': 'true',
+    focusable: 'false',
+    class: 'chip-icon',
+  });
+  icon.append(
+    svg('rect', { x: 3.5, y: 5, width: 17, height: 15, rx: 2 }),
+    svg('path', { d: 'M3.5 10h17M8 3v4M16 3v4' }),
+  );
+  return icon;
+};
+
+/** The weigh-in card and what it says after a save. */
+export interface EntryCard {
+  readonly draw: (state: State, s: Settings) => void;
+  /** The person left Today: the saved notice gives way to the field. */
+  readonly leave: () => void;
+}
+
+/**
+ * The weigh-in card (design §3): today's date already in, the weight field with Save beside it, and
+ * the line under them. After Save the field gives way to a notice that says what was saved, with
+ * Undo for 10 seconds (paused while Undo has focus), then Change and Another day; it lasts until the
+ * person leaves Today, the day moves on or they press a button.
+ */
+export function mountEntry(container: HTMLElement, app: App): EntryCard {
   const title = h('h2', { attrs: { id: 'entry-title' } });
-  const dateLabel = h('label', { attrs: { for: 'entry-date' } });
+  // One date input: on touch it lies, transparent, over a chip that says the day, and a tap opens
+  // the system's picker; with a mouse, or on the one page, it is a plain field with its label.
+  const dateWord = h('span', { class: 'date-word' });
+  const dateSpoken = h('span', { class: 'visually-hidden' });
+  const dateLabel = h('label', { attrs: { for: 'entry-date' } }, dateWord, dateSpoken);
   const dateInput = h('input', { attrs: { id: 'entry-date', type: 'date', required: true } });
+  const chip = h('span', { class: 'chip-text', attrs: { 'aria-hidden': 'true' } });
+  const dateControl = h('div', { class: 'date-control' }, dateLabel, calendarIcon(), chip, dateInput);
+
   const weightLabel = h('label', { attrs: { for: 'entry-weight' } });
   const weightInput = h('input', {
-    attrs: { id: 'entry-weight', type: 'text', inputmode: 'decimal', autocomplete: 'off', required: true },
+    attrs: {
+      id: 'entry-weight',
+      type: 'text',
+      inputmode: 'decimal',
+      autocomplete: 'off',
+      required: true,
+      'aria-describedby': 'entry-unit entry-hint',
+    },
   });
   const unitTag = h('span', { class: 'unit-tag', attrs: { id: 'entry-unit' } });
-  weightInput.setAttribute('aria-describedby', 'entry-unit');
-  const save = h('button', { class: 'button', attrs: { type: 'submit' } });
-  const status = h('p', { class: 'status', attrs: { role: 'status', id: 'entry-status' } });
+  const save = h('button', { class: 'button button-big', attrs: { type: 'submit' } });
+  const hint = h('p', { class: 'hint', attrs: { id: 'entry-hint' } });
   const form = h(
     'form',
-    { class: 'entry-row', attrs: { novalidate: true, 'aria-labelledby': 'entry-title' } },
-    h('div', { class: 'field' }, dateLabel, dateInput),
-    h('div', { class: 'field' }, weightLabel, h('div', { class: 'with-unit' }, weightInput, unitTag)),
+    { class: 'entry-form', attrs: { novalidate: true, 'aria-labelledby': 'entry-title' } },
+    weightLabel,
+    h('div', { class: 'with-unit' }, weightInput, unitTag),
     save,
+    hint,
   );
 
+  const savedText = h('b');
+  const savedSub = h('p', { class: 'saved-sub' });
+  const undo = h('button', { class: 'button button-ghost undo', attrs: { type: 'button' } });
+  const undoBar = h('span', { class: 'undo-bar', attrs: { 'aria-hidden': 'true' } });
+  const notice = h(
+    'div',
+    { class: 'saved', attrs: { tabindex: -1, id: 'entry-saved' } },
+    checkIcon(),
+    h('p', { class: 'saved-text' }, savedText),
+    savedSub,
+    undo,
+    undoBar,
+  );
+  const change = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
+  const another = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
+  const after = h('div', { class: 'after-row' }, change, another);
+  const savedBox = h('div', { class: 'saved-box', attrs: { hidden: true } }, notice, after);
+  // Built empty with the card: a live region added together with its text is often not announced.
+  const status = h('p', { class: 'visually-hidden', attrs: { role: 'status', id: 'entry-status' } });
+
+  container.replaceChildren(h('div', { class: 'entry-head' }, title, dateControl), form, savedBox, status);
+
+  let today = localToday();
+  let busy = false;
+  /** An error under the field, until the next change. */
+  let error: string | null = null;
+  /** What the notice shows, while it does: the save, and whether Undo is still offered. */
+  let shown: {
+    readonly saved: Saved | null;
+    readonly kg: number;
+    readonly date: string;
+    readonly replaced: boolean;
+    readonly typed: string;
+    undo: 'on' | 'gone' | 'changed';
+  } | null = null;
+
+  const weightIn = (date: string): number | null =>
+    app.state().weighIns.find((w) => w.date === date)?.kg ?? null;
+
+  /** Says `text` in the live region; written on the next frame, after what changed on screen. */
+  const announce = (text: string) => {
+    status.textContent = '';
+    requestAnimationFrame(() => {
+      status.textContent = text;
+    });
+  };
+
+  // ---- The Undo count: 10 seconds, stopped while Undo has focus, never less than 5 after. ----
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let left = UNDO_MS;
+  let startedAt = 0;
+  const shrink = (ms: number) => {
+    undoBar.style.transition = 'none';
+    undoBar.style.transform = `scaleX(${String(left / UNDO_MS)})`;
+    // Read once, so the start above is drawn before the shrinking starts.
+    undoBar.getBoundingClientRect();
+    undoBar.style.transition = `transform ${String(ms)}ms linear`;
+    undoBar.style.transform = 'scaleX(0)';
+  };
+  const stopCount = () => {
+    clearTimeout(timer);
+    timer = undefined;
+  };
+  const startCount = (ms: number) => {
+    stopCount();
+    left = ms;
+    startedAt = performance.now();
+    timer = setTimeout(() => {
+      timer = undefined;
+      if (shown?.undo === 'on') shown.undo = 'gone';
+      showNotice(settings());
+    }, ms);
+    shrink(ms);
+  };
+  undo.addEventListener('focus', () => {
+    if (timer === undefined) return;
+    stopCount();
+    left = Math.max(0, left - (performance.now() - startedAt));
+    undoBar.style.transition = 'none';
+    undoBar.style.transform = `scaleX(${String(left / UNDO_MS)})`;
+  });
+  undo.addEventListener('blur', () => {
+    if (shown?.undo === 'on' && timer === undefined) startCount(Math.max(left, UNDO_MIN_MS));
+  });
+
+  const showNotice = (s: Settings) => {
+    if (!shown) return;
+    const m = s.messages;
+    const { format: f, weightUnit: unit } = s;
+    const weight = f.weight(shown.kg, unit);
+    savedText.textContent = (shown.replaced ? m['entry.updated'] : m['entry.saved'])(
+      weight,
+      f.day(shown.date, 'medium'),
+    );
+    const day = app.state().analysis?.series.find((d) => d.date === shown?.date);
+    savedSub.textContent =
+      shown.undo === 'changed'
+        ? m['entry.changedSince']
+        : m['entry.savedSub'](
+            (day?.change ?? null) === null ? null : f.weightChange(day?.change ?? 0, unit),
+            (day?.avg7 ?? null) === null ? null : f.weight(day?.avg7 ?? 0, unit),
+          );
+    savedSub.hidden = savedSub.textContent === '';
+    undo.textContent = m['entry.undo'];
+    undo.hidden = shown.undo !== 'on';
+    undoBar.hidden = shown.undo !== 'on';
+    change.textContent = m['entry.change'];
+    another.textContent = m['entry.another'];
+  };
+
+  /** Back to the field, for the day in the date control. */
+  const toForm = (value = '') => {
+    stopCount();
+    shown = null;
+    savedBox.hidden = true;
+    form.hidden = false;
+    weightInput.value = value;
+    error = null;
+    draw(app.state(), settings());
+  };
+
+  const showSaved = (next: NonNullable<typeof shown>) => {
+    shown = next;
+    form.hidden = true;
+    savedBox.hidden = false;
+    showNotice(settings());
+    if (next.undo === 'on') startCount(UNDO_MS);
+    // Focus leaves the field, so the keypad closes, and lands on the notice, not on Undo: Enter
+    // pressed twice can't undo, and the notice's text is read.
+    notice.focus({ preventScroll: true });
+    notice.scrollIntoView({ block: 'nearest' });
+    const m = settings().messages;
+    announce(next.saved ? `${savedText.textContent} ${m['entry.undoHint']}` : savedText.textContent);
+  };
+
+  undo.addEventListener('click', () => {
+    const was = shown;
+    if (!was?.saved || was.undo !== 'on') return;
+    const { saved } = was;
+    const m = settings().messages;
+    const now = app.state().weighIns.find((w) => w.date === saved.date);
+    // Written since (another tab, Apple Health): nothing is undone, and the notice says so.
+    if (!now || !sameRecord(now, saved.written)) {
+      stopCount();
+      was.undo = 'changed';
+      showNotice(settings());
+      notice.focus({ preventScroll: true });
+      announce(m['entry.changedSince']);
+      return;
+    }
+    // A new day undone gives the typed weight back, to correct a slipped digit. Focus goes to the
+    // field now, inside the tap: iOS opens the keypad only for a focus made within the gesture.
+    toForm(saved.previous === null ? was.typed : '');
+    weightInput.focus();
+    announce(m['entry.undone']);
+    app.restore(saved.date, saved.previous, saved.written).then(
+      (done) => {
+        if (done) return;
+        error = settings().messages['entry.changedSince'];
+        draw(app.state(), settings());
+        announce(error);
+      },
+      (failed: unknown) => {
+        console.error(failed);
+        error = failure(failed, app, settings());
+        draw(app.state(), settings());
+        announce(error);
+      },
+    );
+  });
+  change.addEventListener('click', () => {
+    const s = settings();
+    const kg = shown ? weightIn(shown.date) : null;
+    toForm(kg === null ? '' : s.format.weightValue(kg, s.weightUnit));
+    weightInput.focus();
+    weightInput.select();
+  });
+  another.addEventListener('click', () => {
+    toForm();
+    dateInput.focus();
+  });
+
+  // ---- The date control ----
+  // Some browsers open the picker only from its icon: ask for it on a tap, where it can be asked.
+  dateInput.addEventListener('click', () => {
+    try {
+      dateInput.showPicker();
+    } catch {
+      // The tap itself opens it, or the browser has no picker to show.
+    }
+  });
+  const dateChanged = () => {
+    // An emptied value (some pickers have Reset) means today.
+    if (dateInput.value === '') dateInput.value = today;
+    error = null;
+    if (shown) toForm();
+    else draw(app.state(), settings());
+  };
+  dateInput.addEventListener('input', dateChanged);
+  dateInput.addEventListener('change', dateChanged);
+  weightInput.addEventListener('input', () => {
+    if (error === null) return;
+    error = null;
+    draw(app.state(), settings());
+  });
+
+  /**
+   * Today moves on at midnight for a page left open: the date still showing yesterday moves with
+   * it (a day picked by hand stays), and a notice about yesterday gives way to the new day's field.
+   */
+  const followToday = () => {
+    const now = localToday();
+    if (now === today && dateInput.value !== '') return;
+    const was = today;
+    if (dateInput.value === '' || dateInput.value === was) dateInput.value = now;
+    today = now;
+    dateInput.max = isoDay(addDays(parseDay(now), 1));
+    if (shown?.date === was && was !== now) toForm();
+    else draw(app.state(), settings());
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') followToday();
+  });
+  window.addEventListener('focus', followToday);
+  // A page restored from the back-forward cache.
+  window.addEventListener('pageshow', followToday);
+  const untilMidnight = () => {
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+    setTimeout(() => {
+      followToday();
+      untilMidnight();
+    }, next.getTime() - now.getTime());
+  };
+  untilMidnight();
+
+  const fail = (text: string, field: HTMLInputElement) => {
+    error = text;
+    draw(app.state(), settings());
+    announce(text);
+    field.focus();
+  };
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (busy) return;
+    followToday();
+    const s = settings();
+    const m = s.messages;
+    const date = dateInput.value;
+    if (!isIsoDay(date)) {
+      fail(m['entry.badDate'], dateInput);
+      return;
+    }
+    // A day more than today is a slip (a day of slack for a clock a little behind).
+    if (date > isoDay(addDays(parseDay(localToday()), 1))) {
+      fail(m['entry.futureDate'], dateInput);
+      return;
+    }
+    const typed = weightInput.value;
+    const kg = toKg(typed, s.weightUnit);
+    if (kg === null) {
+      fail(m['entry.badWeight'](m[`unit.${s.weightUnit}`], example(s)), weightInput);
+      return;
+    }
+    const replaced = weightIn(date) !== null;
+    busy = true;
+    save.disabled = true;
+    app
+      .save([{ date, kg }])
+      .then((result) => {
+        weightInput.value = '';
+        error = null;
+        const saved = result.find((r) => r.date === date) ?? null;
+        showSaved({ saved, kg, date, replaced, typed, undo: saved ? 'on' : 'gone' });
+      })
+      .catch((failed: unknown) => {
+        console.error(failed);
+        fail(failure(failed, app, settings()), weightInput);
+      })
+      .finally(() => {
+        busy = false;
+        save.disabled = app.state().status === 'loading';
+      });
+  });
+
+  const draw = (state: State, s: Settings) => {
+    const m = s.messages;
+    title.textContent = m['entry.title'];
+    dateWord.textContent = m['entry.date'];
+    if (dateInput.value === '') dateInput.value = today;
+    dateInput.max = isoDay(addDays(parseDay(today), 1));
+    const date = isIsoDay(dateInput.value) ? dateInput.value : today;
+    chip.textContent = chipText(date, today, s);
+    dateSpoken.textContent = `: ${spokenDay(date, today, s)}`;
+    weightLabel.textContent = m['entry.weight'];
+    unitTag.textContent = m[`unit.${s.weightUnit}`];
+    save.textContent = m['entry.save'];
+    hint.textContent = error ?? entryHint(state, s, date, today);
+    hint.classList.toggle('hint-bad', error !== null);
+    save.disabled = busy || state.status === 'loading';
+    showNotice(s);
+  };
+
+  return {
+    draw: (state, s) => {
+      followToday();
+      draw(state, s);
+    },
+    leave: () => {
+      if (shown) toForm();
+    },
+  };
+}
+
+/** The box for pasting many weigh-ins at once, in Your data. */
+export interface PasteBox {
+  readonly draw: (state: State, s: Settings) => void;
+  /** Opens the box and puts focus in it. */
+  readonly open: () => void;
+}
+
+export function mountPaste(container: HTMLElement, app: App): PasteBox {
   const pasteSummary = h('summary');
   const pasteHelp = h('p', { class: 'note', attrs: { id: 'paste-help' } });
   const pasteLabel = h('label', { class: 'visually-hidden', attrs: { for: 'paste-text' } });
@@ -93,91 +511,7 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
     pasteStatus,
   );
 
-  container.replaceChildren(title, form, status, paste);
-
-  let today = localToday();
-  let busy = false;
-  const weightIn = (date: string): number | null =>
-    app.state().weighIns.find((w) => w.date === date)?.kg ?? null;
-
-  const showExisting = () => {
-    const s = settings();
-    const kg = weightIn(dateInput.value);
-    say(status, kg === null ? '' : s.messages['entry.exists'](s.format.weight(kg, s.weightUnit)));
-  };
-  dateInput.addEventListener('change', showExisting);
-
-  /**
-   * Today moves on at midnight for a page left open: the field still showing yesterday's default
-   * moves with it, and so does the latest day it takes.
-   */
-  const followToday = () => {
-    const now = localToday();
-    if (dateInput.value === '' || dateInput.value === today) dateInput.value = now;
-    today = now;
-    dateInput.max = isoDay(addDays(parseDay(now), 1));
-  };
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') followToday();
-  });
-  window.addEventListener('focus', followToday);
-  const untilMidnight = () => {
-    const now = new Date();
-    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
-    setTimeout(() => {
-      followToday();
-      untilMidnight();
-    }, next.getTime() - now.getTime());
-  };
-  untilMidnight();
-
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    if (busy) return;
-    followToday();
-    const s = settings();
-    const m = s.messages;
-    const date = dateInput.value;
-    if (!isIsoDay(date)) {
-      say(status, m['entry.badDate'], 'bad');
-      dateInput.focus();
-      return;
-    }
-    // A day more than today is a slip (a day of slack for a clock a little behind).
-    if (date > isoDay(addDays(parseDay(localToday()), 1))) {
-      say(status, m['entry.futureDate'], 'bad');
-      dateInput.focus();
-      return;
-    }
-    const kg = toKg(weightInput.value, s.weightUnit);
-    if (kg === null) {
-      say(status, m['entry.badWeight'](m[`unit.${s.weightUnit}`], example(s)), 'bad');
-      weightInput.focus();
-      return;
-    }
-    const existed = weightIn(date) !== null;
-    busy = true;
-    save.disabled = true;
-    app
-      .save([{ date, kg }])
-      .then(() => {
-        const after = settings();
-        const text = (existed ? after.messages['entry.updated'] : after.messages['entry.saved'])(
-          after.format.weight(kg, after.weightUnit),
-          after.format.day(date, 'medium'),
-        );
-        say(status, text, 'ok');
-        weightInput.value = '';
-      })
-      .catch((error: unknown) => {
-        console.error(error);
-        say(status, failure(error, app, settings()), 'bad');
-      })
-      .finally(() => {
-        busy = false;
-        save.disabled = false;
-      });
-  });
+  container.replaceChildren(paste);
 
   /** Saves what a paste read (exactly what the reader was shown), and says how it went. */
   const savePaste = (result: PasteResult, buttons: HTMLButtonElement[]) => {
@@ -338,20 +672,18 @@ export function mountEntry(container: HTMLElement, app: App): (state: State, s: 
     if (pasteStatus.querySelector('button')) pasteStatus.replaceChildren();
   });
 
-  return (state, s) => {
-    const m = s.messages;
-    title.textContent = m['entry.title'];
-    dateLabel.textContent = m['entry.date'];
-    weightLabel.textContent = m['entry.weight'];
-    unitTag.textContent = m[`unit.${s.weightUnit}`];
-    weightInput.placeholder = m['entry.example'](example(s));
-    save.textContent = m['entry.save'];
-    pasteSummary.textContent = m['paste.open'];
-    pasteHelp.textContent = m['paste.help'](sampleLine(s), m[`unit.${s.weightUnit}`]);
-    pasteLabel.textContent = m['paste.label'];
-    pasteText.placeholder = `${sampleLine(s)}\n${sampleLine(s, 20)}`;
-    pasteButton.textContent = m['paste.button'];
-    followToday();
-    save.disabled = busy || state.status === 'loading';
+  return {
+    draw: (_state, s) => {
+      const m = s.messages;
+      pasteSummary.textContent = m['paste.open'];
+      pasteHelp.textContent = m['paste.help'](sampleLine(s), m[`unit.${s.weightUnit}`]);
+      pasteLabel.textContent = m['paste.label'];
+      pasteText.placeholder = `${sampleLine(s)}\n${sampleLine(s, 20)}`;
+      pasteButton.textContent = m['paste.button'];
+    },
+    open: () => {
+      paste.open = true;
+      pasteText.focus();
+    },
   };
 }

@@ -190,6 +190,14 @@ export const en = {
   'footer.madeBy': 'Made by',
   'frame.open': 'Open Weigh to Go in its own tab',
 
+  'nav.label': 'Diary',
+  'nav.today': 'Today',
+  'nav.progress': 'Progress',
+  'nav.analysis': 'Analysis',
+  'nav.data': 'Your data',
+  'nav.backupDue': '(backup due)',
+  'empty.haveBackup': 'Have a backup? Import it here',
+
   'home.heading': 'Your weight diary, on your device',
   'home.lede':
     "Log a weigh-in a day and Weigh to Go shows where you're heading: the trend under the daily noise, projections, weekly averages, the days you climb back up, and more.",
@@ -259,6 +267,20 @@ export const en = {
   'entry.failed': "Couldn't save the weigh-in. Try again.",
   'entry.reload': "Couldn't save: the diary can't reach its data. Reload the page.",
   'entry.full': "Couldn't save: this device is out of storage space.",
+  'entry.today': (day: string) => `Today, ${day}`,
+  'entry.last': (weight: string, when: string) => `Last: ${weight}, ${when}`,
+  'entry.loggedToday': (weight: string) => `Today: ${weight}. Saving replaces it.`,
+  'entry.savedSub': (change: string | null, avg7: string | null) =>
+    [change === null ? null : `${change} vs. the last one`, avg7 === null ? null : `7-day average ${avg7}`]
+      .filter((part) => part !== null)
+      .join(' · '),
+  'entry.undoHint': 'Undo is available for 10 seconds.',
+  'entry.undo': 'Undo',
+  'entry.undone': 'Undone.',
+  'entry.changedSince': 'Changed since; nothing was undone.',
+  'entry.change': 'Change',
+  'entry.another': 'Another day',
+  'entry.firstHint': 'Today is already in. Type your weight and press Save.',
 
   'paste.open': 'Paste several days at once',
   'paste.help': (example: string, unit: string) =>
@@ -732,7 +754,7 @@ export const en = {
   'log.more': (shown: string, total: string) => `Showing the latest ${shown} of ${total}.`,
   'log.showMore': 'Show more',
 
-  'data.title': 'Your data',
+  'data.group.backup': 'Backup',
   'data.note':
     'Everything stays in this browser. A backup file is the only copy outside it: export one now and then, and use it to move to another device.',
   'data.export': 'Export backup',
@@ -844,6 +866,14 @@ export const pt: Messages = {
   'footer.madeBy': 'Feito por',
   'frame.open': 'Abrir o Weigh to Go em uma aba própria',
 
+  'nav.label': 'Diário',
+  'nav.today': 'Hoje',
+  'nav.progress': 'Progresso',
+  'nav.analysis': 'Análise',
+  'nav.data': 'Seus dados',
+  'nav.backupDue': '(backup pendente)',
+  'empty.haveBackup': 'Tem um backup? Importe aqui',
+
   'home.heading': 'Seu diário de peso, no seu aparelho',
   'home.lede':
     'Registre uma pesagem por dia e o Weigh to Go mostra para onde você está indo: a tendência por trás do sobe e desce diário, projeções, médias semanais, os dias em que o peso volta a subir e mais.',
@@ -914,6 +944,23 @@ export const pt: Messages = {
   'entry.reload':
     'Não foi possível salvar: o diário não está conseguindo acessar seus dados. Recarregue a página.',
   'entry.full': 'Não foi possível salvar: o aparelho está sem espaço de armazenamento.',
+  'entry.today': (day: string) => `Hoje, ${day}`,
+  'entry.last': (weight: string, when: string) => `Última: ${weight}, ${when}`,
+  'entry.loggedToday': (weight: string) => `Hoje: ${weight}. Salvar substitui o valor.`,
+  'entry.savedSub': (change: string | null, avg7: string | null) =>
+    [
+      change === null ? null : `${change} em relação à anterior`,
+      avg7 === null ? null : `média de 7 dias: ${avg7}`,
+    ]
+      .filter((part) => part !== null)
+      .join(' · '),
+  'entry.undoHint': 'Você pode desfazer por 10 segundos.',
+  'entry.undo': 'Desfazer',
+  'entry.undone': 'Desfeito.',
+  'entry.changedSince': 'O registro mudou desde então; nada foi desfeito.',
+  'entry.change': 'Alterar',
+  'entry.another': 'Outro dia',
+  'entry.firstHint': 'A data de hoje já está preenchida. Digite seu peso e aperte Salvar.',
 
   'paste.open': 'Colar vários dias de uma vez',
   'paste.help': (example: string, unit: string) =>
@@ -1391,7 +1438,7 @@ export const pt: Messages = {
   'log.more': (shown: string, total: string) => `Mostrando as ${shown} mais recentes de ${total}.`,
   'log.showMore': 'Mostrar mais',
 
-  'data.title': 'Seus dados',
+  'data.group.backup': 'Backup',
   'data.note':
     'Tudo fica neste navegador. Um arquivo de backup é a única cópia fora dele: exporte um de vez em quando e use-o para passar para outro aparelho.',
   'data.export': 'Exportar backup',

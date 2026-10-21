@@ -29,15 +29,6 @@ try {
 if (checkFrame(openLabel)) {
   const version = document.getElementById('version');
   if (version) version.textContent = `v${__APP_VERSION__}`;
-  // Without working settings there is nothing to switch: the page stays as written.
-  const settingsBox = document.getElementById('settings');
-  if (translated && settingsBox) {
-    mountSettings(settingsBox);
-    onSettingsChange((s) => {
-      translatePage(document, s);
-    });
-    watchSettings(window);
-  }
   const appBox = document.getElementById('app');
   // The iPhone app keeps the diary in a file of its own (platform/store-native.ts, loaded only in
   // the app's build); the website in the browser's IndexedDB.
@@ -47,14 +38,26 @@ if (checkFrame(openLabel)) {
     import.meta.env.MODE === 'ios'
       ? lazyNotifier(async () => (await import('./platform/notify-native')).phoneNotifier)
       : undefined;
-  if (appBox) {
-    mountDashboard(appBox, createApp(import.meta.env.MODE === 'ios' ? openNative : undefined), notifier);
+  if (translated) {
+    onSettingsChange((s) => {
+      translatePage(document, s);
+    });
+    watchSettings(window);
   }
+  const board = appBox
+    ? mountDashboard(appBox, createApp(import.meta.env.MODE === 'ios' ? openNative : undefined), {
+        notifier,
+        nav: document.getElementById('tabs'),
+        intro: document.querySelector<HTMLElement>('main .intro'),
+      })
+    : null;
+  // Without working settings there is nothing to switch: the page stays as written.
+  if (translated && board) mountSettings(board.settingsBox);
   ready();
   // Offline use, in the built site only (the dev server's files change under it all the time, and
   // the iPhone app has its files on the phone and no service worker).
-  if (import.meta.env.PROD && import.meta.env.MODE !== 'ios' && 'serviceWorker' in navigator && appBox) {
-    const offerUpdate = mountUpdateNotice(appBox);
+  if (import.meta.env.PROD && import.meta.env.MODE !== 'ios' && 'serviceWorker' in navigator && board) {
+    const offerUpdate = mountUpdateNotice(board.notices);
     registerWorker(navigator.serviceWorker, offerUpdate).catch((error: unknown) => {
       // Without a worker the site works the same, online.
       console.warn(error);
