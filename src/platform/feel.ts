@@ -7,7 +7,7 @@ import { pref } from '../data/prefs';
 
 /** Days on which the person saved a weigh-in here before the rating prompt may show. */
 export const REVIEW_AFTER = 7;
-/** A moment after the save, so the "Saved" line and the tap land first. */
+/** A moment after the save stands, so the notice's change lands first. */
 const REVIEW_DELAY_MS = 1500;
 
 /** The minor version ("0.1") the prompt was last asked for, kept with the screen preferences. */
@@ -40,8 +40,8 @@ export const shouldAskForReview = (asked: string | null, version: string, daysOf
 
 const native = () => import('./feel-native');
 
-/** After an import (a paste): the tap only. */
-export async function afterImport(): Promise<void> {
+/** The light tap of the phone, after a save or an import. */
+async function tap(): Promise<void> {
   if (import.meta.env.MODE !== 'ios') return;
   try {
     await (await native()).tap();
@@ -50,10 +50,18 @@ export async function afterImport(): Promise<void> {
   }
 }
 
-/** After a weigh-in typed and saved on `today`: the tap, and the rating prompt when its time has come. */
-export async function afterSave(today: string): Promise<void> {
+/** After an import (a paste): the tap only. */
+export const afterImport = tap;
+
+/** Right after a weigh-in is typed and saved: the tap. The day of use counts once the save stands. */
+export const tapAfterSave = tap;
+
+/**
+ * Once a weigh-in saved on `today` stands (its Undo is over and wasn't used): a day of use, and the
+ * rating prompt when its time has come. Never while the save can still be undone.
+ */
+export async function saveStood(today: string): Promise<void> {
   if (import.meta.env.MODE !== 'ios') return;
-  await afterImport();
   const days = withDay(savedDaysPref.read(), today);
   savedDaysPref.write(days);
   if (!shouldAskForReview(reviewAskedPref.read(), __APP_VERSION__, days.length)) return;
@@ -65,4 +73,10 @@ export async function afterSave(today: string): Promise<void> {
   } catch (error) {
     console.warn(error);
   }
+}
+
+/** After a weigh-in typed and saved on `today` that can't be undone: the tap, and the day of use. */
+export async function afterSave(today: string): Promise<void> {
+  await tapAfterSave();
+  await saveStood(today);
 }

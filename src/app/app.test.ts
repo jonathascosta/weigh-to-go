@@ -125,7 +125,10 @@ describe('createApp, when things go wrong', () => {
     await settle();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     failReads = true;
-    await expect(app.save([{ date: '2026-10-17', kg: 100 }])).resolves.toBeUndefined();
+    // Done: the store says what it replaced as it wrote, with no read of its own.
+    await expect(app.save([{ date: '2026-10-17', kg: 100 }])).resolves.toMatchObject([
+      { date: '2026-10-17', previous: null },
+    ]);
     expect(await store.weighIns()).toHaveLength(1);
   });
 

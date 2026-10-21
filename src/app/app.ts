@@ -29,12 +29,33 @@ const persistenceAsked = pref(
   false,
 );
 
+/**
+ * What a save did to one day: the weigh-in typed here that it replaced (null for none: a new day,
+ * or one shown from Apple Health), and the one it wrote.
+ */
+export interface Saved {
+  readonly date: string;
+  readonly previous: StoredWeighIn | null;
+  readonly written: StoredWeighIn;
+}
+
 export interface App {
   state(): State;
   /** Calls `listener` now and on every change; returns the unsubscribe. */
   subscribe(listener: (state: State) => void): () => void;
-  /** Saves weigh-ins (replacing any on the same days); rejects if the store refuses. */
-  save(rows: readonly { date: string; kg: number }[]): Promise<void>;
+  /**
+   * Saves weigh-ins (replacing any on the same days); rejects if the store refuses. Resolves what it
+   * did to each day, read by the store in the same step as the write, so that it can be undone
+   * exactly (`restore`).
+   */
+  save(rows: readonly { date: string; kg: number }[]): Promise<Saved[]>;
+  /**
+   * Puts a day back as it was before a save: `previous` written back as it was, `savedAt` included
+   * (null: the day is removed), so backup reminders and Apple Health see the old record, not a new
+   * save. Only if the day still holds `expected`, the record that save wrote: resolves false, and
+   * changes nothing, when something else (another tab, Apple Health) wrote the day since.
+   */
+  restore(date: string, previous: StoredWeighIn | null, expected: StoredWeighIn): Promise<boolean>;
   remove(date: string): Promise<void>;
   setProfile(profile: Profile): Promise<void>;
   /** Changes only the profile fields given (null removes one): saves made close together all land. */
@@ -144,9 +165,14 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
     save: (rows) =>
       write(async (s) => {
         const savedAt = new Date().toISOString();
-        await s.put(rows.map((r) => ({ date: r.date, kg: r.kg, savedAt })));
+        const written = rows.map((r) => ({ date: r.date, kg: r.kg, savedAt }));
+        // What each day held of the diary's own, read by the store as it writes: what an undo puts
+        // back (never a reading from Apple Health, which isn't the diary's to keep).
+        const replaced = await s.put(written);
         askPersistence();
+        return written.map((w, i) => ({ date: w.date, previous: replaced[i] ?? null, written: w }));
       }),
+    restore: (date, previous, expected) => write((s) => s.restore(date, previous, expected)),
     remove: (date) => write((s) => s.remove(date)),
     setProfile: (profile) => write((s) => s.setProfile(profile)),
     updateProfile: (change) => write((s) => s.updateProfile(change)),

@@ -73,6 +73,31 @@ describe.each(kinds)('%s store', (kind, open) => {
     expect(await store.weighIns()).toEqual([w('2026-10-17', 109), w('2026-10-19', 107.9)]);
   });
 
+  it('says what each write replaced, read in the same step', async () => {
+    const store = await open();
+    expect(await store.put([w('2026-10-19', 108.2)])).toEqual([null]);
+    expect(await store.put([w('2026-10-17', 109), w('2026-10-19', 107.9)])).toEqual([
+      null,
+      w('2026-10-19', 108.2),
+    ]);
+  });
+
+  it('puts a day back only if it still holds what was written', async () => {
+    const store = await open();
+    const first = { ...w('2026-10-19', 108.2), savedAt: '2026-10-19T07:00:00.000Z' };
+    const second = { ...w('2026-10-19', 107.9), savedAt: '2026-10-19T08:00:00.000Z' };
+    await store.put([first]);
+    await store.put([second]);
+    // Not what it holds: nothing changes.
+    expect(await store.restore('2026-10-19', null, first)).toBe(false);
+    expect(await store.weighIns()).toEqual([second]);
+    expect(await store.restore('2026-10-19', first, second)).toBe(true);
+    expect(await store.weighIns()).toEqual([first]);
+    expect(await store.restore('2026-10-19', null, first)).toBe(true);
+    expect(await store.weighIns()).toEqual([]);
+    expect(await store.restore('2026-10-19', null, first)).toBe(false);
+  });
+
   it('removes one weigh-in', async () => {
     const store = await open();
     await store.put([w('2026-10-17', 109), w('2026-10-18', 108.6)]);
@@ -323,7 +348,8 @@ describe('the IndexedDB store', () => {
     const store = await openStore(factory);
     const saving = store.put([w('2026-10-17', 109)]);
     store.close();
-    await expect(saving).resolves.toBeUndefined();
+    // Saved, a new day: nothing replaced.
+    await expect(saving).resolves.toEqual([null]);
     const again = track(await openStore(factory));
     expect(await again.weighIns()).toEqual([w('2026-10-17', 109)]);
   });

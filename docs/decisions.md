@@ -307,3 +307,40 @@ Taken by the team from the privacy policy's review (Sprint 4, story 3), under de
 
     _Alternatives:_ consent everywhere, which Google's message offers only where the law asks; on
     refusal, Google's limited ads, which earn something but still start the SDK.
+
+## 21 October 2026 · The shell and the weigh-in, as built (Sprint 2, story 3)
+
+Choices made while building story 3, open to the owner under decision 9.
+
+65. **The rating prompt waits for the save to stand.** The iPhone app's light tap comes the moment a
+    weigh-in is saved; the day of use, and with it Apple's rating prompt (Sprint 3, story 6), counts
+    only once the save stands: its 10 seconds of Undo are over without an Undo, or the person moved
+    on (Change, Another day, another view). Never inside the Undo window, never for a save undone.
+    An import (a paste) keeps its tap and counts no day. _Alternative:_ count the day at Save, as
+    story 6 built it, and take it back on Undo.
+66. **Undo after "changed since" says what changed**, with a neutral sign instead of the check:
+    "This weigh-in changed since; nothing was undone." / "Esta pesagem mudou desde então; nada foi
+    desfeito." (proposed wording, `entry.changedSince`). _Alternative:_ the design's shorter "Changed
+    since; nothing was undone."
+67. **Undo of a day puts back its tombstone as it was** (or none): with Apple Health, a new day undone
+    is not kept out of the diary by a tombstone dated now, which would also hide a scale's reading of
+    that day taken before. _Alternative:_ the design's "a tombstone under story 5's rules".
+68. **The data card is titled "Backup"** (`data.group.backup`), so its landmark isn't named like the
+    "Your data" view; story 6 brings the other groups.
+69. **Links to another view land on what they name**: "Have a backup? Import it here" on Import
+    backup, the backup line's "Export backup" on Export backup, "Paste several days at once" in the
+    opened paste box. A tab tapped again takes its view back to the top, as on iOS.
+70. **The reload notice also shows at the top of Your data on a phone**, with its button, since the
+    app's wording ("Tap Try again at the top") is said by actions there.
+71. **The tab labels stop at 5vw on the narrowest screens** (16 px at 320 px) besides the design's
+    19.5 px, so a word such as "Progresso" is never split. _Alternative:_ let it wrap mid-word.
+72. **The build targets Safari 15 to match the deployment target** (iOS 15.0, Xcode and
+    Package.swift): `build.target` es2021 with safari15 and `build.cssTarget` safari15 in
+    `vite.config.ts`, media queries written as `min-width`/`max-width` (no range syntax, which Safari
+    reads only from 16.4), and `check:dist` refusing range syntax or `not (…)` in any built `@media`,
+    in `dist/` and `dist-ios/`. It moves when O22 (iOS 16) is decided.
+73. **After Save, one announcement**: focus goes to the saved notice, which is read with its text
+    ("Saved: …"), and the live region carries only the Undo hint ("Undo is available for 10
+    seconds."). To confirm in the VoiceOver device check (Sprint 3, story 7): the notice's text is
+    read on focus, and the hint once. _Alternative:_ the design's announcement of both in the live
+    region.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findAppProblems, findMissingPages, findProblems, SITE } from './check-dist.mjs';
+import { findAppProblems, findMissingPages, findProblems, findTooNewCss, SITE } from './check-dist.mjs';
 import { contentSecurityPolicy, devPolicy, injectPolicy } from './csp.mjs';
 
 /** @typedef {{ name: string, text: string }} SiteFile */
@@ -302,5 +302,39 @@ describe('findAppProblems', () => {
         'sw.js: names another site',
       ]),
     );
+  });
+});
+
+describe('findTooNewCss', () => {
+  /** @param {string} text */
+  const sheet = (text) => [{ name: 'assets/index.css', text }];
+
+  it('accepts the queries Safari 15 reads', () => {
+    expect(
+      findTooNewCss(
+        sheet(
+          '@media (max-width:959.98px) and (orientation:landscape) and (max-height:500px){a{b:c}}' +
+            '@media (min-width:960px) and (pointer:coarse){a{b:c}}@media not print{a{b:c}}' +
+            '@media (prefers-color-scheme:dark){a{b:c}}',
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it('finds range syntax and the Level 4 not, in width and height', () => {
+    for (const query of [
+      '(width<=959.98px)',
+      '(width < 960px)',
+      '(width>=960px)',
+      '(width>960px)',
+      '(height<=500px)',
+      '(min-height: 1px) and (height > 2px)',
+      'not (min-width:960px)',
+      '(pointer:coarse) and (not (hover))',
+    ])
+      expect(findTooNewCss(sheet(`@media ${query}{a{b:c}}`)), query).toHaveLength(1);
+    // Only CSS, and only inside @media.
+    expect(findTooNewCss([{ name: 'a.js', text: '@media (width<1px){' }])).toEqual([]);
+    expect(findTooNewCss(sheet('.a{width:calc(1px<2px)}'))).toEqual([]);
   });
 });

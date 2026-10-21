@@ -5,7 +5,7 @@ import { resetView } from '../app/view';
 import { fakeStorage } from '../data/fake-storage.test-helper';
 import { memoryStore, type Store } from '../data/store';
 import { choose, resetSettings } from '../i18n';
-import { mountDashboard } from './dashboard';
+import { mountDashboard, type Dashboard } from './dashboard';
 
 const settle = async () => {
   for (let i = 0; i < 5; i++) await new Promise((resolve) => setTimeout(resolve, 0));
@@ -13,6 +13,7 @@ const settle = async () => {
 
 let app: App;
 let root: HTMLElement;
+let board: Dashboard | null = null;
 
 beforeEach(async () => {
   resetSettings();
@@ -24,10 +25,12 @@ beforeEach(async () => {
   root = document.createElement('div');
   document.body.replaceChildren(root);
   app = createApp(() => Promise.resolve(memoryStore()));
-  mountDashboard(root, app);
+  board = mountDashboard(root, app);
   await settle();
 });
 afterEach(() => {
+  board?.dispose();
+  board = null;
   resetSettings();
   vi.unstubAllGlobals();
 });
@@ -38,10 +41,16 @@ const days = () => app.state().weighIns.map((w) => `${w.date} ${String(w.kg)}`);
 
 describe('the weigh-in form', () => {
   it('gives the example in the unit shown: 108.4 kg is 239.0 lb', () => {
+    // The field itself stays empty, so a mistyped digit is easy to see; the example is in the error.
     const input = root.querySelector<HTMLInputElement>('#entry-weight')!;
-    expect(input.placeholder).toBe('e.g. 108.4');
+    expect(input.placeholder).toBe('');
+    const hint = root.querySelector('#entry-hint')!;
+    input.value = 'abc';
+    root.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    expect(hint.textContent).toBe('Type the weight in kg, for example 108.4.');
     choose({ weightUnit: 'lb' });
-    expect(input.placeholder).toBe('e.g. 239.0');
+    root.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    expect(hint.textContent).toBe('Type the weight in lb, for example 239.0.');
     expect(root.querySelector('#entry-unit')!.textContent).toBe('lb');
   });
 
@@ -145,14 +154,22 @@ describe('notices', () => {
     app = createApp(() =>
       Promise.resolve({ ...memoryStore(), kind: 'indexeddb', reason: null, needsReload: false }),
     );
-    mountDashboard(root, app);
+    board = mountDashboard(root, app);
     await settle();
     const notice = root.querySelector<HTMLElement>('.notice')!;
-    expect(notice.hidden).toBe(true);
+    const line = root.querySelector<HTMLElement>('.reminder')!;
+    const dot = document.querySelector<HTMLElement>('nav.tabs a[href="#data"] .dot')!;
+    expect([notice.hidden, line.hidden, dot.hidden]).toEqual([true, true, true]);
     await app.save(Array.from({ length: 7 }, (_, i) => ({ date: `2026-09-1${String(i)}`, kg: 100 })));
     await settle();
-    expect(notice.hidden).toBe(false);
-    expect(notice.textContent).toContain('Export a backup');
+    // The backup reminder is one line on Today, with a link to Your data, and a dot on its tab.
+    expect([notice.hidden, line.hidden, dot.hidden]).toEqual([true, false, false]);
+    expect(line.textContent).toContain('Export a backup');
+    expect(line.querySelector('a')!.getAttribute('href')).toBe('#data');
+    // Its link lands on Export backup itself.
+    line.querySelector('a')!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(root.querySelector('#data-export'));
+    expect(document.querySelector('nav.tabs a[href="#data"]')!.textContent).toBe('Your data (backup due)');
   });
 });
 
@@ -247,7 +264,7 @@ describe('Dashboard II', () => {
     root = document.createElement('div');
     document.body.replaceChildren(root);
     app = createApp(() => Promise.resolve(memoryStore()));
-    mountDashboard(root, app);
+    board = mountDashboard(root, app);
     await settle();
     await saveDays(climbs);
     const rows = () => section('hiccups-title').querySelectorAll('tbody tr[data-key]').length;
@@ -353,12 +370,16 @@ describe('Dashboard II', () => {
 
 describe('the installed app', () => {
   it('suggests importing a backup while its diary is empty', async () => {
-    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(display-mode: standalone)' }));
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(display-mode: standalone)',
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
     root = document.createElement('div');
     document.body.replaceChildren(root);
     const kept: Store = { ...memoryStore(), kind: 'indexeddb', reason: null, needsReload: false };
     app = createApp(() => Promise.resolve(kept));
-    mountDashboard(root, app);
+    board = mountDashboard(root, app);
     await settle();
     const hint = [...root.querySelectorAll<HTMLElement>('.notice')].find((n) =>
       n.textContent.includes('This installed app keeps its own data'),
@@ -370,11 +391,15 @@ describe('the installed app', () => {
   });
 
   it('suggests no import into a store that lasts only until it closes', async () => {
-    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(display-mode: standalone)' }));
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(display-mode: standalone)',
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
     root = document.createElement('div');
     document.body.replaceChildren(root);
     app = createApp(() => Promise.resolve(memoryStore('error')));
-    mountDashboard(root, app);
+    board = mountDashboard(root, app);
     await settle();
     const hint = [...root.querySelectorAll<HTMLElement>('.notice')].find((n) =>
       n.textContent.includes('This installed app keeps its own data'),
@@ -594,5 +619,123 @@ describe('Dashboard III', () => {
     expect(section('weeks-title').querySelectorAll('tbody tr')).toHaveLength(1);
     expect(errors).not.toHaveBeenCalled();
     errors.mockRestore();
+  });
+});
+
+describe('on a phone, the parts drawn only while they show', () => {
+  const go = (hash: string) => {
+    window.location.hash = hash;
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  };
+  const svgOf = (id: string) =>
+    root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!.querySelector('svg');
+  const climbs = [
+    100, 99.5, 99, 98.5, 98, 98.3, 98.6, 98.9, 99.2, 98.8, 98.4, 98.1, 97.9, 97.5, 97.8, 98.1, 98.4,
+  ];
+
+  beforeEach(async () => {
+    window.location.hash = '';
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    root = document.createElement('div');
+    document.body.replaceChildren(root);
+    app = createApp(() => Promise.resolve(memoryStore()));
+    board = mountDashboard(root, app);
+    await app.save(climbs.map((kg, i) => ({ date: `2026-09-${String(i + 1).padStart(2, '0')}`, kg })));
+    await settle();
+  });
+
+  it('draws a view’s parts when it appears, and nothing on a switch with nothing changed', () => {
+    // Today shows; the main chart, on Progress, waits.
+    expect(svgOf('chart-title')).toBeNull();
+    go('#progress');
+    const drawn = svgOf('chart-title');
+    expect(drawn).not.toBeNull();
+    go('#today');
+    go('#progress');
+    expect(svgOf('chart-title')).toBe(drawn);
+  });
+
+  it('marks the main chart when the hiccup rules change, and draws it when Progress shows', () => {
+    go('#progress');
+    const before = svgOf('chart-title');
+    expect(section('chart-title').querySelectorAll('rect.hiccup')).toHaveLength(2);
+    go('#analysis');
+    const chip = [...section('hiccups-title').querySelectorAll<HTMLButtonElement>('button.chip')].find(
+      (b) => b.textContent === '1 kg',
+    )!;
+    chip.click();
+    // Not shown: not drawn yet.
+    expect(svgOf('chart-title')).toBe(before);
+    go('#progress');
+    expect(svgOf('chart-title')).not.toBe(before);
+    expect(section('chart-title').querySelectorAll('rect.hiccup')).toHaveLength(1);
+  });
+
+  it('marks the daily variation when the main chart’s period changes', () => {
+    go('#analysis');
+    const before = svgOf('variation-title');
+    go('#progress');
+    const period = [...section('chart-title').querySelectorAll<HTMLButtonElement>('button.chip')].find(
+      (b) => b.textContent === '14 days',
+    )!;
+    period.click();
+    expect(svgOf('variation-title')).toBe(before);
+    go('#analysis');
+    expect(svgOf('variation-title')).not.toBe(before);
+  });
+
+  it('opens the paste box from the empty diary’s link, once Your data shows', async () => {
+    await app.erase();
+    await settle();
+    const link = [...root.querySelectorAll<HTMLAnchorElement>('.empty-links a')].find(
+      (a) => a.textContent === 'Paste several days at once',
+    )!;
+    expect(link.closest('[hidden]')).toBeNull();
+    link.dispatchEvent(new MouseEvent('click', { cancelable: true }));
+    go('#data');
+    expect(root.querySelector('details.paste')!.hasAttribute('open')).toBe(true);
+    expect(document.activeElement).toBe(root.querySelector('#paste-text'));
+  });
+
+  it('lands the empty diary’s links on what they name, with no leftover for later visits', async () => {
+    await app.erase();
+    await settle();
+    const link = (text: string) =>
+      [...root.querySelectorAll<HTMLAnchorElement>('.empty-links a')].find((a) => a.textContent === text)!;
+    const click = (a: HTMLElement) =>
+      a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    click(link('Have a backup? Import it here'));
+    expect(document.activeElement).toBe(root.querySelector('#data-import'));
+    expect(root.querySelector('details.paste')!.hasAttribute('open')).toBe(false);
+    go('#today');
+    go('#data');
+    // Nothing asked earlier opens the paste box now.
+    expect(root.querySelector('details.paste')!.hasAttribute('open')).toBe(false);
+    expect(document.activeElement).toBe(root.querySelector('#view-data-title'));
+  });
+
+  function section(id: string) {
+    return root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!;
+  }
+});
+
+describe('the reload notice', () => {
+  it('shows at the top of Today and of Your data, with its button', async () => {
+    root = document.createElement('div');
+    document.body.replaceChildren(root);
+    app = createApp(() => Promise.resolve(memoryStore('version')));
+    board = mountDashboard(root, app);
+    await settle();
+    const today = root.querySelector<HTMLElement>('#view-today .notice')!;
+    const data = root.querySelector<HTMLElement>('#view-data .data-notice')!;
+    for (const box of [today, data]) {
+      expect(box.hidden).toBe(false);
+      expect(box.textContent).toContain('Reload the page');
+      expect(box.querySelector('button')!.textContent).toBe('Reload');
+    }
   });
 });

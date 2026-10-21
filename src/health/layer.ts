@@ -8,7 +8,7 @@
  * queue runs every operation in turn, so turning Health off can't be undone by a read still running.
  */
 import type { FileBackend } from '../data/device-store';
-import { isIsoTime, isWeighInDay, type StoredWeighIn } from '../data/records';
+import { isIsoTime, isWeighInDay, sameRecord, type StoredWeighIn } from '../data/records';
 import type { Store } from '../data/store';
 import {
   dayOfSyncId,
@@ -49,6 +49,8 @@ export interface HealthSetting {
 
 export const HEALTH_OFF: HealthSetting = { on: false, rule: 'first' };
 export const HEALTH_FILE = 'health.json';
+/** How many days saved the layer remembers how to undo. */
+const UNDO_KEPT = 32;
 
 /**
  * What the Health card shows: off; unavailable here; or on, with the days read, whether iOS lets the
@@ -149,7 +151,43 @@ export async function withHealth(
     return run;
   };
 
+  /**
+   * What the typed saves found on each day, so `restore` can put the day back exactly: the diary's
+   * own record, this app's samples in Health and the day's tombstone, with the record the save
+   * wrote. Kept per day (the latest save of each), for the last `UNDO_KEPT` days saved.
+   */
+  let beforeSave = new Map<
+    string,
+    {
+      typed: StoredWeighIn | null;
+      own: HealthSample[];
+      tombstone: Tombstone | undefined;
+      written: StoredWeighIn;
+    }
+  >();
+
+  /** Whether `w` is a reading another app (a scale) put in Health, as the diary would show it. */
+  const readingFromHealth = (w: StoredWeighIn) =>
+    samples.some(
+      (x) =>
+        dayOfSyncId(x.syncId) === null &&
+        localDayOf(x.start) === w.date &&
+        x.kg === w.kg &&
+        Date.parse(x.start) === Date.parse(w.savedAt),
+    );
+
   const save = () => files.write(HEALTH_FILE, JSON.stringify({ setting, tombstones, everOn }));
+  /** Keeps what was written in step with Health, which keeps the highest version for an identifier. */
+  const remember = (wrote: readonly SampleToWrite[]) => {
+    for (const w of wrote) {
+      const old = samples.find((x) => x.syncId === w.syncId);
+      if (old && (old.syncVersion ?? 0) >= w.syncVersion) continue;
+      samples = [
+        ...samples.filter((x) => x.syncId !== w.syncId),
+        { uuid: w.syncId, kg: w.kg, start: w.start, syncId: w.syncId, syncVersion: w.syncVersion },
+      ];
+    }
+  };
   const today = () => localDayOf(now().toISOString());
 
   const derive = async () => {
@@ -232,7 +270,10 @@ export async function withHealth(
     }
     const samplesToWrite = imported ? toWrite(weighIns, samples) : weighIns.map(sampleFor);
     if (setting.on && writing && samplesToWrite.length > 0) {
-      await quietly(() => backend.write(samplesToWrite));
+      await quietly(async () => {
+        await backend.write(samplesToWrite);
+        remember(samplesToWrite);
+      });
     }
     await derive();
   };
@@ -337,8 +378,75 @@ export async function withHealth(
     weighIns,
     put: (rows, profile) =>
       serial(async () => {
-        await inner.put(rows, profile);
+        // What each day was before, for an undo: kept per day, with the record that replaced it, so
+        // a later save of another day doesn't lose it and an undo can tell it's still the one.
+        const own = (date: string) => samples.filter((x) => dayOfSyncId(x.syncId) === date);
+        const tombstoneOf = (date: string) => tombstones.find((t) => t.date === date);
+        const found = rows.map((r) => ({ own: own(r.date), tombstone: tombstoneOf(r.date), written: r }));
+        const replaced = await inner.put(rows, profile);
+        found.forEach((f, i) => {
+          beforeSave.delete(f.written.date);
+          beforeSave.set(f.written.date, { ...f, typed: replaced[i] ?? null });
+        });
+        // The oldest go first: an undo comes seconds after its save.
+        for (const date of [...beforeSave.keys()].slice(0, Math.max(0, beforeSave.size - UNDO_KEPT)))
+          beforeSave.delete(date);
         await written(rows);
+        return replaced;
+      }),
+    /**
+     * Undoes a save of a day, if the diary still holds what it wrote. Everything goes back as it
+     * was: the diary's own record, savedAt included (or none, for a day that was new or shown from
+     * Health), the day's tombstone (or none), and this app's sample in Health with its old sync
+     * version. Health keeps the highest version for an identifier and ignores a lower one, so the
+     * sample the save wrote is deleted before the old one is written back. A reading from another
+     * app is never written into the diary's own file.
+     */
+    restore: (date, previous, expected) =>
+      serial(async () => {
+        const known = beforeSave.get(date);
+        const before = known && sameRecord(known.written, expected) ? known : undefined;
+        // Without what the save found, `previous` stands, unless it is a reading from Health.
+        const typed = before ? before.typed : previous && !readingFromHealth(previous) ? previous : null;
+        if (!(await inner.restore(date, typed, expected))) return false;
+        beforeSave.delete(date);
+        if (before) {
+          const now = tombstones.find((t) => t.date === date);
+          if (now !== before.tombstone) {
+            tombstones = [
+              ...tombstones.filter((t) => t.date !== date),
+              ...(before.tombstone ? [before.tombstone] : []),
+            ];
+            await quietly(save);
+          }
+        }
+        const id = syncIdFor(date);
+        // Another of the person's devices wrote the day in Health after this save: that is newer
+        // than anything an undo here could put back, and stays.
+        const newerElsewhere = samples.some(
+          (x) => x.syncId === id && (x.syncVersion ?? 0) > Date.parse(expected.savedAt),
+        );
+        if (setting.on && writing && !newerElsewhere) {
+          await quietly(() => backend.remove([id]));
+          samples = samples.filter((x) => x.syncId !== id);
+          const back: SampleToWrite[] = before
+            ? before.own.map((x) => ({
+                kg: x.kg,
+                start: x.start,
+                syncId: id,
+                syncVersion: x.syncVersion ?? Date.parse(x.start),
+              }))
+            : typed
+              ? [sampleFor(typed)]
+              : [];
+          if (back.length > 0)
+            await quietly(async () => {
+              await backend.write(back);
+              remember(back);
+            });
+        }
+        await derive();
+        return true;
       }),
     merge: (rows, profile) =>
       serial(async () => {
@@ -380,6 +488,7 @@ export async function withHealth(
         samples = [];
         derived = [];
         fromOthers = 0;
+        beforeSave = new Map();
         await save();
       }),
     onChange: (listener) => {

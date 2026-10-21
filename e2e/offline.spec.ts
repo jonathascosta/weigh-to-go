@@ -36,13 +36,13 @@ test('works offline once the service worker has the site', async ({ page }) => {
 
     server.stop();
     await page.reload();
-    await expect(page.locator('h1')).toHaveText('Seu diário de peso, no seu aparelho');
+    await expect(page.locator('#entry-title')).toHaveText('Registrar pesagem');
     await expect(page.locator('section[aria-labelledby="log-title"] tbody tr')).toHaveCount(rows);
     // A page never visited falls back to the diary in its language.
     await page.goto(`${server.url}/pt/qualquer-coisa`);
-    await expect(page.locator('h1')).toHaveText('Seu diário de peso, no seu aparelho');
+    await expect(page.locator('#entry-title')).toHaveText('Registrar pesagem');
     await page.goto(`${server.url}/`);
-    await expect(page.locator('h1')).toHaveText('Your weight diary, on your device');
+    await expect(page.locator('#entry-title')).toHaveText('Log a weigh-in');
     // The privacy policy, precached, opens offline in both languages.
     await page.goto(`${server.url}/privacy.html`);
     await expect(page.locator('h1')).toHaveText('Privacy policy');
@@ -57,7 +57,7 @@ test('works offline once the service worker has the site', async ({ page }) => {
     await page.locator('#entry-date').fill(yesterday);
     await page.locator('#entry-weight').fill('77.7');
     await page.locator('#entry-weight').press('Enter');
-    await expect(page.locator('#entry-status')).toContainText('77.7 kg');
+    await expect(page.locator('#entry-saved')).toContainText('77.7 kg');
     await page.reload();
     await expect(page.locator('section[aria-labelledby="log-title"] tbody tr').first()).toContainText('77.7');
     await check();

@@ -68,7 +68,7 @@ test('after a deploy seen online, the old version still works offline', async ({
     await page.reload();
     // Offline, the old worker's own page and code: the diary renders.
     await expect(page.locator('#entry-title')).toBeVisible();
-    await expect(page.locator('h1')).toHaveText('Your weight diary, on your device');
+    await expect(page.locator('#entry-title')).toHaveText('Log a weigh-in');
     await other.close();
     await check();
   } finally {

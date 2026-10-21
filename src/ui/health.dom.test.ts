@@ -24,7 +24,7 @@ const mount = async (health: ReturnType<typeof fakeHealth>) => {
   data = document.createElement('section');
   document.body.replaceChildren(card, data);
   const renderHealth = mountHealth(card);
-  const renderData = mountData(data, document.createElement('div'), app);
+  const renderData = mountData(data, app);
   app.subscribe((state) => {
     renderHealth(state, settings());
     renderData(state, settings());

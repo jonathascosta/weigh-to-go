@@ -18,7 +18,7 @@ test('logs a weigh-in, and shows it in the summary and the log', async ({ page }
   await page.locator('#entry-date').fill(daysAgo(1));
   await page.locator('#entry-weight').fill('82,4');
   await page.getByRole('button', { name: 'Save', exact: true }).first().click();
-  await expect(page.locator('#entry-status')).toContainText('Saved: 82.4 kg');
+  await expect(page.locator('#entry-saved')).toContainText('Saved: 82.4 kg');
   await expect(page.locator('section[aria-labelledby="log-title"] tbody')).toContainText('82.4');
   await expect(page.locator('.take')).toContainText('First weigh-in logged: 82.4 kg.');
   await check();
@@ -27,7 +27,7 @@ test('logs a weigh-in, and shows it in the summary and the log', async ({ page }
 test('saves an ambiguous paste only after the reader says yes', async ({ page }) => {
   const { check } = await watch(page);
   await page.goto('/');
-  await page.getByText('Paste several days at once').click();
+  await page.locator('summary', { hasText: 'Paste several days at once' }).click();
   await page.locator('#paste-text').fill('03/04/2025 90\n03/05/2025 89.6');
   await page.getByRole('button', { name: 'Import lines' }).click();
   // Read as day/month (a British reader), and saved only on a yes.
@@ -100,12 +100,12 @@ test('switches the language and the weight unit', async ({ page }) => {
   await page.locator('#entry-weight').fill('');
   await page.locator('#setting-lang').selectOption('pt');
   await expect(page.locator('html')).toHaveAttribute('lang', /^pt/);
-  await expect(page.locator('h1')).toHaveText('Seu diário de peso, no seu aparelho');
+  await expect(page.locator('#intro-title')).toHaveText('Seu diário de peso, no seu aparelho');
   await page.locator('#setting-weight').selectOption('lb');
   await expect(page.locator('#entry-unit')).toHaveText('lb');
   // Kept for the next visit.
   await page.reload();
-  await expect(page.locator('h1')).toHaveText('Seu diário de peso, no seu aparelho');
+  await expect(page.locator('#intro-title')).toHaveText('Seu diário de peso, no seu aparelho');
   await expect(page.locator('#entry-unit')).toHaveText('lb');
   await check();
 });
@@ -140,7 +140,7 @@ for (const path of ['/', '/pt/', ...STATIC_PAGES]) {
     const { check } = await watch(page);
     await page.goto(path);
     await expect(page.locator('body')).toHaveClass(/frame-checked/);
-    await expect(page.locator('h1')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
     if (!STATIC_PAGES.has(path)) await loadBackup(page);
     await check();
   });

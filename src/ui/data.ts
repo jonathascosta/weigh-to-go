@@ -1,7 +1,7 @@
 /**
  * The reader's data: export a backup, import one (added to what is here, or replacing it), erase
- * everything; and the notices above the diary when the data is at risk: kept only in memory,
- * unreachable until a reload, or never (or long not) backed up. Replacing and erasing ask first,
+ * everything; and the notices on Today when the data is at risk: kept only in memory, unreachable
+ * until a reload, or never (or long not) backed up. Replacing and erasing ask first,
  * and offer a backup before they go ahead.
  */
 import { daysBetween, localToday, parseDay } from '../analysis/dates';
@@ -79,15 +79,11 @@ async function exportCsv(app: App, s: Settings): Promise<string | null> {
   return (await saveFile(file, text, 'text/csv')) ? file : null;
 }
 
-export function mountData(
-  container: HTMLElement,
-  noticeBox: HTMLElement,
-  app: App,
-): (state: State, s: Settings) => void {
+export function mountData(container: HTMLElement, app: App): (state: State, s: Settings) => void {
   const title = h('h2', { attrs: { id: 'data-title' } });
   const note = h('p', { class: 'note' });
   const last = h('p', { class: 'note' });
-  const exportButton = h('button', { class: 'button', attrs: { type: 'button' } });
+  const exportButton = h('button', { class: 'button', attrs: { type: 'button', id: 'data-export' } });
   const csvButton = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
   const csvLabel = h('label', { attrs: { for: 'data-csv-format' } });
   const csvFormat = h('select', { attrs: { id: 'data-csv-format' } });
@@ -107,7 +103,10 @@ export function mountData(
       'aria-hidden': 'true',
     },
   });
-  const importButton = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
+  const importButton = h('button', {
+    class: 'button button-ghost',
+    attrs: { type: 'button', id: 'data-import' },
+  });
   importButton.addEventListener('click', () => {
     fileInput.click();
   });
@@ -364,52 +363,9 @@ export function mountData(
     cancel.focus();
   });
 
-  /** The notice shown, so it is redrawn (and announced again) only when it changes. */
-  let shownNotice = '';
-  const renderNotice = (state: State, s: Settings) => {
-    const m = s.messages;
-    const notice = noticeFor(state, lastBackupAt.read(), localToday());
-    const key = `${s.locale.tag}:${JSON.stringify(notice)}`;
-    if (key === shownNotice) return;
-    shownNotice = key;
-    if (notice === null) {
-      noticeBox.replaceChildren();
-      noticeBox.hidden = true;
-      return;
-    }
-    noticeBox.hidden = false;
-    if (notice.kind === 'reload') {
-      const reload = h('button', {
-        class: 'button',
-        attrs: { type: 'button' },
-        text: m['notice.reloadButton'],
-      });
-      reload.addEventListener('click', () => {
-        window.location.reload();
-      });
-      noticeBox.replaceChildren(h('p', { text: m['notice.reload'] }), reload);
-    } else if (notice.kind === 'memory' || notice.kind === 'setAside') {
-      noticeBox.replaceChildren(h('p', { text: m[`notice.${notice.kind}`] }));
-    } else {
-      const button = h('button', { class: 'button', attrs: { type: 'button' }, text: m['data.export'] });
-      button.addEventListener('click', () => {
-        void runExport(() => exportBackup(app));
-      });
-      noticeBox.replaceChildren(
-        h('p', {
-          text:
-            notice.days === null
-              ? m['notice.noBackup']
-              : m['notice.oldBackup'](count(notice.days, m['word.day'], s)),
-        }),
-        button,
-      );
-    }
-  };
-
   const render = (state: State, s: Settings) => {
     const m = s.messages;
-    title.textContent = m['data.title'];
+    title.textContent = m['data.group.backup'];
     note.textContent = m['data.note'];
     const when = lastBackupAt.read();
     last.textContent =
@@ -437,7 +393,73 @@ export function mountData(
     importButton.textContent = m['data.import'];
     importButton.disabled = state.status === 'loading';
     eraseButton.textContent = m['data.erase'];
-    renderNotice(state, s);
   };
   return render;
+}
+
+/**
+ * The notices about the data. Kept only in memory, unreachable until a reload, or set aside are full
+ * notices at the top of Today (`boxes.today`); the reload one, with its button, also at the top of
+ * Your data (`boxes.data`), whose actions are what bring it up. A backup due is one line on Today,
+ * `boxes.line`, with a link that `onExportLink` follows to Export backup, and `onBackupDue` puts the
+ * dot on Your data's tab. Each is redrawn, and announced again, only when it changes.
+ */
+export function mountNotices(
+  boxes: { readonly today: HTMLElement; readonly data: HTMLElement; readonly line: HTMLElement },
+  onBackupDue: (due: boolean) => void,
+  onExportLink: () => void,
+): (state: State, s: Settings) => void {
+  const { today: box, data: dataBox, line } = boxes;
+  const lineText = h('span');
+  const lineLink = h('a', { attrs: { href: '#data' } });
+  lineLink.addEventListener('click', (event) => {
+    event.preventDefault();
+    onExportLink();
+  });
+  line.replaceChildren(
+    h('span', { class: 'dot-inline', attrs: { 'aria-hidden': 'true' } }),
+    h('span', {}, lineText, ' ', lineLink),
+  );
+  line.hidden = true;
+  box.hidden = true;
+  dataBox.hidden = true;
+  const reloadNotice = (m: Settings['messages']): Node[] => {
+    const reload = h('button', {
+      class: 'button',
+      attrs: { type: 'button' },
+      text: m['notice.reloadButton'],
+    });
+    reload.addEventListener('click', () => {
+      window.location.reload();
+    });
+    return [h('p', { text: m['notice.reload'] }), reload];
+  };
+  let shown = '';
+  return (state, s) => {
+    const m = s.messages;
+    const notice = noticeFor(state, lastBackupAt.read(), localToday());
+    const key = `${s.locale.tag}:${JSON.stringify(notice)}`;
+    if (key === shown) return;
+    shown = key;
+    const due = notice?.kind === 'backup';
+    onBackupDue(due);
+    line.hidden = !due;
+    if (notice?.kind === 'backup') {
+      lineText.textContent =
+        notice.days === null
+          ? m['notice.noBackup']
+          : m['notice.oldBackup'](count(notice.days, m['word.day'], s));
+      lineLink.textContent = m['data.export'];
+    }
+    dataBox.hidden = notice?.kind !== 'reload';
+    dataBox.replaceChildren(...(notice?.kind === 'reload' ? reloadNotice(m) : []));
+    if (notice === null || notice.kind === 'backup') {
+      box.replaceChildren();
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    if (notice.kind === 'reload') box.replaceChildren(...reloadNotice(m));
+    else box.replaceChildren(h('p', { text: m[`notice.${notice.kind}`] }));
+  };
 }
