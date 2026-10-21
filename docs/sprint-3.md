@@ -106,9 +106,9 @@ to rename.
      a newer reading.
    - Turning Health on writes to Health only the days that have no reading there, so a scale's
      reading is never doubled.
-   - Weigh-ins read from Health are kept in their own file, excluded from the iPhone's backup
-     (`isExcludedFromBackup`), and read from Health again when needed: data from HealthKit never goes
-     to iCloud through us (guideline 5.1.3). Typed weigh-ins stay in the backed-up file of story 2.
+   - Weigh-ins read from Health are kept in memory only (H7; first planned as a file excluded from
+     the backup), and read from Health again when needed: data from HealthKit never goes to iCloud
+     through us (guideline 5.1.3). Typed weigh-ins stay in the backed-up file of story 2.
    - Erasing everything offers to delete this app's samples from Health too; the app can't take
      back its own Health permission, and says where the person can.
 
@@ -124,7 +124,7 @@ to rename.
    its own, `ios/App/App/WeightHealthPlugin.swift` (registered by `MainViewController`), bridged by
    `src/platform/health-native.ts`. The rules are pure functions in `src/health/reconcile.ts`; the
    layer over the diary's store is `src/health/layer.ts`; the card `src/ui/health.ts`. Decisions H1
-   to H8 in [decisions.md](decisions.md). To check on TestFlight (story 7): the permission sheet;
+   to H12 in [decisions.md](decisions.md). To check on TestFlight (story 7): the permission sheet;
    a reading from another app (Health's own "Add Data") joining the diary; a weight typed here
    appearing in Health with this app as its source; editing and deleting a day; turning the switch
    off and on; erasing with and without the Health box ticked; a second device or a reinstall

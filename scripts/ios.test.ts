@@ -68,6 +68,8 @@ describe('the iPhone app', () => {
     expect(read('ios/App/App/MainViewController.swift')).toContain(
       'registerPluginInstance(WeightHealthPlugin())',
     );
+    // The scene builds the window in code: its root must be the same view controller.
+    expect(read('ios/App/App/SceneDelegate.swift')).toContain('rootViewController = MainViewController()');
   });
 
   it('ships its privacy manifest', () => {

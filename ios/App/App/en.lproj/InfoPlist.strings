@@ -1,6 +1,6 @@
 /* The app's name on the Home Screen, in English. */
 "CFBundleDisplayName" = "Weigh to Go";
 /* Why the app reads weight from Apple Health, in English. */
-"NSHealthShareUsageDescription" = "Weigh to Go reads your weight from Apple Health, so readings from a smart scale or another app join your diary. It stays on your iPhone.";
+"NSHealthShareUsageDescription" = "Weigh to Go reads your weight from Apple Health, so readings from a smart scale or another app join your diary. What it reads stays on your iPhone.";
 /* Why the app writes weight to Apple Health, in English. */
 "NSHealthUpdateUsageDescription" = "Weigh to Go saves the weights you log to Apple Health, so your other apps and devices see them.";

@@ -24,7 +24,7 @@ de consentimento.
      põe na listagem), idioma principal English (U.S.), o bundle id `net.jonathas.weightogo`, SKU
      `net.jonathas.weightogo`, acesso completo.
    - App Information: categoria Health & Fitness (Saúde e fitness). Em Pricing and Availability,
-     desligue a disponibilidade do app em Macs com Apple silicon: o Apple Saúde não existe lá.
+     desligue a disponibilidade do app em Macs com Apple silicon: o app Saúde não existe lá.
 2. **O acordo de apps pagos.** Em Business (Agreements, Tax and Banking), aceite o Paid Applications
    Agreement e preencha a conta bancária e os formulários fiscais: sem eles nenhuma compra dentro do
    app funciona no sandbox nem no TestFlight. Depois, inscreva-se no App Store Small Business Program
@@ -83,7 +83,7 @@ de consentimento.
    idiomas e não submete nada.
 9. **App Privacy.** Responda pelo SDK de anúncios da Google, seguindo o guia da Google
    (<https://developers.google.com/admob/ios/privacy/data-disclosure>), para anúncios não
-   personalizados sem rastreamento. O que a pessoa digita e o que o app lê do Apple Saúde ficam no
+   personalizados sem rastreamento. O que a pessoa digita e o que o app lê do app Saúde ficam no
    iPhone e não chegam a ninguém, o que as definições da Apple não contam como coletado; as compras
    passam pela Apple. As respostas têm de bater com a política de privacidade.
 10. **Classificação etária.** Sem conteúdo censurável, sem conteúdo dos usuários, sem chat, sem
@@ -103,7 +103,7 @@ de consentimento.
       apague o app, instale-o de novo pelo TestFlight, grave e importe o backup no fim (ou grave em
       outro iPhone). Num iPhone em inglês com o iOS mais recente, comece a gravação de tela pela
       Central de Controle e mostre, devagar: a primeira pesagem, o resumo e um gráfico, um cartão de
-      análise, ligar o Apple Saúde e a tela de permissão, o lembrete, a mensagem de consentimento se
+      análise, ligar o app Saúde e a tela de permissão, o lembrete, a mensagem de consentimento se
       aparecer, o banner (mostrado, nunca tocado: tocar nos próprios anúncios viola a política do
       AdMob), comprar Remover anúncios no sandbox e Restaurar compras, as configurações e a política
       de privacidade. Dois a quatro minutos; corte as pontas no app Fotos. Cole as

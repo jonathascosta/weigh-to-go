@@ -43,16 +43,19 @@ export function mountHealth(container: HTMLElement): (state: State, s: Settings)
     toggle.disabled = busy;
     rule.disabled = busy || !setting.on;
     rule.value = setting.rule;
-    const text =
+    const lines =
       state.kind === 'on'
-        ? m['health.days'](count(state.days, m['word.day'], s))
-        : state.kind === 'denied'
-          ? m['health.denied']
-          : state.kind === 'unavailable'
-            ? m['health.unavailable']
-            : '';
-    status.className =
-      state.kind === 'denied' || state.kind === 'unavailable' ? 'status status-bad' : 'status';
+        ? [
+            state.readFailed
+              ? m['health.readFailed']
+              : m['health.days'](state.days, count(state.days, m['word.day'], s)),
+            ...(state.writing ? [] : [m['health.denied']]),
+          ]
+        : state.kind === 'unavailable'
+          ? [m['health.unavailable']]
+          : [];
+    const text = lines.join(' ');
+    status.className = state.kind === 'unavailable' ? 'status status-bad' : 'status';
     if (status.textContent !== text) status.textContent = text;
   };
 
@@ -79,10 +82,13 @@ export function mountHealth(container: HTMLElement): (state: State, s: Settings)
     const value = rule.value === 'last' ? 'last' : 'first';
     void run((health) => health.setRule(value));
   });
-  // Back on the screen: a scale may have sent a reading meanwhile.
+  // Back on the screen: a scale may have sent a reading meanwhile, or the person changed the app's
+  // access in the Health app.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && store?.health.setting().on) {
-      void store.health.refresh();
+      store.health.refresh().then(show, (error: unknown) => {
+        console.warn(error);
+      });
     }
   });
 

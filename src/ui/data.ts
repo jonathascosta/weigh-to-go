@@ -52,7 +52,10 @@ export function noticeFor(
  * handed over counts as a backup for the reminder.
  */
 async function exportBackup(app: App): Promise<string | null> {
-  const { weighIns, profile } = app.state();
+  const { store, profile } = app.state();
+  // Only what was typed here: the days from Apple Health come back from Health, never from a file
+  // of ours (decision H7).
+  const weighIns = isHealthStore(store) ? await store.health.typed() : app.state().weighIns;
   const now = new Date();
   const file = backupFileName(localToday(now));
   if (!(await saveFile(file, createBackup(weighIns, profile, now), 'application/json'))) return null;
@@ -312,23 +315,37 @@ export function mountData(
       text: m['data.eraseConfirm'],
     });
     const cancel = cancelButton();
-    // With Apple Health on, the person chooses whether this app's samples go from Health too.
+    // Once the app has written to Apple Health, the person chooses whether its samples go too.
     const { store } = app.state();
-    const withHealth = isHealthStore(store) && store.health.setting().on ? store : null;
+    const withHealth = isHealthStore(store) && store.health.everOn() ? store : null;
     const fromHealth = h('input', { attrs: { id: 'data-erase-health', type: 'checkbox' } });
     confirm.addEventListener('click', () => {
       confirm.disabled = true;
       cancel.disabled = true;
       fromHealth.disabled = true;
-      const first =
-        withHealth && fromHealth.checked ? withHealth.health.deleteOwnSamples() : Promise.resolve(0);
-      first
-        .then(() => app.erase())
-        .then((gone) => {
+      // Health refusing never stops the erase here: it is said apart.
+      const healthGone =
+        withHealth && fromHealth.checked
+          ? withHealth.health.deleteOwnSamples().then(
+              () => true,
+              (error: unknown) => {
+                console.warn(error);
+                return false;
+              },
+            )
+          : Promise.resolve(true);
+      healthGone
+        .then(async (fromHealthToo) => ({ gone: await app.erase(), fromHealthToo }))
+        .then(({ gone, fromHealthToo }) => {
           // The saved choices went with everything else: back to automatic here too.
           choose({ lang: null, weightUnit: null, heightUnit: null });
           const after = settings().messages;
-          report(gone ? after['data.erased'] : after['data.eraseFailed'], gone);
+          const text = !gone
+            ? after['data.eraseFailed']
+            : fromHealthToo
+              ? after['data.erased']
+              : after['data.erasedNotHealth'];
+          report(text, gone);
         })
         .catch((error: unknown) => {
           console.error(error);
@@ -340,7 +357,7 @@ export function mountData(
       ...(withHealth
         ? [
             h('label', { class: 'check' }, fromHealth, h('span', { text: m['data.eraseHealth'] })),
-            h('p', { class: 'note', text: m['health.revoke'] }),
+            h('p', { class: 'note', text: m['data.eraseHealthNote'] }),
           ]
         : []),
       h('div', { class: 'actions' }, backupFirst(), confirm, cancel),

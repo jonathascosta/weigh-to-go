@@ -13,9 +13,11 @@ public class WeightHealthPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestAuthorization", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "writeStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "read", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "write", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "remove", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "removeAll", returnType: CAPPluginReturnPromise),
     ]
 
     private let store = HKHealthStore()
@@ -55,18 +57,29 @@ public class WeightHealthPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    /// Every body mass sample from `from` (ISO, optional) on, oldest first.
+    /// Whether this app may write weight, without asking: "allowed", "denied" or "undetermined".
+    /// (Health never says whether reading was allowed.)
+    @objc func writeStatus(_ call: CAPPluginCall) {
+        guard let type = bodyMass else {
+            call.reject("Apple Health isn't available on this device", "UNAVAILABLE")
+            return
+        }
+        switch store.authorizationStatus(for: type) {
+        case .sharingAuthorized: call.resolve(["status": "allowed"])
+        case .sharingDenied: call.resolve(["status": "denied"])
+        default: call.resolve(["status": "undetermined"])
+        }
+    }
+
+    /// Every body mass sample Health lets this app read, oldest first.
     @objc func read(_ call: CAPPluginCall) {
         guard let type = bodyMass else {
             call.reject("Apple Health isn't available on this device", "UNAVAILABLE")
             return
         }
-        let from = date(call.getString("from"))
-        let predicate = from.map { HKQuery.predicateForSamples(withStart: $0, end: nil, options: .strictStartDate) }
         let byStart = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
-        let ownBundle = Bundle.main.bundleIdentifier
         let query = HKSampleQuery(
-            sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [byStart]
+            sampleType: type, predicate: nil, limit: HKObjectQueryNoLimit, sortDescriptors: [byStart]
         ) { [kilograms] _, results, error in
             if let error {
                 call.reject(error.localizedDescription, "READ", error)
@@ -78,7 +91,6 @@ public class WeightHealthPlugin: CAPPlugin, CAPBridgedPlugin {
                     "uuid": sample.uuid.uuidString,
                     "kg": sample.quantity.doubleValue(for: kilograms),
                     "start": Self.isoFormatter.string(from: sample.startDate),
-                    "fromThisApp": sample.sourceRevision.source.bundleIdentifier == ownBundle,
                 ]
                 if let syncId = sample.metadata?[HKMetadataKeySyncIdentifier] as? String {
                     item["syncId"] = syncId
@@ -154,6 +166,23 @@ public class WeightHealthPlugin: CAPPlugin, CAPBridgedPlugin {
         let predicate = HKQuery.predicateForObjects(
             withMetadataKey: HKMetadataKeySyncIdentifier, allowedValues: syncIds
         )
+        store.deleteObjects(of: type, predicate: predicate) { _, count, error in
+            if let error {
+                call.reject(error.localizedDescription, "DELETE", error)
+                return
+            }
+            call.resolve(["deleted": count])
+        }
+    }
+
+    /// Deletes every weight sample this app wrote, on any of the person's devices (by this app's
+    /// source, whatever the days). Resolves how many went.
+    @objc func removeAll(_ call: CAPPluginCall) {
+        guard let type = bodyMass else {
+            call.reject("Apple Health isn't available on this device", "UNAVAILABLE")
+            return
+        }
+        let predicate = HKQuery.predicateForObjects(from: HKSource.default())
         store.deleteObjects(of: type, predicate: predicate) { _, count, error in
             if let error {
                 call.reject(error.localizedDescription, "DELETE", error)

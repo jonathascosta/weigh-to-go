@@ -28,7 +28,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Weigh to Go reads your weight from Apple Health, so readings from a smart scale or another app join your diary. It stays on your iPhone.</string>
+	<string>Weigh to Go reads your weight from Apple Health, so readings from a smart scale or another app join your diary. What it reads stays on your iPhone.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Weigh to Go saves the weights you log to Apple Health, so your other apps and devices see them.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
