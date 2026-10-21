@@ -73,6 +73,18 @@ npm install --before="$(date -u -d '-7 days' +%FT%TZ)" <package>
 
 Work is planned in the repository's issues and milestones, one story per pull request.
 
+## The iPhone app
+
+The same pages, built with `npm run build:ios` (Vite's `ios` mode, into `dist-ios/`, without the
+service worker) and wrapped with Capacitor 8 in `ios/`, an Xcode project with Swift Package Manager.
+`npm run ios:sync` builds and copies them into the project. Nobody here has a Mac: the **iOS**
+workflow builds the app for the simulator on GitHub's macOS runners when native files change, opens
+it there and fails on a script error or a policy violation in its web view; the **TestFlight**
+workflow, run by hand from the Actions tab on `main`, signs it and uploads it with fastlane
+(`ios/App/fastlane`). The version is `package.json`'s, which a test keeps equal to the Xcode project's
+`MARKETING_VERSION`; `npm run icons` also draws the app's icon and launch screen. The plan is in
+`docs/sprint-3.md`, and what only the owner can do for the App Store in `docs/STORE.md`.
+
 ## Deployment
 
 Every pull request is linted, tested and built by GitHub Actions, and the built site goes through
