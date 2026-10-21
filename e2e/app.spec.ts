@@ -146,10 +146,31 @@ for (const path of ['/', '/pt/', ...STATIC_PAGES]) {
   });
 }
 
-for (const { from, link, url, heading } of [
-  { from: '/', link: 'Privacy', url: '/privacy.html', heading: 'Privacy policy' },
-  { from: '/pt/', link: 'Privacidade', url: '/pt/privacidade.html', heading: 'Política de privacidade' },
-  { from: '/404.html', link: 'Privacy', url: '/privacy.html', heading: 'Privacy policy' },
+for (const { from, link, url, heading, back, home } of [
+  {
+    from: '/',
+    link: 'Privacy',
+    url: '/privacy.html',
+    heading: 'Privacy policy',
+    back: 'Go to your diary',
+    home: '/',
+  },
+  {
+    from: '/pt/',
+    link: 'Privacidade',
+    url: '/pt/privacidade.html',
+    heading: 'Política de privacidade',
+    back: 'Ir para o seu diário',
+    home: '/pt/',
+  },
+  {
+    from: '/404.html',
+    link: 'Privacy',
+    url: '/privacy.html',
+    heading: 'Privacy policy',
+    back: 'Go to your diary',
+    home: '/',
+  },
 ]) {
   test(`the footer of ${from} opens the privacy policy in its language`, async ({ page }) => {
     const { check } = await watch(page);
@@ -157,9 +178,16 @@ for (const { from, link, url, heading } of [
     await page.locator('.site-footer').getByRole('link', { name: link, exact: true }).click();
     await expect(page).toHaveURL(url);
     await expect(page.locator('h1')).toHaveText(heading);
-    await expect(page.locator('h2')).toHaveCount(11);
-    // Back to the diary from the header, as in the app, which has no back button.
-    await page.locator('.site-header .brand').click();
+    await expect(page.locator('h2')).toHaveCount(12);
+    // "On this page" leads to each section after "In short".
+    const toc = page.locator('nav.toc a');
+    await expect(toc).toHaveCount(11);
+    await toc.last().click();
+    await expect(page).toHaveURL(`${url}#contact`);
+    // Back to the diary in the page's language from the end of the policy, as in the app, which has
+    // no back button.
+    await page.locator('.policy .back').getByRole('link', { name: back, exact: true }).click();
+    await expect(page).toHaveURL(home);
     await expect(page.locator('#entry-title')).toBeVisible();
     await check();
   });
@@ -175,19 +203,29 @@ test('the privacy policy follows a language the reader chose, links included', a
   // The English policy, opened directly, reads in Portuguese too, with Portuguese links.
   await page.goto('/privacy.html');
   await expect(page.locator('h1')).toHaveText('Política de privacidade');
-  await expect(page.getByRole('link', { name: 'Suporte do Weigh to Go' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Declaração de privacidade do GitHub' })).toHaveAttribute(
     'href',
-    'https://www.jonathas.net/weightogo/pt.html',
+    'https://docs.github.com/pt/site-policy/privacy-policies/github-general-privacy-statement',
   );
+  // Its English link is a choice, saved: the policy, and then the diary, read in English again.
+  await page.locator('.langs').getByRole('link', { name: 'English', exact: true }).click();
+  await expect(page).toHaveURL('/privacy.html');
+  await expect(page.locator('h1')).toHaveText('Privacy policy');
+  await page.goto('/pt/');
+  await expect(page.locator('html')).toHaveAttribute('lang', /^en/);
   await check();
 });
 
-test('the privacy policy reads as text with scripts off', async ({ browser }) => {
+test('the privacy policy reads as text with scripts off, its links still working', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false, locale: 'en-GB' });
   const page = await context.newPage();
   await page.goto('/pt/privacidade.html');
-  await expect(page.locator('h1')).toBeVisible();
   await expect(page.locator('h1')).toHaveText('Política de privacidade');
   await expect(page.locator('#ads + p')).toContainText('Google AdMob');
+  await page.locator('.langs').getByRole('link', { name: 'English', exact: true }).click();
+  await expect(page).toHaveURL('/privacy.html');
+  await expect(page.locator('h1')).toHaveText('Privacy policy');
+  await page.locator('.policy .back a').click();
+  await expect(page).toHaveURL('/');
   await context.close();
 });

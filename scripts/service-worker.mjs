@@ -28,8 +28,8 @@ const FONT_SUBSETS = /-(latin|latin-ext)-\d{3}-normal-[\w-]+\.woff2$/;
 
 /**
  * The URLs to precache, from the built files' paths (relative to dist/, with forward slashes): the
- * pages as they are served (so the privacy policy opens offline too), the scripts, styles, manifests and icons, and the Latin fonts as woff2
- * (every browser that runs a service worker reads woff2).
+ * pages as they are served (so the privacy policy opens offline too), the scripts, styles, manifests
+ * and icons, and the Latin fonts as woff2 (every browser that runs a service worker reads woff2).
  * @param {readonly string[]} files
  * @returns {string[]}
  */

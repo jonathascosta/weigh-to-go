@@ -178,7 +178,8 @@ describe('findMissingPages', () => {
 
   it("reports a privacy page that points to the home pages' versions instead of its own", () => {
     const files = all();
-    files[6] = {
+    const index = files.findIndex((file) => file.name === 'pt/privacidade.html');
+    files[index] = {
       name: 'pt/privacidade.html',
       text: home(policy.pt, '<html lang="pt-BR" data-lang="pt">'),
     };
