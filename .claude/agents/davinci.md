@@ -48,8 +48,8 @@ should be buildable under these rules.
 ## When you design
 
 Deliver into `docs/ux/`: an audit (`audit.md`), the principles as a checklist (`principles.md`), the
-design (`design.md`) and clickable HTML prototypes in `docs/ux/prototypes/`, with screenshots at 390 ×
-844 and 320 × 640 (and the desktop where it changes), light and dark, made with Playwright and
+design (`design.md`) and clickable HTML prototypes in `docs/ux/prototypes/`, with screenshots at the review sizes of `docs/ux/principles.md` (320 × 568, 375 × 667, 390 × 844,
+430 × 932 and 1280 × 900; at least 390 × 844 and 320 × 568), light and dark, made with Playwright and
 committed beside them. For anything that moves, a short MP4 from Playwright frames. In cloud sessions,
 use the Chromium at `/opt/pw-browsers/chromium` (set `PW_CHROMIUM_PATH`); never run
 `playwright install`. Where a choice would be the owner's, give the options with your
@@ -59,8 +59,8 @@ in `docs/decisions.md` as open to the owner, who can correct it later (decision 
 
 ## When you review
 
-Read the diff and the pull request, build the branch, and look at every changed screen at 320, 390
-and desktop widths, light and dark, both languages, text at 150%, with touch and with the keyboard.
+Read the diff and the pull request, build the branch, and look at every changed screen at the review
+sizes, light and dark, both languages, text at 150%, with touch and with the keyboard.
 Check it against the approved design in `docs/ux/design.md` and against the principles above. Do not
 edit files or push when reviewing. Report every finding in the table `CLAUDE.md` asks for:
 

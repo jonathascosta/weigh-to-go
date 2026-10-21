@@ -75,19 +75,22 @@ few of its steps can start now.
 
 ## 21 October 2026 · The phone experience: defaults from the audit
 
-DaVinci's audit ([ux/audit.md](ux/audit.md)) ended with eight questions for the owner. Under
-decision 9 above, DaVinci's recommendation is the default, recorded here as **open to the owner**,
-who can change any of them; the design (Sprint 2, story 2) builds on them.
+DaVinci's audit ends with eight questions for the owner ([ux/audit.md](ux/audit.md), Questions for
+the owner). Under decision 9 above, DaVinci's recommendation is the default, recorded here as **open
+to the owner**, who can change any of them; the design (Sprint 2, story 2) builds on them. Numbered on
+from the decisions above.
 
-1. **Structure on a phone:** tabs at the bottom (Today, Progress, Analysis, Your data). The desktop
-   keeps a page that shows more at once.
-2. **Default view on a phone:** the "Essential" preset, with the analysis cards closed to their
-   one-line summary. The desktop keeps a "Detailed" view equal to today's.
-3. **How often each part is used:** DaVinci's estimates in the audit's inventory, until the owner
-   says otherwise.
-4. **The intro:** shown only while the diary is empty; kept in the static HTML for search engines.
-5. **Language and units:** in settings, on the phone and on the desktop.
-6. **Deleting a weigh-in:** an Undo for a few seconds instead of a question; erasing and replacing
-   everything keep their confirmations.
-7. **Colour for rises:** the calendar's neutral blue and orange; red only for errors.
-8. **Long tables on a phone:** a few rows and "Show more", or a screen of their own.
+10. **The owner's habits:** until the owner says how often each job is done, DaVinci's estimates in
+    the audit's inventory stand.
+11. **Structure on a phone:** tabs at the bottom. Their names (Today, Progress, Analysis, Your data)
+    are a working proposal that `ux/design.md` settles.
+12. **Default view on a phone:** the "Essential" preset, with the analysis cards closed to a one-line
+    summary. The desktop keeps a "Detailed" view equal to today's.
+13. **The intro:** shown only while the diary is empty; kept in the static HTML for search engines.
+14. **Language and units:** in settings, on the phone (the settings tab) and on the desktop (a
+    Settings link in the header).
+15. **Deleting a weigh-in:** an Undo for a few seconds instead of a question; replacing and erasing
+    everything keep their confirmations.
+16. **Colour for a rise:** the calendar's blue for a fall and orange for a rise; red only for errors.
+17. **Long tables on a phone:** a few rows and "Show more", or a screen of their own, instead of boxes
+    that scroll inside the page.
