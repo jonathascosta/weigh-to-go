@@ -117,9 +117,11 @@ describe('phoneNotifier', () => {
     expect(opened).toHaveBeenCalledTimes(1);
   });
 
-  it('reads a broken setting file as none', async () => {
+  it('rejects a broken setting file, rather than take it for none', async () => {
     files.set('settings/reminder.json', '{"on": tru');
-    expect(await phoneNotifier.readSetting()).toBeNull();
+    await expect(phoneNotifier.readSetting()).rejects.toThrow();
+    files.set('settings/reminder.json', '{"on": "yes"}');
+    await expect(phoneNotifier.readSetting()).rejects.toThrow('not a setting');
   });
 
   it('keeps the setting in a file, none at first', async () => {

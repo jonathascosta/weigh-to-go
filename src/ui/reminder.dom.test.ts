@@ -101,6 +101,18 @@ describe('the reminder card', () => {
     expect(status()).toBe('');
   });
 
+  it("keeps what is pending when the setting can't be read and a change can't be saved", async () => {
+    const fake = fakeNotifier('granted');
+    fake.state.pending = [{ id: 20261022, day: '2026-10-22', at: new Date(2026, 9, 22, 8) }];
+    fake.notifier.readSetting = () => Promise.reject(new Error('unreadable'));
+    fake.notifier.writeSetting = () => Promise.reject(new Error('disk full'));
+    await mount(fake);
+    await flip(true);
+    await comeBack();
+    expect(fake.state.pending).toHaveLength(1);
+    expect(status()).toContain("Couldn't set the reminders");
+  });
+
   it("works from the default when the setting can't be read, planning nothing until a change", async () => {
     const fake = fakeNotifier('granted');
     fake.state.pending = [{ id: 20261022, day: '2026-10-22', at: new Date(2026, 9, 22, 8) }];

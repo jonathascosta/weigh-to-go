@@ -98,15 +98,17 @@ export function mountReminder(
   };
   /** Saves a change; one that can't be written is undone, so the screen says what the file holds. */
   const save = async (next: ReminderSetting) => {
-    const before = setting;
+    const before = { setting, unread };
     setting = next;
     unread = false;
     try {
       await notifier.writeSetting(next);
     } catch (error) {
       console.error(error);
-      setting = before;
+      // Undone only if nothing newer came meanwhile.
+      if (setting === next) ({ setting, unread } = before);
       shown = 'failed';
+      if (setting) timeInput.value = timeText(setting.time);
       show();
       return;
     }

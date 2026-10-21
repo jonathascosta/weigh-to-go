@@ -46,13 +46,10 @@ export const phoneNotifier: Notifier = {
   readSetting: async () => {
     const text = await readText(SETTING_FOLDER, SETTING_NAME);
     if (text === null) return null;
-    let value: unknown = null;
-    try {
-      value = JSON.parse(text);
-    } catch {
-      // A broken file is no setting: the default, saved anew on the next change.
-    }
-    return isReminderSetting(value) ? value : null;
+    // A broken file isn't "no setting": the card then plans nothing until the person changes it.
+    const value: unknown = JSON.parse(text);
+    if (!isReminderSetting(value)) throw new Error('The reminder setting file is not a setting');
+    return value;
   },
   writeSetting: async (setting) => {
     await Filesystem.writeFile({

@@ -57,7 +57,7 @@ describe('planReminders across a change of clocks (Europe/Lisbon)', () => {
     const plan = planReminders({ hour: 7, minute: 30 }, new Set(), at(2026, 10, 21, 7, 30));
     expect(plan).toHaveLength(REMINDER_DAYS);
     expect(plan.at(-1)?.day).toBe('2026-11-20');
-    expect(planReminders({ hour: 7, minute: 30 }, new Set(), at(2026, 3, 20, 6))).toHaveLength(REMINDER_DAYS);
+    expect(planReminders({ hour: 6, minute: 30 }, new Set(), at(2026, 3, 20, 6))).toHaveLength(REMINDER_DAYS);
   });
 
   it('moves a time that the change skips to the hour after, on the same day', () => {
