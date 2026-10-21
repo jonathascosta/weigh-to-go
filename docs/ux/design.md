@@ -312,7 +312,20 @@ Screenshots: [01](design/01-today-390-light.png) before, [07](design/07-today-sa
 - **The hint** under them.
 
 The field has the unit inside it on the right, `inputmode="decimal"`, comma or point, and 28 px
-digits. It stays empty: no example weight, so a mistyped digit is easy to see (audit F3).
+digits at 100%. It stays empty: no example weight, so a mistyped digit is easy to see (audit F3).
+
+**The typed weight always fits.** The digits grow with the text size up to 36 px and stop
+(`font-size: min(1.75rem, 36px)`). The unit stops at 20 px (`min(1rem, 20px)`), and the room kept
+for it at 36 px (`padding-right: min(2.75rem, 36px)`). So the longest value, "999.9" (or "999,9"),
+fits the 120 px field at 320 px:
+
+- at 100% and 150% text and at the app's 34 px cap;
+- in kg and lb, in English and Portuguese;
+- at 375 and 390 px too.
+
+The same rule holds in the day sheet. Measured in the prototype: no overflow in 72 combinations,
+where at 150% "212.4" lb needed 128 px and at the cap "95.8" kg needed 142 px. The unit never
+overlaps the digits: it needs at most 30 px of the 36.
 
 **Why Save sits beside the field.** On an iPhone the decimal keypad has no Return key. With Save in
 the same row as the field, Save is above the keypad whenever the field is. Save is 38% of the screen
@@ -1136,7 +1149,8 @@ working and tested.
     listeners; the app's `resume` comes with `@capacitor/app` in Sprint 3).
   - The date chip on touch, with `showPicker()` in `try`, and the visible field on fine pointers and
     wide layouts.
-  - The field and Save in one row (Save half the inner width, at least 120 px).
+  - The field and Save in one row (Save half the inner width, at least 120 px), with the digits, the
+    unit and its padding capped as in section 3; the day sheet shares the rule.
   - The saved notice: built `entry.saved`, the new sub-line, Undo with its 10-second count and
     pause,
     the persistent status element, and a synchronous `focus()` on Undo.
@@ -1357,6 +1371,8 @@ working and tested.
     - no element's box past the viewport's right edge;
     - no element whose content is wider than its own box: `scrollWidth > clientWidth + 1` on any
       element, SVG and visually hidden ones aside.
+    - the weigh-in field and the day sheet's field, filled with the longest value ("999.9", or
+      "999,9" in Portuguese, in kg and lb), have `input.scrollWidth <= input.clientWidth`.
   - **Today's first screen:** the weigh-in field and Save on the first screen at 390 × 844 and 375
     × 667. In landscape at 844 × 390, both visible after focusing the field.
   - **Focus never hidden:** tab through each tab and check that no focused element's box overlaps

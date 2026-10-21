@@ -689,12 +689,14 @@
         display: flex;
         align-items: center;
       }
+      /* The digits and the unit stop growing (36 px and 20 px), and so does the room kept for the unit,
+         so "999.9" fits a 120 px field at 320 px at every text size, here and in the day sheet. */
       .with-unit input {
         width: 100%;
         min-height: 56px;
-        padding: 6px 44px 6px 12px;
+        padding: 6px min(2.75rem, 36px) 6px min(0.75rem, 12px);
         font-family: var(--f-num);
-        font-size: 1.75rem;
+        font-size: min(1.75rem, 36px);
         font-weight: 500;
         color: var(--fg);
         background: var(--bg);
@@ -703,9 +705,9 @@
       }
       .with-unit .unit {
         position: absolute;
-        right: 12px;
+        right: 10px;
         color: var(--muted);
-        font-size: 1rem;
+        font-size: min(1rem, 20px);
         pointer-events: none;
       }
       .button {
