@@ -5,6 +5,8 @@
  * comes back; after `REMINDER_DAYS` days without opening it, the reminders stop.
  */
 
+import { pref } from '../data/prefs';
+
 /** Days of reminders planned ahead (under iOS's 64 pending notifications). */
 export const REMINDER_DAYS = 30;
 
@@ -26,6 +28,25 @@ export const isReminderTime = (v: unknown): v is ReminderTime => {
     (minute as number) < 60
   );
 };
+
+/** The person's reminder: whether it is on, and its time, kept while it is off. */
+export interface ReminderSetting {
+  readonly on: boolean;
+  readonly time: ReminderTime;
+}
+
+export const REMINDER_OFF: ReminderSetting = { on: false, time: { hour: 8, minute: 0 } };
+
+/** The reminder setting, kept with the screen preferences: erasing everything turns it off. */
+export const reminderPref = pref(
+  'reminder',
+  (v: unknown): v is ReminderSetting =>
+    typeof v === 'object' &&
+    v !== null &&
+    typeof (v as Record<string, unknown>).on === 'boolean' &&
+    isReminderTime((v as Record<string, unknown>).time),
+  REMINDER_OFF,
+);
 
 /** A planned notification: its id (stable per local day, so a re-plan replaces it) and when. */
 export interface PlannedReminder {
