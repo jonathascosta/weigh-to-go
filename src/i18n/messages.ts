@@ -794,9 +794,9 @@ export const en = {
   'reminder.note': (days: string) =>
     `One notification a day at this time, none on a day already logged. Reminders stop after ${days} days without opening the app.`,
   'reminder.denied':
-    'Notifications for Weigh to Go are off. Turn them on in the iPhone’s Settings, under Notifications, then here.',
+    'Notifications for Weigh to Go are off. Turn them on in Settings › Notifications › Weigh to Go and come back: the reminder starts by itself.',
   'reminder.failed': "Couldn't set the reminders. Try again.",
-  'reminder.notificationTitle': 'Weigh to Go',
+  'reminder.notificationTitle': 'Daily weigh-in',
   'reminder.notificationBody': 'Time for today’s weigh-in.',
   'notice.reloadButton': 'Reload',
   'update.ready': 'A new version of Weigh to Go is ready. Your weigh-ins stay where they are.',
@@ -1433,9 +1433,9 @@ export const pt: Messages = {
   'reminder.note': (days: string) =>
     `Uma notificação por dia neste horário, nenhuma num dia já registrado. Os lembretes param depois de ${days} dias sem abrir o app.`,
   'reminder.denied':
-    'As notificações do Weigh to Go estão desligadas. Ligue-as nos Ajustes do iPhone, em Notificações, e depois aqui.',
+    'As notificações do Weigh to Go estão desligadas. Ligue-as em Ajustes › Notificações › Weigh to Go e volte: o lembrete começa sozinho.',
   'reminder.failed': 'Não foi possível programar os lembretes. Tente de novo.',
-  'reminder.notificationTitle': 'Weigh to Go',
+  'reminder.notificationTitle': 'Pesagem do dia',
   'reminder.notificationBody': 'Hora da pesagem de hoje.',
   'notice.reloadButton': 'Recarregar',
   'update.ready': 'Uma nova versão do Weigh to Go está pronta. Suas pesagens continuam aqui.',

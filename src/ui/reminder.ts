@@ -1,13 +1,20 @@
 /**
  * The daily reminder's card, in the iPhone app only (docs/sprint-3.md, story 4): a switch and a time.
- * Turning it on is when iOS asks for permission; the reminders are planned again whenever the
- * setting, the diary or the language changes, and when the app comes back to the screen. Opening a
- * reminder goes to the weigh-in.
+ * Turning it on is when iOS asks for permission. The reminders are planned again whenever the
+ * setting, the diary or the language changes, and when the app comes back to the screen, so a
+ * person who turns notifications back on in the iPhone's Settings gets them on return. Opening a
+ * reminder goes to the weigh-in. Erasing everything turns it off.
  */
 import type { App, State } from '../app/app';
 import type { Settings } from '../i18n';
 import { reminderKeeper, type Notifier, type ReminderStatus } from '../reminders/keeper';
-import { isReminderTime, REMINDER_DAYS, reminderPref, type ReminderTime } from '../reminders/schedule';
+import {
+  isReminderTime,
+  REMINDER_DAYS,
+  REMINDER_OFF,
+  type ReminderSetting,
+  type ReminderTime,
+} from '../reminders/schedule';
 import { h } from './dom';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -22,14 +29,19 @@ export function mountReminder(
   container: HTMLElement,
   app: App,
   notifier: Notifier,
+  now?: () => Date,
 ): (state: State, s: Settings) => void {
-  const keeper = reminderKeeper(notifier);
+  const keeper = reminderKeeper(notifier, now);
   const title = h('h2', { attrs: { id: 'reminder-title' } });
-  const toggle = h('input', { attrs: { id: 'reminder-on', type: 'checkbox' } });
+  const note = h('p', { class: 'note', attrs: { id: 'reminder-note' } });
+  const toggle = h('input', {
+    attrs: { id: 'reminder-on', type: 'checkbox', role: 'switch', 'aria-describedby': 'reminder-note' },
+  });
   const toggleText = h('span');
   const timeLabel = h('label', { attrs: { for: 'reminder-time' } });
-  const timeInput = h('input', { attrs: { id: 'reminder-time', type: 'time', required: true } });
-  const note = h('p', { class: 'note' });
+  const timeInput = h('input', {
+    attrs: { id: 'reminder-time', type: 'time', required: true, 'aria-describedby': 'reminder-note' },
+  });
   const status = h('p', { class: 'status', attrs: { role: 'status' } });
   container.replaceChildren(
     h('div', { class: 'card-head' }, h('div', {}, title, note)),
@@ -38,64 +50,120 @@ export function mountReminder(
     status,
   );
 
+  /** The setting, once read from the phone; nothing is planned before. */
+  let setting: ReminderSetting | null = null;
   let shown: ReminderStatus | 'failed' | null = null;
   let current: Settings | null = null;
-  const show = (s: Settings) => {
+  /** Whether iOS's question is on screen: the switch shows what the person did until it's answered. */
+  let asking = false;
+
+  const show = () => {
+    const s = current;
+    if (!s) return;
     const m = s.messages;
-    const setting = reminderPref.read();
-    toggle.checked = setting.on && shown !== 'denied';
-    if (document.activeElement !== timeInput) timeInput.value = timeText(setting.time);
-    status.className = shown === 'denied' || shown === 'failed' ? 'status status-bad' : 'status';
-    status.textContent =
-      shown === 'denied' ? m['reminder.denied'] : shown === 'failed' ? m['reminder.failed'] : '';
+    toggle.disabled = setting === null;
+    timeInput.disabled = setting === null;
+    if (!asking) toggle.checked = setting?.on === true && shown !== 'denied' && shown !== 'prompt';
+    if (setting && document.activeElement !== timeInput) timeInput.value = timeText(setting.time);
+    const text = shown === 'denied' ? m['reminder.denied'] : shown === 'failed' ? m['reminder.failed'] : '';
+    status.className = text ? 'status status-bad' : 'status';
+    if (status.textContent !== text) status.textContent = text;
+  };
+  /** Says it again: a screen reader announces a status only when its text changes. */
+  const announce = () => {
+    status.textContent = '';
+    requestAnimationFrame(show);
   };
 
   /** Plans the reminders again and shows how that went. */
   const sync = async () => {
     const s = current;
-    if (!s) return;
+    if (!s || !setting || app.state().status !== 'ready') return;
     const logged = new Set(app.state().weighIns.map((w) => w.date));
     const text = {
       title: s.messages['reminder.notificationTitle'],
       body: s.messages['reminder.notificationBody'],
     };
     try {
-      shown = await keeper.sync(logged, text);
+      shown = await keeper.sync(setting, logged, text);
     } catch (error) {
       console.error(error);
       shown = 'failed';
     }
-    if (current) show(current);
+    show();
   };
+  const save = async (next: ReminderSetting) => {
+    setting = next;
+    try {
+      await notifier.writeSetting(next);
+    } catch (error) {
+      console.error(error);
+      shown = 'failed';
+      show();
+      return;
+    }
+    await sync();
+  };
+
+  notifier.readSetting().then(
+    (saved) => {
+      setting = saved ?? REMINDER_OFF;
+      void sync();
+      show();
+    },
+    (error: unknown) => {
+      console.error(error);
+      shown = 'failed';
+      show();
+    },
+  );
 
   toggle.addEventListener('change', () => {
     void (async () => {
+      if (!setting) return;
       const on = toggle.checked;
-      // iOS asks the person once; after a no, only its Settings can turn notifications on.
-      if (on && !(await notifier.ask().catch(() => false))) {
-        reminderPref.write({ ...reminderPref.read(), on: false });
-        shown = 'denied';
-        if (current) show(current);
-        return;
+      if (on) {
+        // iOS asks once; after a no, only its Settings can turn notifications on. The reminder
+        // stays on, so it starts by itself once they are.
+        asking = true;
+        const allowed = await notifier.ask().catch(() => false);
+        asking = false;
+        // Turned off again while iOS was asking: that is the last word.
+        if (!toggle.checked) return;
+        if (!allowed) {
+          setting = { ...setting, on: true };
+          await notifier.writeSetting(setting).catch((error: unknown) => {
+            console.error(error);
+          });
+          shown = 'denied';
+          announce();
+          return;
+        }
       }
-      reminderPref.write({ ...reminderPref.read(), on });
-      await sync();
+      await save({ ...setting, on });
     })();
   });
   timeInput.addEventListener('change', () => {
     const time = parseTime(timeInput.value);
-    if (!time) return;
-    reminderPref.write({ ...reminderPref.read(), time });
-    void sync();
+    // A cleared picker keeps the time it had.
+    if (!time || !setting) return;
+    void save({ ...setting, time });
+  });
+  timeInput.addEventListener('blur', () => {
+    if (setting && !parseTime(timeInput.value)) timeInput.value = timeText(setting.time);
   });
   notifier.onOpen(() => {
     const field = document.getElementById('entry-weight');
     field?.scrollIntoView({ block: 'center' });
     field?.focus();
   });
-  // Back on the screen: the window moves along, and a day may have turned.
+  // Back on the screen: the window moves along, a day may have turned, and iOS's Settings may have
+  // changed.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') void sync();
+  });
+  app.onErase(async () => {
+    await save(REMINDER_OFF);
   });
 
   /** What the plan depends on: the setting, the days logged and the language. */
@@ -107,9 +175,9 @@ export function mountReminder(
     note.textContent = m['reminder.note'](String(REMINDER_DAYS));
     toggleText.textContent = m['reminder.switch'];
     timeLabel.textContent = m['reminder.time'];
-    show(s);
-    if (state.status !== 'ready') return;
-    const key = JSON.stringify([reminderPref.read(), s.locale.lang, state.weighIns.map((w) => w.date)]);
+    show();
+    if (state.status !== 'ready' || !setting) return;
+    const key = JSON.stringify([setting, s.locale.lang, state.weighIns.map((w) => w.date)]);
     if (key === planned) return;
     planned = key;
     void sync();

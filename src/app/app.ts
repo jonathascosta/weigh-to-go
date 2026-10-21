@@ -42,11 +42,14 @@ export interface App {
   importBackup(parsed: Extract<ParsedBackup, { ok: true }>, mode: ImportMode): Promise<MergeResult | null>;
   /** Erases everything; resolves with whether the data is known to be gone. */
   erase(): Promise<boolean>;
+  /** Calls `listener` whenever everything is erased, for what is kept outside the store. */
+  onErase(listener: () => Promise<void>): void;
 }
 
 export function createApp(open: () => Promise<Store> = () => openStore()): App {
   let state: State = { status: 'loading', store: null, weighIns: [], profile: EMPTY_PROFILE, analysis: null };
   const listeners = new Set<(state: State) => void>();
+  const eraseListeners: (() => Promise<void>)[] = [];
 
   const set = (next: Partial<State>) => {
     state = { ...state, ...next };
@@ -161,7 +164,14 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
         } finally {
           // The preferences are gone: what the page held of them goes back to the defaults too.
           resetView();
+          for (const listener of eraseListeners)
+            await listener().catch((error: unknown) => {
+              console.error(error);
+            });
         }
       }),
+    onErase: (listener) => {
+      eraseListeners.push(listener);
+    },
   };
 }

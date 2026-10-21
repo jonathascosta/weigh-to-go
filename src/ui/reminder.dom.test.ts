@@ -5,17 +5,17 @@ import { fakeStorage } from '../data/fake-storage.test-helper';
 import { memoryStore } from '../data/store';
 import { choose, onSettingsChange, resetSettings, settings } from '../i18n';
 import { fakeNotifier } from '../reminders/fake-notifier.test-helper';
-import { reminderPref } from '../reminders/schedule';
 import { mountReminder } from './reminder';
 
 const settle = async () => {
-  for (let i = 0; i < 5; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+  for (let i = 0; i < 8; i++) await new Promise((resolve) => setTimeout(resolve, 0));
 };
+const now = () => new Date(2026, 9, 21, 6, 0);
 
 let app: App;
 let root: HTMLElement;
 const mount = async (fake: ReturnType<typeof fakeNotifier>) => {
-  const render = mountReminder(root, app, fake.notifier);
+  const render = mountReminder(root, app, fake.notifier, now);
   app.subscribe((state) => {
     render(state, settings());
   });
@@ -27,6 +27,15 @@ const mount = async (fake: ReturnType<typeof fakeNotifier>) => {
 const toggle = () => root.querySelector<HTMLInputElement>('#reminder-on')!;
 const time = () => root.querySelector<HTMLInputElement>('#reminder-time')!;
 const status = () => root.querySelector('[role="status"]')?.textContent ?? '';
+const flip = async (checked: boolean) => {
+  toggle().checked = checked;
+  toggle().dispatchEvent(new Event('change'));
+  await settle();
+};
+const comeBack = async () => {
+  document.dispatchEvent(new Event('visibilitychange'));
+  await settle();
+};
 
 beforeEach(() => {
   resetSettings();
@@ -48,61 +57,99 @@ describe('the reminder card', () => {
     expect(toggle().checked).toBe(false);
     expect(time().value).toBe('08:00');
     expect(fake.state.asked).toBe(0);
-    toggle().checked = true;
-    toggle().dispatchEvent(new Event('change'));
-    await settle();
+    await flip(true);
     expect(fake.state.asked).toBe(1);
-    expect(reminderPref.read().on).toBe(true);
-    expect(fake.state.pending.length).toBeGreaterThan(0);
+    expect(fake.state.setting).toEqual({ on: true, time: { hour: 8, minute: 0 } });
+    expect(fake.state.pending).toHaveLength(30);
     expect(fake.state.text?.body).toBe('Time for today’s weigh-in.');
   });
 
-  it('stays off and says where to turn notifications on, when iOS says no', async () => {
+  it('keeps the setting in the phone’s file, not in the web view', async () => {
+    const fake = fakeNotifier('granted');
+    fake.state.setting = { on: true, time: { hour: 7, minute: 15 } };
+    await mount(fake);
+    expect(toggle().checked).toBe(true);
+    expect(time().value).toBe('07:15');
+    expect(fake.state.pending[0]?.at).toEqual(new Date(2026, 9, 21, 7, 15));
+    const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i) ?? '');
+    expect(keys.filter((k) => k.includes('reminder'))).toEqual([]);
+  });
+
+  it('says where to turn notifications on when iOS says no, and starts by itself once they are', async () => {
     const fake = fakeNotifier('prompt', false);
     await mount(fake);
-    toggle().checked = true;
-    toggle().dispatchEvent(new Event('change'));
-    await settle();
+    await flip(true);
     expect(toggle().checked).toBe(false);
-    expect(reminderPref.read().on).toBe(false);
-    expect(status()).toContain('Settings');
+    expect(status()).toContain('Settings › Notifications');
     expect(fake.state.pending).toEqual([]);
+    // The person turns notifications on in iOS's Settings and comes back.
+    fake.state.permission = 'granted';
+    await comeBack();
+    expect(toggle().checked).toBe(true);
+    expect(status()).toBe('');
+    expect(fake.state.pending.length).toBeGreaterThan(0);
+  });
+
+  it('shows the switch off, ready to ask, when iOS was never asked on this phone', async () => {
+    const fake = fakeNotifier('prompt');
+    fake.state.setting = { on: true, time: { hour: 8, minute: 0 } };
+    await mount(fake);
+    expect(toggle().checked).toBe(false);
+    expect(status()).toBe('');
+    await flip(true);
+    expect(fake.state.asked).toBe(1);
+    expect(toggle().checked).toBe(true);
   });
 
   it('plans again at a new time, and leaves out a day once it is logged', async () => {
-    reminderPref.write({ on: true, time: { hour: 23, minute: 59 } });
     const fake = fakeNotifier('granted');
+    fake.state.setting = { on: true, time: { hour: 23, minute: 59 } };
     await mount(fake);
     time().value = '07:15';
     time().dispatchEvent(new Event('change'));
     await settle();
-    expect(reminderPref.read().time).toEqual({ hour: 7, minute: 15 });
-    const first = fake.state.pending[0]!;
-    expect([first.at.getHours(), first.at.getMinutes()]).toEqual([7, 15]);
-    await app.save([{ date: first.day, kg: 100 }]);
+    expect(fake.state.setting.time).toEqual({ hour: 7, minute: 15 });
+    expect(fake.state.pending[0]?.day).toBe('2026-10-21');
+    await app.save([{ date: '2026-10-21', kg: 100 }]);
     await settle();
-    expect(fake.state.pending.map((p) => p.day)).not.toContain(first.day);
+    expect(fake.state.pending.map((p) => p.day)).not.toContain('2026-10-21');
   });
 
-  it('turns off with everything else when the diary is erased', async () => {
-    reminderPref.write({ on: true, time: { hour: 8, minute: 0 } });
+  it('puts the time back when the picker is cleared', async () => {
     const fake = fakeNotifier('granted');
     await mount(fake);
-    await app.save([{ date: '2026-10-17', kg: 100 }]);
-    await settle();
+    time().value = '';
+    time().dispatchEvent(new Event('change'));
+    time().dispatchEvent(new Event('blur'));
+    expect(time().value).toBe('08:00');
+  });
+
+  it('says so when the reminders could not be set', async () => {
+    const fake = fakeNotifier('granted');
+    await mount(fake);
+    fake.state.failReplace = true;
+    await flip(true);
+    expect(status()).toContain("Couldn't set the reminders");
+  });
+
+  it('turns off when everything is erased', async () => {
+    const fake = fakeNotifier('granted');
+    fake.state.setting = { on: true, time: { hour: 8, minute: 0 } };
+    await mount(fake);
     expect(fake.state.pending.length).toBeGreaterThan(0);
     await app.erase();
     await settle();
+    expect(fake.state.setting).toEqual({ on: false, time: { hour: 8, minute: 0 } });
     expect(fake.state.pending).toEqual([]);
   });
 
   it('writes the notification in the reader’s language', async () => {
-    reminderPref.write({ on: true, time: { hour: 8, minute: 0 } });
     const fake = fakeNotifier('granted');
+    fake.state.setting = { on: true, time: { hour: 8, minute: 0 } };
     await mount(fake);
     choose({ lang: 'pt' });
     await settle();
-    expect(fake.state.text?.body).toBe('Hora da pesagem de hoje.');
+    expect(fake.state.text).toEqual({ title: 'Pesagem do dia', body: 'Hora da pesagem de hoje.' });
   });
 
   it('opens the weigh-in from a reminder', async () => {
@@ -111,9 +158,7 @@ describe('the reminder card', () => {
     field.id = 'entry-weight';
     document.body.append(field);
     await mount(fake);
-    fake.state.open.forEach((open) => {
-      open();
-    });
+    for (const open of fake.state.open) open();
     expect(document.activeElement).toBe(field);
   });
 });
