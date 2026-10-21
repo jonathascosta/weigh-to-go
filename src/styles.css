@@ -3190,4 +3190,27 @@ span.cal-none {
     width: auto;
     min-width: 0;
   }
+
+  /* A word breaks only where it must; a date after its slashes (<wbr>). */
+  .table-fit th,
+  .table-fit td {
+    overflow-wrap: break-word;
+  }
+
+  .table-fit .col-narrow {
+    width: 18%;
+  }
+
+  .table-fit .col-mid {
+    width: 20%;
+  }
+
+  .table-fit .col-back {
+    width: 36%;
+  }
+
+  /* A figure's name and its value share the row evenly. */
+  .rows {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  }
 }

@@ -362,7 +362,8 @@ export function mountPercent(
   const options = optionsPanel('pct-options', layout);
   options.panel.classList.add('options-card');
   card.tools.replaceChildren(options.button);
-  card.body.replaceChildren(kpis, chartBlock, weeklyBlock, msBlock, note, options.panel, card.tools);
+  // The chart first, then the figures and the tables (design §5).
+  card.body.replaceChildren(chartBlock, kpis, weeklyBlock, msBlock, note, options.panel, card.tools);
 
   /** Brings every pressed state and the button's words up to date after a choice. */
   let syncOptions: () => void = () => undefined;
@@ -667,7 +668,7 @@ export function mountPercent(
           const p = item.p ?? { t: last.t, v: 0, lo: null, hi: null, h: 0 };
           const rows: TipRow[] = [{ name: '', value: pt(p.v, 2), swatch: SWATCH.projection }];
           if (p.lo !== null && p.hi !== null)
-            rows.push({ name: '', value: m['chart.rangeLabel'](pt(p.lo), pt(p.hi)) });
+            rows.push({ name: '', value: m['card.rangeShort'](pt(p.lo), pt(p.hi)) });
           return { heading: `${readoutDay(isoDay(p.t), f)} · ${m['chart.estimate']}`, rows };
         },
         near: nearDay(

@@ -196,13 +196,18 @@ export function weekdaysSummary(state: State, s: Settings): string {
     if (w.mean > high.mean) high = w;
   }
   const name = (weekday: number) => s.format.day(isoDay(addDays(MONDAY, weekday)), 'weekdayLong');
+  // A fall or a rise as shown (two decimals in the reader's unit): "±0.00" is neither.
+  const way = (kg: number) => {
+    const shown = Math.round(fromKg(kg, unit) * 100);
+    return shown < 0 ? 'fall' : shown > 0 ? 'rise' : 'flat';
+  };
   return m['weekdays.sum']({
     low: name(low.weekday),
     lowChange: f.weightChange(low.mean, unit, 2),
-    lowFalls: low.mean < 0,
+    lowWay: way(low.mean),
     high: name(high.weekday),
     highChange: f.weightChange(high.mean, unit, 2),
-    highRises: high.mean > 0,
+    highWay: way(high.mean),
   });
 }
 

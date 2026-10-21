@@ -26,7 +26,7 @@ import { count, plural, settings, type Settings } from '../i18n';
 import { fromKg } from '../units';
 import type { Disclosure } from './card';
 import { oneChips, optionsSection } from './controls';
-import { h, moreRows, rich, s as svg, tone, type Chip } from './dom';
+import { h, moreRows, rich, s as svg, slashBreaks, tone, type Chip } from './dom';
 import {
   createPlot,
   labelRow,
@@ -463,7 +463,7 @@ export function mountHiccups(
           const x0 = containing(d.t);
           if (x0)
             rows.push({
-              name: m['hiccups.tip.hiccup'],
+              name: '',
               value: m['chart.inDays'](f.weightChange(x0.gain, unit), count(x0.days, m['word.day'], s)),
               swatch: 'sw-up sw-area',
             });
@@ -516,16 +516,16 @@ export function mountHiccups(
         {},
         h('th', { attrs: { scope: 'col' }, text: m['hiccups.col.start'] }),
         h('th', { class: 'col-wide', attrs: { scope: 'col' }, text: m['hiccups.col.peak'] }),
-        h('th', { class: 'num', attrs: { scope: 'col' }, text: m['hiccups.col.days'] }),
+        h('th', { class: 'num col-narrow', attrs: { scope: 'col' }, text: m['hiccups.col.days'] }),
         h('th', {
           class: 'num col-wide',
           attrs: { scope: 'col' },
           // The values are on the line measured: say which.
           text: basis.get() === 'kg' ? m['hiccups.col.weight'] : m[`hiccups.basis.${basis.get()}`],
         }),
-        h('th', { class: 'num', attrs: { scope: 'col' }, text: m['hiccups.col.gain'] }),
+        h('th', { class: 'num col-mid', attrs: { scope: 'col' }, text: m['hiccups.col.gain'] }),
         h('th', { class: 'num col-wide', attrs: { scope: 'col' }, text: m['hiccups.col.gainPct'] }),
-        h('th', { attrs: { scope: 'col' }, text: m['hiccups.col.back'] }),
+        h('th', { class: 'col-back', attrs: { scope: 'col' }, text: m['hiccups.col.back'] }),
       ),
     );
     const moreWords = {
@@ -560,13 +560,13 @@ export function mountHiccups(
             h(
               'tr',
               { attrs: { 'data-key': r.key } },
-              h('th', { attrs: { scope: 'row' }, text: r.start }),
+              h('th', { attrs: { scope: 'row' } }, ...slashBreaks(r.start)),
               h('td', { class: 'col-wide', text: r.peak }),
               h('td', { class: 'num', text: r.days }),
               h('td', { class: 'num col-wide', text: r.weight }),
               h('td', { class: 'num' }, tone(r.gain.text, r.gain.change, FLAT_KG)),
               h('td', { class: 'num col-wide', text: r.gainPct }),
-              h('td', { class: r.back.good ? 'tone-down wrap' : 'wrap', text: r.back.text }),
+              h('td', { class: r.back.good ? 'tone-down wrap' : 'wrap' }, ...slashBreaks(r.back.text)),
             ),
           )),
     );

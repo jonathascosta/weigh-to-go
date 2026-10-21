@@ -327,7 +327,8 @@ export function mountRates(
   const daysPlot = createPlot(redraw);
   const daysTitle = h('h3', { attrs: { id: 'rate-days-title' } });
   const daysNote = h('p', { class: 'note' });
-  const daysBlock = h('div', { class: 'block' }, daysTitle, daysNote, daysPlot.element, daysPlot.live);
+  // The chart first: how to read it under it.
+  const daysBlock = h('div', { class: 'block' }, daysTitle, daysPlot.element, daysPlot.live, daysNote);
 
   const curvePlot = createPlot(redraw);
   const curveTitle = h('h3', { attrs: { id: 'rate-curve-title' } });
@@ -672,14 +673,14 @@ export function mountRates(
             });
           return { heading: f.day(d.day.date, 'long'), rows };
         },
-        // The strip: the day, its rate and the rolling average's.
+        // The strip: the day, its rate (signed as the weight moved) and the rolling average's.
         readout: (i) => {
           const d = at(i);
           const gap = d.day.index - d.previous.index;
-          const pct = f.percent(Math.abs(d.rate) / 100, 3);
+          const pct = f.percentChange(-d.rate / 100, 3);
           const rows: TipRow[] = [
             {
-              name: d.rate >= 0 ? m['rate.tip.loss'] : m['rate.tip.gain'],
+              name: '',
               value: gap > 1 ? m['rate.tip.perDay'](pct) : pct,
               swatch: d.rate >= 0 ? 'sw-down sw-bar' : 'sw-up sw-bar',
             },
@@ -687,8 +688,8 @@ export function mountRates(
           const v = roll(i);
           if (showRolling && v !== null)
             rows.push({
-              name: m['rate.tip.rolling'](count(rateWindow.get(), m['word.day'], s)),
-              value: f.percent(v / 100, 3),
+              name: m['rate.readout.rolling'](f.number(rateWindow.get(), 0)),
+              value: f.percentChange(-v / 100, 3),
               swatch: RATE_SWATCH.rolling,
             });
           return { heading: readoutDay(d.day.date, f), rows };

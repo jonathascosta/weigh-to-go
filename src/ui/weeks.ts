@@ -6,7 +6,7 @@ import { FLAT_KG, type Analysis } from '../analysis/analyze';
 import { isoDay } from '../analysis/dates';
 import type { State } from '../app/app';
 import { count, type Settings } from '../i18n';
-import { h, moreRows, tone } from './dom';
+import { h, moreRows, slashBreaks, tone } from './dom';
 import type { Layout } from './sheet';
 import { dayShort } from './summary';
 
@@ -121,7 +121,7 @@ export function mountWeeks(
             'th',
             { attrs: { scope: 'row' } },
             h('span', { class: 'day-long', text: r.label.long }),
-            h('span', { class: 'day-short', text: r.label.short }),
+            h('span', { class: 'day-short' }, ...slashBreaks(r.label.short)),
           ),
           h('td', { class: 'num', text: r.mean }),
           // The bar is a picture; its words say the low and the high (on a phone, the only place).

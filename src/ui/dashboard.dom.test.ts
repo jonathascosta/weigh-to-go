@@ -593,7 +593,7 @@ describe('Dashboard III', () => {
     await saveDays([100, 99.6, 99.1, 98.9]);
     const charts = () =>
       ['chart-title', 'pct-title', 'rate-title', 'hiccups-title', 'variation-title', 'calendar-title'].map(
-        (id) => section(id).querySelector('svg.chart-svg'),
+        (id) => section(id).querySelector<SVGSVGElement>('svg.chart-svg'),
       );
     const before = charts();
     sectionChip('Calendar').click();
@@ -754,6 +754,111 @@ describe('on a phone, the parts drawn only while they show', () => {
     // Nothing asked earlier opens the paste box now.
     expect(root.querySelector('details.paste')!.hasAttribute('open')).toBe(false);
     expect(document.activeElement).toBe(root.querySelector('#view-data-title'));
+  });
+
+  it('closes the analysis cards to their line, and draws a body only once it opens', () => {
+    go('#analysis');
+    const toggles = [...root.querySelectorAll<HTMLButtonElement>('#view-analysis .acard-toggle')];
+    expect(toggles.map((b) => b.textContent)).toEqual([
+      'Percentage loss',
+      'Compound daily rate',
+      'Hiccups',
+      'BMI',
+      'Facts',
+      'Day-to-day variation',
+      'Weekdays',
+      'Calendar',
+    ]);
+    expect(toggles.every((b) => b.getAttribute('aria-expanded') === 'false')).toBe(true);
+    expect(root.querySelector('#pct-sum')!.textContent).toMatch(/^\d\.\d% lost since /);
+    expect(root.querySelector('#hiccups-sum')!.textContent).toMatch(/^2 climbs back up in 17 days/);
+    // Closed: nothing drawn in the body.
+    expect(svgOf('pct-title')).toBeNull();
+    toggles[0]!.click();
+    const drawn = svgOf('pct-title');
+    expect(drawn).not.toBeNull();
+    // Open across a tab switch, and not drawn again with nothing changed.
+    go('#today');
+    go('#analysis');
+    expect(svgOf('pct-title')).toBe(drawn);
+    expect(root.querySelector('#analysis-empty')!.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('opens a card on Essential, and Detailed adds its blocks and figures', () => {
+    go('#analysis');
+    root.querySelector<HTMLButtonElement>('#pct-toggle')!.click();
+    const card = section('pct-title');
+    const block = (title: string) =>
+      root.querySelector<HTMLElement>(`#${title}`)!.closest<HTMLElement>('.block')!;
+    expect(root.querySelector('#pct-options-button')!.textContent).toBe('Options: Essential');
+    expect(root.querySelector('#pct-options-button')!.getAttribute('aria-haspopup')).toBe('dialog');
+    expect(card.querySelectorAll('.kpi')).toHaveLength(4);
+    expect([block('pct-weekly-title').hidden, block('pct-ms-title').hidden]).toEqual([true, true]);
+    root.querySelector<HTMLButtonElement>('#pct-options-button')!.click();
+    const detailed = [...document.querySelectorAll<HTMLButtonElement>('.sheet button.segment')].find(
+      (b) => b.textContent === 'Detailed',
+    )!;
+    detailed.click();
+    expect(card.querySelectorAll('.kpi')).toHaveLength(6);
+    expect([block('pct-weekly-title').hidden, block('pct-ms-title').hidden]).toEqual([false, false]);
+    expect(root.querySelector('#pct-options-button')!.textContent).toBe('Options: Detailed');
+    // A block turned off makes it Custom.
+    [...document.querySelectorAll<HTMLButtonElement>('.sheet button.toggle')]
+      .find((b) => b.textContent === 'Weekly pace in %')!
+      .click();
+    expect(block('pct-weekly-title').hidden).toBe(true);
+    expect(root.querySelector('#pct-options-button')!.textContent).toBe('Options: Custom');
+    document.querySelector<HTMLButtonElement>('.sheet-head button')!.click();
+    expect(document.activeElement).toBe(root.querySelector('#pct-options-button'));
+    // The compound rate starts on Essential too: the figures and each day's rate.
+    root.querySelector<HTMLButtonElement>('#rate-toggle')!.click();
+    expect(section('rate-title').querySelectorAll('.kpi')).toHaveLength(4);
+    expect(root.querySelector('#sim-rate')!.closest<HTMLElement>('.block')!.hidden).toBe(true);
+    expect(root.querySelector('#rate-curve-title')!.closest<HTMLElement>('.block')!.hidden).toBe(true);
+  });
+
+  it('says where to show the cards when every one is hidden', () => {
+    go('#analysis');
+    const bar = [...root.querySelectorAll<HTMLButtonElement>('nav.sections button.chip')];
+    for (const name of ['Percentage loss', 'Compound daily rate', 'Hiccups', 'BMI', 'Facts'])
+      bar.find((b) => b.textContent === name)!.click();
+    const message = root.querySelector<HTMLElement>('.all-hidden')!;
+    expect(message.hidden).toBe(true);
+    for (const name of ['Daily variation', 'Weekdays', 'Calendar'])
+      bar.find((b) => b.textContent === name)!.click();
+    expect(message.hidden).toBe(false);
+    expect(message.textContent).toBe('Every analysis card is hidden. Show them in Your data › Settings');
+    expect(message.querySelector('a')!.getAttribute('href')).toBe('#data');
+  });
+
+  it('shows the last 4 weeks on Progress, and 20 more at a time', async () => {
+    await app.save(
+      Array.from({ length: 60 }, (_, i) => ({
+        date: new Date(Date.UTC(2025, 7, 4) + i * 7 * 86_400_000).toISOString().slice(0, 10),
+        kg: 100 - i * 0.1,
+      })),
+    );
+    await settle();
+    go('#progress');
+    const rows = () =>
+      [...section('weeks-title').querySelectorAll<HTMLElement>('tbody tr')].filter((r) => !r.hidden);
+    expect(rows()).toHaveLength(4);
+    const more = section('weeks-title').querySelector('.more-row')!;
+    expect(more.textContent).toMatch(/^4 of \d+ weeksShow more$/);
+    more.querySelector('button')!.click();
+    expect(rows()).toHaveLength(24);
+    expect(document.activeElement).toBe(rows()[4]!.querySelector('th'));
+  });
+
+  it('says on Progress and Analysis what appears from the second weigh-in', async () => {
+    await app.erase();
+    await settle();
+    go('#analysis');
+    const empty = root.querySelector<HTMLElement>('#analysis-empty')!;
+    expect(empty.hidden).toBe(false);
+    expect(empty.textContent).toBe('The analysis cards appear from the second weigh-in.Log a weigh-in');
+    expect(empty.querySelector('a')!.getAttribute('href')).toBe('#today');
+    expect(root.querySelector<HTMLElement>('#progress-empty')!.hidden).toBe(false);
   });
 
   function section(id: string) {

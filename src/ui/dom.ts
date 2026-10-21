@@ -63,6 +63,14 @@ export function rich(text: string): (string | HTMLElement)[] {
     .map((part, i) => (i % 2 === 1 ? h('b', { text: part }) : part));
 }
 
+/**
+ * A date in a narrow cell may break after its slashes ("10/10/" and "2026"), not in its digits:
+ * `<wbr>` after each one.
+ */
+export function slashBreaks(text: string): (string | HTMLElement)[] {
+  return text.split('/').flatMap((part, i, all) => (i < all.length - 1 ? [`${part}/`, h('wbr')] : [part]));
+}
+
 /** Text with a tone for a change in weight: its direction, down when it falls, up when it rises. */
 export function tone(text: string, change: number | null, flat = 0): HTMLElement {
   const kind = change === null || Math.abs(change) <= flat ? 'flat' : change < 0 ? 'down' : 'up';

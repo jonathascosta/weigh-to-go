@@ -164,14 +164,14 @@ export interface CalendarSumParts {
 
 /** The parts of the Weekdays card's line, formatted. */
 export interface WeekdaySumParts {
-  /** The weekday of the lowest mean change, the change, and whether it is a fall. */
+  /** The weekday of the lowest mean change, the change, and its direction as shown. */
   readonly low: string;
   readonly lowChange: string;
-  readonly lowFalls: boolean;
-  /** The weekday of the highest, and whether it is a rise. */
+  readonly lowWay: 'fall' | 'rise' | 'flat';
+  /** The weekday of the highest. */
   readonly high: string;
   readonly highChange: string;
-  readonly highRises: boolean;
+  readonly highWay: 'fall' | 'rise' | 'flat';
 }
 
 const enCalendarSum = (p: CalendarSumParts): string => {
@@ -945,6 +945,8 @@ export const en = {
   'empty.analysis': 'The analysis cards appear from the second weigh-in.',
   'empty.log': 'Log a weigh-in',
   'card.options': 'Options',
+  'card.rangeShort': (lo: string, hi: string) => `likely ${lo}–${hi}`,
+  'rate.readout.rolling': (days: string) => `${days}-day average`,
   'card.rules': 'Rules',
   'card.optionsOf': (title: string) => `Options: ${title}`,
   'card.blocks': 'Show',
@@ -998,8 +1000,8 @@ export const en = {
     `A typical day moves **±${typical}**; 8 days in 10 stay within ±${within}.`,
   'variation.sumNeeds': 'Appears once there are weigh-ins on consecutive days.',
   'weekdays.sum': (p: WeekdaySumParts) =>
-    `${p.lowFalls ? 'Biggest fall' : 'Smallest rise'}: **${p.low}** (${p.lowChange} on average); ` +
-    `${p.highRises ? 'biggest rise' : 'smallest fall'}: **${p.high}** (${p.highChange}).`,
+    `${p.lowWay === 'fall' ? 'Biggest fall' : p.lowWay === 'rise' ? 'Smallest rise' : 'Lowest'}: **${p.low}** (${p.lowChange} on average); ` +
+    `${p.highWay === 'rise' ? 'biggest rise' : p.highWay === 'fall' ? 'smallest fall' : 'highest'}: **${p.high}** (${p.highChange}).`,
   'weekdays.sumNeeds': 'Needs two weeks of weigh-ins.',
   'calendar.sum': enCalendarSum,
   'log.title': 'Weigh-ins',
@@ -1808,6 +1810,8 @@ export const pt: Messages = {
   'empty.analysis': 'Os cartões de análise aparecem a partir da segunda pesagem.',
   'empty.log': 'Registrar pesagem',
   'card.options': 'Opções',
+  'card.rangeShort': (lo: string, hi: string) => `provável ${lo}–${hi}`,
+  'rate.readout.rolling': (days: string) => `Média de ${days} dias`,
   'card.rules': 'Regras',
   'card.optionsOf': (title: string) => `Opções: ${title}`,
   'card.blocks': 'Mostrar',
@@ -1861,8 +1865,8 @@ export const pt: Messages = {
     `Num dia típico o peso muda **±${typical}**; 8 em cada 10 dias ficam dentro de ±${within}.`,
   'variation.sumNeeds': 'Aparece quando houver pesagens em dias seguidos.',
   'weekdays.sum': (p: WeekdaySumParts) =>
-    `${p.lowFalls ? 'Maior queda' : 'Menor alta'}: **${p.low}** (${p.lowChange} em média); ` +
-    `${p.highRises ? 'maior alta' : 'menor queda'}: **${p.high}** (${p.highChange}).`,
+    `${p.lowWay === 'fall' ? 'Maior queda' : p.lowWay === 'rise' ? 'Menor alta' : 'Mais baixo'}: **${p.low}** (${p.lowChange} em média); ` +
+    `${p.highWay === 'rise' ? 'maior alta' : p.highWay === 'fall' ? 'menor queda' : 'mais alto'}: **${p.high}** (${p.highChange}).`,
   'weekdays.sumNeeds': 'Precisa de duas semanas de pesagens.',
   'calendar.sum': ptCalendarSum,
   'log.title': 'Registros',
