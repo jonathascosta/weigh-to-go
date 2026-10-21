@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { Plugin } from 'vite';
 import capacitor from '../capacitor.config';
 import viteConfig from '../vite.config';
+import { markInApp } from './in-app.mjs';
 
 const read = (path: string): string => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const project = read('ios/App/App.xcodeproj/project.pbxproj');
@@ -99,5 +100,28 @@ describe('the iPhone app', () => {
     expect(names('ios')).not.toContain('weigh-to-go-service-worker');
     expect(config('ios').build.outDir).toBe('dist-ios');
     expect(config('production').build.outDir).toBe('dist');
+  });
+});
+
+describe("the app's pages", () => {
+  it('say they are the app on <html>, before any script runs', () => {
+    expect(markInApp('<!doctype html>\n<html lang="en">\n<head>')).toContain(
+      '<html lang="en" class="in-app">',
+    );
+    expect(markInApp('<html class="x" lang="pt-BR">')).toBe('<html class="x in-app" lang="pt-BR">');
+    expect(markInApp('<html class="in-app">')).toBe('<html class="in-app">');
+    expect(() => markInApp('<body></body>')).toThrow();
+  });
+
+  it('are marked in the ios build only', () => {
+    const plugins = (mode: string) => {
+      const config = (viteConfig as (env: { mode: string; command: 'build' }) => { plugins?: unknown[] })({
+        mode,
+        command: 'build',
+      });
+      return (config.plugins ?? []).map((p) => (p as Plugin).name);
+    };
+    expect(plugins('ios')).toContain('in-app-class');
+    expect(plugins('production')).not.toContain('in-app-class');
   });
 });

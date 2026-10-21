@@ -54,6 +54,8 @@ export interface Dashboard {
   readonly settingsBox: HTMLElement;
   /** The top of Today, for notices (the update notice). */
   readonly notices: HTMLElement;
+  /** Lets go of the listeners on the page (for tests). */
+  readonly dispose: () => void;
 }
 
 export function mountDashboard(root: HTMLElement, app: App, options: DashboardOptions = {}): Dashboard {
@@ -65,6 +67,9 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
 
   const notices = h('div', { class: 'notices' });
   const notice = h('div', { class: 'notice', attrs: { role: 'status', hidden: true } });
+  // The reload notice again at the top of Your data, on a phone: its actions are what bring it up,
+  // and the app's wording sends the person to "Try again at the top".
+  const dataNotice = h('div', { class: 'notice data-notice', attrs: { role: 'status', hidden: true } });
   // An installed app with nothing in it: its data may be in the browser, which it doesn't share.
   const installText = h('p');
   const installHint = h('div', { class: 'notice', attrs: { role: 'status', hidden: true } }, installText);
@@ -150,6 +155,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     ),
   );
   views.data.append(
+    dataNotice,
     h(
       'div',
       { class: 'data-layout' },
@@ -205,9 +211,16 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   add(
     null,
     null,
-    mountNotices(notice, backupLine, (due) => {
-      shell.setBackupDue(due);
-    }),
+    mountNotices(
+      { today: notice, data: dataNotice, line: backupLine },
+      (due) => {
+        shell.setBackupDue(due);
+      },
+      // The backup line's link lands on Export backup itself, not a screen away from it.
+      () => {
+        shell.goTo('data', () => data.querySelector<HTMLElement>('#data-export'));
+      },
+    ),
   );
   add('today', null, renderSummary({ period, take, kpis: el.kpis }));
   const weighIn = mountEntry(entry, app);
@@ -245,16 +258,15 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   add('data', null, mountData(data, app));
   const paste = mountPaste(pasteCard, app);
   add('data', null, paste.draw);
-  // The empty diary's link opens the paste box itself, once Your data shows.
-  let pasteAsked = false;
-  pasteLink.addEventListener('click', () => {
-    pasteAsked = true;
-    // On the one page Your data already shows: after the link's own scroll.
-    if (shell.isWide())
-      setTimeout(() => {
-        pasteAsked = false;
-        paste.open();
-      }, 0);
+  // The empty diary's links land on what they name in Your data: the paste box, opened, and
+  // Import backup.
+  pasteLink.addEventListener('click', (event) => {
+    event.preventDefault();
+    shell.goTo('data', paste.open);
+  });
+  importLink.addEventListener('click', (event) => {
+    event.preventDefault();
+    shell.goTo('data', () => data.querySelector<HTMLElement>('#data-import'));
   });
   // The reminder plans the phone's notifications from the days logged, and Health's card follows
   // the store: both follow every change, wherever the person is.
@@ -319,26 +331,39 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     for (const part of parts) part.dirty = true;
     drawShown();
   };
-  app.subscribe((state) => {
-    render(state, settings());
-  });
-  onSettingsChange((s) => {
-    render(app.state(), s);
-  });
-  // Choices made in another tab show up here too.
-  watchView(window, () => {
-    render(app.state(), settings());
-  });
-  shell.onView((view) => {
-    // Leaving Today ends the saved notice: back there, the card offers the field again.
-    if (view !== 'today') weighIn.leave();
-    drawShown();
-    if (view === 'data' && pasteAsked) {
-      pasteAsked = false;
-      paste.open();
-    }
-  });
-  shell.onWide(drawShown);
+  let loaded = false;
+  const stops = [
+    app.subscribe((state) => {
+      render(state, settings());
+      // Drawn with what the diary holds: an address naming a part below can be scrolled to now.
+      if (!loaded && state.status === 'ready') {
+        loaded = true;
+        shell.ready();
+      }
+    }),
+    onSettingsChange((s) => {
+      render(app.state(), s);
+    }),
+    // Choices made in another tab show up here too.
+    watchView(window, () => {
+      render(app.state(), settings());
+    }),
+    shell.onView((view) => {
+      // Leaving Today ends the saved notice: back there, the card offers the field again.
+      if (view !== 'today') weighIn.leave();
+      drawShown();
+    }),
+    shell.onWide(drawShown),
+  ];
 
-  return { shell, settingsBox, notices };
+  return {
+    shell,
+    settingsBox,
+    notices,
+    dispose: () => {
+      for (const stop of stops) stop();
+      weighIn.dispose();
+      shell.dispose();
+    },
+  };
 }

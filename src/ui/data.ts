@@ -83,7 +83,7 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
   const title = h('h2', { attrs: { id: 'data-title' } });
   const note = h('p', { class: 'note' });
   const last = h('p', { class: 'note' });
-  const exportButton = h('button', { class: 'button', attrs: { type: 'button' } });
+  const exportButton = h('button', { class: 'button', attrs: { type: 'button', id: 'data-export' } });
   const csvButton = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
   const csvLabel = h('label', { attrs: { for: 'data-csv-format' } });
   const csvFormat = h('select', { attrs: { id: 'data-csv-format' } });
@@ -103,7 +103,10 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
       'aria-hidden': 'true',
     },
   });
-  const importButton = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
+  const importButton = h('button', {
+    class: 'button button-ghost',
+    attrs: { type: 'button', id: 'data-import' },
+  });
   importButton.addEventListener('click', () => {
     fileInput.click();
   });
@@ -395,24 +398,42 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
 }
 
 /**
- * The notices about the data, on Today: kept only in memory, unreachable until a reload, or set
- * aside are full notices in `box`, at the top; a backup due is one line, `line`, with a link to Your
- * data, and `onBackupDue` puts the dot on its tab. Each is redrawn, and announced again, only when
- * it changes.
+ * The notices about the data. Kept only in memory, unreachable until a reload, or set aside are full
+ * notices at the top of Today (`boxes.today`); the reload one, with its button, also at the top of
+ * Your data (`boxes.data`), whose actions are what bring it up. A backup due is one line on Today,
+ * `boxes.line`, with a link that `onExportLink` follows to Export backup, and `onBackupDue` puts the
+ * dot on Your data's tab. Each is redrawn, and announced again, only when it changes.
  */
 export function mountNotices(
-  box: HTMLElement,
-  line: HTMLElement,
+  boxes: { readonly today: HTMLElement; readonly data: HTMLElement; readonly line: HTMLElement },
   onBackupDue: (due: boolean) => void,
+  onExportLink: () => void,
 ): (state: State, s: Settings) => void {
+  const { today: box, data: dataBox, line } = boxes;
   const lineText = h('span');
   const lineLink = h('a', { attrs: { href: '#data' } });
+  lineLink.addEventListener('click', (event) => {
+    event.preventDefault();
+    onExportLink();
+  });
   line.replaceChildren(
     h('span', { class: 'dot-inline', attrs: { 'aria-hidden': 'true' } }),
     h('span', {}, lineText, ' ', lineLink),
   );
   line.hidden = true;
   box.hidden = true;
+  dataBox.hidden = true;
+  const reloadNotice = (m: Settings['messages']): Node[] => {
+    const reload = h('button', {
+      class: 'button',
+      attrs: { type: 'button' },
+      text: m['notice.reloadButton'],
+    });
+    reload.addEventListener('click', () => {
+      window.location.reload();
+    });
+    return [h('p', { text: m['notice.reload'] }), reload];
+  };
   let shown = '';
   return (state, s) => {
     const m = s.messages;
@@ -430,24 +451,15 @@ export function mountNotices(
           : m['notice.oldBackup'](count(notice.days, m['word.day'], s));
       lineLink.textContent = m['data.export'];
     }
+    dataBox.hidden = notice?.kind !== 'reload';
+    dataBox.replaceChildren(...(notice?.kind === 'reload' ? reloadNotice(m) : []));
     if (notice === null || notice.kind === 'backup') {
       box.replaceChildren();
       box.hidden = true;
       return;
     }
     box.hidden = false;
-    if (notice.kind === 'reload') {
-      const reload = h('button', {
-        class: 'button',
-        attrs: { type: 'button' },
-        text: m['notice.reloadButton'],
-      });
-      reload.addEventListener('click', () => {
-        window.location.reload();
-      });
-      box.replaceChildren(h('p', { text: m['notice.reload'] }), reload);
-    } else {
-      box.replaceChildren(h('p', { text: m[`notice.${notice.kind}`] }));
-    }
+    if (notice.kind === 'reload') box.replaceChildren(...reloadNotice(m));
+    else box.replaceChildren(h('p', { text: m[`notice.${notice.kind}`] }));
   };
 }

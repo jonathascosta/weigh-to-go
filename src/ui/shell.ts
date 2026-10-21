@@ -16,7 +16,7 @@ export const VIEWS = ['today', 'progress', 'analysis', 'data'] as const;
 export type View = (typeof VIEWS)[number];
 
 /** The one breakpoint between the tabs and the one page. */
-export const WIDE_QUERY = '(min-width: 960px)';
+export const WIDE_QUERY = '(width >= 960px)';
 
 const BRAND = 'Weigh to Go';
 
@@ -69,11 +69,21 @@ export interface Shell {
   place(node: HTMLElement, wide: Spot, narrow: Spot): void;
   /** Shows or hides the dot on Your data that says a backup is due. */
   setBackupDue(due: boolean): void;
+  /**
+   * Goes to `view`, as its link does, and puts focus on what `target` gives (scrolled to it) once
+   * the view shows, instead of on its heading: a link to a control in another view.
+   */
+  goTo(view: View, target?: () => HTMLElement | null): void;
+  /** Says the diary has drawn what it had: an address that names a part is scrolled to again. */
+  ready(): void;
+  /** Lets go of the listeners on the page (for tests). */
+  dispose(): void;
 }
 
-/** The route a hash names, or null for any other hash. */
+/** The route a hash names (no hash at all is Today), or null for any other hash. */
 export const routeOf = (hash: string): View | null => {
   const name = hash.replace(/^#/, '');
+  if (name === '') return 'today';
   return VIEWS.find((v) => v === name) ?? null;
 };
 
@@ -114,12 +124,14 @@ export function mountShell(root: HTMLElement, nav: HTMLElement, win: Window = wi
     labels[v] = h('span', { class: 'tab-label' });
     const icon = s('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' });
     icon.append(...ICONS[v]());
+    // The dot sits on the icon, wherever the layout puts the icon.
+    const iconBox = h('span', { class: 'tab-icon' }, icon, v === 'data' ? dot : null);
     links[v] = h(
       'a',
       { attrs: { href: `#${v}`, 'data-view': v } },
-      icon,
+      iconBox,
       labels[v],
-      ...(v === 'data' ? [dot, dueText] : []),
+      v === 'data' ? dueText : null,
     );
   }
   nav.replaceChildren(...VIEWS.map((v) => links[v]));
@@ -137,6 +149,17 @@ export function mountShell(root: HTMLElement, nav: HTMLElement, win: Window = wi
   let wide = isWide();
 
   let current: View = routeOf(win.location.hash) ?? 'today';
+  const cleanups: (() => void)[] = [];
+  const listen = (
+    target: Pick<EventTarget, 'addEventListener' | 'removeEventListener'>,
+    type: string,
+    listener: (event: Event) => void,
+  ) => {
+    target.addEventListener(type, listener);
+    cleanups.push(() => {
+      target.removeEventListener(type, listener);
+    });
+  };
   /** On the one page, the view in sight, as the header's links say. */
   let inSight: View = current;
   const scrolls = new Map<View, number>();
@@ -191,7 +214,7 @@ export function mountShell(root: HTMLElement, nav: HTMLElement, win: Window = wi
     setTitle(m);
   };
   words(settings());
-  onSettingsChange(words);
+  cleanups.push(onSettingsChange(words));
 
   /** Moves `node` to `spot`, keeping focus on what had it. */
   const move = (node: HTMLElement, spot: Spot) => {
@@ -209,25 +232,62 @@ export function mountShell(root: HTMLElement, nav: HTMLElement, win: Window = wi
   const viewOf = (node: Node | null): View | null =>
     VIEWS.find((v) => node !== null && views[v].contains(node)) ?? null;
 
-  /** Shows `next`, as a page on a phone or by scrolling to it on the one page. */
-  const route = (next: View, focus: boolean) => {
-    if (!wide) scrolls.set(current, win.scrollY);
+  /**
+   * Shows `next`, as a page on a phone or by scrolling to it on the one page, and puts focus on its
+   * heading, or on what `target` gives. The view chosen again on a phone goes back to its top, as
+   * on iOS.
+   */
+  const route = (next: View, focus: boolean, target?: () => HTMLElement | null) => {
     const changed = next !== current;
+    if (!wide && changed) scrolls.set(current, win.scrollY);
     current = next;
     inSight = next;
     show();
     // The parts of the view that appears are drawn before its place is restored.
     if (changed) notify(viewListeners, next);
     if (wide) views[next].scrollIntoView({ block: 'start' });
-    else win.scrollTo(0, scrolls.get(next) ?? 0);
-    // Unless what was drawn already took focus there (a box opened by the link that came here).
-    if (focus && !views[next].contains(doc.activeElement))
+    else win.scrollTo(0, changed ? (scrolls.get(next) ?? 0) : 0);
+    if (!focus) return;
+    const element = target?.() ?? null;
+    if (element) {
+      element.focus({ preventScroll: true });
+      element.scrollIntoView({ block: 'center' });
+    } else {
       headingOf(views[next])?.focus({ preventScroll: true });
+    }
   };
 
-  win.addEventListener('hashchange', () => {
+  /** Goes to `next` as a link does: a history entry when the address changes, a route always. */
+  const goTo = (next: View, target?: () => HTMLElement | null) => {
+    if (routeOf(win.location.hash) !== next || win.location.hash === '') {
+      try {
+        win.history.pushState(null, '', `#${next}`);
+      } catch {
+        // Without history (a sandboxed frame), the view still changes.
+      }
+    }
+    route(next, true, target);
+  };
+
+  // Back and Forward: the address names the view (none at all is Today); any other hash, such as
+  // the skip link's #main, is the browser's own.
+  const followAddress = () => {
     const next = routeOf(win.location.hash);
-    if (next) route(next, true);
+    if (next && next !== current) route(next, true);
+  };
+  listen(win, 'hashchange', followAddress);
+  listen(win, 'popstate', followAddress);
+
+  // A link to a view is followed here, not by the browser: one whose hash is already the address
+  // (chosen again, or left stale by a change of width) still goes there.
+  listen(doc, 'click', (event) => {
+    if (!(event instanceof MouseEvent) || event.defaultPrevented || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = event.target instanceof Element ? event.target.closest('a[href^="#"]') : null;
+    const next = link ? routeOf(link.getAttribute('href') ?? '') : null;
+    if (!link || !next || link.getAttribute('href') === '#') return;
+    event.preventDefault();
+    goTo(next);
   });
 
   /**
@@ -260,24 +320,38 @@ export function mountShell(root: HTMLElement, nav: HTMLElement, win: Window = wi
     else if (wide) views[current].scrollIntoView({ block: 'start' });
     else win.scrollTo(0, 0);
   };
-  // Old Safari's lists have no addEventListener: there the layout stays as it opened.
-  if (typeof wideQuery?.addEventListener === 'function') wideQuery.addEventListener('change', changeWidth);
+  if (wideQuery) {
+    if (typeof wideQuery.addEventListener === 'function') listen(wideQuery, 'change', changeWidth);
+    else {
+      // Safari before 14 has only the older form.
+      const old = wideQuery as unknown as {
+        addListener?: (listener: () => void) => void;
+        removeListener?: (listener: () => void) => void;
+      };
+      old.addListener?.(changeWidth);
+      cleanups.push(() => old.removeListener?.(changeWidth));
+    }
+  }
 
   // The bar grows with the text size and with labels that wrap; the page's room for it follows
   // what it measures. Hidden while typing it measures 0, and the last real height is kept.
   if (typeof ResizeObserver === 'function') {
-    new ResizeObserver(() => {
+    const bar = new ResizeObserver(() => {
       if (wide) return;
       const height = Math.ceil(nav.getBoundingClientRect().height);
       if (height > 0) html.style.setProperty('--tab-h', `${String(height)}px`);
-    }).observe(nav);
+    });
+    bar.observe(nav);
+    cleanups.push(() => {
+      bar.disconnect();
+    });
   }
 
   // While a text field has focus the keypad is up: the bar steps aside.
-  doc.addEventListener('focusin', (event) => {
+  listen(doc, 'focusin', (event) => {
     if (event.target instanceof Element && event.target.matches(TYPING)) html.classList.add('typing');
   });
-  doc.addEventListener('focusout', () => {
+  listen(doc, 'focusout', () => {
     html.classList.remove('typing');
   });
 
@@ -302,15 +376,21 @@ export function mountShell(root: HTMLElement, nav: HTMLElement, win: Window = wi
       { rootMargin: '-30% 0px -60% 0px' },
     );
     for (const v of VIEWS) sight.observe(views[v]);
+    cleanups.push(() => {
+      sight.disconnect();
+    });
   }
 
   show();
+  /**
+   * Opened at an address that names a part, on the one page: scrolled to it now, and again once
+   * the diary has drawn what it holds above it, unless the reader has scrolled since.
+   */
+  let opened: { view: View; y: number } | null = null;
   if (wide && current !== 'today') {
-    // Opened at a route on the one page: that part, once there is something to scroll to.
-    const opened = current;
-    win.requestAnimationFrame(() => {
-      views[opened].scrollIntoView({ block: 'start' });
-    });
+    const view = current;
+    views[view].scrollIntoView({ block: 'start' });
+    opened = { view, y: win.scrollY };
   }
 
   return {
@@ -332,6 +412,16 @@ export function mountShell(root: HTMLElement, nav: HTMLElement, win: Window = wi
     place: (node, wideSpot, narrowSpot) => {
       places.push({ node, wide: wideSpot, narrow: narrowSpot });
       move(node, wide ? wideSpot : narrowSpot);
+    },
+    goTo,
+    ready: () => {
+      const was = opened;
+      opened = null;
+      if (!was || !wide || Math.abs(win.scrollY - was.y) > 2) return;
+      views[was.view].scrollIntoView({ block: 'start' });
+    },
+    dispose: () => {
+      for (const cleanup of cleanups.splice(0)) cleanup();
     },
     setBackupDue: (now) => {
       due = now;

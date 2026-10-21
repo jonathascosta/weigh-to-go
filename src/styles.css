@@ -267,11 +267,15 @@ main {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
   font-size: 0.875rem;
   color: var(--muted);
 }
 
+/* A long value ("Automático (Português)" at 150%) stays in its card. */
 .setting select {
+  min-width: 0;
   max-width: 100%;
 }
 
@@ -328,9 +332,18 @@ main {
   stroke-width: 2.4;
 }
 
-/* A backup is due: a dot on Your data's icon (the link's name says it too). */
+/* A backup is due: a dot on Your data's icon (the link's name says it too), placed on the icon
+   in every layout. */
+.tab-icon {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
 .tabs .dot {
   position: absolute;
+  top: -3px;
+  right: -5px;
   width: 9px;
   height: 9px;
   border-radius: 50%;
@@ -431,7 +444,7 @@ main {
   display: none;
 }
 
-:root.app .ad-space {
+:root.in-app .ad-space {
   display: block;
   position: fixed;
   z-index: 40;
@@ -441,7 +454,7 @@ main {
 }
 
 /* A phone, or any narrow window: one view at a time, the bar at the bottom. */
-@media (max-width: 959.98px) {
+@media (width < 960px) {
   html {
     scroll-padding-bottom: calc(var(--tab-h) + 12px);
   }
@@ -495,11 +508,6 @@ main {
     background: var(--accent);
   }
 
-  .tabs .dot {
-    top: 7px;
-    left: calc(50% + 6px);
-  }
-
   /* While a text field has focus the keypad is up: the bar steps aside. */
   :root.typing .tabs {
     display: none;
@@ -507,7 +515,7 @@ main {
 }
 
 /* A phone held sideways: a lower bar, the icon beside the label. */
-@media (max-width: 959.98px) and (orientation: landscape) and (max-height: 500px) {
+@media (width < 960px) and (orientation: landscape) and (max-height: 500px) {
   .tabs a {
     flex-direction: row;
     min-height: 44px;
@@ -521,7 +529,7 @@ main {
 }
 
 /* The desktop: one page in the same four parts, the tab names as links in a header that stays. */
-@media (min-width: 960px) {
+@media (width >= 960px) {
   .site-header {
     position: sticky;
     top: 0;
@@ -562,9 +570,9 @@ main {
     height: 20px;
   }
 
-  .tabs .dot {
-    top: 6px;
-    left: 26px;
+  /* On the one page the reload notice is at the top already. */
+  .data-notice {
+    display: none;
   }
 
   .app {
@@ -584,7 +592,7 @@ main {
 }
 
 /* A wide screen with a finger (an iPad, later) keeps the 44 px targets. */
-@media (min-width: 960px) and (pointer: coarse) {
+@media (width >= 960px) and (pointer: coarse) {
   .tabs a {
     min-height: 44px;
   }
@@ -891,7 +899,7 @@ main {
 
 /* On touch, below the one page: a chip that says the day, the native input over it, transparent,
    so a tap opens the system's picker. The input is the control; the chip's text is only seen. */
-@media (pointer: coarse) and (max-width: 959.98px) {
+@media (pointer: coarse) and (width < 960px) {
   .date-control {
     position: relative;
     flex-direction: row;
@@ -956,7 +964,8 @@ main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr);
   gap: 4px 10px;
-  align-items: end;
+  /* The field and Save share their row's height, whichever is the taller at the text size. */
+  align-items: stretch;
 }
 
 .entry-form > label {
@@ -968,7 +977,7 @@ main {
 .entry-form .with-unit {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 0;
 }
 
@@ -992,7 +1001,9 @@ main {
 
 .entry-form .unit-tag {
   position: absolute;
+  top: 50%;
   right: 10px;
+  transform: translateY(-50%);
   font-size: min(1rem, 20px);
   font-weight: 400;
   color: var(--muted);

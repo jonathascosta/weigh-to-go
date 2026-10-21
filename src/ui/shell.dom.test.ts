@@ -11,9 +11,12 @@ function media(wide: boolean) {
   const list = {
     matches: wide,
     addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+    removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
   };
   vi.stubGlobal('matchMedia', (query: string) =>
-    query === WIDE_QUERY ? list : { matches: false, addEventListener: () => undefined },
+    query === WIDE_QUERY
+      ? list
+      : { matches: false, addEventListener: () => undefined, removeEventListener: () => undefined },
   );
   return {
     set: (now: boolean) => {
@@ -35,6 +38,9 @@ function observer() {
       observe() {
         return undefined;
       }
+      disconnect() {
+        return undefined;
+      }
     },
   );
   return () => {
@@ -49,7 +55,13 @@ const go = (hash: string) => {
 
 let root: HTMLElement;
 let nav: HTMLElement;
-const mount = (): Shell => mountShell(root, nav);
+let mounted: Shell | null = null;
+const mount = (): Shell => (mounted = mountShell(root, nav));
+const tap = (view: string) => {
+  nav
+    .querySelector<HTMLAnchorElement>(`a[href="#${view}"]`)!
+    .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+};
 
 beforeEach(() => {
   resetSettings();
@@ -63,6 +75,8 @@ beforeEach(() => {
   document.body.replaceChildren(nav, root);
 });
 afterEach(() => {
+  mounted?.dispose();
+  mounted = null;
   resetSettings();
   vi.unstubAllGlobals();
 });
@@ -74,14 +88,15 @@ const shown = (shell: Shell) =>
 
 describe('routes', () => {
   it('reads only the four views from a hash', () => {
-    expect(['#today', '#progress', '#analysis', '#data', '#main', '', '#view-today'].map(routeOf)).toEqual([
+    expect(['#today', '#progress', '#analysis', '#data', '#main', '#view-today', ''].map(routeOf)).toEqual([
       'today',
       'progress',
       'analysis',
       'data',
       null,
       null,
-      null,
+      // No hash at all is Today.
+      'today',
     ]);
   });
 
@@ -138,6 +153,70 @@ describe('routes', () => {
     go('#analysis');
     expect(scrollTo).toHaveBeenLastCalledWith(0, 900);
     expect(history.scrollRestoration).toBe('manual');
+  });
+
+  it('goes back to Today when the address loses its hash (Back to /)', () => {
+    media(false);
+    const shell = mount();
+    go('#analysis');
+    history.pushState(null, '', window.location.pathname);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    expect(shown(shell)).toEqual(['today']);
+    expect(document.activeElement).toBe(shell.views.today.querySelector('h1'));
+  });
+
+  it('follows a tab itself, adding a history entry, and takes the current one back to its top', () => {
+    media(false);
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    let y = 0;
+    vi.spyOn(window, 'scrollY', 'get').mockImplementation(() => y);
+    const shell = mount();
+    tap('analysis');
+    expect(shown(shell)).toEqual(['analysis']);
+    expect(window.location.hash).toBe('#analysis');
+    expect(document.activeElement).toBe(shell.views.analysis.querySelector('h1'));
+    y = 700;
+    scrollTo.mockClear();
+    // The current tab again: back to the top of its view, as on iOS.
+    tap('analysis');
+    expect(scrollTo).toHaveBeenLastCalledWith(0, 0);
+    expect(shown(shell)).toEqual(['analysis']);
+  });
+
+  it('scrolls to a part chosen again on the one page', () => {
+    media(true);
+    const scroll = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => undefined);
+    const shell = mount();
+    tap('analysis');
+    tap('analysis');
+    expect(scroll.mock.contexts.filter((el) => el === shell.views.analysis)).toHaveLength(2);
+  });
+
+  it('follows a tab whose hash went stale while the page was one', () => {
+    const width = media(true);
+    vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => undefined);
+    const shell = mount();
+    go('#analysis');
+    // Read further down the one page, then narrowed with focus in Your data.
+    const field = h('input', { attrs: { type: 'text' } });
+    shell.views.data.append(field);
+    field.focus();
+    width.set(false);
+    expect(shown(shell)).toEqual(['data']);
+    expect(window.location.hash).toBe('#analysis');
+    tap('analysis');
+    expect(shown(shell)).toEqual(['analysis']);
+  });
+
+  it('goes to a control in another view, focusing it rather than the heading', () => {
+    media(false);
+    const shell = mount();
+    const button = h('button', { attrs: { type: 'button' }, text: 'Import backup' });
+    shell.views.data.append(button);
+    shell.goTo('data', () => button);
+    expect(shown(shell)).toEqual(['data']);
+    expect(document.activeElement).toBe(button);
+    expect(window.location.hash).toBe('#data');
   });
 
   it('opens at the view in the address', () => {

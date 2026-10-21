@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
 import { devPolicy, injectPolicy } from './scripts/csp.mjs';
+import { markInApp } from './scripts/in-app.mjs';
 import { serviceWorker } from './scripts/service-worker.mjs';
 
 const { version } = JSON.parse(readFileSync(new URL('package.json', import.meta.url), 'utf8')) as {
@@ -18,13 +19,18 @@ function securityPolicy(): Plugin {
   };
 }
 
+// The app's pages carry class="in-app" on <html> before the first paint (scripts/in-app.mjs).
+function inAppClass(): Plugin {
+  return { name: 'in-app-class', transformIndexHtml: (html) => markInApp(html) };
+}
+
 // `vite build --mode ios` is the iPhone app's build (docs/sprint-3.md): the same pages into dist-ios/,
 // which Capacitor copies into the Xcode project, without the service worker (it doesn't run in
 // Capacitor's web view, and the app's files are on the phone already).
 export default defineConfig(({ mode }) => ({
   // Like GitHub Pages: each page is its own file, and an unknown path is no page (not the home one).
   appType: 'mpa',
-  plugins: mode === 'ios' ? [securityPolicy()] : [securityPolicy(), serviceWorker()],
+  plugins: mode === 'ios' ? [securityPolicy(), inAppClass()] : [securityPolicy(), serviceWorker()],
   build: {
     outDir: mode === 'ios' ? 'dist-ios' : 'dist',
     // Keep every asset a file of its own: the policy above has no data: sources.
