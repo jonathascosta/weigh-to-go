@@ -736,6 +736,8 @@ export const en = {
   'data.note':
     'Everything stays in this browser. A backup file is the only copy outside it: export one now and then, and use it to move to another device.',
   'data.export': 'Export backup',
+  'data.exportCsv': 'Export CSV',
+  'data.exportFailed': "Couldn't save the file. Try again.",
   'data.import': 'Import backup',
   'data.erase': 'Erase everything',
   'data.lastBackup': (when: string) => `Last backup exported on ${when}.`,
@@ -1348,6 +1350,8 @@ export const pt: Messages = {
   'data.note':
     'Tudo fica neste navegador. Um arquivo de backup é a única cópia fora dele: exporte um de vez em quando e use-o para passar para outro aparelho.',
   'data.export': 'Exportar backup',
+  'data.exportCsv': 'Exportar CSV',
+  'data.exportFailed': 'Não foi possível salvar o arquivo. Tente de novo.',
   'data.import': 'Importar backup',
   'data.erase': 'Apagar tudo',
   'data.lastBackup': (when: string) => `Último backup exportado em ${when}.`,

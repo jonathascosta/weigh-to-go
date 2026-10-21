@@ -14,7 +14,9 @@ import {
   parseBackup,
   type ParsedBackup,
 } from '../data/backup';
+import { createCsv, csvFileName } from '../data/csv';
 import { choose, count, settings, type Settings } from '../i18n';
+import { saveFile } from '../platform/save';
 import { h } from './dom';
 
 /** Days after the last backup before the reminder shows again. */
@@ -37,24 +39,27 @@ export function noticeFor(
   return days >= BACKUP_REMINDER_DAYS ? { kind: 'backup', days } : null;
 }
 
-/** Saves the backup file: a download made from the text, never a request anywhere. */
-function exportBackup(app: App): string {
+/**
+ * Saves the backup file (a download on the website, the share sheet in the app; never a request
+ * anywhere). Resolves the file's name, or null when the reader closed the share sheet; only a file
+ * handed over counts as a backup for the reminder.
+ */
+async function exportBackup(app: App): Promise<string | null> {
   const { weighIns, profile } = app.state();
   const now = new Date();
   const file = backupFileName(localToday(now));
-  const url = URL.createObjectURL(
-    new Blob([createBackup(weighIns, profile, now)], { type: 'application/json' }),
-  );
-  const link = h('a', { attrs: { href: url, download: file } });
-  document.body.append(link);
-  link.click();
-  link.remove();
-  // Long enough for the download to start; the URL is only this page's.
-  setTimeout(() => {
-    URL.revokeObjectURL(url);
-  }, 10_000);
+  if (!(await saveFile(file, createBackup(weighIns, profile, now), 'application/json'))) return null;
   lastBackupAt.write(now.toISOString());
   return file;
+}
+
+/** Saves the weigh-ins as a CSV for a spreadsheet, in the reader's unit and locale. */
+async function exportCsv(app: App, s: Settings): Promise<string | null> {
+  const { weighIns, analysis } = app.state();
+  const file = csvFileName(localToday(new Date()));
+  const savedAt = new Map(weighIns.map((w) => [w.date, w.savedAt]));
+  const text = createCsv(analysis?.series ?? [], savedAt, s.weightUnit, s.locale.tag);
+  return (await saveFile(file, text, 'text/csv')) ? file : null;
 }
 
 export function mountData(
@@ -66,6 +71,7 @@ export function mountData(
   const note = h('p', { class: 'note' });
   const last = h('p', { class: 'note' });
   const exportButton = h('button', { class: 'button', attrs: { type: 'button' } });
+  const csvButton = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
   // The file input stays out of the tab order and out of sight: a real button opens it, so the
   // control the keyboard lands on is the one the reader sees.
   const fileInput = h('input', {
@@ -89,18 +95,33 @@ export function mountData(
   const panel = h('div', { class: 'data-panel', attrs: { role: 'status' } });
   container.replaceChildren(
     h('div', { class: 'card-head' }, h('div', {}, title, note, last)),
-    h('div', { class: 'actions' }, exportButton, fileInput, importButton, eraseButton),
+    h('div', { class: 'actions' }, exportButton, csvButton, fileInput, importButton, eraseButton),
     panel,
   );
 
-  const doExport = () => {
-    const file = exportBackup(app);
-    panel.replaceChildren(
-      h('p', { class: 'status status-ok', text: settings().messages['data.exported'](file) }),
-    );
+  /** Runs an export and says how it went: saved, cancelled (nothing said) or failed. */
+  const runExport = async (save: () => Promise<string | null>) => {
+    try {
+      const file = await save();
+      if (file !== null) {
+        panel.replaceChildren(
+          h('p', { class: 'status status-ok', text: settings().messages['data.exported'](file) }),
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      panel.replaceChildren(
+        h('p', { class: 'status status-bad', text: settings().messages['data.exportFailed'] }),
+      );
+    }
     render(app.state(), settings());
   };
-  exportButton.addEventListener('click', doExport);
+  exportButton.addEventListener('click', () => {
+    void runExport(() => exportBackup(app));
+  });
+  csvButton.addEventListener('click', () => {
+    void runExport(() => exportCsv(app, settings()));
+  });
 
   /** A "back up first" button, for the warnings before replacing or erasing. */
   const backupFirst = () => {
@@ -110,8 +131,14 @@ export function mountData(
       text: settings().messages['data.export'],
     });
     button.addEventListener('click', () => {
-      exportBackup(app);
-      button.disabled = true;
+      void exportBackup(app).then(
+        (file) => {
+          button.disabled = file !== null;
+        },
+        (error: unknown) => {
+          console.error(error);
+        },
+      );
     });
     return button;
   };
@@ -304,7 +331,9 @@ export function mountData(
       noticeBox.replaceChildren(h('p', { text: m['notice.memory'] }));
     } else {
       const button = h('button', { class: 'button', attrs: { type: 'button' }, text: m['data.export'] });
-      button.addEventListener('click', doExport);
+      button.addEventListener('click', () => {
+        void runExport(() => exportBackup(app));
+      });
       noticeBox.replaceChildren(
         h('p', {
           text:
@@ -328,6 +357,8 @@ export function mountData(
         : m['data.lastBackup'](s.format.day(localToday(new Date(when)), 'medium'));
     exportButton.textContent = m['data.export'];
     exportButton.disabled = state.status === 'loading';
+    csvButton.textContent = m['data.exportCsv'];
+    csvButton.disabled = state.status === 'loading' || state.weighIns.length === 0;
     importButton.textContent = m['data.import'];
     importButton.disabled = state.status === 'loading';
     eraseButton.textContent = m['data.erase'];

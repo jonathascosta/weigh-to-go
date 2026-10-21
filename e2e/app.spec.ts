@@ -71,6 +71,28 @@ test('exports a backup, erases everything, and brings it back by importing', asy
   await check();
 });
 
+test('exports the weigh-ins as a CSV for a spreadsheet', async ({ page }, info) => {
+  const { check } = await watch(page);
+  await page.goto('/');
+  await loadBackup(page);
+  const download = page.waitForEvent('download');
+  await page
+    .locator('section[aria-labelledby="data-title"]')
+    .getByRole('button', { name: 'Export CSV' })
+    .click();
+  const file = info.outputPath('weigh-ins.csv');
+  await (await download).saveAs(file);
+  // A British reader: a decimal point, so commas between fields; weights in kg.
+  const rows = readFileSync(file, 'utf8')
+    .replace(/^\uFEFF/, '')
+    .trimEnd()
+    .split('\r\n');
+  expect(rows[0]).toBe('date,weight_kg,change_kg,average_7_days_kg,trend_kg,lost_pct,saved_at');
+  expect(rows.length).toBeGreaterThan(300);
+  expect(rows[1]).toMatch(/^\d{4}-\d{2}-\d{2},\d+\.\d,,,\d+\.\d{2},0\.00,\d{4}-/);
+  await check();
+});
+
 test('switches the language and the weight unit', async ({ page }) => {
   const { check } = await watch(page);
   await page.goto('/');
