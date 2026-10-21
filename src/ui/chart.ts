@@ -537,7 +537,13 @@ export function mountChart(
       labels.append(
         svg(
           'text',
-          { class: 'reflabel goal-label', x: width - right - 6, y: y(u(goal)) - 6, 'text-anchor': 'end' },
+          {
+            class: 'reflabel goal-label',
+            // Ends before the last weigh-in's line when the projection runs on past it.
+            x: pj.length > 0 ? Math.min(width - right - 6, x(last.t) - 6) : width - right - 6,
+            y: y(u(goal)) - 6,
+            'text-anchor': 'end',
+          },
           m['chart.goal'](w(goal)),
         ),
       );

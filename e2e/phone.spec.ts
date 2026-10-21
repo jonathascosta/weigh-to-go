@@ -155,6 +155,24 @@ test('opens the chart’s options in a sheet, picks a view, and gives focus back
   await check();
 });
 
+test('turns an open sheet into the panel in place when the screen widens, focus on its button', async ({
+  page,
+}) => {
+  const { check } = await watch(page);
+  await page.goto('/');
+  await loadBackup(page);
+  await tab(page, 'progress').tap();
+  const button = page.locator('#chart-options-button');
+  await button.tap();
+  await expect(page.locator('#sheet-title')).toBeFocused();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(page.locator('#chart-options')).toBeVisible();
+  await expect(button).toHaveAttribute('aria-expanded', 'true');
+  await expect(button).toBeFocused();
+  await check();
+});
+
 test('scrubs the chart under a dragged finger, with the readout above it, still', async ({ page }) => {
   const { check } = await watch(page);
   await page.goto('/');
