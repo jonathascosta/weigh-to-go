@@ -16,7 +16,8 @@ const open = async (
   now: () => Date = () => new Date(local('2026-10-21', 9)),
 ) => {
   const store = await withHealth(await deviceStore(files.backend), health.backend, files.backend, now);
-  await store.weighIns(); // after the first read from Health, queued on opening
+  // The read from Health started on opening, done: refresh is queued after it.
+  if (store.health.setting().on) await store.health.refresh();
   return { store, files };
 };
 const diaryDays = (files: ReturnType<typeof fakeFiles>) =>
@@ -157,7 +158,16 @@ describe('withHealth', () => {
     expect(other.health.setting().on).toBe(false);
   });
 
-  it('draws the diary first, and reads Health after; a locked Health is said', async () => {
+  it('draws the diary without waiting for Health', async () => {
+    const health = fakeHealth([reading('2026-10-20', 7, 98)]);
+    health.backend.read = () => new Promise(() => undefined);
+    const files = fakeFiles({ [HEALTH_FILE]: on });
+    await (await deviceStore(files.backend)).put([w('2026-10-21', 97)]);
+    const store = await withHealth(await deviceStore(files.backend), health.backend, files.backend);
+    expect(await store.weighIns()).toEqual([w('2026-10-21', 97)]);
+  });
+
+  it('says when Health is locked, and reads it on the next refresh', async () => {
     const health = fakeHealth([reading('2026-10-20', 7, 98)]);
     health.state.failRead = true;
     const files = fakeFiles({ [HEALTH_FILE]: on });

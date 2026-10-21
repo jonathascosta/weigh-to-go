@@ -131,6 +131,8 @@ export async function withHealth(
   let samples: HealthSample[] = [];
   /** The days shown from Health: other days, and this app's own newer sample for a typed day. */
   let derived: StoredWeighIn[] = [];
+  /** The days shown from Health that aren't typed here: what the card counts. */
+  let fromOthers = 0;
   let available: boolean | null = null;
   let writing = true;
   let readFailed = false;
@@ -153,6 +155,7 @@ export async function withHealth(
   const derive = async () => {
     if (!setting.on) {
       derived = [];
+      fromOthers = 0;
       return;
     }
     const typed = await inner.weighIns();
@@ -170,6 +173,7 @@ export async function withHealth(
     });
     const latest = today();
     derived = [...others, ...ownNewer].filter((w) => isWeighInDay(w.date, latest)).sort(byDate);
+    fromOthers = others.filter((w) => isWeighInDay(w.date, latest)).length;
   };
 
   /** Best effort: Health may be locked or refuse; the next refresh tries again. */
@@ -182,7 +186,8 @@ export async function withHealth(
   };
 
   const readHealth = async () => {
-    if (!setting.on) return;
+    // A setting restored onto a device without Health: nothing to read, nothing to log.
+    if (!setting.on || !(await isAvailable())) return;
     writing = (await backend.writeStatus().catch(() => 'undetermined' as const)) !== 'denied';
     try {
       samples = await backend.read();
@@ -232,13 +237,16 @@ export async function withHealth(
     await derive();
   };
 
-  /** Days deleted here: tombstones kept (even while off, so they stay deleted when it's on again). */
+  /**
+   * Days deleted here: tombstones kept (even while off, so they stay deleted when it's on again),
+   * once Health was ever used on this phone; before that there is nothing in Health to keep out.
+   */
   const deleted = async (dates: readonly string[]) => {
-    if (dates.length === 0) return;
+    if (dates.length === 0 || !everOn) return;
     const at = now().toISOString();
     const gone = new Set(dates);
     tombstones = [...tombstones.filter((t) => !gone.has(t.date)), ...dates.map((date) => ({ date, at }))];
-    await save();
+    await quietly(save);
     if (setting.on) {
       await quietly(() => backend.remove(dates.map(syncIdFor)));
       samples = samples.filter((s) => {
@@ -262,7 +270,7 @@ export async function withHealth(
         ? { kind: 'off' }
         : available === false
           ? { kind: 'unavailable' }
-          : { kind: 'on', days: derived.length, writing, readFailed },
+          : { kind: 'on', days: fromOthers, writing, readFailed },
     everOn: () => everOn,
     turnOn: () =>
       serial(async () => {
@@ -306,7 +314,7 @@ export async function withHealth(
     return [...shown.values()].sort(byDate);
   };
 
-  // The diary draws first; Health is read right after, and the diary told when it has.
+  // Health is read in the background; the diary, drawn from what it has, is told when it's done.
   if (setting.on) {
     void refresh().catch((error: unknown) => {
       console.warn(error);
@@ -325,7 +333,8 @@ export async function withHealth(
       return inner.setAside;
     },
     health,
-    weighIns: () => serial(weighIns),
+    // Not queued: the diary draws from what is known now, without waiting for a read of Health.
+    weighIns,
     put: (rows, profile) =>
       serial(async () => {
         await inner.put(rows, profile);
@@ -334,7 +343,12 @@ export async function withHealth(
     merge: (rows, profile) =>
       serial(async () => {
         const result = await inner.merge(rows, profile);
-        await written(rows, true);
+        // Only the days' winners: an incoming row that lost to a newer one here isn't written.
+        const dates = new Set(rows.map((r) => r.date));
+        await written(
+          (await inner.weighIns()).filter((w) => dates.has(w.date)),
+          true,
+        );
         return result;
       }),
     remove: (date) =>
@@ -365,6 +379,7 @@ export async function withHealth(
         everOn = false;
         samples = [];
         derived = [];
+        fromOthers = 0;
         await save();
       }),
     onChange: (listener) => {

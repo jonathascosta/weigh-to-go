@@ -193,9 +193,10 @@ export function mountData(
   };
 
   /** Says how an operation went, and moves focus there: the buttons it came from are gone. */
-  const report = (text: string, ok: boolean) => {
+  /** Says how it went: done (green), failed (red), or done in part (plain). */
+  const report = (text: string, ok: boolean | 'partly') => {
     const line = h('p', {
-      class: ok ? 'status status-ok' : 'status status-bad',
+      class: ok === 'partly' ? 'status' : ok ? 'status status-ok' : 'status status-bad',
       attrs: { tabindex: -1 },
       text,
     });
@@ -340,12 +341,9 @@ export function mountData(
           // The saved choices went with everything else: back to automatic here too.
           choose({ lang: null, weightUnit: null, heightUnit: null });
           const after = settings().messages;
-          const text = !gone
-            ? after['data.eraseFailed']
-            : fromHealthToo
-              ? after['data.erased']
-              : after['data.erasedNotHealth'];
-          report(text, gone);
+          if (!gone) report(after['data.eraseFailed'], false);
+          else if (fromHealthToo) report(after['data.erased'], true);
+          else report(after['data.erasedNotHealth'], 'partly');
         })
         .catch((error: unknown) => {
           console.error(error);
