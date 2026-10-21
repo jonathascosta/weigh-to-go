@@ -17,7 +17,7 @@ test('logs a weigh-in, and shows it in the summary and the log', async ({ page }
   await page.locator('#entry-date').fill(daysAgo(1));
   await page.locator('#entry-weight').fill('82,4');
   await page.getByRole('button', { name: 'Save', exact: true }).first().click();
-  await expect(page.locator('#entry-status')).toContainText('Saved: 82.4 kg');
+  await expect(page.locator('#entry-saved')).toContainText('Saved: 82.4 kg');
   await expect(page.locator('section[aria-labelledby="log-title"] tbody')).toContainText('82.4');
   await expect(page.locator('.take')).toContainText('First weigh-in logged: 82.4 kg.');
   await check();

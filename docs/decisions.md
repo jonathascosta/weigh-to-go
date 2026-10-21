@@ -266,3 +266,30 @@ font-size: 17px }`, and fit tested at that cap. _Alternative:_ cap at 32 px and 
 62. (B19) **Screenshots of stories 3 to 7 go to an ignored folder** and are attached to the pull
     requests; only reference shots stay in the repository. _Alternative:_ commit them beside the
     code.
+
+## 21 October 2026 · The shell and the weigh-in, as built (Sprint 2, story 3)
+
+Choices made while building story 3, open to the owner under decision 9.
+
+63. **The rating prompt waits for the save to stand.** The iPhone app's light tap comes the moment a
+    weigh-in is saved; the day of use, and with it Apple's rating prompt (Sprint 3, story 6), counts
+    only once the save stands: its 10 seconds of Undo are over without an Undo, or the person moved
+    on (Change, Another day, another view). Never inside the Undo window, never for a save undone.
+    An import (a paste) keeps its tap and counts no day. _Alternative:_ count the day at Save, as
+    story 6 built it, and take it back on Undo.
+64. **Undo after "changed since" says what changed**, with a neutral sign instead of the check:
+    "This weigh-in changed since; nothing was undone." / "Esta pesagem mudou desde então; nada foi
+    desfeito." (proposed wording, `entry.changedSince`). _Alternative:_ the design's shorter "Changed
+    since; nothing was undone."
+65. **Undo of a day puts back its tombstone as it was** (or none): with Apple Health, a new day undone
+    is not kept out of the diary by a tombstone dated now, which would also hide a scale's reading of
+    that day taken before. _Alternative:_ the design's "a tombstone under story 5's rules".
+66. **The data card is titled "Backup"** (`data.group.backup`), so its landmark isn't named like the
+    "Your data" view; story 6 brings the other groups.
+67. **Links to another view land on what they name**: "Have a backup? Import it here" on Import
+    backup, the backup line's "Export backup" on Export backup, "Paste several days at once" in the
+    opened paste box. A tab tapped again takes its view back to the top, as on iOS.
+68. **The reload notice also shows at the top of Your data on a phone**, with its button, since the
+    app's wording ("Tap Try again at the top") is said by actions there.
+69. **The tab labels stop at 5vw on the narrowest screens** (16 px at 320 px) besides the design's
+    19.5 px, so a word such as "Progresso" is never split. _Alternative:_ let it wrap mid-word.

@@ -141,7 +141,10 @@ async function openDiary(browser, base, { size, theme = 'light', lang, text, fre
     await show(page, 'today');
     if (fresh) {
       await page.reload();
-      await diaryReady(page);
+      // Today, drawn with the year: the log is drawn only once Your data shows.
+      await page.locator('#entry-weight').waitFor();
+      await page.waitForFunction(() => (document.querySelector('.summary .take')?.textContent ?? '') !== '');
+      await settle(page);
     }
   } else {
     await page.locator('#entry-weight').waitFor();
@@ -273,6 +276,8 @@ function measurePage(width) {
  * disc at the touch, or the column under it, where the finger runs.
  */
 async function tooltipUnderFinger(/** @type {Page} */ page) {
+  // The main chart is on Progress, a view of its own on a phone.
+  await show(page, 'progress');
   const svg = page.locator('section[aria-labelledby="chart-title"] svg.chart-svg').first();
   await svg.scrollIntoViewIfNeeded();
   await settle(page);
@@ -299,6 +304,7 @@ async function tooltipUnderFinger(/** @type {Page} */ page) {
 
 /** Types a weigh-in, taps Save, and says where the confirmation appears on the screen. */
 async function saveFlow(/** @type {Page} */ page) {
+  await show(page, 'today');
   await page.evaluate(() => {
     window.scrollTo(0, 0);
   });

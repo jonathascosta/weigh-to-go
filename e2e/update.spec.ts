@@ -22,7 +22,7 @@ test('offers a new version, and Reload switches to it', async ({ page }) => {
     await page.locator('#entry-date').fill(new Date(Date.now() - 86_400_000).toISOString().slice(0, 10));
     await page.locator('#entry-weight').fill('81.2');
     await page.locator('#entry-weight').press('Enter');
-    await expect(page.locator('#entry-status')).toContainText('81.2 kg');
+    await expect(page.locator('#entry-saved')).toContainText('81.2 kg');
     await page.evaluate(() => navigator.serviceWorker.ready);
     await page.reload();
     const before = await page.evaluate(async () => (await caches.keys()).join());
