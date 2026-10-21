@@ -11,6 +11,7 @@ import {
   EMPTY_PROFILE,
   isProfile,
   isStoredWeighIn,
+  sameRecord,
   toProfile,
   toWeighIn,
   type Profile,
@@ -70,8 +71,11 @@ export interface Store {
   readonly setAside?: string | null;
   /** Every weigh-in, by date. */
   weighIns(): Promise<StoredWeighIn[]>;
-  /** Saves weigh-ins, replacing any on the same dates, and the profile if given, all at once. */
-  put(weighIns: readonly StoredWeighIn[], profile?: Profile): Promise<void>;
+  /**
+   * Saves weigh-ins, replacing any on the same dates, and the profile if given, all at once.
+   * Resolves, row by row, the weigh-in each replaced (null for a new day), read in the same step.
+   */
+  put(weighIns: readonly StoredWeighIn[], profile?: Profile): Promise<(StoredWeighIn | null)[]>;
   /**
    * Merges weigh-ins from elsewhere (a backup): for a day both have, the one saved later wins, the
    * incoming one on a tie (and among incoming rows for one day, the latest). Profile fields given
@@ -80,11 +84,11 @@ export interface Store {
   merge(weighIns: readonly StoredWeighIn[], profile: Profile | null): Promise<MergeResult>;
   remove(date: string): Promise<void>;
   /**
-   * Puts a day back as it was before a write: `previous` exactly (null: no weigh-in). Only stores
-   * that keep more than the weigh-ins (Apple Health's layer) need it; without it, the app writes
-   * `previous` back with `put`, or removes the day.
+   * Puts a day back as it was before a write, `previous` exactly (null: no weigh-in), if the day
+   * still holds `expected`, the record that write saved: read, compared and written at once.
+   * Resolves whether it did.
    */
-  restore?(date: string, previous: StoredWeighIn | null): Promise<void>;
+  restore(date: string, previous: StoredWeighIn | null, expected: StoredWeighIn): Promise<boolean>;
   profile(): Promise<Profile>;
   setProfile(profile: Profile): Promise<void>;
   /**
@@ -200,8 +204,22 @@ export function memoryStore(reason: MemoryReason = 'unsupported'): Store {
     put: (weighIns, next) =>
       run(() => {
         check(weighIns, next);
-        for (const w of weighIns) data.set(w.date, w);
+        const replaced = weighIns.map((w) => {
+          const before = data.get(w.date) ?? null;
+          data.set(w.date, w);
+          return before;
+        });
         if (next) profile = next;
+        return replaced;
+      }),
+    restore: (date, previous, expected) =>
+      run(() => {
+        if (previous) check([previous]);
+        const now = data.get(date);
+        if (now === undefined || !sameRecord(now, expected)) return false;
+        if (previous) data.set(date, previous);
+        else data.delete(date);
+        return true;
       }),
     merge: (weighIns, next) =>
       run(() => {
@@ -430,10 +448,37 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
     },
     put: async (weighIns, profile) => {
       check(weighIns, profile);
-      await write(profile ? [WEIGH_INS, PROFILE] : [WEIGH_INS], (tx) => {
-        putAll(tx, weighIns);
+      return write(profile ? [WEIGH_INS, PROFILE] : [WEIGH_INS], (tx) => {
+        const store = tx.objectStore(WEIGH_INS);
+        const replaced: (StoredWeighIn | null)[] = weighIns.map(() => null);
+        // Each read is queued before its write in the same transaction: it sees the day as it was.
+        weighIns.forEach((w, i) => {
+          const get = store.get(w.date);
+          get.onsuccess = () => {
+            replaced[i] = toWeighIn(get.result, '');
+          };
+          store.put({ date: w.date, kg: w.kg, savedAt: w.savedAt });
+        });
         if (profile) putProfile(tx, profile);
+        return replaced;
       });
+    },
+    restore: async (date, previous, expected) => {
+      if (previous) check([previous]);
+      const result = { done: false };
+      await write([WEIGH_INS], (tx) => {
+        const store = tx.objectStore(WEIGH_INS);
+        // The read, the comparison and the write in one transaction: nothing can land in between.
+        const get = store.get(date);
+        get.onsuccess = () => {
+          const now = toWeighIn(get.result, '');
+          if (now === null || !sameRecord(now, expected)) return;
+          result.done = true;
+          if (previous) store.put({ date, kg: previous.kg, savedAt: previous.savedAt });
+          else store.delete(date);
+        };
+      });
+      return result.done;
     },
     merge: async (weighIns, profile) => {
       check(weighIns, profile);

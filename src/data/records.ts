@@ -77,6 +77,10 @@ export function toProfile(value: unknown): Profile {
   return { goalKg: isWeight(goalKg) ? goalKg : null, heightCm: isHeight(heightCm) ? heightCm : null };
 }
 
+/** Whether two weigh-ins are the same record: the same weight, saved at the same moment. */
+export const sameRecord = (a: StoredWeighIn, b: StoredWeighIn): boolean =>
+  a.date === b.date && a.kg === b.kg && Date.parse(a.savedAt) === Date.parse(b.savedAt);
+
 /** Whether `w` can be saved as it is: the check every write passes before it reaches the store. */
 export const isStoredWeighIn = (w: StoredWeighIn): boolean =>
   isIsoDay(w.date) && w.date >= FIRST_DAY && isWeight(w.kg) && isIsoTime(w.savedAt);

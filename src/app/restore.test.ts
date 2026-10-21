@@ -128,19 +128,32 @@ describe('restore with Apple Health (stubbed)', () => {
     expect(await store.weighIns()).toEqual([earlier]);
   });
 
-  it('deletes the sample of a new day undone, and keeps the day out as any day deleted here', async () => {
+  it('deletes the sample of a new day undone, and puts back the tombstone it had, or none', async () => {
     const health = fakeHealth();
     const { store, app, files } = await open(health, true);
+    const tombstones = () =>
+      (JSON.parse(files.files.get(HEALTH_FILE) ?? '{}') as { tombstones?: unknown[] }).tombstones ?? [];
     const [saved] = await app.save([{ date: '2026-10-21', kg: 95.8 }]);
     expect(ours(health, '2026-10-21')).toHaveLength(1);
     expect(await app.restore('2026-10-21', saved!.previous, saved!.written)).toBe(true);
     expect(ours(health, '2026-10-21')).toEqual([]);
     expect(app.state().weighIns).toEqual([]);
-    expect(JSON.parse(files.files.get(HEALTH_FILE) ?? '{}')).toMatchObject({
-      tombstones: [{ date: '2026-10-21' }],
-    });
+    // The day had none: it gets none, not one dated now.
+    expect(tombstones()).toEqual([]);
     await store.health.refresh();
     expect(await store.weighIns()).toEqual([]);
+
+    // A day deleted earlier keeps its own tombstone, with its own date, after an undo.
+    await app.save([{ date: '2026-10-20', kg: 96 }]);
+    vi.setSystemTime(new Date(local('2026-10-21', 10)));
+    await app.remove('2026-10-20');
+    const deleted = tombstones();
+    expect(deleted).toEqual([{ date: '2026-10-20', at: local('2026-10-21', 10) }]);
+    vi.setSystemTime(new Date(local('2026-10-21', 11)));
+    const [again] = await app.save([{ date: '2026-10-20', kg: 95.9 }]);
+    expect(tombstones()).toEqual([]);
+    expect(await app.restore('2026-10-20', again!.previous, again!.written)).toBe(true);
+    expect(tombstones()).toEqual(deleted);
   });
 
   it("brings back a scale's reading the save had covered, and writes nothing of ours for it", async () => {
@@ -149,7 +162,8 @@ describe('restore with Apple Health (stubbed)', () => {
     const scale = { date: '2026-10-21', kg: 96.4, savedAt: local('2026-10-21', 6) };
     expect(app.state().weighIns).toEqual([scale]);
     const [saved] = await app.save([{ date: '2026-10-21', kg: 95.8 }]);
-    expect(saved!.previous).toEqual(scale);
+    // Not the diary's own: what the save replaced of the diary is nothing.
+    expect(saved!.previous).toBeNull();
     expect(await app.restore('2026-10-21', saved!.previous, saved!.written)).toBe(true);
     expect(app.state().weighIns).toEqual([scale]);
     expect(ours(health, '2026-10-21')).toEqual([]);
@@ -158,5 +172,39 @@ describe('restore with Apple Health (stubbed)', () => {
     expect(await store.weighIns()).toEqual([scale]);
     // The diary's own file holds nothing for the day: the reading is still Health's.
     expect(await store.health.typed()).toEqual([]);
+  });
+
+  it("never writes a scale's reading into the diary, even with another save before the undo", async () => {
+    const health = fakeHealth([reading('2026-10-21', 6, 96.4)]);
+    const { store, app } = await open(health, true);
+    const scale = { date: '2026-10-21', kg: 96.4, savedAt: local('2026-10-21', 6) };
+    const [saved] = await app.save([{ date: '2026-10-21', kg: 95.8 }]);
+    // A paste of another day lands before Undo.
+    await app.save([{ date: '2026-10-19', kg: 97 }]);
+    expect(await app.restore('2026-10-21', saved!.previous, saved!.written)).toBe(true);
+    expect(app.state().weighIns.find((w) => w.date === '2026-10-21')).toEqual(scale);
+    expect((await store.health.typed()).map((w) => w.date)).toEqual(['2026-10-19']);
+    expect(ours(health, '2026-10-21')).toEqual([]);
+  });
+
+  it("puts nothing from Health in the diary when undoing without the save's record (a fallback)", async () => {
+    const health = fakeHealth([reading('2026-10-21', 6, 96.4)]);
+    const { store, app } = await open(health, true);
+    const scale = { date: '2026-10-21', kg: 96.4, savedAt: local('2026-10-21', 6) };
+    const [saved] = await app.save([{ date: '2026-10-21', kg: 95.8 }]);
+    // Many other days saved since: the layer no longer knows what the 21st held.
+    await app.save(
+      Array.from({ length: 40 }, (_, i) => ({
+        date: `2026-08-${String((i % 28) + 1).padStart(2, '0')}`.replace(
+          /^2026-08/,
+          i < 28 ? '2026-08' : '2026-07',
+        ),
+        kg: 98,
+      })),
+    );
+    // A caller passing the reading as what to put back: it isn't the diary's to keep.
+    expect(await app.restore('2026-10-21', scale, saved!.written)).toBe(true);
+    expect((await store.health.typed()).some((w) => w.date === '2026-10-21')).toBe(false);
+    expect((await store.weighIns()).find((w) => w.date === '2026-10-21')).toEqual(scale);
   });
 });

@@ -29,16 +29,15 @@ const persistenceAsked = pref(
   false,
 );
 
-/** What a save did to one day: the weigh-in it replaced (null for a new day), and the one it wrote. */
+/**
+ * What a save did to one day: the weigh-in typed here that it replaced (null for none: a new day,
+ * or one shown from Apple Health), and the one it wrote.
+ */
 export interface Saved {
   readonly date: string;
   readonly previous: StoredWeighIn | null;
   readonly written: StoredWeighIn;
 }
-
-/** Whether two weigh-ins are the same record: the same weight, saved at the same moment. */
-const sameRecord = (a: StoredWeighIn, b: StoredWeighIn): boolean =>
-  a.kg === b.kg && Date.parse(a.savedAt) === Date.parse(b.savedAt);
 
 export interface App {
   state(): State;
@@ -46,8 +45,8 @@ export interface App {
   subscribe(listener: (state: State) => void): () => void;
   /**
    * Saves weigh-ins (replacing any on the same days); rejects if the store refuses. Resolves what it
-   * did to each day, so that it can be undone exactly (`restore`): none when what the days held
-   * couldn't be read first.
+   * did to each day, read by the store in the same step as the write, so that it can be undone
+   * exactly (`restore`).
    */
   save(rows: readonly { date: string; kg: number }[]): Promise<Saved[]>;
   /**
@@ -167,29 +166,13 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
       write(async (s) => {
         const savedAt = new Date().toISOString();
         const written = rows.map((r) => ({ date: r.date, kg: r.kg, savedAt }));
-        // What each day held, read just before the write: what an undo puts back. If that read
-        // fails, the save goes ahead all the same, with nothing to undo it by.
-        const before = await s.weighIns().then(
-          (list) => new Map(list.map((w) => [w.date, w])),
-          (error: unknown) => {
-            console.error(error);
-            return null;
-          },
-        );
-        await s.put(written);
+        // What each day held of the diary's own, read by the store as it writes: what an undo puts
+        // back (never a reading from Apple Health, which isn't the diary's to keep).
+        const replaced = await s.put(written);
         askPersistence();
-        if (before === null) return [];
-        return written.map((w) => ({ date: w.date, previous: before.get(w.date) ?? null, written: w }));
+        return written.map((w, i) => ({ date: w.date, previous: replaced[i] ?? null, written: w }));
       }),
-    restore: (date, previous, expected) =>
-      write(async (s) => {
-        const now = (await s.weighIns()).find((w) => w.date === date);
-        if (now === undefined || !sameRecord(now, expected)) return false;
-        if (s.restore) await s.restore(date, previous);
-        else if (previous === null) await s.remove(date);
-        else await s.put([previous]);
-        return true;
-      }),
+    restore: (date, previous, expected) => write((s) => s.restore(date, previous, expected)),
     remove: (date) => write((s) => s.remove(date)),
     setProfile: (profile) => write((s) => s.setProfile(profile)),
     updateProfile: (change) => write((s) => s.updateProfile(change)),

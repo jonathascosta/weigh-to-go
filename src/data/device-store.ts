@@ -219,6 +219,7 @@ export async function deviceStore(fs: FileBackend, options: DeviceStoreOptions =
     },
     weighIns: () => serial(() => inner.weighIns()),
     put: (weighIns, profile) => change(() => inner.put(weighIns, profile)),
+    restore: (date, previous, expected) => change(() => inner.restore(date, previous, expected)),
     merge: (weighIns, profile) => change(() => inner.merge(weighIns, profile)),
     remove: (date) => change(() => inner.remove(date)),
     profile: () => serial(() => inner.profile()),
