@@ -207,4 +207,22 @@ describe('restore with Apple Health (stubbed)', () => {
     expect((await store.health.typed()).some((w) => w.date === '2026-10-21')).toBe(false);
     expect((await store.weighIns()).find((w) => w.date === '2026-10-21')).toEqual(scale);
   });
+
+  it('leaves Health alone when another device wrote the day there after this save', async () => {
+    const health = fakeHealth();
+    const { store, app } = await open(health, true);
+    await store.put([earlier]);
+    await settle();
+    vi.setSystemTime(new Date(local('2026-10-21', 8)));
+    const [saved] = await app.save([{ date: '2026-10-21', kg: 95.8 }]);
+    // The person's other iPhone saves the day at 9, and this one reads Health again.
+    const later = Date.parse(local('2026-10-21', 9));
+    await health.backend.write([
+      { kg: 95.5, start: local('2026-10-21', 9), syncId: syncIdFor('2026-10-21'), syncVersion: later },
+    ]);
+    await store.health.refresh();
+    expect(await app.restore('2026-10-21', saved!.previous, saved!.written)).toBe(true);
+    expect(ours(health, '2026-10-21')).toMatchObject([{ kg: 95.5, syncVersion: later }]);
+    expect(await store.health.typed()).toEqual([earlier]);
+  });
 });

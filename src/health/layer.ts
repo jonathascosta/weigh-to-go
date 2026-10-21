@@ -420,8 +420,13 @@ export async function withHealth(
             await quietly(save);
           }
         }
-        if (setting.on && writing) {
-          const id = syncIdFor(date);
+        const id = syncIdFor(date);
+        // Another of the person's devices wrote the day in Health after this save: that is newer
+        // than anything an undo here could put back, and stays.
+        const newerElsewhere = samples.some(
+          (x) => x.syncId === id && (x.syncVersion ?? 0) > Date.parse(expected.savedAt),
+        );
+        if (setting.on && writing && !newerElsewhere) {
           await quietly(() => backend.remove([id]));
           samples = samples.filter((x) => x.syncId !== id);
           const back: SampleToWrite[] = before

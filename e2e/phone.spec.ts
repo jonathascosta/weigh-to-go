@@ -85,7 +85,11 @@ test('shows no band for the app’s banner on the website', async ({ page }) => 
 });
 
 test('has the band under the status bar in the iPhone app’s build', async ({ page }) => {
-  test.skip(!existsSync('dist-ios/index.html'), 'The iPhone app is built with npm run build:ios.');
+  // CI builds it (ci.yml); on a machine that hasn't, the test says why it didn't run.
+  test.skip(
+    !existsSync('dist-ios/index.html') && !process.env.CI,
+    'The iPhone app is built with npm run build:ios.',
+  );
   const server = await previewServer(47325, 'dist-ios');
   try {
     await page.goto(server.url);

@@ -293,3 +293,13 @@ Choices made while building story 3, open to the owner under decision 9.
     app's wording ("Tap Try again at the top") is said by actions there.
 69. **The tab labels stop at 5vw on the narrowest screens** (16 px at 320 px) besides the design's
     19.5 px, so a word such as "Progresso" is never split. _Alternative:_ let it wrap mid-word.
+70. **The build targets Safari 15 to match the deployment target** (iOS 15.0, Xcode and
+    Package.swift): `build.target` es2021 with safari15 and `build.cssTarget` safari15 in
+    `vite.config.ts`, media queries written as `min-width`/`max-width` (no range syntax, which Safari
+    reads only from 16.4), and `check:dist` refusing range syntax or `not (…)` in any built `@media`,
+    in `dist/` and `dist-ios/`. It moves when O22 (iOS 16) is decided.
+71. **After Save, one announcement**: focus goes to the saved notice, which is read with its text
+    ("Saved: …"), and the live region carries only the Undo hint ("Undo is available for 10
+    seconds."). To confirm in the VoiceOver device check (Sprint 3, story 7): the notice's text is
+    read on focus, and the hint once. _Alternative:_ the design's announcement of both in the live
+    region.

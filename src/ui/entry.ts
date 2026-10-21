@@ -72,7 +72,8 @@ export function entryHint(state: State, s: Settings, date: string, today: string
     const weight = f.weight(logged.kg, unit);
     return date === today ? m['entry.loggedToday'](weight) : m['entry.exists'](weight);
   }
-  const last = state.weighIns.at(-1);
+  // Not .at(-1): Safari 15.0 to 15.3 lack it.
+  const last = state.weighIns[state.weighIns.length - 1];
   if (!last) return date === today ? m['entry.firstHint'] : '';
   const ago = daysBetween(parseDay(last.date), parseDay(today));
   const when = ago >= 0 && ago <= 30 ? f.daysAgo(ago) : f.day(last.date, 'medium');
@@ -207,6 +208,8 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
     readonly date: string;
     readonly replaced: boolean;
     readonly typed: string;
+    /** The person's own day when they pressed Save: the day of use it counts as. */
+    readonly usedOn: string;
     undo: 'on' | 'gone' | 'changed';
     /** Whether the save stood (its Undo over, unused) or was undone: settled once. */
     settled: boolean;
@@ -219,7 +222,7 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
   const stood = (was: typeof shown) => {
     if (!was || was.settled) return;
     was.settled = true;
-    void saveStood(localToday());
+    void saveStood(was.usedOn);
   };
 
   const weightIn = (date: string): number | null =>
@@ -353,6 +356,8 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
     app.restore(saved.date, saved.previous, saved.written).then(
       (done) => {
         if (done) return;
+        // Nothing was undone: the save stands after all.
+        void saveStood(was.usedOn);
         error = settings().messages['entry.changedSince'];
         draw(app.state(), settings());
         announce(error);
@@ -415,13 +420,28 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
     if (shown?.date === was && was !== now) toForm();
     else draw(app.state(), settings());
   };
+  /**
+   * The person left (another app, the phone locked, the page closed): the Undo window ends there,
+   * and the save stands.
+   */
+  const gone = () => {
+    if (!shown) return;
+    if (shown.undo === 'on') {
+      stopCount();
+      shown.undo = 'gone';
+      showNotice(settings());
+    }
+    stood(shown);
+  };
   const onVisible = () => {
     if (document.visibilityState === 'visible') followToday();
+    else gone();
   };
   document.addEventListener('visibilitychange', onVisible);
   window.addEventListener('focus', followToday);
   // A page restored from the back-forward cache.
   window.addEventListener('pageshow', followToday);
+  window.addEventListener('pagehide', gone);
   let midnight: ReturnType<typeof setTimeout> | undefined;
   const untilMidnight = () => {
     const now = new Date();
@@ -463,6 +483,7 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
       return;
     }
     const replaced = weightIn(date) !== null;
+    const usedOn = localToday();
     busy = true;
     save.disabled = true;
     app
@@ -473,7 +494,16 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
         const saved = result.find((r) => r.date === date) ?? null;
         // In the app, a light tap now; the day of use counts once the save stands.
         void tapAfterSave();
-        showSaved({ saved, kg, date, replaced, typed, undo: saved ? 'on' : 'gone', settled: false });
+        showSaved({
+          saved,
+          kg,
+          date,
+          replaced,
+          typed,
+          usedOn,
+          undo: saved ? 'on' : 'gone',
+          settled: false,
+        });
       })
       .catch((failed: unknown) => {
         console.error(failed);
@@ -517,6 +547,7 @@ export function mountEntry(container: HTMLElement, app: App): EntryCard {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', followToday);
       window.removeEventListener('pageshow', followToday);
+      window.removeEventListener('pagehide', gone);
     },
   };
 }

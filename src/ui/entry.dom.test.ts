@@ -274,6 +274,40 @@ describe('the app’s touches after a save', () => {
     expect(feel).toEqual(['tap']);
   });
 
+  it('counts the day it was saved on, even when the window ends after midnight', async () => {
+    vi.setSystemTime(new Date(2026, 9, 21, 23, 59, 55));
+    await setup();
+    await submit('95.8');
+    await vi.advanceTimersByTimeAsync(UNDO_MS + 100);
+    expect(feel).toEqual(['tap', 'stood 2026-10-21']);
+  });
+
+  it('counts the day when the page goes hidden or away: the person left, the save stands', async () => {
+    await setup();
+    await submit('95.8');
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(feel).toEqual(['tap', 'stood 2026-10-21']);
+    // The Undo window is over with it.
+    expect(button('Undo').hidden).toBe(true);
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    feel.length = 0;
+    button('Change').click();
+    await submit('95.7');
+    window.dispatchEvent(new Event('pagehide'));
+    expect(feel).toEqual(['tap', 'stood 2026-10-21']);
+  });
+
+  it('counts the day when an Undo finds the day changed since and undoes nothing', async () => {
+    await setup();
+    await submit('95.8');
+    vi.spyOn(app, 'restore').mockResolvedValue(false);
+    button('Undo').click();
+    await settle();
+    expect(feel).toEqual(['tap', 'stood 2026-10-21']);
+    expect(hint()).toBe('This weigh-in changed since; nothing was undone.');
+  });
+
   it('counts the day when the person moves on before the window is over', async () => {
     await setup();
     await submit('95.8');
