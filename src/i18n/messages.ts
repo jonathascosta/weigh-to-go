@@ -2022,7 +2022,7 @@ export const ptApp: typeof enApp = {
   'notice.memory':
     'O app não está conseguindo abrir o diário salvo agora, então as novas pesagens só duram até você fechá-lo. Feche o app e abra-o de novo.',
   'install.empty':
-    'Se você registrou pesagens no site weightogo.jonathas.net, exporte um backup por lá, salve-o no app Arquivos ou mande-o para este iPhone por AirDrop, e importe-o aqui, em Seus dados.',
+    'Se você registrou pesagens em weightogo.jonathas.net, exporte um backup por lá, salve-o no app Arquivos ou mande-o para este iPhone por AirDrop, e importe-o aqui, em Seus dados.',
   'notice.noBackup':
     'Suas pesagens ficam neste app (e no app Saúde, se você ligá-lo), e no backup do seu iPhone, se você usa um. Exporte um backup, para ter uma cópia com você.',
   'notice.reload':

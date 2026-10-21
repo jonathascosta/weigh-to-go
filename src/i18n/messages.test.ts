@@ -48,6 +48,24 @@ describe('the dictionaries', () => {
         if (shown(key)) for (const text of texts(message)) expect(text, key).not.toMatch(words);
   });
 
+  it('speak of the iPhone app as an app: no browser, page, site or reload in anything it shows', () => {
+    // Keys the app never shows: the privacy policy (it covers the website too), the website's page
+    // descriptions (page.*), its 404 page (notFound.*) and the service worker's update notice
+    // (update.*), which the app doesn't have.
+    const shown = (key: string) => !/^(privacy|page|notFound|update)\./.test(key);
+    const texts = (message: unknown): string[] =>
+      typeof message === 'string'
+        ? [message]
+        : typeof message === 'function'
+          ? [String((message as (...args: string[]) => unknown)('1', '1', '1'))]
+          : Object.values(message as Record<string, string>);
+    const words = /browser|navegador|\bpage\b|página|\bsite\b|website|recarreg|\breload\b/i;
+    const app = dictionaries(true);
+    for (const lang of ['en', 'pt'] as const)
+      for (const [key, message] of Object.entries(app[lang]))
+        if (shown(key)) for (const text of texts(message)) expect(text, `${lang} ${key}`).not.toMatch(words);
+  });
+
   it("cover every key the pages use, each page's text matching its language's dictionary", () => {
     expect(Object.keys(pages)).toHaveLength(5);
     for (const [page, html] of Object.entries(pages)) {
