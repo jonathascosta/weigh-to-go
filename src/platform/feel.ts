@@ -5,8 +5,10 @@
  */
 import { pref } from '../data/prefs';
 
-/** Weigh-ins in the diary before the rating prompt may show: a few days of use, not the first. */
+/** Days on which the person saved a weigh-in here before the rating prompt may show. */
 export const REVIEW_AFTER = 7;
+/** A moment after the save, so the "Saved" line and the tap land first. */
+const REVIEW_DELAY_MS = 1500;
 
 /** The minor version ("0.1") the prompt was last asked for, kept with the screen preferences. */
 export const reviewAskedPref = pref(
@@ -15,23 +17,51 @@ export const reviewAskedPref = pref(
   null,
 );
 
+/**
+ * The local days on which a weigh-in was typed and saved here (at most `REVIEW_AFTER` of them): use
+ * of the app, not data brought in by Apple Health, a backup or a paste.
+ */
+export const savedDaysPref = pref(
+  'savedDays',
+  (v: unknown): v is string[] => Array.isArray(v) && v.every((d) => typeof d === 'string'),
+  [],
+);
+
 /** "1.4" from "1.4.2": the prompt is asked at most once per minor version (Arrows' rule). */
 export const minorOf = (version: string): string => version.split('.').slice(0, 2).join('.');
 
-/** Whether to ask for a rating now: enough weigh-ins, and not yet in this minor version. */
-export const shouldAskForReview = (asked: string | null, version: string, weighIns: number): boolean =>
-  weighIns >= REVIEW_AFTER && asked !== minorOf(version);
+/** The days of use with `today` added, newest last, no more than needed. */
+export const withDay = (days: readonly string[], today: string): string[] =>
+  [...days.filter((d) => d !== today), today].slice(-REVIEW_AFTER);
 
-/** After a weigh-in is saved: the tap, and the rating prompt when its time has come. */
-export async function afterSave(weighIns: number): Promise<void> {
+/** Whether to ask for a rating now: enough days of use, and not yet in this minor version. */
+export const shouldAskForReview = (asked: string | null, version: string, daysOfUse: number): boolean =>
+  daysOfUse >= REVIEW_AFTER && asked !== minorOf(version);
+
+const native = () => import('./feel-native');
+
+/** After an import (a paste): the tap only. */
+export async function afterImport(): Promise<void> {
   if (import.meta.env.MODE !== 'ios') return;
   try {
-    const native = await import('./feel-native');
-    await native.tap();
-    if (shouldAskForReview(reviewAskedPref.read(), __APP_VERSION__, weighIns)) {
-      reviewAskedPref.write(minorOf(__APP_VERSION__));
-      await native.askForReview();
-    }
+    await (await native()).tap();
+  } catch (error) {
+    console.warn(error);
+  }
+}
+
+/** After a weigh-in typed and saved on `today`: the tap, and the rating prompt when its time has come. */
+export async function afterSave(today: string): Promise<void> {
+  if (import.meta.env.MODE !== 'ios') return;
+  await afterImport();
+  const days = withDay(savedDaysPref.read(), today);
+  savedDaysPref.write(days);
+  if (!shouldAskForReview(reviewAskedPref.read(), __APP_VERSION__, days.length)) return;
+  await new Promise((resolve) => setTimeout(resolve, REVIEW_DELAY_MS));
+  try {
+    await (await native()).askForReview();
+    // Only once iOS was asked: a prompt that couldn't be asked is asked next time.
+    reviewAskedPref.write(minorOf(__APP_VERSION__));
   } catch (error) {
     console.warn(error);
   }
