@@ -4,6 +4,7 @@ import { onSettingsChange, setPageLang, t, translatePage, watchSettings } from '
 import { isLang } from './i18n/locale';
 import { en } from './i18n/messages';
 import { createApp } from './app/app';
+import { lazyNotifier } from './reminders/keeper';
 import { mountSettings } from './settings-ui';
 import { mountDashboard } from './ui/dashboard';
 import { mountUpdateNotice } from './ui/update';
@@ -41,7 +42,14 @@ if (checkFrame(openLabel)) {
   // The iPhone app keeps the diary in a file of its own (platform/store-native.ts, loaded only in
   // the app's build); the website in the browser's IndexedDB.
   const openNative = async () => (await import('./platform/store-native')).openNativeStore();
-  if (appBox) mountDashboard(appBox, createApp(import.meta.env.MODE === 'ios' ? openNative : undefined));
+  // Its daily reminder plans the phone's own notifications (platform/notify-native.ts).
+  const notifier =
+    import.meta.env.MODE === 'ios'
+      ? lazyNotifier(async () => (await import('./platform/notify-native')).phoneNotifier)
+      : undefined;
+  if (appBox) {
+    mountDashboard(appBox, createApp(import.meta.env.MODE === 'ios' ? openNative : undefined), notifier);
+  }
   ready();
   // Offline use, in the built site only (the dev server's files change under it all the time, and
   // the iPhone app has its files on the phone and no service worker).

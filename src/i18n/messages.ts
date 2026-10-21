@@ -788,6 +788,16 @@ export const en = {
     "The diary can't reach its data right now, perhaps because a newer version is open in another tab. Reload the page.",
   'notice.setAside':
     "The saved diary couldn't be read in full. A copy is kept in the app as it was, and what could be read is shown. If weigh-ins are missing, import your latest backup.",
+  'reminder.title': 'Daily reminder',
+  'reminder.switch': 'Remind me to weigh in',
+  'reminder.time': 'Time',
+  'reminder.note': (days: string) =>
+    `One notification a day at this time, none on a day already logged. Reminders stop after ${days} days without opening the app.`,
+  'reminder.denied':
+    'Notifications for Weigh to Go are off. Turn them on in Settings › Notifications › Weigh to Go and come back: the reminder starts by itself.',
+  'reminder.failed': "Couldn't set the reminders. The app tries again when you come back to it.",
+  'reminder.notificationTitle': 'Daily weigh-in',
+  'reminder.notificationBody': 'Time for today’s weigh-in.',
   'notice.reloadButton': 'Reload',
   'update.ready': 'A new version of Weigh to Go is ready. Your weigh-ins stay where they are.',
   'install.empty':
@@ -1417,6 +1427,16 @@ export const pt: Messages = {
     'O diário não está conseguindo acessar seus dados agora, talvez porque uma versão mais nova está aberta em outra aba. Recarregue a página.',
   'notice.setAside':
     'Não foi possível ler todo o diário salvo. Uma cópia fica guardada no app como estava, e o que pôde ser lido está aqui. Se faltarem pesagens, importe seu backup mais recente.',
+  'reminder.title': 'Lembrete diário',
+  'reminder.switch': 'Lembrar de me pesar',
+  'reminder.time': 'Horário',
+  'reminder.note': (days: string) =>
+    `Uma notificação por dia neste horário, nenhuma num dia já registrado. Os lembretes param depois de ${days} dias sem abrir o app.`,
+  'reminder.denied':
+    'As notificações do Weigh to Go estão desligadas. Ligue-as em Ajustes › Notificações › Weigh to Go e volte: o lembrete começa sozinho.',
+  'reminder.failed': 'Não foi possível programar os lembretes. O app tenta de novo quando você voltar a ele.',
+  'reminder.notificationTitle': 'Pesagem do dia',
+  'reminder.notificationBody': 'Hora da pesagem de hoje.',
   'notice.reloadButton': 'Recarregar',
   'update.ready': 'Uma nova versão do Weigh to Go está pronta. Suas pesagens continuam aqui.',
   'install.empty':

@@ -75,6 +75,20 @@ to rename.
    return to the app; the settings say that reminders stop after 30 days without opening the app.
    Nothing leaves the phone.
 
+   _As built:_ a "Daily reminder" card in the app only, below Your data until the phone design moves
+   it into the app's settings group (Sprint 2): a switch and a time, 08:00 at first. The setting is
+   kept in a file beside the diary (`Library/settings/reminder.json`), since iOS may clear the web
+   view's storage; erasing everything turns it off. When iOS says no, the reminder stays on and
+   starts by itself once notifications are allowed in Settings; a reminder already shown goes from
+   the Notification Centre once its day is logged. To check on TestFlight (story 7): the permission
+   sheet when the switch is turned on; a tap on a reminder with the app closed opens the weigh-in
+   (Capacitor's scene lifecycle may drop it: if so, hand `connectionOptions.notificationResponse` to
+   the bridge in `SceneDelegate`); the time picker; notifications turned off and on again in
+   Settings; the banner while the app is open; a change of time zone (reminders follow the old one
+   until the app is opened again); a reminder already shown leaving the Notification Centre once the
+   day is logged; erasing everything cancelling what is pending; a restore to a new phone (the
+   switch shows off, then asks).
+
 5. **Apple Health: weight both ways.** Read the body mass HealthKit holds and write each weigh-in
    to it, after the person turns it on (the permission sheet names exactly what is read and
    written), and only where `HKHealthStore.isHealthDataAvailable()` (not on a Mac). The rules, each

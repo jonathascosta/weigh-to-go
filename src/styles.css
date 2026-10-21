@@ -400,6 +400,31 @@ main {
   min-height: 44px;
 }
 
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding-top: 11px;
+  margin-top: 10px;
+}
+
+/* The box keeps its size beside a label of several lines, centred on the label's first line, and
+   grows with the text (rem: an input's own em is the browser's 13 px). */
+.check input {
+  flex: none;
+  font: inherit;
+  width: 1.375rem;
+  height: 1.375rem;
+  margin: calc((1lh - 1.375rem) / 2) 0 0;
+  accent-color: var(--accent);
+}
+
+.card .field input[type='time'],
+.card .field select {
+  max-width: 20rem;
+}
+
 .with-unit {
   display: flex;
   align-items: center;

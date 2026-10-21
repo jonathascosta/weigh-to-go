@@ -3,6 +3,7 @@
  * A bar of chips shows and hides each section; a hidden one isn't drawn until it shows again.
  */
 import type { App, State } from '../app/app';
+import type { Notifier } from '../reminders/keeper';
 import { SECTIONS, sections, viewGeneration, watchView, type Section } from '../app/view';
 import { onSettingsChange, settings, type Settings } from '../i18n';
 import { mountChart } from './chart';
@@ -17,13 +18,15 @@ import { mountLog } from './log';
 import { mountPercent } from './percent';
 import { mountBmi, mountGoal } from './profile';
 import { mountRates } from './rates';
+import { mountReminder } from './reminder';
 import { isStandalone } from './standalone';
 import { renderSummary } from './summary';
 import { mountWeeks } from './weeks';
 
 type Part = (state: State, s: Settings) => void;
 
-export function mountDashboard(root: HTMLElement, app: App): void {
+/** `notifier` is the phone's notifications, in the iPhone app only. */
+export function mountDashboard(root: HTMLElement, app: App, notifier?: Notifier): void {
   const notice = h('div', { class: 'notice', attrs: { role: 'status', hidden: true } });
   // An installed app with nothing in it: its data may be in the browser, which it doesn't share.
   const installText = h('p');
@@ -53,6 +56,10 @@ export function mountDashboard(root: HTMLElement, app: App): void {
     log: card('log'),
   };
   const data = h('section', { class: 'card', attrs: { 'aria-labelledby': 'data-title' } });
+  // The daily reminder is the app's: a website can't plan notifications on the phone.
+  const reminder = notifier
+    ? h('section', { class: 'card', attrs: { 'aria-labelledby': 'reminder-title' } })
+    : null;
   root.replaceChildren(
     notice,
     installHint,
@@ -66,6 +73,7 @@ export function mountDashboard(root: HTMLElement, app: App): void {
     h('div', { class: 'grid' }, el.goal, el.bmi, el.facts, el.variation, el.weeks, el.weekdays, el.calendar),
     el.log,
     data,
+    ...(reminder ? [reminder] : []),
   );
 
   const safely = (part: Part, state: State, s: Settings) => {
@@ -104,6 +112,7 @@ export function mountDashboard(root: HTMLElement, app: App): void {
     ['log', mountLog(el.log, app)],
     [null, mountData(data, notice, app)],
   ];
+  if (reminder && notifier) parts.push([null, mountReminder(reminder, app, notifier)]);
 
   /**
    * Shows and hides the sections as chosen: a section that just appeared is drawn, and nothing else
