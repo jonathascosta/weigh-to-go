@@ -16,7 +16,10 @@ the files and sees the usual request logs, never your data. Clearing your browse
 your weigh-ins, so export a backup now and then (Your data → Export backup, a JSON file the diary can
 import again). Your data → Export CSV saves the weigh-ins for a spreadsheet, with semicolons and a
 decimal comma or commas and a decimal point, as you choose. Both are made in the page and downloaded:
-nothing is sent anywhere.
+nothing is sent anywhere. The privacy policy, for the website and the iPhone app, is at
+[privacy.html](https://weightogo.jonathas.net/privacy.html)
+([pt/privacidade.html](https://weightogo.jonathas.net/pt/privacidade.html) in Portuguese), linked from
+every page's footer.
 
 ## Installing and offline use
 

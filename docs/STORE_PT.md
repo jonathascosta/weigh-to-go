@@ -73,10 +73,13 @@ de consentimento.
    - Cole numa sessão a lista atual de SKAdNetwork da Google
      (<https://developers.google.com/admob/ios/3p-skadnetworks>): a sessão não consegue abrir essa
      página e não deve digitar os ids de memória.
-7. **As páginas no jonathas.net.** No repositório `jonathascosta/jonathas.net`, como no Arrows:
-   suporte em `https://www.jonathas.net/weightogo.html` (`/weightogo/pt.html` em português) e a
-   política de privacidade em `/weightogo/privacy.html` (`/weightogo/privacidade.html`), copiadas da
-   política do app (Sprint 4, story 3). Confira que os quatro endereços abrem.
+7. **As páginas no jonathas.net.** A política de privacidade já existe no site, em
+   `https://weightogo.jonathas.net/privacy.html` e `/pt/privacidade.html` em português (e no app,
+   pelo rodapé). No repositório `jonathascosta/jonathas.net`, como no Arrows: suporte em
+   `https://www.jonathas.net/weightogo.html` (`/weightogo/pt.html` em português), que a política
+   indica como contato, e cópias da política em `/weightogo/privacy.html` e
+   `/weightogo/privacidade.html`, copiadas do texto dessas duas páginas, com a data, para que os dois
+   lugares digam o mesmo. Confira que os seis endereços abrem.
 8. **A listagem.** Primeiro, grave uma vez a App Review Information da versão no App Store Connect
    (sem login necessário, o contato, as notas do passo 11): sem isso o workflow da listagem falha com
    "No data". Depois rode o workflow **App Store listing**: ele envia os textos e as capturas dos dois

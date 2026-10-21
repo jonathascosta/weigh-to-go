@@ -5,6 +5,8 @@
   tracks no one: the weigh-ins stay on the phone. Every required-reason API the app uses is listed
   below with its reason, those its plugins use included where the plugin ships no manifest of its own:
   Capacitor Filesystem reads file timestamps (stat) of files in the app's own container (C617.1).
+  It must agree with the privacy policy (privacy.html, pt/privacidade.html). Google's ad SDK brings
+  the data types it collects when it is added (Sprint 4, story 1), not before.
 -->
 <plist version="1.0">
 <dict>

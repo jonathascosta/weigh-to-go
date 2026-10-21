@@ -43,6 +43,29 @@ both change together, in the same pull request.
    (no requests to other origins, GitHub Pages' logs). The privacy manifest, and the App Privacy
    answers for Google's SDK (STORE.md, App Privacy), which must agree with the policy.
 
+   _As built (21 October 2026)._ The policy is two static pages, `privacy.html` and
+   `pt/privacidade.html`, built like the 404 page (`src/static-page.ts`: the text in the reader's
+   language, then the frame check), readable with scripts off, in the app's build too, and precached
+   by the service worker. Their text is in `src/i18n/messages.ts` under `privacy.*`, one key per
+   paragraph; the messages test checks both pages carry every key. Every page's footer links it in
+   the reader's language (`data-href-en` and `data-href-pt`, which `translatePage` follows); the
+   pages are canonical, name each other with hreflang, are in the sitemap, and `check-dist` checks all
+   of it; end-to-end tests open the policy from each footer, in both languages. Its sections: In
+   short, The website, The iPhone app, Apple Health, The daily reminder, Ads in the app, The purchase
+   and ratings, Children, Deleting everything, Changes, Contact (the support page on jonathas.net).
+   It describes the ads and the purchase as they ship in the same release, so stories 1 and 2 must
+   match it, or change it and its date: a banner in the app only, non-personalised ads, no tracking
+   prompt and no IDFA; Google's consent message where the law asks, with **Privacy choices**
+   (**Opções de privacidade**) in settings; Remove ads stops the ad requests; the purchase checked on
+   the device with StoreKit. What it says Google's SDK collects (IP address, device model and
+   operating system, ad interactions, an approximate location from the IP address, crash and
+   performance data) must be checked in story 1 against Google's data disclosure page, which this
+   session couldn't open. The privacy manifest agrees with what is built today (no tracking, no data
+   collected, file timestamps C617.1); story 1 adds the SDK's collected data types to it, and to the
+   App Privacy answers (STORE.md, step 9), with the SDK. The app has no About text yet (the design's
+   O17); when it comes, it links the policy. The copies on jonathas.net are the owner's (STORE.md,
+   step 7).
+
 4. **The listing.** The name (checked free on the App Store, at most 30 characters, with a fallback
    in case "Weigh to Go" is taken), subtitle, keywords, description and promotional text in English
    and Brazilian Portuguese, naming Apple Health (guideline 2.5.1) and saying the projections are

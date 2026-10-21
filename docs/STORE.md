@@ -71,10 +71,13 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    - Paste Google's current SKAdNetwork list into a session
      (<https://developers.google.com/admob/ios/3p-skadnetworks>): a session can't open that page and
      must not type the ids from memory.
-7. **The pages on jonathas.net.** In the `jonathascosta/jonathas.net` repository, as for Arrows:
-   support at `https://www.jonathas.net/weightogo.html` (`/weightogo/pt.html` in Portuguese) and the
-   privacy policy at `/weightogo/privacy.html` (`/weightogo/privacidade.html`), copied from the app's
-   policy (Sprint 4, story 3). Check that the four addresses open.
+7. **The pages on jonathas.net.** The privacy policy already exists on the website, at
+   `https://weightogo.jonathas.net/privacy.html` and `/pt/privacidade.html` in Portuguese (and in the
+   app, from the footer). In the `jonathascosta/jonathas.net` repository, as for Arrows: support at
+   `https://www.jonathas.net/weightogo.html` (`/weightogo/pt.html` in Portuguese), which the policy
+   names as its contact, and copies of the policy at `/weightogo/privacy.html` and
+   `/weightogo/privacidade.html`, copied from those two pages' text, date included, so both places
+   say the same. Check that the six addresses open.
 8. **The listing.** First save the version's App Review Information once in App Store Connect (no
    sign-in required, the contact, the notes of step 11): without it the listing workflow fails with
    "No data". Then run the **App Store listing** workflow: it sends the text and screenshots of both
