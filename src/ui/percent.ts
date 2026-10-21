@@ -43,6 +43,7 @@ import { chips, h, moreRows, rich, s as svg } from './dom';
 import {
   barsPath,
   barTimeAxis,
+  capHeight,
   createPlot,
   dotsPath,
   leftFor,
@@ -353,7 +354,10 @@ export function mountPercent(
     msNote,
     h(
       'div',
-      { class: 'table-box', attrs: { tabindex: 0, role: 'region', 'aria-labelledby': 'pct-ms-title' } },
+      {
+        class: 'table-box table-short',
+        attrs: { tabindex: 0, role: 'region', 'aria-labelledby': 'pct-ms-title' },
+      },
       h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'pct-ms-title' } }, msHead, msBody),
     ),
     msMore.element,
@@ -449,7 +453,7 @@ export function mountPercent(
     const w = (kg: number) => f.weight(kg, unit);
     const { analysis, profile } = state;
     const width = chart.width();
-    const height = width < 560 ? 280 : 360;
+    const height = capHeight(width < 560 ? 280 : 360, chart.strip());
     foot.replaceChildren();
     if (!analysis || analysis.series.length < 2) {
       chart.empty(state.status === 'loading' ? m['home.placeholder'] : m['pct.chartEmpty'], height);
@@ -685,7 +689,7 @@ export function mountPercent(
   const drawWeekly = (state: State, s: Settings) => {
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
-    const height = 220;
+    const height = capHeight(220, weekly.strip());
     const rows: readonly WeeklyPct[] = state.analysis ? weeklyPct(state.analysis.weeks) : [];
     const firstRow = rows[0];
     if (firstRow === undefined) {

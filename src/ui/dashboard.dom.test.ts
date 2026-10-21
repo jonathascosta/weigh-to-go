@@ -6,6 +6,7 @@ import { fakeStorage } from '../data/fake-storage.test-helper';
 import { memoryStore, type Store } from '../data/store';
 import { choose, resetSettings } from '../i18n';
 import { mountDashboard, type Dashboard } from './dashboard';
+import { WIDE_QUERY } from './shell';
 
 const settle = async () => {
   for (let i = 0; i < 5; i++) await new Promise((resolve) => setTimeout(resolve, 0));
@@ -864,6 +865,95 @@ describe('on a phone, the parts drawn only while they show', () => {
   function section(id: string) {
     return root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!;
   }
+});
+
+describe('the analysis cards across a change of width and while closed', () => {
+  let setWide: (wide: boolean) => void = () => undefined;
+  const go = (hash: string) => {
+    window.location.hash = hash;
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  };
+  const section = (id: string) => root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!;
+
+  beforeEach(async () => {
+    window.location.hash = '';
+    const listeners = new Set<() => void>();
+    const list = {
+      matches: false,
+      addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
+    };
+    vi.stubGlobal('matchMedia', (query: string) =>
+      query === WIDE_QUERY
+        ? list
+        : { matches: false, addEventListener: () => undefined, removeEventListener: () => undefined },
+    );
+    setWide = (wide) => {
+      list.matches = wide;
+      for (const listener of listeners) listener();
+    };
+    board?.dispose();
+    resetView();
+    root = document.createElement('div');
+    document.body.replaceChildren(root);
+    app = createApp(() => Promise.resolve(memoryStore()));
+    board = mountDashboard(root, app);
+    // 200 days to yesterday: seven or eight months, and a diary still kept.
+    const now = new Date();
+    const end = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - 86_400_000;
+    await app.save(
+      Array.from({ length: 200 }, (_, i) => ({
+        date: new Date(end - (199 - i) * 86_400_000).toISOString().slice(0, 10),
+        kg: Math.round((100 - i * 0.03 + (i % 3) * 0.4) * 10) / 10,
+      })),
+    );
+    await settle();
+  });
+
+  it('follows the width with the calendar’s months and the rows shown, until the reader picks', () => {
+    go('#analysis');
+    root.querySelector<HTMLButtonElement>('#calendar-toggle')!.click();
+    root.querySelector<HTMLButtonElement>('#facts-toggle')!.click();
+    const pressed = () =>
+      section('calendar-title').querySelector('.controls button[aria-pressed="true"]')!.textContent;
+    const facts = () =>
+      [...section('facts-title').querySelectorAll<HTMLElement>('li')].filter((li) => !li.hidden);
+    expect(pressed()).toBe('Last 3');
+    expect(root.querySelector('#calendar-sum')!.textContent).toMatch(/^Last 3 months: /);
+    expect(facts()).toHaveLength(5);
+    setWide(true);
+    expect(pressed()).toBe('Last 12');
+    expect(root.querySelector('#calendar-sum')!.textContent).toMatch(/^Since /);
+    expect(facts().length).toBeGreaterThan(5);
+    setWide(false);
+    expect(pressed()).toBe('Last 3');
+    expect(facts()).toHaveLength(5);
+    // Picked, it holds at every width.
+    [...section('calendar-title').querySelectorAll<HTMLButtonElement>('.controls button')]
+      .find((b) => b.textContent === 'All')!
+      .click();
+    expect(document.activeElement?.textContent).toBe('All');
+    setWide(true);
+    expect(pressed()).toBe('All');
+  });
+
+  it('draws a closed card with what changed meanwhile when it opens again', async () => {
+    go('#analysis');
+    const toggle = root.querySelector<HTMLButtonElement>('#pct-toggle')!;
+    toggle.click();
+    const before = section('pct-title').querySelector('svg.chart-svg');
+    toggle.click();
+    await app.save([{ date: new Date().toISOString().slice(0, 10), kg: 90 }]);
+    await settle();
+    choose({ lang: 'pt' });
+    // Closed: its line follows at once, its body when it opens.
+    expect(root.querySelector('#pct-sum')!.textContent).toMatch(/perdidos desde/);
+    expect(section('pct-title').querySelector('svg.chart-svg')).toBe(before);
+    toggle.click();
+    expect(section('pct-title').querySelector('svg.chart-svg')).not.toBe(before);
+    expect(root.querySelector('#pct-options-button')!.textContent).toBe('Opções: Essencial');
+    expect(section('pct-title').querySelector('.readout')!.textContent).toMatch(/último registro/);
+  });
 });
 
 describe('the reload notice', () => {

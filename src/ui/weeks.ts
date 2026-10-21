@@ -66,7 +66,7 @@ export function mountWeeks(
     h('div', { class: 'card-head' }, h('div', {}, title, note)),
     h(
       'div',
-      { class: 'table-box', attrs: { tabindex: 0, role: 'region', id: 'weeks-table-box' } },
+      { class: 'table-box table-short', attrs: { tabindex: 0, role: 'region', id: 'weeks-table-box' } },
       h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'weeks-title' } }, head, body),
     ),
     more.element,

@@ -358,7 +358,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     }),
   );
   add('progress', 'goal', mountGoal(el.goal, app, shell));
-  add('progress', 'weeks', mountWeeks(el.weeks, shell));
+  const weeksPart = add('progress', 'weeks', mountWeeks(el.weeks, shell));
   /** A card's title and line: drawn whenever its view shows, open or not. */
   const line = (k: (typeof ANALYSIS)[number], title: (m: Settings['messages']) => string, text: Draw) =>
     add('analysis', k, (state, s) => {
@@ -505,9 +505,11 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     views.today.classList.toggle('is-empty', empty);
     // Progress and Analysis too: one card says what appears when, with a way to the weigh-in.
     views.progress.classList.toggle('is-empty', empty);
-    views.analysis.classList.toggle('is-empty', empty);
+    // Analysis until the second weigh-in, as its card says.
+    const fewForAnalysis = state.status === 'ready' && state.weighIns.length < 2;
+    views.analysis.classList.toggle('is-empty', fewForAnalysis);
     progressEmpty.card.hidden = !empty;
-    analysisEmpty.card.hidden = !empty;
+    analysisEmpty.card.hidden = !fewForAnalysis;
     progressEmpty.text.textContent = m['empty.progress'];
     analysisEmpty.text.textContent = m['empty.analysis'];
     progressEmpty.link.textContent = m['empty.log'];
@@ -560,6 +562,10 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
       todaySummary.dirty = true;
       progressPart.dirty = true;
       chart.dirty = true;
+      // And the analysis cards' (the calendar's months until picked, the rows shown before Show
+      // more) and the weekly averages' rows.
+      weeksPart.dirty = true;
+      for (const part of parts) if (part.view === 'analysis') part.dirty = true;
       drawShown();
     }),
   ];

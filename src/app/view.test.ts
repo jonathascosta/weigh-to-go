@@ -277,6 +277,23 @@ describe('the analysis cards’ views', () => {
     expect(rateView.preset()).toBe('custom');
   });
 
+  it('fall back on saved views and sets that make no sense', () => {
+    save('pct.preset', 'everything');
+    expect(pctView.preset()).toBe('essential');
+    // Custom, with its own sets unreadable: the sets in force, else Detailed's.
+    save('pct.custom', [['kpis', 'nope'], []]);
+    save('pct.preset', 'custom');
+    expect(pctView.preset()).toBe('custom');
+    expect(blocks()).toEqual([...PCT_BLOCKS]);
+    save('pct.blocks', ['chart']);
+    expect(blocks()).toEqual(['chart']);
+    // A custom of the wrong shape is none: Custom then keeps the sets in force as the reader's own.
+    save('pct.custom', [['kpis']]);
+    pctView.choose('essential');
+    pctView.choose('custom');
+    expect(blocks()).toEqual([...PCT_ESSENTIAL_BLOCKS]);
+  });
+
   it('show the calendar’s last 3 months on a narrow screen until the reader picks', () => {
     expect(calendarSpan.get()).toBe(3);
     wide = true;

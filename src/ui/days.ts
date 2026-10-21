@@ -18,6 +18,7 @@ import { h, rich, s as svg } from './dom';
 import {
   barsPath,
   barTimeAxis,
+  capHeight,
   createPlot,
   leftFor,
   readoutDay,
@@ -26,6 +27,7 @@ import {
   type TipRow,
 } from './plot';
 import type { Layout } from './sheet';
+import { staleTo } from './summary';
 
 // ---------- Daily variation ----------
 
@@ -237,12 +239,15 @@ export function calendarSummary(
     }
   // The months shown hold every weigh-in: "Since" the first, rather than a count of months.
   const all = (months[0]?.first ?? '') <= `${analysis.first.date.slice(0, 7)}-01`;
+  const stale = staleTo(analysis, today);
   return m['calendar.sum']({
     months: all ? null : count(months.length, m['word.month'], s),
+    // A diary left weeks ago: the months to its last weigh-in's.
+    to: !all && stale !== null ? f.day(stale, 'monthYear') : null,
     from: f.day(analysis.first.date, 'medium'),
     down: count(tally.down, m['word.day'], s),
     up: f.number(tally.up, 0),
-    flat: tally.flat > 0 ? f.number(tally.flat, 0) : null,
+    flat: tally.flat > 0 ? count(tally.flat, m['word.steady'], s) : null,
     none: f.number(tally.none, 0),
   });
 }
@@ -288,7 +293,7 @@ export function mountVariation(
         m['variation.gap'],
       ),
     );
-    const height = 220;
+    const height = capHeight(220, plot.strip());
     const { analysis } = state;
     if (!analysis || analysis.series.length < 2) {
       plot.empty(state.status === 'loading' ? m['home.placeholder'] : m['variation.empty'], height);
@@ -415,7 +420,8 @@ export function mountWeekdays(
   app: { state(): State },
 ): (state: State, s: Settings) => void {
   const note = h('p', { class: 'note card-note' });
-  const foot = h('p', { class: 'foot' });
+  // On a phone the card's line says the same: the sentence is the one page's.
+  const foot = h('p', { class: 'foot desk-only' });
   const plot = createPlot(() => {
     render(app.state(), settings());
   });
@@ -525,6 +531,9 @@ export function mountCalendar(
     render(app.state(), settings());
   };
   const plot = createPlot(redraw);
+  // A calendar of many months is taller than a phone's screen: its strip stays at the top of it
+  // while a finger reads the squares below.
+  plot.element.classList.add('plot-sticky');
   /** On "All", the newest months shown; "Show earlier" adds more. */
   let allShown = ALL_PAGE;
   const earlier = h('div', { class: 'log-more' });
@@ -536,7 +545,9 @@ export function mountCalendar(
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
     note.textContent = m['calendar.note'];
-    const key = `${s.locale.tag}|${String(viewGeneration())}`;
+    // Built again when the months in force change by themselves too (the screen's default, until
+    // the reader picks), so the pressed one is always the one shown.
+    const key = `${s.locale.tag}|${String(viewGeneration())}|${String(calendarSpan.get())}`;
     if (built !== key) {
       built = key;
       controls.replaceChildren(
@@ -553,6 +564,8 @@ export function mountCalendar(
               allShown = ALL_PAGE;
               redraw();
               onSpan();
+              // The control was built again with the new months: focus stays on the choice.
+              controls.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus();
             },
             'segmented',
           ),
@@ -618,10 +631,15 @@ export function mountCalendar(
     const width = plot.width();
     // Months side by side, as many as fit: a square a day, Monday first.
     const gap = 2;
-    const cell = width < 400 ? 16 : 15;
+    const monthGap = 14;
+    // On a narrow card two months still share a row (at 320 px a square is 15 px), so the last 3
+    // months take two rows, not three, and the strip stays in view above them.
+    const cell =
+      width < 400
+        ? Math.max(12, Math.min(16, Math.floor(((width + monthGap) / 2 - monthGap) / 7) - gap))
+        : 15;
     const step = cell + gap;
     const monthW = 7 * step;
-    const monthGap = 14;
     const cols = Math.max(1, Math.floor((width + monthGap) / (monthW + monthGap)));
     const headH = 32;
     const monthH = headH + 6 * step + 10;

@@ -3063,10 +3063,12 @@ span.cal-none {
   margin: 12px 0 0;
 }
 
-.view.is-empty .lede,
-.view.is-empty > .grid,
-.view.is-empty > section[aria-labelledby='chart-title'],
-.view.is-empty section[aria-labelledby='weeks-title'] {
+/* An empty Progress keeps its Goal (a goal can be set before the first weigh-in). */
+#view-analysis.is-empty .lede,
+#view-analysis.is-empty .all-hidden,
+#view-analysis.is-empty > .grid,
+#view-progress.is-empty > section[aria-labelledby='chart-title'],
+#view-progress.is-empty section[aria-labelledby='weeks-title'] {
   display: none;
 }
 
@@ -3145,7 +3147,7 @@ span.cal-none {
 }
 
 /* A phone: figures in two columns, one below 15 rem (summary.ts, stackBelow); tables that share
-   the width and wrap, with no box of their own to scroll (issue #51). */
+   the width and wrap (issue #51). */
 @media (max-width: 959.98px) {
   .kpis.kpis-in {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3160,41 +3162,43 @@ span.cal-none {
     padding: 10px 12px;
   }
 
-  .table-box {
+  /* Story 5's short tables (weeks, hiccups, milestones), which show more on request; the log and
+     the simulator keep their scrolling boxes. */
+  .table-box.table-short {
     max-height: none;
     overflow: visible;
+  }
+
+  .table-short thead th {
+    position: static;
   }
 
   .table-fit {
     table-layout: fixed;
   }
 
-  /* A figure may break only at its space ("−0.52 / kg"); a date or a word anywhere it must. */
+  /* A word breaks only where it must, a date after its slashes (<wbr>), a heading's word too
+     ("% acumulado" in a narrow column); a figure in a cell only at its space ("−0.52 / kg").
+     (word-break: break-word, as overflow-wrap: anywhere needs Safari 15.4.) */
   .table-fit th,
   .table-fit td {
     white-space: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    -webkit-hyphens: auto;
+    hyphens: auto;
   }
 
-  .table-fit td.num,
-  .table-fit th.num {
+  .table-fit td.num {
     white-space: normal;
-    overflow-wrap: normal;
-  }
-
-  .table-fit thead th {
-    position: static;
+    word-break: normal;
+    -webkit-hyphens: manual;
+    hyphens: manual;
   }
 
   .week-bar-cell {
     width: auto;
     min-width: 0;
-  }
-
-  /* A word breaks only where it must; a date after its slashes (<wbr>). */
-  .table-fit th,
-  .table-fit td {
-    overflow-wrap: break-word;
   }
 
   .table-fit .col-narrow {
@@ -3226,6 +3230,11 @@ span.cal-none {
   .options-card .segment {
     flex: 0 0 auto;
     padding: 4px 14px;
+    white-space: nowrap;
+  }
+
+  .options-card .options-section {
+    flex-basis: 20rem;
   }
 }
 
@@ -3237,4 +3246,60 @@ span.cal-none {
 
 .controls.span .segmented {
   max-width: 24rem;
+}
+
+/* A chart tapped draws no ring; the keyboard's ring stays (:focus-visible). Safari before 15.4 has
+   no :focus-visible: there the chart and a card's head ring on :focus. */
+@supports selector(:focus-visible) {
+  .chart-svg:focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+@supports not selector(:focus-visible) {
+  .chart-svg:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+
+  .acard-toggle:focus {
+    outline: none;
+  }
+
+  .acard-toggle:focus::after {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chev {
+    transition: none;
+  }
+}
+
+/* The calendar's strip stays at the top of the screen while a finger reads its squares. */
+.plot-sticky .readout {
+  position: sticky;
+  z-index: 2;
+  top: calc(env(safe-area-inset-top, 0px) + var(--ad-h) + 4px);
+}
+
+/* A choice in a sheet is a finger's target: 44 px (the BMI's height unit). */
+@media (pointer: coarse) {
+  .options-content .chip {
+    min-height: 44px;
+  }
+}
+
+/* "Back to the weight before" is a date, not a link: regular weight, still blue. */
+.table td.back {
+  font-weight: 400;
+}
+
+/* The weekdays' sentence under its chart: the card's line says it on a phone. */
+@media (max-width: 959.98px) {
+  .desk-only {
+    display: none;
+  }
 }

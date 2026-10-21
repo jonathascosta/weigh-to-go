@@ -5,7 +5,7 @@
  * pure functions (tested); the numbers from the analysis engine.
  */
 import type { Analysis, Method } from '../analysis/analyze';
-import { isoDay } from '../analysis/dates';
+import { isoDay, localToday, parseDay } from '../analysis/dates';
 import {
   BMI_BANDS,
   bmiSummary as bmiFigures,
@@ -23,6 +23,7 @@ import type { Disclosure } from './card';
 import { chips, h, say } from './dom';
 import { failure } from './entry';
 import { optionsPanel, type Layout } from './sheet';
+import { sentenceDay, staleTo } from './summary';
 
 // ---------- The goal ----------
 
@@ -151,7 +152,7 @@ export function bmiView(analysis: Analysis, heightCm: number, s: Settings): BmiV
  * The BMI card's line (design §5): the BMI now and how far it moved since the start; or that it
  * needs a height, or a weigh-in.
  */
-export function bmiSummary(state: State, s: Settings): string {
+export function bmiSummary(state: State, s: Settings, today: string = localToday()): string {
   const m = s.messages;
   const { format: f } = s;
   const height = state.profile.heightCm;
@@ -163,7 +164,9 @@ export function bmiSummary(state: State, s: Settings): string {
   const shown = f.number(Math.abs(diff), 1);
   // A change too small to show is no change.
   const way = shown === f.number(0, 1) ? 'same' : diff > 0 ? 'lower' : 'higher';
-  return m['bmi.sum'](now, shown, way);
+  // "now" only while the last weigh-in is recent; else its day.
+  const stale = state.analysis ? staleTo(state.analysis, today) : null;
+  return m['bmi.sum'](now, shown, way, stale === null ? null : sentenceDay(stale, s, parseDay(today)));
 }
 
 /** The bands the BMI bar draws, as shares of the scale, from the top of "underweight". */

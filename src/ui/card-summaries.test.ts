@@ -20,6 +20,8 @@ const en = resolveSettings(['en-GB'], { ...none, weightUnit: 'kg' });
 const lb = resolveSettings(['en-US'], { ...none, weightUnit: 'lb' });
 /** The made-up series are in 2026; their dates read as this year's. */
 const TODAY = new Date('2026-10-21T12:00:00Z');
+/** A day soon after the series end: a diary still kept. */
+const NEAR = '2026-10-01';
 
 /** A made-up series: `kgs` on consecutive days from 2026-09-01. */
 const days = (kgs: readonly number[], from = '2026-09-01'): WeighIn[] =>
@@ -45,6 +47,8 @@ describe('sentence and rich', () => {
     expect(sentence('a última, até 26 de set..')).toBe('a última, até 26 de set.');
     expect(sentence('ending on **26 Sept.**.')).toBe('ending on **26 Sept.**');
     expect(sentence('Loading…')).toBe('Loading…');
+    expect(sentence('Wait... then.')).toBe('Wait... then.');
+    expect(sentence('5%...')).toBe('5%...');
     expect(sentence('3.5 kg.')).toBe('3.5 kg.');
     const nodes = rich('até **26 de set.**.');
     expect(nodes.map((n) => (typeof n === 'string' ? n : `<${n.textContent}>`)).join('')).toBe(
@@ -58,10 +62,12 @@ describe('the cards’ lines say what they need with too little data', () => {
     const one = state(days([100]));
     expect(percentSummary(state([]), en)).toBe('Appears from the second weigh-in.');
     expect(percentSummary(one, pt)).toBe('Aparece a partir da segunda pesagem.');
-    expect(rateSummary(state(days([100, 99.8])), en)).toBe('Appears from the third weigh-in.');
+    expect(rateSummary(state(days([100, 99.8])), en, NEAR)).toBe('Appears from the third weigh-in.');
     expect(hiccupsSummary(one, pt, TODAY)).toBe('Aparece a partir da terceira pesagem.');
-    expect(bmiSummary(one, en)).toBe('Add your height to see it.');
-    expect(bmiSummary(state([], { heightCm: 176 }), pt)).toBe('Aparece a partir da primeira pesagem.');
+    expect(bmiSummary(one, en, '2026-09-05')).toBe('Add your height to see it.');
+    expect(bmiSummary(state([], { heightCm: 176 }), pt, '2026-09-05')).toBe(
+      'Aparece a partir da primeira pesagem.',
+    );
     expect(factsSummary(one, en)).toBe('Appears from the second weigh-in.');
     expect(variationSummary(one, en, new Date(0))).toBe('Appears from the third weigh-in.');
     expect(weekdaysSummary(state(losing(10)), pt)).toBe('Precisa de duas semanas de pesagens.');
@@ -86,17 +92,17 @@ describe('percentSummary', () => {
 describe('rateSummary', () => {
   it('says the rate a day and what it makes in a week, in kg or lb', () => {
     const s = state(losing(30));
-    expect(rateSummary(s, en)).toMatch(
+    expect(rateSummary(s, en, NEAR)).toMatch(
       /^Losing \*\*0\.\d{3}% a day\*\* over the last 3 weeks, about 0\.\d\d kg a week\.$/,
     );
-    expect(rateSummary(s, lb)).toMatch(/about 1\.\d\d lb a week\.$/);
-    expect(rateSummary(s, pt)).toMatch(
+    expect(rateSummary(s, lb, NEAR)).toMatch(/about 1\.\d\d lb a week\.$/);
+    expect(rateSummary(s, pt, NEAR)).toMatch(
       /^Perdendo \*\*0,\d{3}% ao dia\*\* nas últimas 3 semanas, cerca de 0,\d\d kg por semana\.$/,
     );
     // Too few weigh-ins in the last 3 weeks: the whole period.
-    expect(rateSummary(state(days([100, 99.5, 99])), en)).toMatch(/over the whole period/);
-    expect(rateSummary(state(losing(30, -0.1)), en)).toMatch(/^Gaining /);
-    expect(rateSummary(state(days(Array.from({ length: 30 }, () => 90))), pt)).toBe(
+    expect(rateSummary(state(days([100, 99.5, 99])), en, NEAR)).toMatch(/over the whole period/);
+    expect(rateSummary(state(losing(30, -0.1)), en, NEAR)).toMatch(/^Gaining /);
+    expect(rateSummary(state(days(Array.from({ length: 30 }, () => 90))), pt, NEAR)).toBe(
       'Estável nas últimas 3 semanas: **0,000% ao dia**.',
     );
   });
@@ -131,13 +137,13 @@ describe('hiccupsSummary', () => {
 describe('bmiSummary', () => {
   it('says the BMI now and how far it moved since the start', () => {
     // 176 cm: 100 kg is 32.3, 97 kg 31.3.
-    expect(bmiSummary(state(days([100, 97]), { heightCm: 176 }), en)).toBe(
+    expect(bmiSummary(state(days([100, 97]), { heightCm: 176 }), en, '2026-09-05')).toBe(
       '**31.3** now, 1.0 lower than at the start.',
     );
-    expect(bmiSummary(state(days([100, 102]), { heightCm: 176 }), pt)).toBe(
+    expect(bmiSummary(state(days([100, 102]), { heightCm: 176 }), pt, '2026-09-05')).toBe(
       '**32,9** agora, 0,6 acima do início.',
     );
-    expect(bmiSummary(state(days([100, 100]), { heightCm: 176 }), en)).toBe(
+    expect(bmiSummary(state(days([100, 100]), { heightCm: 176 }), en, '2026-09-05')).toBe(
       '**32.3** now, the same as at the start.',
     );
   });
@@ -212,5 +218,63 @@ describe('calendarSummary', () => {
     expect(calendarSummary(year, en, 3, '2026-09-30')).toMatch(
       /^Last 3 months: \d+ days down, \d+ up and 0 without a weigh-in\.$/,
     );
+  });
+});
+
+describe('a diary left weeks ago', () => {
+  // 30 days to 30 Sept, read 120 days later.
+  const LATER = '2027-01-28';
+  const s = state(losing(30), { heightCm: 176 });
+
+  it('says its last weeks and months are the diary’s, to its last weigh-in', () => {
+    expect(rateSummary(s, en, LATER)).toMatch(/over the last 3 weeks of the diary, to 30 Sept 2026, about/);
+    expect(rateSummary(s, pt, LATER)).toMatch(
+      /nas últimas 3 semanas do diário, até 30 de set\. de 2026, cerca/,
+    );
+    expect(bmiSummary(s, en, LATER)).toMatch(/^\*\*\d+\.\d\*\* on 30 Sept 2026, /);
+    expect(bmiSummary(s, pt, LATER)).toMatch(/^\*\*\d+,\d\*\* em 30 de set\. de 2026, /);
+    const year = state(
+      losing(365).map((w, i) => ({ ...w, date: isoDay(addDays(parseDay('2025-07-01'), i)) })),
+    );
+    expect(calendarSummary(year, en, 3, '2026-10-28')).toMatch(/^In the 3 months to Jun 2026: /);
+    expect(calendarSummary(year, pt, 3, '2026-10-28')).toMatch(/^Nos 3 meses até jun\. de 2026: /);
+    // Within two weeks it is still "the last".
+    expect(rateSummary(s, en, '2026-10-12')).toMatch(/over the last 3 weeks, about/);
+    expect(calendarSummary(year, en, 3, '2026-07-10')).toMatch(/^Last 3 months: /);
+  });
+});
+
+describe('counts of one', () => {
+  it('take the singular in both languages', () => {
+    // One steady day, one rise, one day down.
+    const s = state(days([100, 100, 100.5, 100.2]));
+    expect(calendarSummary(s, pt, 3, '2026-09-04')).toBe(
+      'Desde 1 de set. de 2026: 1 dia de queda, 1 de subida, 2 estáveis e 0 sem pesagem.',
+    );
+    const one = state([...days([100, 99.5]), { date: '2026-09-04', kg: 99.9 }]);
+    expect(calendarSummary(one, pt, 3, '2026-09-04')).toBe(
+      'Desde 1 de set. de 2026: 1 dia de queda, 1 de subida, 1 estável e 1 sem pesagem.',
+    );
+    expect(calendarSummary(one, en, 3, '2026-09-04')).toBe(
+      'Since 1 Sept 2026: 1 day down, 1 up, 1 steady and 1 without a weigh-in.',
+    );
+    // One climb: '**1 subida** em 12 dias' (hiccupsSummary, above).
+    expect(factsSummary(state(days([100, 99])), pt)).toBe(
+      '2 pesagens em 2 dias; a maior queda num dia foi de 1,0 kg.',
+    );
+  });
+});
+
+describe('weekdaysSummary with a weekday that holds still', () => {
+  it('says steady, not a rise or a fall, for a mean change that shows as ±0.00', () => {
+    // Four weeks: down 0.1 a day, but Mondays unchanged.
+    const kgs: number[] = [];
+    let kg = 100;
+    for (let i = 0; i < 28; i++) {
+      kg += addDays(parseDay('2026-09-01'), i).getUTCDay() === 1 ? 0 : -0.1;
+      kgs.push(Math.round(kg * 100) / 100);
+    }
+    expect(weekdaysSummary(state(days(kgs)), en)).toMatch(/; steady: \*\*Monday\*\* \(±0\.00 kg\)\.$/);
+    expect(weekdaysSummary(state(days(kgs)), pt)).toMatch(/; estável: \*\*segunda-feira\*\* \(±0,00 kg\)\.$/);
   });
 });

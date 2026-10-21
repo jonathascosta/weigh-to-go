@@ -132,6 +132,8 @@ export interface RateSumParts {
   readonly way: 'losing' | 'gaining' | 'steady';
   /** Over the last 3 weeks, or the whole period when they hold too few weigh-ins. */
   readonly recent: boolean;
+  /** The last weigh-in, when it is weeks old ("23 Jun"): the 3 weeks are the diary's, to it. */
+  readonly to: string | null;
 }
 
 /** The parts of the Hiccups card's line, formatted. */
@@ -152,12 +154,14 @@ export interface HiccupSumParts {
 export interface CalendarSumParts {
   /** "3 months" for the last months, or null when the months shown hold every weigh-in. */
   readonly months: string | null;
+  /** The last weigh-in's month, when it is weeks old ("Jun 2026"): the months are to it. */
+  readonly to: string | null;
   /** The first weigh-in, for "Since …". */
   readonly from: string;
   /** "41 days". */
   readonly down: string;
   readonly up: string;
-  /** Days with no change worth a colour; null for none. */
+  /** Days with no change worth a colour, with their word ("1 steady"); null for none. */
   readonly flat: string | null;
   readonly none: string;
 }
@@ -175,14 +179,24 @@ export interface WeekdaySumParts {
 }
 
 const enCalendarSum = (p: CalendarSumParts): string => {
-  const head = p.months === null ? `Since ${p.from}` : `Last ${p.months}`;
-  const flat = p.flat === null ? '' : `, ${p.flat} steady`;
+  const head =
+    p.months === null
+      ? `Since ${p.from}`
+      : p.to === null
+        ? `Last ${p.months}`
+        : `In the ${p.months} to ${p.to}`;
+  const flat = p.flat === null ? '' : `, ${p.flat}`;
   return `${head}: ${p.down} down, ${p.up} up${flat} and ${p.none} without a weigh-in.`;
 };
 
 const ptCalendarSum = (p: CalendarSumParts): string => {
-  const head = p.months === null ? `Desde ${p.from}` : `Últimos ${p.months}`;
-  const flat = p.flat === null ? '' : `, ${p.flat} estáveis`;
+  const head =
+    p.months === null
+      ? `Desde ${p.from}`
+      : p.to === null
+        ? `Últimos ${p.months}`
+        : `Nos ${p.months} até ${p.to}`;
+  const flat = p.flat === null ? '' : `, ${p.flat}`;
   return `${head}: ${p.down} de queda, ${p.up} de subida${flat} e ${p.none} sem pesagem.`;
 };
 
@@ -967,7 +981,11 @@ export const en = {
   'rate.preset.essential': 'The rate figures and each day’s rate.',
   'rate.preset.detailed': 'Adds the constant-% curve and the simulator.',
   'rate.sum': (p: RateSumParts) => {
-    const over = p.recent ? 'over the last 3 weeks' : 'over the whole period';
+    const over = !p.recent
+      ? 'over the whole period'
+      : p.to === null
+        ? 'over the last 3 weeks'
+        : `over the last 3 weeks of the diary, to ${p.to}`;
     if (p.way === 'steady') return `Steady ${over}: **${p.rate} a day**.`;
     return `${p.way === 'losing' ? 'Losing' : 'Gaining'} **${p.rate} a day** ${over}, about ${p.week} a week.`;
   },
@@ -985,10 +1003,12 @@ export const en = {
   'hiccups.sumNone': 'No climbs back up under the current rules.',
   'goal.change': 'Change goal',
   'bmi.change': 'Change height',
-  'bmi.sum': (now: string, diff: string, way: 'lower' | 'higher' | 'same') =>
-    way === 'same'
-      ? `**${now}** now, the same as at the start.`
-      : `**${now}** now, ${diff} ${way} than at the start.`,
+  'bmi.sum': (now: string, diff: string, way: 'lower' | 'higher' | 'same', on: string | null) => {
+    const when = on === null ? 'now' : `on ${on}`;
+    return way === 'same'
+      ? `**${now}** ${when}, the same as at the start.`
+      : `**${now}** ${when}, ${diff} ${way} than at the start.`;
+  },
   'bmi.sumNone': 'Add your height to see it.',
   'facts.sum': (n: string, days: string, drop: { value: string; over: string | null } | null) =>
     drop === null
@@ -1000,10 +1020,11 @@ export const en = {
     `A typical day moves **±${typical}**; 8 days in 10 stay within ±${within}.`,
   'variation.sumNeeds': 'Appears once there are weigh-ins on consecutive days.',
   'weekdays.sum': (p: WeekdaySumParts) =>
-    `${p.lowWay === 'fall' ? 'Biggest fall' : p.lowWay === 'rise' ? 'Smallest rise' : 'Lowest'}: **${p.low}** (${p.lowChange} on average); ` +
-    `${p.highWay === 'rise' ? 'biggest rise' : p.highWay === 'fall' ? 'smallest fall' : 'highest'}: **${p.high}** (${p.highChange}).`,
+    `${p.lowWay === 'fall' ? 'Biggest fall' : p.lowWay === 'rise' ? 'Smallest rise' : 'Steady'}: **${p.low}** (${p.lowChange} on average); ` +
+    `${p.highWay === 'rise' ? 'biggest rise' : p.highWay === 'fall' ? 'smallest fall' : 'steady'}: **${p.high}** (${p.highChange}).`,
   'weekdays.sumNeeds': 'Needs two weeks of weigh-ins.',
   'calendar.sum': enCalendarSum,
+  'word.steady': { one: 'steady', other: 'steady' },
   'log.title': 'Weigh-ins',
   'log.note': 'Every weigh-in saved, newest first. To correct one, log the same day again.',
   'log.date': 'Date',
@@ -1832,7 +1853,11 @@ export const pt: Messages = {
   'rate.preset.essential': 'Os indicadores da taxa e a taxa de cada dia.',
   'rate.preset.detailed': 'Acrescenta a curva de % constante e o simulador.',
   'rate.sum': (p: RateSumParts) => {
-    const over = p.recent ? 'nas últimas 3 semanas' : 'em todo o período';
+    const over = !p.recent
+      ? 'em todo o período'
+      : p.to === null
+        ? 'nas últimas 3 semanas'
+        : `nas últimas 3 semanas do diário, até ${p.to}`;
     if (p.way === 'steady') return `Estável ${over}: **${p.rate} ao dia**.`;
     return `${p.way === 'losing' ? 'Perdendo' : 'Ganhando'} **${p.rate} ao dia** ${over}, cerca de ${p.week} por semana.`;
   },
@@ -1850,10 +1875,12 @@ export const pt: Messages = {
   'hiccups.sumNone': 'Nenhuma subida com as regras atuais.',
   'goal.change': 'Alterar meta',
   'bmi.change': 'Alterar altura',
-  'bmi.sum': (now: string, diff: string, way: 'lower' | 'higher' | 'same') =>
-    way === 'same'
-      ? `**${now}** agora, o mesmo do início.`
-      : `**${now}** agora, ${diff} ${way === 'lower' ? 'abaixo' : 'acima'} do início.`,
+  'bmi.sum': (now: string, diff: string, way: 'lower' | 'higher' | 'same', on: string | null) => {
+    const when = on === null ? 'agora' : `em ${on}`;
+    return way === 'same'
+      ? `**${now}** ${when}, o mesmo do início.`
+      : `**${now}** ${when}, ${diff} ${way === 'lower' ? 'abaixo' : 'acima'} do início.`;
+  },
   'bmi.sumNone': 'Informe sua altura para vê-lo.',
   'facts.sum': (n: string, days: string, drop: { value: string; over: string | null } | null) =>
     drop === null
@@ -1865,10 +1892,11 @@ export const pt: Messages = {
     `Num dia típico o peso muda **±${typical}**; 8 em cada 10 dias ficam dentro de ±${within}.`,
   'variation.sumNeeds': 'Aparece quando houver pesagens em dias seguidos.',
   'weekdays.sum': (p: WeekdaySumParts) =>
-    `${p.lowWay === 'fall' ? 'Maior queda' : p.lowWay === 'rise' ? 'Menor alta' : 'Mais baixo'}: **${p.low}** (${p.lowChange} em média); ` +
-    `${p.highWay === 'rise' ? 'maior alta' : p.highWay === 'fall' ? 'menor queda' : 'mais alto'}: **${p.high}** (${p.highChange}).`,
+    `${p.lowWay === 'fall' ? 'Maior queda' : p.lowWay === 'rise' ? 'Menor alta' : 'Estável'}: **${p.low}** (${p.lowChange} em média); ` +
+    `${p.highWay === 'rise' ? 'maior alta' : p.highWay === 'fall' ? 'menor queda' : 'estável'}: **${p.high}** (${p.highChange}).`,
   'weekdays.sumNeeds': 'Precisa de duas semanas de pesagens.',
   'calendar.sum': ptCalendarSum,
+  'word.steady': { one: 'estável', other: 'estáveis' },
   'log.title': 'Registros',
   'log.note':
     'Todas as pesagens salvas, da mais recente para a mais antiga. Para corrigir uma, registre o mesmo dia de novo.',

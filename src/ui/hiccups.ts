@@ -28,6 +28,7 @@ import type { Disclosure } from './card';
 import { oneChips, optionsSection } from './controls';
 import { h, moreRows, rich, s as svg, slashBreaks, tone, type Chip } from './dom';
 import {
+  capHeight,
   createPlot,
   labelRow,
   dotsPath,
@@ -278,7 +279,7 @@ export function mountHiccups(
     kpis,
     h(
       'div',
-      { class: 'table-box', attrs: { tabindex: 0, role: 'region', id: 'hiccups-table-box' } },
+      { class: 'table-box table-short', attrs: { tabindex: 0, role: 'region', id: 'hiccups-table-box' } },
       h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'hiccups-title' } }, head, body),
     ),
     more.element,
@@ -325,7 +326,7 @@ export function mountHiccups(
     const b = basis.get();
     const { series, first, last } = analysis;
     const width = plot.width();
-    const height = width < 560 ? 280 : 340;
+    const height = capHeight(width < 560 ? 280 : 340, plot.strip());
     const top = 22;
     const bottom = height - 28;
     const ys = series.map((d) => u(d.kg));
@@ -566,7 +567,11 @@ export function mountHiccups(
               h('td', { class: 'num col-wide', text: r.weight }),
               h('td', { class: 'num' }, tone(r.gain.text, r.gain.change, FLAT_KG)),
               h('td', { class: 'num col-wide', text: r.gainPct }),
-              h('td', { class: r.back.good ? 'tone-down wrap' : 'wrap' }, ...slashBreaks(r.back.text)),
+              h(
+                'td',
+                { class: r.back.good ? 'back tone-down wrap' : 'back wrap' },
+                ...slashBreaks(r.back.text),
+              ),
             ),
           )),
     );

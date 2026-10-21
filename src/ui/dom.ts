@@ -51,10 +51,12 @@ export function s<K extends keyof SVGElementTagNameMap>(
 
 /**
  * A sentence's text as it is meant: a short date that ends it ("26 de set.") meets the sentence's
- * own full stop in one, so ".." becomes "." (across a bold mark too). An ellipsis ("…") is its own
- * character and stays.
+ * own full stop in one, so ".." becomes "." (across a bold mark too). An ellipsis stays, whether
+ * "…" or three full stops.
  */
-export const sentence = (text: string): string => text.replace(/\.(\*\*)?\.(?!\.)/g, '.$1');
+export const sentence = (text: string): string =>
+  // No lookbehind: Safari reads it from 16.4.
+  text.replace(/(^|[^.])\.(\*\*)?\.(?!\.)/g, '$1.$2');
 
 /** Text with **bold** parts, as nodes. */
 export function rich(text: string): (string | HTMLElement)[] {

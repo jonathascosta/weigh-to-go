@@ -9,7 +9,7 @@ import { scaleBand, scaleLinear, scaleUtc } from 'd3-scale';
 import { line } from 'd3-shape';
 import { utcDay } from 'd3-time';
 import { STABLE_KG_PER_WEEK, type Analysis } from '../analysis/analyze';
-import { addDays, DAY, daysBetween, isoDay } from '../analysis/dates';
+import { addDays, DAY, daysBetween, isoDay, localToday, parseDay } from '../analysis/dates';
 import { project } from '../analysis/fit';
 import { isGoal } from '../analysis/goals';
 import {
@@ -55,6 +55,7 @@ import { control, oneChips, optionsSection, toggleList } from './controls';
 import { chips, h, rich, s as svg } from './dom';
 import {
   barsPath,
+  capHeight,
   createPlot,
   dotsPath,
   barTimeAxis,
@@ -68,7 +69,7 @@ import {
 } from './plot';
 import { optionsPanel, type Layout } from './sheet';
 import { fromKg } from '../units';
-import { kpiTiles, missing, stackBelow, toneOf, type Kpi } from './summary';
+import { kpiTiles, missing, sentenceDay, stackBelow, staleTo, toneOf, type Kpi } from './summary';
 
 /** The rate figures: mean, fitted, last 3 weeks and, while losing, what the rate means in weight. */
 export function rateKpiList(analysis: Analysis, s: Settings): Kpi[] {
@@ -282,7 +283,7 @@ const ESSENTIAL_KPIS = 4;
  * The card's line (design §5): the rate over the last 3 weeks (or the whole period, when they hold
  * too few weigh-ins), and what it makes in a week; what it needs before the third weigh-in.
  */
-export function rateSummary(state: State, s: Settings): string {
+export function rateSummary(state: State, s: Settings, today: string = localToday()): string {
   const m = s.messages;
   const { format: f, weightUnit: unit } = s;
   const { analysis } = state;
@@ -290,6 +291,7 @@ export function rateSummary(state: State, s: Settings): string {
   const r = rates(analysis);
   const model = r.recent ?? r.full;
   if (!model) return m['card.needsThird'];
+  const stale = staleTo(analysis, today);
   // What the rate takes off today's weight in a week, compounded.
   const week = analysis.last.kg * (1 - (1 - model.rate / 100) ** 7);
   return m['rate.sum']({
@@ -297,6 +299,8 @@ export function rateSummary(state: State, s: Settings): string {
     week: f.weight(Math.abs(week), unit, 2),
     way: Math.abs(week) < STABLE_KG_PER_WEEK ? 'steady' : model.rate > 0 ? 'losing' : 'gaining',
     recent: r.recent !== null,
+    // A diary left weeks ago: its last 3 weeks, said with their end.
+    to: r.recent !== null && stale !== null ? sentenceDay(stale, s, parseDay(today)) : null,
   });
 }
 
@@ -540,7 +544,7 @@ export function mountRates(
     const { format: f, weightUnit: unit } = s;
     const { analysis } = state;
     const width = daysPlot.width();
-    const height = width < 560 ? 240 : 280;
+    const height = capHeight(width < 560 ? 240 : 280, daysPlot.strip());
     if (!analysis || !r) {
       daysPlot.empty(state.status === 'loading' ? m['home.placeholder'] : m['rate.empty'], height);
       return;
@@ -673,14 +677,15 @@ export function mountRates(
             });
           return { heading: f.day(d.day.date, 'long'), rows };
         },
-        // The strip: the day, its rate (signed as the weight moved) and the rolling average's.
+        // The strip, as the chart reads (above zero, a loss): the day, its loss or gain in words,
+        // and the window's average with the chart's sign.
         readout: (i) => {
           const d = at(i);
           const gap = d.day.index - d.previous.index;
-          const pct = f.percentChange(-d.rate / 100, 3);
+          const pct = f.percent(Math.abs(d.rate) / 100, 3);
           const rows: TipRow[] = [
             {
-              name: '',
+              name: d.rate >= 0 ? m['rate.tip.loss'] : m['rate.tip.gain'],
               value: gap > 1 ? m['rate.tip.perDay'](pct) : pct,
               swatch: d.rate >= 0 ? 'sw-down sw-bar' : 'sw-up sw-bar',
             },
@@ -689,7 +694,7 @@ export function mountRates(
           if (showRolling && v !== null)
             rows.push({
               name: m['rate.readout.rolling'](f.number(rateWindow.get(), 0)),
-              value: f.percentChange(-v / 100, 3),
+              value: f.percent(v / 100, 3),
               swatch: RATE_SWATCH.rolling,
             });
           return { heading: readoutDay(d.day.date, f), rows };
@@ -709,7 +714,7 @@ export function mountRates(
     const { format: f, weightUnit: unit } = s;
     const { analysis, profile } = state;
     const width = curvePlot.width();
-    const height = width < 560 ? 280 : 340;
+    const height = capHeight(width < 560 ? 280 : 340, curvePlot.strip());
     curveFootLine.replaceChildren();
     const full = r?.full ?? null;
     if (!analysis || !full) {
@@ -938,7 +943,7 @@ export function mountRates(
       h(
         'tr',
         {},
-        h('th', { class: 'num', attrs: { scope: 'col' }, text: m['sim.col.day'] }),
+        h('th', { class: 'num col-narrow', attrs: { scope: 'col' }, text: m['sim.col.day'] }),
         h('th', { class: 'col-wide', attrs: { scope: 'col' }, text: m['sim.col.date'] }),
         h('th', { class: 'num', attrs: { scope: 'col' }, text: m['sim.col.weight'] }),
         h('th', { class: 'num', attrs: { scope: 'col' }, text: m['sim.col.lossDay'] }),
