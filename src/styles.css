@@ -193,7 +193,8 @@ main {
   padding-block: 12px 48px;
 }
 
-.intro h1 {
+.intro h1,
+.policy h1 {
   margin: 0;
   font-family: var(--f-num);
   font-weight: 500;
@@ -207,6 +208,35 @@ main {
   margin: 10px 0 0;
   max-width: 62ch;
   font-size: 1.0625rem;
+}
+
+/* The privacy policy: a page of text, in short sections. */
+.policy {
+  max-width: 68ch;
+}
+
+.policy h2 {
+  margin: 28px 0 0;
+  font-family: var(--f-num);
+  font-weight: 600;
+  font-size: 1.375rem;
+  line-height: 1.2;
+}
+
+.policy p,
+.policy ul {
+  margin: 8px 0 0;
+  font-size: 1.0625rem;
+}
+
+.policy ul {
+  padding-left: 1.25em;
+}
+
+.policy .updated {
+  margin-top: 10px;
+  font-size: 0.875rem;
+  color: var(--muted);
 }
 
 .intro .privacy {

@@ -185,7 +185,8 @@ const isKey = (key: string | null, messages: Messages): key is MessageKey =>
 /**
  * Puts the page's own text in the reader's language: each element's `data-i18n` key becomes its
  * text, `data-i18n-content` its `content` attribute (the description and its og: copy), and
- * `<html lang>` follows. Each page is written in one language, so without scripts it reads in that.
+ * `<html lang>` follows, and so does the `href` of a link with `data-href-en` and `data-href-pt`.
+ * Each page is written in one language, so without scripts it reads (and links) in that.
  */
 export function translatePage(doc: TranslatableDocument, { locale, messages }: Settings = settings()): void {
   doc.documentElement.lang = locale.tag;
@@ -201,6 +202,12 @@ export function translatePage(doc: TranslatableDocument, { locale, messages }: S
   for (const element of doc.querySelectorAll('[data-i18n-content]')) {
     const value = text(element.getAttribute('data-i18n-content'));
     if (value !== null) element.setAttribute('content', value);
+  }
+  // A link with a page in each language (the privacy policy) goes to the one the reader reads.
+  const hrefAttribute = `data-href-${locale.lang}`;
+  for (const element of doc.querySelectorAll(`[${hrefAttribute}]`)) {
+    const href = element.getAttribute(hrefAttribute);
+    if (href !== null && href !== '') element.setAttribute('href', href);
   }
 }
 

@@ -183,6 +183,27 @@ describe('translatePage', () => {
     expect(inherited.textContent).toBe('kept too');
     expect(description.getAttribute('content')).toMatch(/^Registre suas pesagens/);
   });
+
+  it("points a link with a page in each language to the reader's", () => {
+    const link = element({
+      href: 'privacy.html',
+      'data-href-en': 'privacy.html',
+      'data-href-pt': 'pt/privacidade.html',
+    });
+    const asked: string[] = [];
+    const doc = {
+      documentElement: { lang: 'en' },
+      querySelectorAll: (selector: string) => {
+        asked.push(selector);
+        return selector.startsWith('[data-href-') ? [link] : [];
+      },
+    };
+    translatePage(doc);
+    expect(link.getAttribute('href')).toBe('pt/privacidade.html');
+    translatePage(doc, resolveSettings(['en-US'], none));
+    expect(link.getAttribute('href')).toBe('privacy.html');
+    expect(asked.filter((s) => s.startsWith('[data-href-'))).toEqual(['[data-href-pt]', '[data-href-en]']);
+  });
 });
 
 describe('plural', () => {
