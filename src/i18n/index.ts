@@ -180,7 +180,8 @@ export interface TranslatableDocument {
 }
 
 const isKey = (key: string | null, messages: Messages): key is MessageKey =>
-  key !== null && Object.hasOwn(messages, key);
+  // Not Object.hasOwn: Safari 15.0 to 15.3 lack it.
+  key !== null && Object.prototype.hasOwnProperty.call(messages, key);
 
 /**
  * Puts the page's own text in the reader's language: each element's `data-i18n` key becomes its

@@ -16,7 +16,7 @@ export const VIEWS = ['today', 'progress', 'analysis', 'data'] as const;
 export type View = (typeof VIEWS)[number];
 
 /** The one breakpoint between the tabs and the one page. */
-export const WIDE_QUERY = '(width >= 960px)';
+export const WIDE_QUERY = '(min-width: 960px)';
 
 const BRAND = 'Weigh to Go';
 

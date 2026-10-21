@@ -33,6 +33,11 @@ export default defineConfig(({ mode }) => ({
   plugins: mode === 'ios' ? [securityPolicy(), inAppClass()] : [securityPolicy(), serviceWorker()],
   build: {
     outDir: mode === 'ios' ? 'dist-ios' : 'dist',
+    // Safari 15, the app's deployment target (iOS 15.0), and the website's oldest Safari: Vite's
+    // default (about Safari 16.4) leaves syntax 15 can't read, such as media range queries, which
+    // its CSS minifier would even write from min-width and max-width. It moves when O22 is decided.
+    target: ['es2021', 'safari15'],
+    cssTarget: ['safari15'],
     // Keep every asset a file of its own: the policy above has no data: sources.
     assetsInlineLimit: 0,
     // The polyfill loads modules with fetch(), which connect-src 'none' blocks; every browser the

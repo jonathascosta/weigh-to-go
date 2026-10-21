@@ -55,6 +55,10 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The iPhone app's pages too, so check:dist reads their CSS as well (Safari 15).
+      - name: Build the iPhone app's pages
+        run: npm run build:ios
+
       - name: Check the built page
         run: npm run check:dist
 
@@ -94,6 +98,10 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # For the end-to-end test of the app's band under the status bar (e2e/phone.spec.ts).
+      - name: Build the iPhone app's pages
+        run: npm run build:ios
 
       - name: End-to-end tests and axe
         run: npx playwright test

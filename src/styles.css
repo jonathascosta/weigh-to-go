@@ -178,7 +178,8 @@ main,
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  padding-top: max(16px, env(safe-area-inset-top, 0px));
+  /* Below the status bar and the app's banner band, which never covers the brand. */
+  padding-top: calc(max(16px, env(safe-area-inset-top, 0px)) + var(--ad-h));
   padding-bottom: 8px;
 }
 
@@ -454,7 +455,7 @@ main {
 }
 
 /* A phone, or any narrow window: one view at a time, the bar at the bottom. */
-@media (width < 960px) {
+@media (max-width: 959.98px) {
   html {
     scroll-padding-bottom: calc(var(--tab-h) + 12px);
   }
@@ -515,7 +516,7 @@ main {
 }
 
 /* A phone held sideways: a lower bar, the icon beside the label. */
-@media (width < 960px) and (orientation: landscape) and (max-height: 500px) {
+@media (max-width: 959.98px) and (orientation: landscape) and (max-height: 500px) {
   .tabs a {
     flex-direction: row;
     min-height: 44px;
@@ -529,7 +530,7 @@ main {
 }
 
 /* The desktop: one page in the same four parts, the tab names as links in a header that stays. */
-@media (width >= 960px) {
+@media (min-width: 960px) {
   .site-header {
     position: sticky;
     top: 0;
@@ -592,7 +593,7 @@ main {
 }
 
 /* A wide screen with a finger (an iPad, later) keeps the 44 px targets. */
-@media (width >= 960px) and (pointer: coarse) {
+@media (min-width: 960px) and (pointer: coarse) {
   .tabs a {
     min-height: 44px;
   }
@@ -899,7 +900,7 @@ main {
 
 /* On touch, below the one page: a chip that says the day, the native input over it, transparent,
    so a tap opens the system's picker. The input is the control; the chip's text is only seen. */
-@media (pointer: coarse) and (width < 960px) {
+@media (pointer: coarse) and (max-width: 959.98px) {
   .date-control {
     position: relative;
     flex-direction: row;
@@ -1073,6 +1074,11 @@ main {
   stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* "Changed since": a neutral sign, not the green of a save. */
+.saved-icon-info {
+  stroke: var(--muted);
 }
 
 .saved p {

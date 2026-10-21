@@ -63,6 +63,25 @@ export function findProblems(files) {
   return problems;
 }
 
+/**
+ * Media queries Safari 15 can't read, the iPhone app's deployment target (iOS 15.0) and the
+ * website's oldest Safari: range syntax (`width<=959.98px`, `height>=…`, from Safari 16.4) and the
+ * Level 4 `not (…)`. A query it can't read matches nothing, and the layout falls apart.
+ * @param {{ name: string, text: string }[]} files
+ * @returns {string[]}
+ */
+export function findTooNewCss(files) {
+  const problems = [];
+  for (const { name, text } of files) {
+    if (!name.endsWith('.css')) continue;
+    for (const [, query = ''] of text.matchAll(/@media([^{]*)\{/g)) {
+      if (/\b(?:width|height)\s*[<>]/.test(query) || /(?:^|[\s(,])not\s*\(/.test(query))
+        problems.push(`${name}: @media${query.trimEnd()} needs Safari 16.4`);
+    }
+  }
+  return problems;
+}
+
 /** The pages the site must have; `url` is null for the one kept out of search. */
 const PAGES = [
   { name: 'index.html', url: SITE, hreflang: 'en', html: '<html lang="en">' },
@@ -239,10 +258,18 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     ...findProblems(files),
     ...findMissingPages(files),
     ...findAppProblems(files, (name) => existsSync(join(dist, name))),
+    ...findTooNewCss(files),
   ];
+  // The iPhone app's build, when it is there (npm run build:ios): the same check of its CSS.
+  const app = fileURLToPath(new URL('../dist-ios', import.meta.url));
+  const appBuilt = existsSync(app);
+  if (appBuilt) problems.push(...findTooNewCss(readSite(app)).map((problem) => `dist-ios/${problem}`));
   if (problems.length > 0) {
     console.error(problems.join('\n'));
     process.exit(1);
   }
-  console.log(`dist/ keeps its protections (${String(files.length)} files checked)`);
+  console.log(
+    `dist/ keeps its protections (${String(files.length)} files checked)` +
+      (appBuilt ? '; dist-ios/ has no CSS Safari 15 cannot read' : '; dist-ios/ not built, not checked'),
+  );
 }
