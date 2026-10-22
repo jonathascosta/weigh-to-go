@@ -129,9 +129,10 @@ de consentimento.
      só aparece onde as suas mensagens valem). Se nenhum dos dois acontecer, pare o lançamento e
      avise uma sessão: o app estaria mostrando anúncios no EEE sem perguntar.
    - Em Blocking controls, defina a classificação máxima dos anúncios como **PG** no máximo (G é
-     mais restrita), para combinar com o 13+ do app (passo 10), e bloqueie as categorias sensíveis
-     que não combinam com um diário de peso (produtos de dieta e emagrecimento, entre outras, onde
-     existirem).
+     mais restrita), para combinar com o 13+ do app (passo 10). As categorias sensíveis são escolha
+     sua: em 22 de outubro de 2026 você decidiu não bloquear nenhuma por enquanto, produtos de
+     emagrecimento inclusive, já que quem usa o app pode querer essa ajuda (decisão 176); cada uma
+     bloqueada baixa um pouco a receita.
    - O `app-ads.txt` já está no jonathas.net para a conta. Quando o app estiver publicado, ligue-o à
      listagem nas configurações do app (passo 12).
    - Cole numa sessão a lista atual de SKAdNetwork do Google

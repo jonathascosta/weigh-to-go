@@ -1314,3 +1314,10 @@ Choices made while preparing the first submission, open to the owner under decis
      the home screen (`CFBundleDisplayName`) stays "Weigh to Go", and the app calls itself that
      everywhere: the store name only adds what it is. _Alternative:_ the home-screen name too,
      which would be cut off under the icon.
+
+176. **AdMob's sensitive categories: none blocked for now** (the owner, 22 October 2026). The
+     maximum ad content rating stays PG at most (step 6, for the 13+ rating). The owner chose not
+     to block sensitive categories, weight-loss products included: someone using a weight diary may
+     want that help, and each blocked category lowers revenue. STORE.md and STORE_PT.md step 6 say
+     so. _Alternative:_ block weight loss, cosmetic procedures, dating, gambling, get-rich-quick
+     and sexual health, as first proposed.
