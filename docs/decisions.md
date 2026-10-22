@@ -1142,17 +1142,24 @@ Choices made while building the App Store listing, open to the owner under decis
      `npm run store:screenshots` makes, in each language, in this order: Progress (the trend and the
      projection's whole sentence), Today in the dark theme with this morning's weight typed, the
      Compound daily rate's simulator at "Use my current rate" down to its summary with the goal's
-     date and the table under it, Body composition (estimates), Your data's daily reminder and
-     Apple Health (ending with Apple Health), and Backup (what stays on the iPhone and the copies the
-     person keeps). Each picture is the screen, scaled down whole with rounded corners and no device
+     date and the table under it, Body composition (estimates), Your data's iPhone app group from
+     its label (the daily reminder and Apple Health), and Backup from its label (what stays on the
+     iPhone and the copies the person keeps; the group is shorter than the screen, so the first rows
+     of Settings show under it). Each picture is the screen, scaled down whole with rounded corners and no device
      frame, under a caption of at most two lines in the top 18%, on the app's background (light, or
      dark for Today) in its views' heading font (Barlow Condensed) and its text colour: 14.7:1 in
      light, 15.1:1 in dark, and the script stops under 4.5:1 or over two lines. The captions are the
      listing's words, not the app's, so they live in `scripts/store-captions.json`, in English and
      Portuguese, and the test checks every screen has one. Each screen is framed by the script, not
-     by hand: as near as it can to the place asked for, with what must show wholly above the tab
-     bar and what must not show under it, and it stops when no line of text, control or chart is
-     left halfway under the status bar or the tab bar, nor a heading as the last thing on screen.
+     by hand: as near as it can to the place asked for (a group's label about 12 points under the
+     status bar, from 6 to 36), with what must show wholly above the tab bar and what must not show
+     under it, and it stops unless no line of text, control or chart is cut by the status bar or
+     within 8 points of the tab bar, no paragraph, heading, label or cell starts above the status
+     bar or runs on under the tab bar, and no heading is the last thing on screen; a list row counts
+     by its words, not its padding. Where a frame can't be had, a second one may be named: the
+     Portuguese iPhone app group is too tall for its label and a clean end, so it starts at the
+     reminder's card, the label just under the status bar, and ends on Remove ads' title with its
+     first line.
      The diary is six months from 106 kg (1.80 m, born 1984, a man), with a last week a little
      better than the one before, so Today says a small fall; the goal is a round number in the
      region's unit, 195 lb on the American screens and 88 kg on the Brazilian ones. A few days come
@@ -1186,5 +1193,7 @@ Choices made while building the App Store listing, open to the owner under decis
 168. **Two small changes to the app, found while framing the screenshots.** A card shown with only
      some of its blocks (Options › Custom) drew an empty band and a rule above its first block,
      the rule meant to part it from a hidden one: a block is now ruled off only from a block shown
-     before it (`:not([hidden]) ~ .sub`, no `:has()` for Safari 15). The import's two buttons carry
+     before it (`:not([hidden]) ~ .sub`, no `:has()` for Safari 15). So a card's blocks must be hidden
+     with the `hidden` attribute (as `rates.ts` and `percent.ts` do), not with a class or a style,
+     or the next block would lose its rule. The import's two buttons carry
      `data-import="merge"` and `"replace"`, so scripts find them in either language.

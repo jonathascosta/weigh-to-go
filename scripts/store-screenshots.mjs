@@ -34,7 +34,7 @@ import { preview } from 'vite';
 /** @typedef {import('@playwright/test').Browser} Browser */
 /** @typedef {import('@playwright/test').BrowserContext} BrowserContext */
 /** @typedef {import('@playwright/test').Page} Page */
-/** @typedef {{ top?: string; end?: string; hide?: string }} Frame */
+/** @typedef {{ top?: string; pinned?: boolean; end?: string; hide?: string }} Frame */
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const screenshots = join(root, 'ios/App/fastlane/screenshots');
@@ -317,7 +317,7 @@ async function closeCard(/** @type {Page} */ page, /** @type {string} */ id) {
  * @param {Frame & { band: number }} frame
  * @returns {string[]}
  */
-function placeFrame({ top, end, hide, band }) {
+function placeFrame({ top, pinned = false, end, hide, band }) {
   const bar = document.querySelector('nav.tabs')?.getBoundingClientRect().top ?? window.innerHeight;
   /** @param {string | undefined} selector */
   const find = (selector) => {
@@ -331,8 +331,16 @@ function placeFrame({ top, end, hide, band }) {
   const docBottom = (/** @type {Element} */ el) => el.getBoundingClientRect().bottom + window.scrollY;
   const most = document.documentElement.scrollHeight - window.innerHeight;
   const want = t ? docTop(t) - band - 12 : 0;
-  const low = Math.max(0, e ? docBottom(e) - (bar - 8) : 0);
-  const high = Math.min(most, t ? docTop(t) - band - 4 : 0, h ? docTop(h) - bar : Infinity);
+  // What is kept clear above the tab bar.
+  const margin = 8;
+  // A pinned `top` stays about 12 points under the status bar (from 6 to 36, as near 12 as fits).
+  const low = Math.max(0, e ? docBottom(e) - (bar - margin) : 0, pinned ? want - 24 : 0);
+  const high = Math.min(
+    most,
+    t ? docTop(t) - band - 4 : 0,
+    h ? docTop(h) - bar : Infinity,
+    pinned ? want + 6 : Infinity,
+  );
 
   const outside = (/** @type {Element} */ el) =>
     el.closest('nav.tabs, .ad-space, [data-store-status-bar]') !== null;
@@ -350,11 +358,23 @@ function placeFrame({ top, end, hide, band }) {
      * @param {string} what
      */
     const look = (r, el, what) => {
-      if (r.width === 0 || r.height === 0 || r.bottom <= band || r.top >= bar) return;
+      if (r.width === 0 || r.height === 0 || r.bottom <= band + 2 || r.top >= bar) return;
       if (r.top < band - 1) found.push(`${what} cut by the status bar`);
-      else if (r.bottom > bar + 1) found.push(`${what} cut by the tab bar`);
+      else if (r.bottom > bar - margin)
+        found.push(`${what} less than ${String(margin)} points above the tab bar`);
       else if (!lowest || r.bottom > lowest.bottom) lowest = { bottom: r.bottom, el };
     };
+    // A block of text in frame must start under the status bar and end above the tab bar: none
+    // opens or stops mid-sentence, even where its hidden lines are wholly out of sight.
+    for (const el of document.body.querySelectorAll('p, h1, h2, h3, h4, li, dt, dd, label, th, td, legend')) {
+      if (outside(el) || !shown(el) || !el.textContent.trim()) continue;
+      const r = el.getBoundingClientRect();
+      if (r.height === 0 || r.bottom <= band + 2 || r.top >= bar) continue;
+      const text = `“${el.textContent.trim().slice(0, 40)}”`;
+      if (r.top < band - 1) found.push(`${text} starts above the status bar`);
+      else if (r.bottom > bar - margin + 1 && r.top < bar - margin)
+        found.push(`${text} goes on under the tab bar`);
+    }
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       const el = node.parentElement;
@@ -365,7 +385,15 @@ function placeFrame({ top, end, hide, band }) {
     }
     for (const el of document.body.querySelectorAll('input, select, button, textarea, svg')) {
       if (outside(el) || !shown(el) || (el.closest('svg') !== el && el.tagName === 'svg')) continue;
-      look(el.getBoundingClientRect(), el, `a ${el.tagName.toLowerCase()}`);
+      // A list row (Your data's settings) is a strip of the card: what counts is its words, which
+      // must all show or none, not its padding.
+      let r = el.getBoundingClientRect();
+      if (el.matches('.row')) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        r = range.getBoundingClientRect();
+      }
+      look(r, el, `a ${el.tagName.toLowerCase()}`);
     }
     const last = /** @type {{ bottom: number; el: Element } | null} */ (lowest);
     if (last?.el.closest('h1, h2, h3, h4'))
@@ -373,11 +401,16 @@ function placeFrame({ top, end, hide, band }) {
     return found;
   };
 
-  if (low > high) return [`no frame fits ${[top, end, hide].filter(Boolean).join(', ')}`];
+  if (low > high)
+    return [
+      `no frame fits ${[top, end, hide].filter(Boolean).join(', ')} (scroll from ${String(Math.round(low))} to ${String(Math.round(high))})`,
+    ];
   const start = Math.min(high, Math.max(low, want));
   /** @type {string[]} */
   let first = [];
-  for (let step = 0; step <= high - low; step++) {
+  // Outward from the place asked for, at most 300 points either way, so a frame that can't fit
+  // fails rather than hangs.
+  for (let step = 0; step <= Math.min(high - low, 300); step++) {
     for (const y of step === 0 ? [start] : [start + step, start - step]) {
       if (y < low || y > high) continue;
       window.scrollTo(0, y);
@@ -390,11 +423,26 @@ function placeFrame({ top, end, hide, band }) {
   return first;
 }
 
-/** Frames the screen (placeFrame) or stops the script with what is cut. */
-async function frame(/** @type {Page} */ page, /** @type {string} */ name, /** @type {Frame} */ wanted) {
-  const found = await page.evaluate(placeFrame, { ...wanted, band: IPHONE.top });
-  if (found.length > 0) throw new Error(`${name}: ${found.join('; ')}`);
-  await settle(page);
+/**
+ * Frames the screen (placeFrame) with the first of the `wanted` frames that fits, or stops the
+ * script with what is cut in each.
+ */
+async function frame(
+  /** @type {Page} */ page,
+  /** @type {string} */ name,
+  /** @type {Frame | Frame[]} */ wanted,
+) {
+  /** @type {string[]} */
+  const failed = [];
+  for (const one of Array.isArray(wanted) ? wanted : [wanted]) {
+    const found = await page.evaluate(placeFrame, { ...one, band: IPHONE.top });
+    if (found.length === 0) {
+      await settle(page);
+      return;
+    }
+    failed.push(found.join('; '));
+  }
+  throw new Error(`${name}: ${failed.join(' / ')}`);
 }
 
 /**
@@ -487,6 +535,8 @@ async function compose({ caption, src, band, width, height }) {
     text.style.fontSize = `${String(size)}px`;
     if (lines() <= 2) break;
   }
+  // The size the loop stopped at, applied before it is measured (at 24 the loop ends unapplied).
+  text.style.fontSize = `${String(size)}px`;
   /** @param {string} colour */
   const luminance = (colour) => {
     const [r, g, b] = (colour.match(/[\d.]+/g) ?? []).slice(0, 3).map((v) => {
@@ -564,7 +614,7 @@ async function listing(browser, base, { folder, locale, goalKg }) {
   const shots = new Map();
   /**
    * @param {string} name
-   * @param {Frame} wanted
+   * @param {Frame | Frame[]} wanted
    * @param {boolean} [dark]
    */
   const take = async (name, wanted, dark = false) => {
@@ -608,7 +658,7 @@ async function listing(browser, base, { folder, locale, goalKg }) {
   await openCard(page, 'body');
   await take('4-body', { top: 'section[aria-labelledby="body-title"]' });
 
-  // 5. Your data › iPhone app: the daily reminder and Apple Health, ending with Apple Health.
+  // 5. Your data › iPhone app, from its label: the daily reminder and Apple Health.
   await show(page, 'data');
   // The reminder's time, set once its setting has loaded (set earlier, the loading could undo it).
   await page.locator('#reminder-time').fill('07:30');
@@ -616,14 +666,17 @@ async function listing(browser, base, { folder, locale, goalKg }) {
   await settle(page);
   if ((await page.locator('#reminder-time').inputValue()) !== '07:30')
     throw new Error('The reminder’s time did not take 07:30');
-  await take('5-health', {
-    top: '#reminder-title',
-    end: 'section[aria-labelledby="health-title"] > p.note:last-child',
-    hide: '#remove-ads-title',
-  });
+  // Where the group is too tall for its label to fit with a clean end (the Portuguese), the frame
+  // starts at the reminder's card instead, the label under the status bar, and ends on Remove
+  // ads' title with its first line.
+  await take('5-health', [
+    { top: '#app-title', pinned: true },
+    { top: 'section[aria-labelledby="reminder-title"]', pinned: true },
+  ]);
 
-  // 6. Your data › Backup: what stays on the iPhone, and the copies the person keeps.
-  await take('6-backups', { top: '#data-title', end: '#data-csv-format', hide: '#settings-title' });
+  // 6. Your data › Backup, from its label: what stays on the iPhone, and the copies the person
+  // keeps (the group is shorter than the screen, so the start of Settings shows under it).
+  await take('6-backups', { top: '#data-title', pinned: true, end: '#data-csv-format' });
   await context.close();
 
   // Each screen under its caption, on a page of its own (the app's styles and fonts, its screen
