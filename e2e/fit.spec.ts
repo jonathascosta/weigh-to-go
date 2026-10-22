@@ -1,0 +1,419 @@
+/**
+ * Every screen fits a phone (docs/ux/principles.md, 4 · It fits, and 3 · Thumb and finger): each
+ * view, Analysis with every card open, every sheet, the saved state, the empty diary and the static
+ * pages, at 320 × 568 and 390 × 844, with text at 100% and 150%, in English and Portuguese. Each
+ * screen is checked for
+ * - a page no wider than the screen;
+ * - no element past the screen's edges, and none whose content is wider than its box;
+ * - nothing cut off by an `overflow: hidden` box;
+ * - every control at least 44 × 44 px under a finger, links inside a sentence 24 px high, and a
+ *   control whose `::after` covers a larger box (a card's head) measured by that box.
+ *
+ * It runs in the `phone` project and, on the iPhone app's build, in `ios` (playwright.config.ts).
+ * Nothing here takes a screenshot: one turns Chromium's touch emulation off (`pointer: coarse`
+ * turns fine), and the targets are measured under a finger.
+ */
+import { expect, test, type Page } from '@playwright/test';
+import { loadBackup, watch } from './helpers';
+
+const SIZES = [
+  { width: 320, height: 568 },
+  { width: 390, height: 844 },
+];
+const TEXTS = [100, 150];
+
+/**
+ * Boxes whose content may be wider than they are: those that scroll sideways on purpose (none is
+ * left on a phone; the desktop's log box isn't checked here), and a tab's icon, whose dot for a
+ * backup due sits over its corner on purpose (the link around it holds it).
+ */
+const WIDER_ON_PURPOSE = ['.tab-icon'];
+
+interface Language {
+  readonly lang: 'en' | 'pt';
+  readonly locale: string;
+  readonly home: string;
+  readonly privacy: string;
+  /** The longest weight the field takes, in this language's decimals. */
+  readonly longest: string;
+  readonly detailed: string;
+}
+
+const LANGUAGES: Language[] = [
+  {
+    lang: 'en',
+    locale: 'en-GB',
+    home: '/',
+    privacy: '/privacy.html',
+    longest: '999.9',
+    detailed: 'Detailed',
+  },
+  {
+    lang: 'pt',
+    locale: 'pt-BR',
+    home: '/pt/',
+    privacy: '/pt/privacidade.html',
+    longest: '999,9',
+    detailed: 'Detalhado',
+  },
+];
+
+/** Runs in the page: what doesn't fit the screen as it is now, `width` CSS px wide. */
+function misfits({ width, allowed }: { width: number; allowed: string[] }): string[] {
+  const found: string[] = [];
+  const name = (el: Element) => {
+    const id = el.id ? `#${el.id}` : '';
+    const classes = [...el.classList].map((c) => `.${c}`).join('');
+    const text = el.textContent.replace(/\s+/g, ' ').trim().slice(0, 40);
+    return `${el.tagName.toLowerCase()}${id}${classes} “${text}”`;
+  };
+  const round = (n: number) => String(Math.round(n * 10) / 10);
+  const root = document.documentElement;
+  // Against the width asked for: on a phone the layout viewport grows to what overflows.
+  if (root.scrollWidth > width) found.push(`the page is ${String(root.scrollWidth)} px wide`);
+
+  // With a sheet open, the sheet: the page behind it was checked before it opened.
+  const scope = document.querySelector('.sheet-layer:not([hidden]) .sheet') ?? document.body;
+  // Hidden on purpose: screen-reader text (the class, or a 1 px box that clips, as the date's
+  // label over the chip), the measuring probe, closed parts. In document order, a box that hides
+  // comes before what it holds.
+  const hiders: Element[] = [];
+  const clips = (o: string) => o === 'hidden' || o === 'clip';
+  for (const el of scope.querySelectorAll('*')) {
+    if (!(el instanceof HTMLElement) || hiders.some((h) => h.contains(el))) continue;
+    if (el.matches('.visually-hidden, .chart-probe, [hidden]') || el.getClientRects().length === 0) {
+      hiders.push(el);
+      continue;
+    }
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) continue;
+    const style = getComputedStyle(el);
+    if (r.width <= 1 && r.height <= 1 && style.overflow !== 'visible') {
+      hiders.push(el);
+      continue;
+    }
+    if (r.right > width + 0.5 || r.left < -0.5)
+      found.push(`${name(el)} runs from ${round(r.left)} to ${round(r.right)} px`);
+    // Inline boxes have no client size: their block's check covers them.
+    if (el.clientWidth === 0) continue;
+    if (el.scrollWidth > el.clientWidth + 1 && !allowed.some((a) => el.matches(a)))
+      found.push(`${name(el)} holds ${String(el.scrollWidth)} px in ${String(el.clientWidth)} px`);
+    if (clips(style.overflowY) && el.scrollHeight > el.clientHeight + 1)
+      found.push(`${name(el)} cuts ${String(el.scrollHeight)} px of height to ${String(el.clientHeight)} px`);
+  }
+  return found;
+}
+
+/**
+ * Runs in the page: the controls a finger can reach that are too small. With a sheet open, those
+ * in the sheet, as the page behind it is covered.
+ */
+function smallTargets(): string[] {
+  if (!matchMedia('(pointer: coarse)').matches) return ['the pointer is not coarse: no touch emulation'];
+  const found: string[] = [];
+  const sheet = document.querySelector('.sheet-layer:not([hidden]) .sheet');
+  const scope = sheet ?? document.body;
+  const controls = scope.querySelectorAll(
+    'a[href], button, input:not([type="hidden"]), select, textarea, summary, [role="button"], [tabindex="0"]',
+  );
+  const px = (value: string) => (value === 'auto' ? 0 : parseFloat(value) || 0);
+  for (const el of controls) {
+    if (!(el instanceof HTMLElement) || el.getClientRects().length === 0) continue;
+    if (el.closest('.visually-hidden, [hidden], [inert], [aria-hidden="true"]')) continue;
+    let r: { width: number; height: number } = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) continue;
+    // A switch or a box inside its label: the label is what the finger taps.
+    const label =
+      el instanceof HTMLInputElement && /checkbox|radio/.test(el.type) ? el.closest('label') : null;
+    if (label) r = label.getBoundingClientRect();
+    // A control whose ::after covers its positioned box (a card's head) is as big as that box.
+    const after = getComputedStyle(el, '::after');
+    if (after.content !== 'none' && after.position === 'absolute') {
+      const holder = getComputedStyle(el).position === 'static' ? el.offsetParent : el;
+      if (holder) {
+        const b = holder.getBoundingClientRect();
+        r = {
+          width: b.width - px(after.left) - px(after.right),
+          height: b.height - px(after.top) - px(after.bottom),
+        };
+      }
+    }
+    const style = getComputedStyle(el);
+    // A link inside a sentence: WCAG 2.5.8's 24 px (principles, 3).
+    const inSentence =
+      el.tagName === 'A' &&
+      style.display.startsWith('inline') &&
+      [...(el.parentElement?.childNodes ?? [])].some(
+        (n) => n !== el && (n.textContent ?? '').trim() !== '' && !(n instanceof HTMLAnchorElement),
+      );
+    // Half a pixel for the layout's rounding (a 44 px box can measure 43.99).
+    const ok = inSentence ? r.height >= 23.5 : r.width >= 43.5 && r.height >= 43.5;
+    if (!ok) {
+      const text = el.textContent.replace(/\s+/g, ' ').trim().slice(0, 30);
+      const label = el.getAttribute('aria-label') ?? text;
+      found.push(
+        `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''} “${label}” is ${String(Math.round(r.width))} × ${String(Math.round(r.height))}`,
+      );
+    }
+  }
+  return found;
+}
+
+/** Waits for the fonts and a few frames, so that what follows a resize (charts, bars) is drawn. */
+const settle = (page: Page) =>
+  page.evaluate(async () => {
+    await document.fonts.ready;
+    for (let i = 0; i < 3; i++) await new Promise((done) => requestAnimationFrame(done));
+  });
+
+/**
+ * Checks the screen as it is at every size and text size, then puts back 390 × 844 at 100%.
+ * Problems are gathered and compared once, so a failure lists them all.
+ */
+async function expectFits(page: Page, screen: string, { targets = true } = {}): Promise<void> {
+  const problems: string[] = [];
+  for (const size of SIZES) {
+    await page.setViewportSize(size);
+    for (const text of TEXTS) {
+      await page.evaluate((t) => {
+        document.documentElement.style.fontSize = t === 100 ? '' : `${String(t)}%`;
+      }, text);
+      await settle(page);
+      const where = `${screen} at ${String(size.width)} px, text ${String(text)}%`;
+      for (const p of await page.evaluate(misfits, { width: size.width, allowed: WIDER_ON_PURPOSE }))
+        problems.push(`${where}: ${p}`);
+      if (targets) for (const p of await page.evaluate(smallTargets)) problems.push(`${where}: ${p}`);
+    }
+  }
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '';
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settle(page);
+  // Soft: the test goes on to its other screens, and reports them all.
+  expect.soft(problems, screen).toEqual([]);
+}
+
+/**
+ * Watches for errors and policy violations. The iPhone app's build in a browser has no native
+ * Apple Health plugin, and says so.
+ */
+const watchHere = (page: Page) =>
+  watch(page, test.info().project.name === 'ios' ? /WeightHealth plugin is not registered/ : undefined);
+
+const tab = (page: Page, view: string) => page.locator(`nav.tabs a[href="#${view}"]`);
+
+/** Shows a view from its tab, scrolled to its top. */
+async function show(page: Page, view: string): Promise<void> {
+  // The bar steps aside while a field has the keypad.
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await tab(page, view).tap();
+  await expect(page.locator(`#view-${view}`)).toBeVisible();
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+  });
+}
+
+/** Opens a sheet from its button, checks it, and closes it with Escape. */
+async function sheetFits(page: Page, opener: string, screen: string): Promise<void> {
+  const button = page.locator(opener);
+  await button.scrollIntoViewIfNeeded();
+  await button.tap();
+  await expect(page.locator('.sheet-layer .sheet')).toBeVisible();
+  await expectFits(page, screen);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.sheet-layer')).toBeHidden();
+}
+
+for (const language of LANGUAGES) {
+  const { lang, locale, home } = language;
+  test.describe(`in ${lang === 'en' ? 'English' : 'Portuguese'}`, () => {
+    test.use({ locale });
+
+    test('Today fits, with the longest weight typed, after a save and with its Undo notice', async ({
+      page,
+    }) => {
+      const { check } = await watchHere(page);
+      await page.goto(home);
+      await loadBackup(page);
+      await expectFits(page, 'Today');
+      // The longest weight in kg, then in lb: the digits stay inside the field.
+      for (const unit of ['kg', 'lb']) {
+        if (unit === 'lb') {
+          await show(page, 'data');
+          await page.locator('#setting-weight').selectOption('lb');
+          await show(page, 'today');
+        }
+        await page.locator('#entry-weight').fill(language.longest);
+        await expectFits(page, `Today with ${language.longest} ${unit}`);
+      }
+      await page.locator('#entry-weight').fill(lang === 'en' ? '210.2' : '210,2');
+      await page.locator('.entry button[type=submit]').tap();
+      await expect(page.locator('#entry-saved')).toBeVisible();
+      await expectFits(page, 'Today, saved');
+      await check();
+    });
+
+    test('Progress fits, with its weeks shown and its sheets', async ({ page }) => {
+      const { check } = await watchHere(page);
+      await page.goto(home);
+      await loadBackup(page);
+      await show(page, 'progress');
+      const more = page.locator('#view-progress .more-button');
+      if (await more.isVisible()) await more.tap();
+      await expectFits(page, 'Progress');
+      await sheetFits(page, '#chart-options-button', 'the Layers sheet');
+      await sheetFits(page, '#goal-change-button', 'the goal sheet');
+      await check();
+    });
+
+    test('Analysis fits with every card open, and each card’s options', async ({ page }) => {
+      const { check } = await watchHere(page);
+      await page.goto(home);
+      await loadBackup(page);
+      await show(page, 'analysis');
+      const toggles = page.locator('#view-analysis .acard-toggle');
+      const count = await toggles.count();
+      expect(count).toBeGreaterThanOrEqual(8);
+      for (let i = 0; i < count; i++) {
+        const toggle = toggles.nth(i);
+        if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+      }
+      // The compound rate at Detailed too: its curve and the simulator's table.
+      await page.locator('#rate-options-button').tap();
+      await page.getByRole('dialog').getByRole('button', { name: language.detailed, exact: true }).tap();
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#sim-title')).toBeVisible();
+      await expectFits(page, 'Analysis, every card open');
+      const options = await page
+        .locator('#view-analysis .options-button')
+        .evaluateAll((buttons) => buttons.filter((b) => b.getClientRects().length > 0).map((b) => b.id));
+      expect(options.length).toBeGreaterThan(3);
+      for (const id of options) await sheetFits(page, `#${id}`, `the options of ${id}`);
+      await check();
+    });
+
+    test('Your data fits, with every row shown, and each of its sheets', async ({ page }) => {
+      const { check } = await watchHere(page);
+      await page.goto(home);
+      await loadBackup(page);
+      await show(page, 'data');
+      await page.locator('section[aria-labelledby="log-title"] .log-more button').tap();
+      await expectFits(page, 'Your data');
+      await sheetFits(page, '#paste-panel-button', 'the Paste sheet');
+      await sheetFits(page, '#sections-panel-button', 'the Sections sheet');
+      await sheetFits(page, '#settings-goal', 'the Goal sheet');
+      await sheetFits(page, '#settings-height', 'the Height sheet');
+      await sheetFits(page, '#data-erase', 'the Erase sheet');
+      // The day sheet with the longest weight, then its delete's Undo notice.
+      await page.locator('tbody button[data-role="day"]').first().tap();
+      await expect(page.locator('.sheet-layer .sheet')).toBeVisible();
+      await page.locator('.sheet input[inputmode="decimal"]').fill(language.longest);
+      await expectFits(page, 'the day sheet');
+      await page.locator('#day-delete').tap();
+      await expect(page.locator('.toast')).toBeVisible();
+      await expectFits(page, 'Your data with the Undo notice');
+      await check();
+    });
+
+    test('the empty diary fits, on every view', async ({ page }) => {
+      const { check } = await watchHere(page);
+      await page.goto(home);
+      await expect(page.locator('#entry-weight')).toBeVisible();
+      for (const view of ['today', 'progress', 'analysis', 'data']) {
+        await show(page, view);
+        await expectFits(page, `the empty ${view}`);
+      }
+      await check();
+    });
+
+    test('the privacy policy and the missing page fit', async ({ page }) => {
+      const { check } = await watchHere(page);
+      for (const path of [language.privacy, '/404.html']) {
+        await page.goto(path);
+        await expect(page.locator('body')).toHaveClass(/frame-checked/);
+        await expectFits(page, path);
+      }
+      await check();
+    });
+  });
+}
+
+// Focus never hidden (WCAG 2.4.11): Tab through every view, the longest language at the narrowest
+// size and the larger text, and no focused control is under the tab bar.
+test('keeps every focused control clear of the tab bar, in Portuguese at 320 px, text 150%', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/pt/');
+  await loadBackup(page);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '150%';
+  });
+  const hidden: string[] = [];
+  let seen = 0;
+  for (const view of ['today', 'progress', 'analysis', 'data']) {
+    await show(page, view);
+    await page.locator(`#view-${view}-title`).focus();
+    for (let i = 0; i < 400; i++) {
+      await page.keyboard.press('Tab');
+      const state = await page.evaluate((v) => {
+        const el = document.activeElement;
+        const bar = document.querySelector('nav.tabs');
+        if (!el || !bar || !el.closest(`#view-${v}`)) return null;
+        const r = el.getBoundingClientRect();
+        const b = bar.getBoundingClientRect();
+        // A box taller than the room above the bar (a table) can't clear it: its top must.
+        const room = b.top - parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop);
+        const overlaps = r.bottom > b.top + 0.5 && r.top < b.bottom && r.height > 0;
+        const under = overlaps && (r.height <= room || r.top >= b.top - 0.5);
+        return { under, what: `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}` };
+      }, view);
+      // Out of the view (into the tab bar or the footer): this view is done.
+      if (!state) break;
+      seen++;
+      if (state.under) hidden.push(`${view}: ${state.what}`);
+    }
+  }
+  expect(seen).toBeGreaterThan(40);
+  expect(hidden).toEqual([]);
+});
+
+// Today's first screen (principles, 1): the weigh-in field and Save on screen without scrolling,
+// above the tab bar and Safari's bottom 100 px; held sideways, both in view once the field has focus.
+for (const size of [
+  { width: 375, height: 667 },
+  { width: 390, height: 844 },
+  { width: 844, height: 390 },
+])
+  test(`has the weigh-in and Save on the first screen at ${String(size.width)} × ${String(size.height)}`, async ({
+    page,
+  }) => {
+    const { check } = await watchHere(page);
+    await page.setViewportSize(size);
+    await page.goto('/');
+    await loadBackup(page);
+    await page.reload();
+    await expect(page.locator('#entry-weight')).toBeVisible();
+    await settle(page);
+    const sideways = size.width > size.height;
+    if (sideways) await page.locator('#entry-weight').tap();
+    const where = await page.evaluate(() => {
+      const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect();
+      const field = box('#entry-weight');
+      const save = box('.entry button[type=submit]');
+      const bar = document.documentElement.classList.contains('typing') ? undefined : box('nav.tabs');
+      return {
+        top: Math.min(field?.top ?? -1, save?.top ?? -1),
+        bottom: Math.max(field?.bottom ?? Infinity, save?.bottom ?? Infinity),
+        limit: Math.min(window.innerHeight - 100, bar?.top ?? Infinity),
+        height: window.innerHeight,
+      };
+    });
+    expect(where.top).toBeGreaterThanOrEqual(0);
+    // Held sideways, the keypad's screen: in view; upright, above the bar and Safari's bars.
+    expect(where.bottom).toBeLessThanOrEqual(sideways ? where.height : where.limit);
+    await check();
+  });

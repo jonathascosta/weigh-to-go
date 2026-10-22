@@ -155,6 +155,10 @@ a {
   left: max(16px, env(safe-area-inset-left, 0px));
   top: max(8px, env(safe-area-inset-top, 0px));
   transform: translateY(-200%);
+  /* A finger's 44 px, when it shows. */
+  display: flex;
+  align-items: center;
+  min-height: 44px;
   padding: 8px 12px;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -204,6 +208,15 @@ main,
   white-space: nowrap;
 }
 
+/* Under a finger the brand's link is 44 px tall, its margins taking back the 12 px it grows by, so
+   the header keeps its height. */
+@media (pointer: coarse) {
+  .brand {
+    min-height: 44px;
+    margin-block: -6px;
+  }
+}
+
 main {
   flex: 1;
   display: flex;
@@ -227,6 +240,12 @@ main {
   margin: 10px 0 0;
   max-width: 62ch;
   font-size: 1.0625rem;
+}
+
+/* A link inside the intro's sentence (the missing page's): at least 24 px tall (WCAG 2.5.8). */
+.intro p a {
+  display: inline-block;
+  padding-block: 3px;
 }
 
 /* The privacy policy: a page of text, in short sections. */
@@ -3147,6 +3166,11 @@ span.cal-none {
 
   .table-fit .col-back {
     width: 36%;
+  }
+
+  /* The simulator's % ("30.59%") doesn't break: room for it at 320 px with text at 150%. */
+  .table-fit .col-pct {
+    width: 30%;
   }
 
   /* A figure's name and its value share the row evenly. */

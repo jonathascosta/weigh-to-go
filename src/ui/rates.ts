@@ -953,7 +953,7 @@ export function mountRates(
         h('th', { class: 'num', attrs: { scope: 'col' }, text: m['sim.col.weight'] }),
         h('th', { class: 'num', attrs: { scope: 'col' }, text: m['sim.col.lossDay'] }),
         h('th', { class: wide('col-wide'), attrs: { scope: 'col' }, text: m['sim.col.lossTotal'] }),
-        h('th', { class: 'num', attrs: { scope: 'col' }, text: m['sim.col.pct'] }),
+        h('th', { class: 'num col-pct', attrs: { scope: 'col' }, text: m['sim.col.pct'] }),
       ),
     );
     simBody.replaceChildren(
