@@ -26,8 +26,9 @@ de consentimento.
      fora do alcance da sessão; uma busca na web não achou nenhum app com esse nome, só o
      "Weigh2Go", um app de iPad para balanças industriais). Se ele for recusado, use a alternativa,
      **Weigh to Go: Weight Diary** (25 caracteres, a mesma nos dois idiomas), e avise uma sessão:
-     ela muda o `name.txt` em `ios/App/fastlane/metadata/en-US` e `pt-BR` e o teste da listagem
-     (decisão 164).
+     ela muda o `name.txt` em `ios/App/fastlane/metadata/en-US` e `pt-BR`, o subtítulo em inglês
+     para "See the real trend" (o atual repetiria "Weight Diary") e o teste da listagem (decisão
+     164).
    - App Information: categoria Health & Fitness (Saúde e fitness). Em Pricing and Availability,
      desligue a disponibilidade do app em Macs com Apple silicon: o app Saúde não existe lá.
 2. **O acordo de apps pagos.** Em Business (Agreements, Tax and Banking), aceite o Paid Applications
@@ -151,8 +152,8 @@ de consentimento.
 8. **A listagem.** O texto dela está em `ios/App/fastlane/metadata` (`en-US` e `pt-BR`: nome,
    subtítulo, palavras-chave, descrição, texto promocional, os endereços da privacidade, do suporte
    e do site; ao lado, a categoria, Health & Fitness (Saúde e fitness), e o copyright), e as
-   capturas em `ios/App/fastlane/screenshots/en-US` e `pt-BR`: seis telas de um diário inventado em
-   1290 × 2796, o tamanho do iPhone de 6,9 polegadas, a partir das quais o App Store Connect faz as
+   capturas em `ios/App/fastlane/screenshots/en-US` e `pt-BR`: seis telas de um diário inventado, cada
+   uma sob uma legenda (`scripts/store-captions.json`), em 1290 × 2796, o tamanho do iPhone de 6,9 polegadas, a partir das quais o App Store Connect faz as
    menores (decisões 165 e 166). Um teste de unidade mantém o texto dentro dos limites da Apple.
    - **Leia antes**, nos dois idiomas, no GitHub: a descrição e o texto promocional dizem o que o
      app faz, citam o Apple Health (app Saúde), chamam as projeções e a composição corporal de
@@ -165,7 +166,9 @@ de consentimento.
      do App Store Connect do passo 3, do ambiente `app-store`. Ele confere o texto de novo, depois o
      `fastlane listing` envia os textos e as capturas dos dois idiomas (acrescentando a localização
      Portuguese (Brazil) se ela não existir, e substituindo as capturas que já estiverem lá), sem
-     build, e não submete nada (decisão 167). De um Mac, em vez disso, com os três valores
+     build, e não submete nada. Ele também põe a versão em **Manually release this version**
+     (lançamento manual), a cada execução, seja o que for que estiver escolhido no App Store
+     Connect: o lançamento é seu, depois do passo 11 (decisão 167). De um Mac, em vez disso, com os três valores
      `APP_STORE_CONNECT_API_KEY_*` no ambiente:
      `cd ios/App && bundle install && bundle exec fastlane listing`.
    - Depois confira no App Store Connect: as duas localizações mostram o texto e seis capturas para
@@ -198,7 +201,9 @@ de consentimento.
     - Escolha o build do TestFlight para a versão, depois de conferir que foi feito do `main` atual
       (o Arrows 1.0 foi aprovado com um build antigo e precisou de um 1.0.1 na hora) e por uma
       execução com **For the App Store** marcado (a página da execução na aba Actions mostra as
-      entradas dela). Junte a compra dentro do app à versão.
+      entradas dela). Junte a compra dentro do app à versão. Deixe o lançamento em **Manually
+      release this version** (o workflow da listagem já o põe assim): depois de aprovada, você
+      mesmo lança a versão.
     - **Antes do lançamento, confira que o app não envia nada ao Google quando não deve.** Num build
       do TestFlight de uma execução **For the App Store**, com um registro de rede, veja que não há
       nenhum pedido ao Google (`*.google.com`, `*.googleapis.com`, `*.doubleclick.net`,

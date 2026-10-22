@@ -25,7 +25,8 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
      session's reach; a web search found no app of that name, only "Weigh2Go", an iPad app for
      industrial scales). If it is refused, use the fallback, **Weigh to Go: Weight Diary** (25
      characters, the same in both languages), and tell a session: it changes `name.txt` in
-     `ios/App/fastlane/metadata/en-US` and `pt-BR` and the listing's test (decision 164).
+     `ios/App/fastlane/metadata/en-US` and `pt-BR`, the English subtitle to "See the real trend"
+     (the current one would repeat "Weight Diary"), and the listing's test (decision 164).
    - App Information: category Health & Fitness. In Pricing and Availability, turn off the app's
      availability on Mac computers with Apple silicon: Apple Health isn't there.
 2. **The agreement for paid apps.** In Business (Agreements, Tax and Banking), accept the Paid
@@ -143,9 +144,9 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
 8. **The listing.** Its text is in `ios/App/fastlane/metadata` (`en-US` and `pt-BR`: name,
    subtitle, keywords, description, promotional text, the privacy, support and website addresses;
    the category, Health & Fitness, and the copyright beside them), and its screenshots in
-   `ios/App/fastlane/screenshots/en-US` and `pt-BR`: six screens of a made-up diary at 1290 × 2796,
-   the 6.9-inch iPhone's size, from which App Store Connect makes the smaller ones (decisions 165
-   and 166). A unit test keeps the text within Apple's limits.
+   `ios/App/fastlane/screenshots/en-US` and `pt-BR`: six screens of a made-up diary, each under a
+   caption (`scripts/store-captions.json`), at 1290 × 2796, the 6.9-inch iPhone's size, from which
+   App Store Connect makes the smaller ones (decisions 165 and 166). A unit test keeps the text within Apple's limits.
    - **Read it first**, in both languages, on GitHub: the description and promotional text say what
      the app does, name Apple Health, call the projections and body composition estimates, not
      medical advice, say the data stays on the iPhone with no account, and that Remove ads is a
@@ -158,7 +159,9 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
      Store Connect API key of step 3, from the `app-store` environment. It checks the text again,
      then `fastlane listing` sends the text and screenshots of both languages (adding the
      Portuguese (Brazil) localisation if it isn't there, and replacing the screenshots already
-     there), with no build, and submits nothing (decision 167). From a Mac instead, with the three
+     there), with no build, and submits nothing. It also sets the version to **Manually release this
+     version**, on every run, whatever was chosen in App Store Connect: the release is yours, after
+     step 11 (decision 167). From a Mac instead, with the three
      `APP_STORE_CONNECT_API_KEY_*` values in the environment:
      `cd ios/App && bundle install && bundle exec fastlane listing`.
    - Then check App Store Connect: both localisations show the text and six screenshots for the
@@ -190,7 +193,8 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
     - Pick the TestFlight build for the version, after checking it was built from the current `main`
       (Arrows 1.0 was approved with an older build and needed a 1.0.1 at once) and by a run with
       **For the App Store** ticked (the run's page in the Actions tab shows its inputs). Add the
-      in-app purchase to the version.
+      in-app purchase to the version. Leave the release as **Manually release this version** (the
+      listing workflow sets it so anyway): once approved, you release it yourself.
     - **Before the release, check that the app sends Google nothing when it mustn't.** On a TestFlight
       build from a run **for the App Store**, with a network log, see no request to Google
       (`*.google.com`, `*.googleapis.com`, `*.doubleclick.net`, `*.googlesyndication.com`,

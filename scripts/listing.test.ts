@@ -13,6 +13,20 @@ const SCREENSHOTS = 'ios/App/fastlane/screenshots';
 const LANGUAGES = ['en-US', 'pt-BR'] as const;
 /** The app's name, the same in both languages (decision 147; the fallback is decision 164). */
 const NAME = 'Weigh to Go';
+/**
+ * The fallback, if App Store Connect refuses the name, and the subtitle each language would then
+ * take (null: the current one still fits), ready so the switch is two files (decision 164).
+ */
+const FALLBACK = {
+  name: 'Weigh to Go: Weight Diary',
+  subtitle: { 'en-US': 'See the real trend', 'pt-BR': null } as Record<string, string | null>,
+};
+/** The words of a text worth counting as repeated: letters and digits, longer than two. */
+const words = (text: string, lang: string): string[] =>
+  text
+    .toLocaleLowerCase(lang)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length > 2);
 
 /** A field's text as deliver sends it: the file, trimmed. */
 const field = (lang: string, name: string): string => read(`${METADATA}/${lang}/${name}.txt`).trim();
@@ -24,6 +38,9 @@ const bytes = (text: string): number => Buffer.byteLength(text, 'utf8');
 function pngSize(path: string): { width: number; height: number } {
   const data = readFileSync(new URL(path, root));
   expect(data.subarray(1, 4).toString('latin1')).toBe('PNG');
+  // Colour type 2: RGB, 8 bits, no alpha, which App Store Connect asks of screenshots.
+  expect(data[24]).toBe(8);
+  expect(data[25]).toBe(2);
   return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
 }
 
@@ -41,7 +58,7 @@ const MUST_SAY: Record<(typeof LANGUAGES)[number], { label: string; pattern: Reg
     { label: 'Apple Health, by name (guideline 2.5.1)', pattern: /App Saúde \(Apple Health\)/ },
     { label: 'estimates, not medical advice', pattern: /Estimativas, não orientação médica/ },
     { label: 'body composition as estimates', pattern: /Estimativas de composição corporal/ },
-    { label: 'the data stays on the iPhone', pattern: /Os seus dados ficam no seu iPhone/ },
+    { label: 'the data stays on the iPhone', pattern: /Seus dados ficam no seu iPhone/ },
     { label: 'no account', pattern: /Não há conta/ },
     { label: 'the one-time purchase that removes the ads', pattern: /Remover anúncios é uma compra única/ },
   ],
@@ -74,6 +91,20 @@ describe('the App Store listing', () => {
         expect(subtitle.toLowerCase()).not.toContain(NAME.toLowerCase());
       });
 
+      it('has a subtitle and keywords ready for the fallback name', () => {
+        const subtitle = FALLBACK.subtitle[lang] ?? field(lang, 'subtitle');
+        expect(chars(FALLBACK.name)).toBeLessThanOrEqual(30);
+        expect(chars(subtitle)).toBeLessThanOrEqual(30);
+        const taken = words(FALLBACK.name, lang);
+        for (const word of words(subtitle, lang))
+          expect(taken, `${word} repeats the fallback`).not.toContain(word);
+        for (const word of words(field(lang, 'keywords'), lang))
+          expect(taken, `${word} repeats the fallback`).not.toContain(word);
+        // Where the current subtitle repeats the fallback, an alternative is ready.
+        if (words(field(lang, 'subtitle'), lang).some((w) => taken.includes(w)))
+          expect(FALLBACK.subtitle[lang]).not.toBeNull();
+      });
+
       it('has keywords within 100 bytes, comma-separated, each once, none from the name or subtitle', () => {
         const text = field(lang, 'keywords');
         expect(bytes(text)).toBeLessThanOrEqual(100);
@@ -83,10 +114,7 @@ describe('the App Store listing', () => {
         expect(new Set(lower).size).toBe(keywords.length);
         // App Store search already reads the name and the subtitle: a keyword repeating a word of
         // either wastes the room.
-        const taken = `${NAME} ${field(lang, 'subtitle')}`
-          .toLocaleLowerCase(lang)
-          .split(/[^\p{L}\p{N}]+/u)
-          .filter((w) => w.length > 2);
+        const taken = words(`${NAME} ${field(lang, 'subtitle')}`, lang);
         for (const keyword of lower)
           for (const word of keyword.split(' '))
             expect(taken, `${keyword} repeats the name or subtitle`).not.toContain(word);
@@ -150,6 +178,23 @@ describe('the App Store screenshots', () => {
         expect(pngSize(`${SCREENSHOTS}/${lang}/${name}`)).toEqual({ width: 1290, height: 2796 });
       }
   });
+
+  it('each have a caption in both languages, short enough for two lines', () => {
+    const captions = JSON.parse(read('scripts/store-captions.json')) as Record<
+      string,
+      Record<string, string>
+    >;
+    expect(Object.keys(captions).sort()).toEqual([...LANGUAGES]);
+    const names = readdirSync(new URL(`${SCREENSHOTS}/en-US`, root))
+      .filter((name) => name.endsWith('.png'))
+      .map((name) => name.replace(/\.png$/, ''))
+      .sort();
+    for (const lang of LANGUAGES) {
+      expect(Object.keys(captions[lang]).sort()).toEqual(names);
+      // The script itself stops when one takes three lines at its smallest size.
+      for (const caption of Object.values(captions[lang])) expect(chars(caption)).toBeLessThanOrEqual(64);
+    }
+  });
 });
 
 describe('the listing lane', () => {
@@ -174,7 +219,10 @@ describe('the listing lane', () => {
 
   it('runs by hand from main, with the API key from the app-store environment only', () => {
     const workflow = read('.github/workflows/app-store-listing.yml');
-    expect(workflow).toMatch(/on:\n {2}workflow_dispatch:\n/);
+    // Nothing but a run by hand starts it.
+    const on = /\non:\n((?: {2}.*\n)+)/.exec(workflow)?.[1];
+    expect(on).toBe('  workflow_dispatch:\n');
+    expect(workflow).toContain('runs-on: ubuntu-24.04');
     expect(workflow).toContain("if: github.ref == 'refs/heads/main'");
     expect(workflow).toContain('environment: app-store');
     expect(workflow).toContain('run: bundle exec fastlane listing');

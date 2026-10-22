@@ -160,12 +160,16 @@ both change together, in the same pull request.
    `scripts/listing.test.ts` holds it to Apple's limits and to what it must say: Apple Health by
    name, estimates and not medical advice, the data on the iPhone with no account, the ads and the
    one-time Remove ads (decision 165). `npm run store:screenshots` now also makes six screens in
-   each language at 1290 × 2796 into `ios/App/fastlane/screenshots/en-US` and `pt-BR`: Today,
-   Progress, the Compound daily rate with the simulator stopping at the goal, Body composition,
-   Apple Health and the reminder, and About; a made-up diary of six months from 106 kg with a goal,
-   no ads (no ad unit, Remove ads held), the iPhone's safe areas and a drawn status bar (decision
-   166). `fastlane listing` and the manual **App Store listing** workflow send them with no build
-   and no submission, with the App Store Connect API key the TestFlight workflow already has
+   each language at 1290 × 2796 into `ios/App/fastlane/screenshots/en-US` and `pt-BR`: Progress,
+   Today (in the dark theme), the Compound daily rate's simulator reaching the goal, Body
+   composition, the daily reminder and Apple Health, and Backup, each scaled under a two-line
+   caption from `scripts/store-captions.json` and framed by the script so that nothing is cut by the
+   status bar or the tab bar; a made-up diary of six months from 106 kg with a round goal in the
+   region's unit, the free app with no ads (no ad unit), the iPhone's safe areas and a drawn status
+   bar (decision 166). Framing them found a stray rule above a card's first block when the ones
+   before it are hidden, fixed (decision 168). `fastlane listing` and the manual **App Store
+   listing** workflow send them with no build and no submission, setting the version to a manual
+   release, with the App Store Connect API key the TestFlight workflow already has
    (decision 167); STORE.md's step 8 is the owner's round.
 
 5. **Review and release.** The review notes for a new app (Arrows' answers to "Guideline 2.1 -

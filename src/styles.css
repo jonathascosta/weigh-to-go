@@ -2420,7 +2420,9 @@ main {
   min-width: 0;
 }
 
-.sub {
+/* A block of a card is ruled off from the one shown before it; the first one shown has no rule (a
+   card set to show only some of its blocks hides the ones before it). */
+:not([hidden]) ~ .sub {
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
