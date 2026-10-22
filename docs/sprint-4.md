@@ -178,7 +178,25 @@ both change together, in the same pull request.
    the age rating, the build checked against `main` before it is chosen, the submission. The notes'
    draft is already in STORE.md and grows here. After the release: Safari's Smart App Banner and an
    App Store link on the website, and the jonathas.net card and article; the owner links the app in
-   AdMob (STORE.md, step 6).
+   AdMob (STORE.md, step 12).
+
+   _As built (22 October 2026)._ The review notes are final, in English, in
+   `ios/App/fastlane/metadata/review_information/notes.txt`, which the listing lane already sends
+   (deliver reads that folder), with STORE.md's copy and STORE_PT.md's summary in Portuguese;
+   `scripts/review.test.ts`, run by the listing workflow too, keeps them under 4,000 characters and
+   checks what they must say (decision 169). A reviewer gets sample data from ten made-up lines to
+   paste in the paste the log already has, and sees the banner on a fresh install by moving the
+   iPhone's date 8 days ahead: nothing new in the app. The age rating's answers are STORE.md's step
+   10, for an expected 9+ (decision 170). The version is 1.0.0 everywhere it lives, with a test, and
+   the build number stays the run's (decision 172); the TestFlight run's summary names the commit
+   of each build and links its comparison with `main`, which step 11 has the owner open before
+   choosing it (decision 171). `APP_STORE_ID` in `scripts/app-store.mjs`, empty until the app is
+   live, turns on Safari's Smart App Banner and the footer's App Store link on every page of the
+   website and a line in About on the website, never in the app, checked both ways by the tests and
+   `check:dist` (decision 173). STORE.md's steps 11 and 12 are the submission in order and what
+   follows the approval. Left to the owner: the recordings, choosing the build, submitting,
+   releasing, filling in the App Store ID, linking the app in AdMob, and the jonathas.net card and
+   article (another repository).
 
 6. **Body composition estimates from formulas.** The owner's call in issue #64 (decision 146),
    before the first release: body fat (Deurenberg), lean mass (Boer), body water (Watson) and the

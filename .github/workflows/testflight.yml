@@ -151,3 +151,28 @@ jobs:
           ADMOB_BANNER_ID: ${{ inputs.app_store && secrets.ADMOB_BANNER_ID || '' }}
           WTG_APP_STORE_BUILD: ${{ inputs.app_store && 'YES' || 'NO' }}
         run: bundle exec fastlane beta
+
+      # What the owner checks before choosing this build for a version (docs/STORE.md, step 11):
+      # App Store Connect shows the version and the build number, and this run's summary says which
+      # commit of main they were built from, with a link that compares it with main's head now.
+      - name: Record the build's commit
+        env:
+          APP_STORE: ${{ inputs.app_store }}
+          REPOSITORY: ${{ github.repository }}
+          SERVER: ${{ github.server_url }}
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          {
+            echo "## Build $version ($BUILD_NUMBER)"
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Version | $version |"
+            echo "| Build number | $BUILD_NUMBER |"
+            echo "| Commit | \`$GITHUB_SHA\` |"
+            echo "| For the App Store | $APP_STORE |"
+            echo
+            echo "Before choosing this build, open $SERVER/$REPOSITORY/compare/$GITHUB_SHA...main:" \
+              "it must say there isn't anything to compare (main hasn't moved since)."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Build $version ($BUILD_NUMBER) from $GITHUB_SHA"

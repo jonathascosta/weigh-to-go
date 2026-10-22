@@ -1,0 +1,39 @@
+1. Screen recording
+Attached: a recording on an iPhone with the latest iOS, from a fresh install through typical use, and two clips from an install in use for over a week: the ad banner with Privacy choices, and the Remove ads purchase. No account, login or user-generated content, so no such flows to show.
+
+2. Purpose and audience
+Weigh to Go is a weight diary for adults who want to see where their weight is heading. They log one weigh-in a day, typed or read from Apple Health, and the app shows the trend under the daily noise, projections toward a goal, weekly averages, the days the weight climbs back up, a compound daily rate, BMI and body composition estimates, in English or Brazilian Portuguese. Its data stays on the iPhone; it reminds the person to weigh in and shares exports through the share sheet.
+
+3. How to use it
+No setup, login or demo account. Tabs: Today, Progress, Analysis, Your data.
+- Today: type a weight and tap Save.
+- Sample data: in Your data, under Weigh-ins, tap "Paste several days at once", paste these made-up lines and tap "Import lines". Progress then shows the chart and figures, Analysis the cards.
+2026-10-12 86.0 kg
+2026-10-13 85.8 kg
+2026-10-14 86.1 kg
+2026-10-15 85.7 kg
+2026-10-16 85.5 kg
+2026-10-17 85.8 kg
+2026-10-18 85.3 kg
+2026-10-19 85.1 kg
+2026-10-20 85.2 kg
+2026-10-21 84.8 kg
+- Your data also has: iPhone app (Apple Health, the daily reminder, Remove ads, Restore purchases, Privacy choices where it applies), Backup (export, import, CSV), Settings (language, units, goal, height; year of birth and sex, optional, for the estimates) and About (the privacy policy).
+
+4. Apple Health (HealthKit)
+Reads and writes body mass only, once the person turns on "Use Apple Health" and allows it: weights from a smart scale or another app join the diary, and weights logged here are saved to Health. Nothing from Health leaves the iPhone or is used for advertising.
+
+5. Ads (Google AdMob) and consent
+One banner at the top, non-personalised ads only: no tracking, no App Tracking Transparency prompt, no advertising identifier, and no weigh-in data reaches the ad SDK. No ads, and no contact with Google, while the diary is empty or in the first 7 days after the first launch; never over the screen while logging. To see the banner on a fresh install: log a weigh-in, set the iPhone's date 8 days ahead (Settings, General, Date & Time), then close and reopen the app. With a sandbox receipt (TestFlight, App Review) the app shows Google's test ads. In the EEA, the UK and Switzerland, Google's User Messaging Platform asks for consent first; a refusal means no ads, and the SDK never starts. Privacy choices (Your data, iPhone app) changes the choice where the law gives one.
+
+6. In-app purchase
+"Remove ads", non-consumable (net.jonathas.weightogo.removeads): Your data, iPhone app, Buy, confirmed on Apple's sheet; a sandbox account works. Once held, the banner goes at once and Google's SDK and consent tool are no longer started. Restore purchases is just below. Checked on the device with StoreKit 2; no server.
+
+7. Regional differences
+The same in every region where it is offered (all but mainland China). Units follow the region (kg or lb, changeable in Settings). Only Google's consent message differs, shown where the law requires it.
+
+8. Regulated content and medical claims
+Not a medical device or a regulated industry. The app records the person's own weights; projections and body composition are estimates from published formulas, labelled as such, with no categories or targets; BMI shows the WHO's adult ranges. No diagnosis or treatment: estimates, not medical advice. No gambling or protected third-party material; fonts and libraries under open licences (SIL OFL 1.1, ISC, MIT).
+
+Privacy policy: https://weightogo.jonathas.net/privacy.html (Portuguese: https://weightogo.jonathas.net/pt/privacidade.html)
+Support: https://github.com/jonathascosta/weigh-to-go/issues

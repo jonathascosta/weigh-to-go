@@ -1197,3 +1197,83 @@ Choices made while building the App Store listing, open to the owner under decis
      with the `hidden` attribute (as `rates.ts` and `percent.ts` do), not with a class or a style,
      or the next block would lose its rule. The import's two buttons carry
      `data-import="merge"` and `"replace"`, so scripts find them in either language.
+
+## 22 October 2026 · Review and release, as built (Sprint 4, story 5)
+
+Choices made while preparing the first submission, open to the owner under decision 9.
+
+169. **The review notes, in English only, in deliver's own file, with sample lines to paste.** App
+     Review reads English, so the notes are one text, in
+     `ios/App/fastlane/metadata/review_information/notes.txt`: deliver 2.241.0 reads that folder
+     (`review_information`, which it never takes for a language) into `app_review_information`,
+     and sends only the fields it finds, so the listing lane sends the notes on every run and
+     leaves the contact the owner saved in App Store Connect. The lane passes no
+     `app_review_information` of its own, which would win over the file. STORE.md shows the same
+     text and STORE_PT.md says in Portuguese what it says; `scripts/review.test.ts`, which the
+     listing workflow runs before sending, keeps it under App Store Connect's 4,000 characters (also
+     counting a line break as two), in plain ASCII, answering Arrows' eight points of Guideline 2.1
+     adapted (the recording, purpose, how to use it, Apple Health, the ads and consent, the
+     purchase, regional differences, regulated content and medical claims), with the privacy and
+     support addresses the listing gives, naming the controls as the English dictionary does, and
+     equal to STORE.md's copy. A reviewer starts with an empty diary, and charts need two weigh-ins
+     and say little before a week, so the notes give ten made-up days of October 2026, in kg so they
+     read the same where the app weighs in pounds, to paste in Your data › Weigh-ins › Paste several
+     days at once, which already exists; the test checks the paste reads every line. Nothing new
+     was built for it. Seeing an ad on a fresh install is possible without waiting a week: the first
+     days are counted with the iPhone's clock, so the notes say to move the date 8 days ahead; and
+     they say that a sandbox receipt, App Review's too, shows Google's test ads. _Alternatives:_ a
+     sample backup on the website (the reviewer would have to download a file into Files on the
+     iPhone first), or a "try it with sample data" button in the app (new strings, a new state to
+     undo, and something every person would see for the reviewer's sake); a demo mode that skips
+     the first days (code in the shipped app that only review would use).
+170. **The age rating: Health or Wellness Topics yes, Medical or Treatment Information none, 9+.**
+     The questionnaire App Store Connect asks since July 2025 (the fields of fastlane 2.241.0's
+     `AgeRatingDeclaration`, and Apple's "Age ratings values and definitions") has the two health
+     questions. Apple defines Medical or Treatment Information as content that gives diagnoses or
+     guidance on managing medical conditions (medication, emergency care, treatment): the app gives
+     none: body composition carries no categories, healthy ranges or targets (decision 153), and
+     BMI shows the WHO's standard adult ranges beside the number, a reference rather than a
+     diagnosis, with no advice on what to do; so None. That BMI line is the closest call, and the
+     owner may judge it Infrequent (13+). It defines Health or Wellness Topics as self-care or
+     lifestyle content, with calorie tracking and dieting among its examples: a weight diary with a
+     goal and loss milestones is that, so Yes, which gives 9+. Advertising is Yes (4+ on its own);
+     every content description None; no web browsing (other sites open in Safari), no user content,
+     chat or social media; no override, not Made for Kids. The AdMob ads are then held to PG at
+     most. STORE.md's step 10 has the answers question by question, and the owner stops if App
+     Store Connect gives anything but 9+. _Alternatives:_ Health or Wellness Topics No, for 4+,
+     left out as an answer App Review could find untrue of a weight diary (guideline 2.3.6 asks the
+     rating be honest); Medical Infrequent (13+), which would count the BMI ranges as medical
+     information rather than a reference.
+171. **The build checked against `main` by the TestFlight run's summary.** The run already numbers
+     the build (run × 100 + attempt) and checks out `main`'s head at that moment; after the upload,
+     a last step writes the version, the build number, the commit and "For the App Store" into the
+     run's summary, with a link to GitHub's comparison of that commit with `main`. App Store
+     Connect shows the build as "1.0.0 (number)", the summary of the run with that number says the
+     commit, and the comparison says whether `main` has moved since; STORE.md's step 11 has the
+     owner open it before choosing the build, and build again unless only `docs/` or the listing
+     changed. `scripts/ios.test.ts` checks the step is there, after the upload. _Alternatives:_ the
+     commit in TestFlight's "What to Test" (`upload_to_testflight`'s `changelog`), which makes the
+     run wait for Apple's processing and isn't shown where the build is chosen; the commit in
+     Info.plist, only readable from the binary.
+172. **Version 1.0.0, with the build number from the run.** The first release is 1.0.0 in
+     `package.json`, `package-lock.json` and both of the Xcode project's `MARKETING_VERSION`;
+     Info.plist reads `$(MARKETING_VERSION)` and `$(CURRENT_PROJECT_VERSION)`, which the Fastfile
+     sets from the workflow's build number, so the project's own 1 is only Xcode's.
+     `scripts/ios.test.ts` checks all of it. The version shows in About and the website's footer
+     ("Weigh to Go 1.0.0", "v1.0.0"), in none of the store screenshots (decision 166 leaves About
+     out, and the app's build hides the footer), so they stay as committed.
+173. **Safari's Smart App Banner and an App Store link, turned on by one constant.**
+     `APP_STORE_ID` in `scripts/app-store.mjs` is empty until the app is on the App Store; then
+     the owner (or a session) fills in the Apple ID, digits only (anything else stops the build).
+     With it, the website's build writes `<meta name="apple-itunes-app" content="app-id=…">` into
+     every page and keeps the footer's "On the App Store" (Na App Store) link, which every page's
+     source carries ready (`data-app-store`, its text in the dictionary as `footer.appStore`), and
+     About on the website shows "Weigh to Go for iPhone, on the App Store" (`about.appStore`, Vite's
+     `__APP_STORE_URL__`). Without it, the build removes the link, and nothing of the App Store is
+     on any page; the app's build never has either, as it is the app. `check:dist` checks both
+     builds, and the tests check both ways. A meta tag and a link load nothing from Apple, so the
+     policy is unchanged (`connect-src 'none'`). A plain link, not Apple's badge: the badge must be
+     Apple's own artwork, downloaded from Apple's marketing tools (out of a session's reach) and
+     used as its guidelines say; the owner may add it later as a file of the site. The link goes to
+     `https://apps.apple.com/app/id…`, which App Store pages answer in every storefront. The
+     jonathas.net card and article are in another repository, the owner's step 12.
