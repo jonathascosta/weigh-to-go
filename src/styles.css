@@ -3927,6 +3927,7 @@ svg.go {
 }
 
 .body-chips .chips {
+  flex-wrap: nowrap;
   gap: 8px;
   margin-top: 12px;
 }
@@ -3935,10 +3936,21 @@ svg.go {
   flex: 1 1 auto;
   justify-content: center;
   min-height: 44px;
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: 8px;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
   color: var(--fg);
+}
+
+/* Where four don't fit one row: two equal rows of two (body.ts measures it). */
+.body-chips .chips.chips-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chips-grid .body-chip {
+  white-space: normal;
 }
 
 .body-chip[aria-pressed='true'] {
@@ -4086,6 +4098,13 @@ svg.go {
   margin: 0;
   font-size: 0.8125rem;
   color: var(--muted);
+}
+
+/* A refusal, next to the field it describes. */
+.field-error {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  color: var(--bad);
 }
 
 .radios {

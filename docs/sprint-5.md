@@ -20,12 +20,10 @@ The why is in [decisions.md](decisions.md) (21 October 2026, 4 and 8). Estimate:
 
 ## Stories
 
-1. **Body composition, measured.** Estimates from formulas ship in 1.0 (Sprint 4, story 6;
-   decisions 146 and 161) and read nothing from Health. This story, if the owner still wants it,
-   reads what smart scales measure and write to Health (body fat percentage, lean body mass, waist
-   circumference) and shows it beside the estimates: their trends beside the weight, and whether
-   the loss is fat or lean as far as a scale can tell. It asks for those types only when the person
-   turns it on, and the estimates stay for everyone without a scale.
+1. **Body composition.** Body fat percentage, lean body mass and waist circumference from Health
+   (smart scales write them): their trends beside the weight, and whether the loss is fat or lean.
+   The measured values show beside the estimates from formulas that ship in 1.0 (Sprint 4, story
+   6; decisions 146 and 161).
 2. **Sleep and the next morning.** Hours asleep against the next day's change in weight, with the
    number of nights behind every figure.
 3. **Activity.** Steps, active energy and workouts by week against the week's rate, and whether

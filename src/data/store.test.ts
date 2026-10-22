@@ -140,7 +140,8 @@ describe.each(kinds)('%s store', (kind, open) => {
     await store.updateProfile({ sex: null });
     expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 172, birthYear: 1983, sex: null });
     await expect(store.updateProfile({ birthYear: 1983.5 })).rejects.toThrow(TypeError);
-    await expect(store.updateProfile({ birthYear: new Date().getFullYear() })).rejects.toThrow(TypeError);
+    await expect(store.updateProfile({ birthYear: new Date().getFullYear() + 2 })).rejects.toThrow(TypeError);
+    await expect(store.updateProfile({ birthYear: 1899 })).rejects.toThrow(TypeError);
     await expect(store.updateProfile({ sex: 'other' as 'male' })).rejects.toThrow(TypeError);
     expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 172, birthYear: 1983, sex: null });
   });

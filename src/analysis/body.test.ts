@@ -104,6 +104,30 @@ describe('estimatesAt and availableMetrics', () => {
   });
 });
 
+describe('the estimates at the edges of the inputs', () => {
+  it('never say the impossible: fat from 0 to 100%, lean mass and water at most the weight', () => {
+    // Made up: 250 cm and 30 kg, 18 in 2026, a man. Boer gives 0.407 × 30 + 0.267 × 250 − 19.2 =
+    // 59.76 kg of lean mass, twice the weight; Deurenberg 1.2 × 4.8 + 0.23 × 18 − 16.2 = −6.3%.
+    const p = { heightCm: 250, birthYear: 2008, sex: 'male' as const };
+    const e = estimatesAt(30, '2026-06-01', p);
+    expect(e.lean).toBe(30);
+    expect(e.fat).toBe(0);
+    expect(e.water).toBeLessThanOrEqual(30);
+    // Its range keeps its low end below its high end, and body fat's within 0 to 100.
+    expect(errorRange('fat', e.fat ?? 0)).toEqual({ lo: 0, hi: 4.5 });
+    expect(errorRange('fat', 98)).toEqual({ lo: 93.5, hi: 100 });
+    for (const [metric, v] of [
+      ['fat', -6.3],
+      ['lean', -2],
+      ['bmr', -50],
+    ] as const) {
+      const r = errorRange(metric, v);
+      expect(r.lo, metric).toBeGreaterThanOrEqual(0);
+      expect(r.hi, metric).toBeGreaterThanOrEqual(r.lo);
+    }
+  });
+});
+
 describe('errorRange', () => {
   it('is the formula’s usual error either way: 10% of BMR, 4.5 points, 5 kg, 4 L', () => {
     expect(errorRange('bmr', 1827)).toEqual({ lo: 1827 - 182.7, hi: 1827 + 182.7 });

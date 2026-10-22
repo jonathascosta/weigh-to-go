@@ -543,6 +543,65 @@ for (const language of LANGUAGES) {
       await check();
     });
 
+    test('the body composition chips share one row from 375 px, and two rows of two below', async ({
+      page,
+    }) => {
+      const { check } = await watchHere(page);
+      await page.goto(home);
+      await loadBackup(page, yearBackup(365, FULL_PROFILE));
+      await show(page, 'analysis');
+      await page.locator('#body-toggle').tap();
+      const chips = page.locator('.body-chips button');
+      await expect(chips).toHaveCount(4);
+      /** Each chip's top and width, rounded. */
+      const boxes = () =>
+        chips.evaluateAll((all) =>
+          all.map((c) => {
+            const r = c.getBoundingClientRect();
+            return { top: Math.round(r.top), width: Math.round(r.width) };
+          }),
+        );
+      for (const width of [375, 390, 430]) {
+        await page.setViewportSize({ width, height: 844 });
+        await settle(page);
+        const tops = new Set((await boxes()).map((b) => b.top));
+        expect.soft(tops.size, `the chips at ${String(width)} px share one row`).toBe(1);
+      }
+      // At 320 px with text 150%: two equal rows of two, never a lone chip across the card.
+      await page.setViewportSize({ width: 320, height: 568 });
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = '150%';
+      });
+      await settle(page);
+      const small = await boxes();
+      expect(new Set(small.map((b) => b.top)).size).toBe(2);
+      expect(new Set(small.map((b) => b.width)).size).toBe(1);
+      await check();
+    });
+
+    test('a refusal in Change details shows on the screen, next to its field, with large text', async ({
+      page,
+    }) => {
+      const { check } = await watchHere(page);
+      await page.goto(home);
+      await loadBackup(page);
+      await show(page, 'analysis');
+      await page.locator('#body-toggle').tap();
+      await page.setViewportSize({ width: 320, height: 568 });
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = '150%';
+      });
+      await settle(page);
+      await page.locator('#body-change-button').tap();
+      await page.locator('#details-birth-year').fill('2015');
+      await page.locator('.sheet button[type=submit]').tap();
+      const error = page.locator('#details-birth-year-error');
+      await expect(error).toBeVisible();
+      await expect(error).toBeInViewport();
+      await expect(page.locator('#details-birth-year')).toBeFocused();
+      await check();
+    });
+
     test('the body composition card fits when it asks for its details, and as a single estimate', async ({
       page,
     }) => {

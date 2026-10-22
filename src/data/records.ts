@@ -37,8 +37,9 @@ export const EMPTY_PROFILE: Profile = { goalKg: null, heightCm: null, birthYear:
 
 /**
  * The earliest year of birth kept. A year typed in is checked against today (an adult up to 100,
- * `birthYearRange` in analysis/body.ts); a year saved is kept for good once it is, so this bound
- * never moves and a saved year never expires.
+ * `birthYearRange` in analysis/body.ts); a year read back from the store or a backup only needs to
+ * be a whole year from this one to next year, so a year once saved never expires, and a device whose
+ * clock is behind still reads it. A weigh-in before the age of 18 gets no estimate anyway.
  */
 export const FIRST_BIRTH_YEAR = 1900;
 
@@ -48,11 +49,11 @@ const inRange = (v: unknown, [lo, hi]: readonly [number, number]): v is number =
 export const isWeight = (v: unknown): v is number => inRange(v, KG_RANGE);
 export const isHeight = (v: unknown): v is number => inRange(v, HEIGHT_RANGE);
 /**
- * Whether `v` can be a saved year of birth: a whole year from 1900 to that of an 18-year-old in
- * `thisYear` (the device's year by default).
+ * Whether `v` can be a saved year of birth: a whole year from 1900 to the year after `thisYear`
+ * (the device's), a year of slack for a clock behind.
  */
 export const isBirthYear = (v: unknown, thisYear: number = new Date().getFullYear()): v is number =>
-  typeof v === 'number' && Number.isInteger(v) && v >= FIRST_BIRTH_YEAR && v <= thisYear - 18;
+  typeof v === 'number' && Number.isInteger(v) && v >= FIRST_BIRTH_YEAR && v <= thisYear + 1;
 export const isSex = (v: unknown): v is Sex => v === 'female' || v === 'male';
 
 /** Whether `date` is a real day, YYYY-MM-DD, from `FIRST_DAY` to `latest`. */

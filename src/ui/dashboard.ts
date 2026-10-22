@@ -33,7 +33,7 @@ import {
   weekdaysSummary,
 } from './days';
 import { chevron, h } from './dom';
-import { mountEntry, mountPaste } from './entry';
+import { failure, mountEntry, mountPaste } from './entry';
 import { factsSummary, mountFacts } from './facts';
 import { hiccupsSummary, mountHiccups } from './hiccups';
 import { mountLog } from './log';
@@ -41,6 +41,7 @@ import { mountPercent, percentSummary } from './percent';
 import { bmiSummary, goalEditor, heightEditor, mountBmi, mountGoal } from './profile';
 import { ageThisYear, birthYearEditor, bodySummary, mountBody } from './body';
 import { selectRow } from '../settings-ui';
+import type { Sex } from '../data/records';
 import { mountHealth } from './health';
 import { mountRates, rateSummary } from './rates';
 import { mountReminder } from './reminder';
@@ -167,12 +168,27 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     attrs: { type: 'button', id: 'settings-birth-year', 'aria-haspopup': 'dialog' },
   });
   const sexRow = selectRow('settings-sex');
+  // What a failed choice of sex says, under its row (empty, it takes no room).
+  const sexStatus = h('p', {
+    class: 'status group-pad choices-status',
+    attrs: { role: 'status', id: 'settings-sex-status' },
+  });
   const profileNote = h('p', { class: 'note group-note' });
   const settingsCard = h(
     'section',
     { class: 'data-group settings-group', attrs: { 'aria-labelledby': 'settings-title' } },
     settingsTitle,
-    h('div', { class: 'group' }, settingsBox, sectionsBox, goalRow, heightRow, yearRow, sexRow.row),
+    h(
+      'div',
+      { class: 'group' },
+      settingsBox,
+      sectionsBox,
+      goalRow,
+      heightRow,
+      yearRow,
+      sexRow.row,
+      sexStatus,
+    ),
     profileNote,
   );
   // The daily reminder is the app's: a website can't plan notifications on the phone.
@@ -567,12 +583,29 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   yearRow.append(h('span', { class: 'grow' }, yearName, yearValue), chevron());
   const SEX_VALUES = ['', 'female', 'male'] as const;
   sexRow.select.append(...SEX_VALUES.map((value) => h('option', { attrs: { value } })));
+  /** The select and its row's text, from the sex saved. */
+  const drawSex = (sex: Sex | null, m: Settings['messages']) => {
+    sexRow.select.value = sex ?? '';
+    // The row states a fact: "Left out", not the choice's "Leave out".
+    sexRow.value.textContent = sex === null ? m['profile.sex.leftOut'] : m[`profile.sex.${sex}`];
+  };
+  const saySex = (text: string) => {
+    sexStatus.textContent = text;
+    sexStatus.classList.toggle('status-bad', text !== '');
+  };
   sexRow.select.addEventListener('change', () => {
     const value = sexRow.select.value;
     const sex = value === 'female' || value === 'male' ? value : null;
-    // The choice applies at once, as the language's and the units' do.
+    saySex('');
+    // The choice applies at once, as the language's and the units' do. Refused, the row goes back
+    // to what is saved and says why.
     app.updateProfile({ sex }).catch((error: unknown) => {
       console.error(error);
+      const s = settings();
+      drawSex(app.state().profile.sex, s.messages);
+      // The weigh-in's general failure names a weigh-in: this one says it was the change.
+      const text = failure(error, app, s);
+      saySex(text === s.messages['entry.failed'] ? s.messages['profile.failed'] : text);
     });
   });
   const goalEdit = goalEditor(app, 'data-', 'sheet-title');
@@ -638,10 +671,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     for (const o of sexOptions)
       o.textContent =
         o.value === 'female' || o.value === 'male' ? m[`profile.sex.${o.value}`] : m['profile.sex.leaveOut'];
-    sexRow.select.value = state.profile.sex ?? '';
-    // The row states a fact: "Left out", not the choice's "Leave out".
-    sexRow.value.textContent =
-      state.profile.sex === null ? m['profile.sex.leftOut'] : m[`profile.sex.${state.profile.sex}`];
+    drawSex(state.profile.sex, m);
     profileNote.textContent = m['profile.note'];
     goalEdit.draw(state, s);
     heightEdit.draw(state, s);

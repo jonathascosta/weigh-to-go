@@ -447,6 +447,7 @@ export const en = {
   'profile.birthYear.saved': (year: string) => `Year of birth saved: ${year}.`,
   'profile.birthYear.removed': 'Year of birth removed.',
   'profile.saved': 'Details saved.',
+  'profile.failed': "Couldn't save the change. Try again.",
   'unit.kg': 'kg',
   'unit.lb': 'lb',
   'unit.cm': 'cm',
@@ -1057,9 +1058,10 @@ export const en = {
       water === null
         ? `lean mass **${lean}**, from a formula`
         : `lean mass **${lean}** and body water **${water}**, from formulas`;
-    return `${on === null ? 'Estimated' : `On ${on}, estimated`} ${what}. Body fat and BMR also need your year of birth.`;
+    return `${on === null ? 'Estimated' : `On ${on}, estimated`} ${what}.`;
   },
   'body.sumNeeds': 'Appears once your height, year of birth and sex are set.',
+  'body.adults': 'These estimates are for adults: the formulas were made from adults’ data.',
   'body.needs':
     'These estimates use your height, year of birth and sex. Each one is optional and stays on this device.',
   'body.caveat':
@@ -1080,7 +1082,7 @@ export const en = {
   'body.waterShare': (pct: string) => `${pct} of your weight`,
   'body.atStart': (value: string) => `${value} at the start`,
   'body.sameAsStart': 'the same as at the start',
-  'body.err.fat': 'Deurenberg formula, about ±4–5\u00a0points',
+  'body.err.fat': 'Deurenberg formula, about ±4\u2060–\u20605\u00a0points',
   'body.err.lean': (weight: string) => `Boer formula, about ±${weight}`,
   'body.err.water': 'Watson formula, about ±4\u00a0L',
   'body.err.bmr': 'Mifflin-St Jeor formula, about ±10%',
@@ -1098,13 +1100,13 @@ export const en = {
   'body.about.bmr':
     '**BMR**, Mifflin-St Jeor (1990): the energy your body uses at complete rest, from weight, height, age and sex. Within about 10% for most adults, more for some. A whole day uses more, since moving and digesting add to it.',
   'body.about.fat':
-    '**Body fat**, Deurenberg (1991): from BMI, age and sex. About 4–5 points either way; it reads too high for very muscular people, and is less sure at a very high or very low BMI.',
+    '**Body fat**, Deurenberg (1991): from BMI, age and sex. About 4\u2060–\u20605 points either way; it reads too high for very muscular people, and is less sure at a very high or very low BMI.',
   'body.about.lean': (weight: string) =>
     `**Lean mass**, Boer (1984): everything that isn’t fat (muscle, bone, organs and water), from weight, height and sex. About ${weight} either way. It goes down a little whenever your weight does, because the formula assumes part of any loss is lean; it can’t tell whether yours is.`,
   'body.about.water':
     '**Body water**, Watson (1980): from weight, height, sex and, for men, age. About 4 litres either way. It can’t see the day-to-day swings in water that move the scale.',
   'body.about.left':
-    'Muscle, bone and visceral fat aren’t shown: no formula estimates them reliably from weight. Measuring them takes a body-composition scale or a scan.',
+    'Muscle, bone and visceral fat aren’t shown: no formula estimates them reliably from weight. A scan measures them; body-composition scales estimate them in another way.',
   'body.about.adults':
     'The formulas were made from adults’ data, and each value uses your age in the year of that weigh-in. They are estimates for interest, not a diagnosis.',
   'facts.sum': (n: string, days: string, drop: { value: string; over: string | null } | null) =>
@@ -1220,7 +1222,7 @@ export const en = {
   'data.importFailed': "Couldn't import the file. Nothing was changed.",
   'data.reload': "The diary can't reach its data. Reload the page, then try again.",
   'data.eraseWarning':
-    "This erases every weigh-in, your goal, height and settings from this browser, and can't be undone. Export a backup first if you may want them back.",
+    "This erases every weigh-in, your goal, height, year of birth, sex and settings from this browser, and can't be undone. Export a backup first if you may want them back.",
   'data.eraseConfirm': 'Erase',
   'data.erased': 'Everything was erased.',
   'data.eraseFailed': "Couldn't erase everything. Reload the page and try again.",
@@ -1449,6 +1451,7 @@ export const pt: Messages = {
   'profile.birthYear.saved': (year: string) => `Ano de nascimento salvo: ${year}.`,
   'profile.birthYear.removed': 'Ano de nascimento removido.',
   'profile.saved': 'Informações salvas.',
+  'profile.failed': 'Não foi possível salvar a alteração. Tente de novo.',
   'unit.kg': 'kg',
   'unit.lb': 'lb',
   'unit.cm': 'cm',
@@ -2066,9 +2069,10 @@ export const pt: Messages = {
       water === null
         ? `massa magra de **${lean}**, por fórmula`
         : `massa magra de **${lean}** e água corporal de **${water}**, por fórmulas`;
-    return `${on === null ? 'Estimativa' : `Em ${on}, estimativa`} de ${what}. Gordura corporal e TMB precisam também do seu ano de nascimento.`;
+    return `${on === null ? 'Estimativa' : `Em ${on}, estimativa`} de ${what}.`;
   },
   'body.sumNeeds': 'Aparece quando altura, ano de nascimento e sexo estiverem definidos.',
+  'body.adults': 'Estas estimativas são para adultos: as fórmulas foram feitas com dados de adultos.',
   'body.needs':
     'Estas estimativas usam sua altura, ano de nascimento e sexo. Cada um é opcional e fica neste aparelho.',
   'body.caveat':
@@ -2089,7 +2093,7 @@ export const pt: Messages = {
   'body.waterShare': (pct: string) => `${pct} do seu peso`,
   'body.atStart': (value: string) => `${value} no início`,
   'body.sameAsStart': 'o mesmo do início',
-  'body.err.fat': 'Fórmula de Deurenberg, cerca de ±4–5\u00a0pontos',
+  'body.err.fat': 'Fórmula de Deurenberg, cerca de ±4\u2060–\u20605\u00a0pontos',
   'body.err.lean': (weight: string) => `Fórmula de Boer, cerca de ±${weight}`,
   'body.err.water': 'Fórmula de Watson, cerca de ±4\u00a0L',
   'body.err.bmr': 'Fórmula de Mifflin-St Jeor, cerca de ±10%',
@@ -2107,13 +2111,13 @@ export const pt: Messages = {
   'body.about.bmr':
     '**TMB**, Mifflin-St Jeor (1990): a energia que o corpo gasta em repouso completo, a partir de peso, altura, idade e sexo. Erra até cerca de 10% para a maioria dos adultos, mais para alguns. Um dia inteiro gasta mais, porque movimento e digestão se somam a ela.',
   'body.about.fat':
-    '**Gordura corporal**, Deurenberg (1991): a partir do IMC, da idade e do sexo. Cerca de 4–5 pontos para mais ou para menos; dá valores altos demais para pessoas muito musculosas e é menos segura com IMC muito alto ou muito baixo.',
+    '**Gordura corporal**, Deurenberg (1991): a partir do IMC, da idade e do sexo. Cerca de 4\u2060–\u20605 pontos para mais ou para menos; dá valores altos demais para pessoas muito musculosas e é menos segura com IMC muito alto ou muito baixo.',
   'body.about.lean': (weight: string) =>
     `**Massa magra**, Boer (1984): tudo o que não é gordura (músculos, ossos, órgãos e água), a partir de peso, altura e sexo. Cerca de ${weight} para mais ou para menos. Ela cai um pouco sempre que o peso cai, porque a fórmula supõe que parte de qualquer perda é magra; não tem como saber se a sua é.`,
   'body.about.water':
     '**Água corporal**, Watson (1980): a partir de peso, altura, sexo e, para homens, idade. Cerca de 4 litros para mais ou para menos. Não vê as variações de água de um dia para o outro, que mexem na balança.',
   'body.about.left':
-    'Músculos, ossos e gordura visceral não aparecem: nenhuma fórmula os estima com segurança a partir do peso. Medi-los exige uma balança de bioimpedância ou um exame.',
+    'Músculos, ossos e gordura visceral não aparecem: nenhuma fórmula os estima com segurança a partir do peso. Um exame os mede; balanças de bioimpedância os estimam de outro jeito.',
   'body.about.adults':
     'As fórmulas foram feitas com dados de adultos, e cada valor usa a sua idade no ano daquela pesagem. São estimativas para referência, não um diagnóstico.',
   'facts.sum': (n: string, days: string, drop: { value: string; over: string | null } | null) =>
@@ -2232,7 +2236,7 @@ export const pt: Messages = {
   'data.importFailed': 'Não foi possível importar o arquivo. Nada foi alterado.',
   'data.reload': 'O diário não está conseguindo acessar seus dados. Recarregue a página e tente de novo.',
   'data.eraseWarning':
-    'Isto apaga todas as pesagens, sua meta, altura e configurações deste navegador, e não pode ser desfeito. Exporte um backup antes, caso queira recuperar tudo.',
+    'Isto apaga todas as pesagens, sua meta, altura, ano de nascimento, sexo e configurações deste navegador, e não pode ser desfeito. Exporte um backup antes, caso queira recuperar tudo.',
   'data.eraseConfirm': 'Apagar',
   'data.erased': 'Tudo foi apagado.',
   'data.eraseFailed': 'Não foi possível apagar tudo. Recarregue a página e tente de novo.',
@@ -2300,7 +2304,7 @@ export const enApp = {
   'data.note':
     'Everything stays in this app on your iPhone, and in your iPhone’s backup if you use iCloud Backup or back up to a computer; with Apple Health on, the weights you type are in Health too. A backup file is the only copy you hold yourself: export one now and then, and use it to move to another device.',
   'data.eraseWarning':
-    "This erases every weigh-in, your goal, height and settings from this app, and can't be undone. Export a backup first if you may want them back.",
+    "This erases every weigh-in, your goal, height, year of birth, sex and settings from this app, and can't be undone. Export a backup first if you may want them back.",
   'data.eraseFailed': "Couldn't erase everything. Close the app, open it again and try again.",
   'backup.newer-format': 'That backup comes from a newer Weigh to Go. Update the app, then try again.',
   'notice.memory':
@@ -2322,7 +2326,7 @@ export const ptApp: typeof enApp = {
   'data.note':
     'Tudo fica neste app, no seu iPhone, e no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador; com o app Saúde ligado, os pesos que você digita ficam lá também. Um arquivo de backup é a única cópia que fica com você: exporte um de vez em quando e use-o para passar para outro aparelho.',
   'data.eraseWarning':
-    'Isto apaga todas as pesagens, sua meta, altura e configurações deste app, e não pode ser desfeito. Exporte um backup antes, caso queira recuperar tudo.',
+    'Isto apaga todas as pesagens, sua meta, altura, ano de nascimento, sexo e configurações deste app, e não pode ser desfeito. Exporte um backup antes, caso queira recuperar tudo.',
   'data.eraseFailed': 'Não foi possível apagar tudo. Feche o app, abra-o de novo e tente outra vez.',
   'backup.newer-format': 'Esse backup vem de um Weigh to Go mais novo. Atualize o app e tente de novo.',
   'notice.memory':

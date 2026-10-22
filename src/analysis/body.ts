@@ -93,8 +93,10 @@ export const ERRORS = {
 
 /** The estimate's usual range, either way of `value`. */
 export function errorRange(metric: Metric, value: number): { readonly lo: number; readonly hi: number } {
-  const e = metric === 'bmr' ? value * ERRORS.bmr : ERRORS[metric];
-  return { lo: Math.max(0, value - e), hi: value + e };
+  const v = Math.max(0, value);
+  const e = metric === 'bmr' ? v * ERRORS.bmr : ERRORS[metric];
+  // Never below nothing, nor body fat above all of the weight; the low end never above the high.
+  return { lo: Math.max(0, v - e), hi: metric === 'fat' ? Math.min(100, v + e) : v + e };
 }
 
 /** What the estimates take from the profile. */
@@ -119,11 +121,15 @@ export function estimatesAt(kg: number, date: string, p: BodyInputs): Estimates 
   if (cm === null || sex === null || !Number.isFinite(kg)) return NONE;
   const age = p.birthYear === null ? null : ageOn(date, p.birthYear);
   if (age !== null && age < ADULT_AGE) return NONE;
+  // At the edges of the inputs (a very tall, very light person) a formula can say the impossible:
+  // fat below none or above all of the weight, more lean mass or water than the weight. Held to
+  // what can be (water at about a kilogram a litre).
+  const within = (v: number | null, hi: number) => (v === null ? null : Math.min(hi, Math.max(0, v)));
   return {
-    fat: age === null ? null : deurenbergFat(kg, cm, age, sex),
-    lean: boerLean(kg, cm, sex),
-    water: watsonWater(kg, cm, age, sex),
-    bmr: age === null ? null : mifflinBmr(kg, cm, age, sex),
+    fat: within(age === null ? null : deurenbergFat(kg, cm, age, sex), 100),
+    lean: within(boerLean(kg, cm, sex), kg),
+    water: within(watsonWater(kg, cm, age, sex), kg),
+    bmr: within(age === null ? null : mifflinBmr(kg, cm, age, sex), Infinity),
   };
 }
 

@@ -19,9 +19,10 @@ describe('eraseEverything', () => {
     await store.put([{ date: '2026-10-17', kg: 100, savedAt: at }], {
       goalKg: 90,
       heightCm: 180,
-      birthYear: null,
-      sex: null,
+      birthYear: 1983,
+      sex: 'female',
     });
+    expect(await store.profile()).toMatchObject({ birthYear: 1983, sex: 'female' });
     writePref('unit', 'lb');
     await eraseEverything(store);
     expect(await store.weighIns()).toEqual([]);

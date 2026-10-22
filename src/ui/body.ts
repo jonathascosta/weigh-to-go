@@ -110,7 +110,9 @@ export function bodySummary(state: State, s: Settings, today: string = localToda
   const shown = availableMetrics(profile);
   const { last } = analysis;
   const e = estimatesAt(last.kg, last.date, profile);
-  if (shown.length === 0 || e.lean === null) return m['body.sumNeeds'];
+  if (shown.length === 0) return m['body.sumNeeds'];
+  // Every input there, and still nothing: the last weigh-in is from before the person turned 18.
+  if (e.lean === null) return m['body.adults'];
   const stale = staleTo(analysis, today);
   const on = stale === null ? null : sentenceDay(stale, s, parseDay(today));
   if (e.fat !== null && e.bmr !== null)
@@ -269,6 +271,33 @@ export function detailsEditor(app: App, prefix: string, labelledBy: string): Pro
   const inches = unitField(`${prefix}details-in`);
   const heightBox = h('div', { class: 'entry-row height-fields' });
   const year = yearField(`${prefix}details-`);
+  // A refusal says why next to its field, where the eye and focus are (under Save it was off the
+  // screen with large text), and the field is described by it.
+  const heightError = h('p', {
+    class: 'field-error',
+    attrs: { id: `${prefix}details-height-error`, hidden: true },
+  });
+  const yearError = h('p', {
+    class: 'field-error',
+    attrs: { id: `${prefix}details-birth-year-error`, hidden: true },
+  });
+  year.element.append(yearError);
+  const refuse = (error: HTMLElement, text: string | null) => {
+    error.textContent = text ?? '';
+    error.hidden = text === null;
+  };
+  const heightInputs = [cm, feet, inches];
+  const heightInvalid = (input: HTMLInputElement | null) => {
+    for (const f of heightInputs) {
+      const refused = f.input === input;
+      if (refused) f.input.setAttribute('aria-invalid', 'true');
+      else f.input.removeAttribute('aria-invalid');
+      f.input.setAttribute(
+        'aria-describedby',
+        refused ? `${f.input.id}-unit ${heightError.id}` : `${f.input.id}-unit`,
+      );
+    }
+  };
   const legend = h('legend');
   const sexHelpId = `${prefix}details-sex-help`;
   const sexHelp = h('p', { class: 'field-help', attrs: { id: sexHelpId } });
@@ -296,7 +325,7 @@ export function detailsEditor(app: App, prefix: string, labelledBy: string): Pro
   const form = h(
     'form',
     { class: 'details-form', attrs: { novalidate: true, 'aria-labelledby': labelledBy } },
-    heightBox,
+    h('div', {}, heightBox, heightError),
     year.element,
     fieldset,
     h('div', {}, save),
@@ -312,19 +341,22 @@ export function detailsEditor(app: App, prefix: string, labelledBy: string): Pro
     });
     const thisYear = yearOf(localToday());
     const birthYear = readBirthYear(year.input.value, thisYear);
-    for (const input of [cm.input, feet.input, inches.input]) input.removeAttribute('aria-invalid');
+    heightInvalid(null);
+    refuse(heightError, null);
     year.invalid(null);
+    refuse(yearError, null);
+    say(status, '');
     if (height === undefined) {
-      say(status, s.heightUnit === 'cm' ? m['bmi.badCm'] : m['bmi.badFtIn'], 'bad');
+      refuse(heightError, s.heightUnit === 'cm' ? m['bmi.badCm'] : m['bmi.badFtIn']);
       const first = s.heightUnit === 'cm' ? cm.input : feet.input;
-      first.setAttribute('aria-invalid', 'true');
+      heightInvalid(first);
       first.focus();
       return;
     }
     if (birthYear === undefined) {
       const [lo, hi] = birthYearRange(thisYear);
-      say(status, m['profile.birthYear.bad'](String(lo), String(hi)), 'bad');
-      year.invalid(status);
+      refuse(yearError, m['profile.birthYear.bad'](String(lo), String(hi)));
+      year.invalid(yearError);
       year.input.focus();
       return;
     }
@@ -431,6 +463,32 @@ export function mountBody(
     ),
   );
   const chipsBox = h('div', { class: 'body-chips' });
+  /**
+   * The chips share one row where they fit at their own width; where they don't (320 px, large
+   * text), two equal rows of two, never a lone chip stretched across. Measured, since media queries
+   * don't see the text size: laid out in one row, does the row overflow?
+   */
+  const fitChips = () => {
+    const group = chipsBox.firstElementChild;
+    if (!(group instanceof HTMLElement)) return;
+    group.classList.remove('chips-grid');
+    if (group.clientWidth === 0) return;
+    group.classList.toggle('chips-grid', group.scrollWidth > group.clientWidth + 1);
+  };
+  if (typeof ResizeObserver === 'function') {
+    let width = -1;
+    let height = -1;
+    const watch = new ResizeObserver(() => {
+      // The box's width (a rotated phone) or the chips' height (the text size) changed.
+      const w = chipsBox.clientWidth;
+      const h0 = chipsBox.firstElementChild?.firstElementChild?.getBoundingClientRect().height ?? 0;
+      if (w === width && h0 === height) return;
+      width = w;
+      height = h0;
+      fitChips();
+    });
+    watch.observe(chipsBox);
+  }
   const chartBlock = h('div', { class: 'body-chart' }, chartName, plot.element, plot.live, legend, chipsBox);
   const caveat = h('p', { class: 'body-caveat' });
   const rows = h('dl', { class: 'body-rows' });
@@ -639,7 +697,14 @@ export function mountBody(
       return;
     }
     const { shown, metric } = chartMetric(profile, bodyMetric.get());
-    if (metric === null || estimatesAt(analysis.last.kg, analysis.last.date, profile).lean === null) {
+    if (metric !== null && estimatesAt(analysis.last.kg, analysis.last.date, profile).lean === null) {
+      // The last weigh-in is from before the person turned 18: the formulas are adults'.
+      change.button.className = 'button button-ghost';
+      empty.textContent = m['body.adults'];
+      card.body.replaceChildren(empty, change.panel, card.tools);
+      return;
+    }
+    if (metric === null) {
       // What the estimates need, each input with its state, and Change details as the way to them.
       change.button.className = 'button';
       needsText.textContent = m['body.needs'];
@@ -693,6 +758,7 @@ export function mountBody(
         for (const b of group.element.querySelectorAll('button')) b.classList.add('body-chip');
         chipsBox.replaceChildren(group.element);
         syncChips = group.sync;
+        fitChips();
       }
     }
     syncChips();

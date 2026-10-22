@@ -44,15 +44,15 @@ describe('bodySummary', () => {
 
   it('says lean mass (and a woman’s body water) without a year of birth, and what the rest need', () => {
     expect(bodySummary(state([LAST], { heightCm: 172, sex: 'male' }), en, '2026-10-21')).toBe(
-      `Estimated lean mass **66${NB}kg**, from a formula. Body fat and BMR also need your year of birth.`,
+      `Estimated lean mass **66${NB}kg**, from a formula.`,
     );
     // 70 kg, 165 cm: lean mass 47.4 kg, body water 32.8 L.
     const woman = state([{ date: '2026-10-20', kg: 70 }], { heightCm: 165, sex: 'female' });
     expect(bodySummary(woman, en, '2026-10-21')).toBe(
-      `Estimated lean mass **47${NB}kg** and body water **33${NB}L**, from formulas. Body fat and BMR also need your year of birth.`,
+      `Estimated lean mass **47${NB}kg** and body water **33${NB}L**, from formulas.`,
     );
     expect(bodySummary(woman, pt, '2026-10-21')).toBe(
-      `Estimativa de massa magra de **47${NB}kg** e água corporal de **33${NB}L**, por fórmulas. Gordura corporal e TMB precisam também do seu ano de nascimento.`,
+      `Estimativa de massa magra de **47${NB}kg** e água corporal de **33${NB}L**, por fórmulas.`,
     );
     // In pounds: 47.4 kg is 104 lb.
     expect(bodySummary(woman, lb, '2026-10-21')).toContain(`**104${NB}lb**`);
@@ -66,6 +66,14 @@ describe('bodySummary', () => {
       'Aparece quando altura, ano de nascimento e sexo estiverem definidos.',
     );
     expect(bodySummary(state([], MAN), en)).toBe('Appears from the first weigh-in.');
+    // Every input there, but the last weigh-in from before the person turned 18.
+    const young = state([{ date: '2025-06-01', kg: 60 }], { heightCm: 165, birthYear: 2008, sex: 'female' });
+    expect(bodySummary(young, en, '2025-06-02')).toBe(
+      'These estimates are for adults: the formulas were made from adults’ data.',
+    );
+    expect(bodySummary(young, pt, '2025-06-02')).toBe(
+      'Estas estimativas são para adultos: as fórmulas foram feitas com dados de adultos.',
+    );
   });
 });
 
@@ -76,7 +84,7 @@ describe('bodyRows', () => {
     const rows = bodyRows(s.analysis, s.profile, en);
     expect(rows.map((r) => [r.name, r.value, ...r.subs])).toEqual([
       // At the start, 100 kg: fat 34.25%, lean 67.42 kg, water 50.45 L, BMR 1865 kcal.
-      ['Body fat', '33%', '34% at the start', `Deurenberg formula, about ±4–5${NB}points`],
+      ['Body fat', '33%', '34% at the start', `Deurenberg formula, about ±4\u2060–\u20605${NB}points`],
       ['Lean mass', `66${NB}kg`, `67${NB}kg at the start`, `Boer formula, about ±5${NB}kg`],
       [
         'Body water',

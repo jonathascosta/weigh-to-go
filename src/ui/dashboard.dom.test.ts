@@ -802,6 +802,26 @@ describe('Dashboard III', () => {
     expect(app.state().profile.sex).toBeNull();
   });
 
+  it('says when the sex chosen in Settings can’t be saved, and puts the row back', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const store = app.state().store!;
+    store.updateProfile = () => Promise.reject(new Error('refused'));
+    const sex = root.querySelector<HTMLSelectElement>('#settings-sex')!;
+    sex.value = 'male';
+    sex.dispatchEvent(new Event('change'));
+    await settle();
+    expect(app.state().profile.sex).toBeNull();
+    expect(sex.value).toBe('');
+    expect(sex.closest('.row')!.querySelector('.row-face')!.textContent).toBe(
+      'Sex, for the formulasLeft out',
+    );
+    const status = root.querySelector('#settings-sex-status')!;
+    expect(status.getAttribute('role')).toBe('status');
+    expect(status.textContent).toBe("Couldn't save the change. Try again.");
+    expect(errors).toHaveBeenCalled();
+    errors.mockRestore();
+  });
+
   it('says what the body composition card needs, then shows the estimates once the details are saved', async () => {
     await saveDays([100, 99.6, 99.1]);
     choose({ heightUnit: 'cm' });
@@ -828,12 +848,32 @@ describe('Dashboard III', () => {
     await settle();
     expect(app.state().profile).toMatchObject({ heightCm: null, birthYear: null, sex: null });
     expect(document.activeElement).toBe(document.querySelector('#details-birth-year'));
-    expect(document.querySelector('#details-status')!.textContent).toContain('Type the year you were born');
+    // Said next to the year, which it describes, not under Save.
+    const yearError = document.querySelector<HTMLElement>('#details-birth-year-error')!;
+    expect(yearError.hidden).toBe(false);
+    expect(yearError.textContent).toContain('Type the year you were born');
+    expect(document.querySelector('#details-birth-year')!.getAttribute('aria-describedby')).toBe(
+      'details-birth-year-help details-birth-year-error',
+    );
+    expect(document.querySelector('#details-birth-year')!.getAttribute('aria-invalid')).toBe('true');
+    expect(document.querySelector('#details-status')!.textContent).toBe('');
+    // A height refused: said next to it, and described by it.
+    type('details-cm', '20');
+    submit('details-cm');
+    await settle();
+    expect(document.querySelector('#details-height-error')!.textContent).toContain('Type your height in cm');
+    expect(document.querySelector('#details-cm')!.getAttribute('aria-describedby')).toBe(
+      'details-cm-unit details-height-error',
+    );
+    expect(document.activeElement).toBe(document.querySelector('#details-cm'));
+    type('details-cm', '172');
     type('details-birth-year', '1983');
     submit('details-cm');
     await settle();
     expect(app.state().profile).toMatchObject({ heightCm: 172, birthYear: 1983, sex: 'male' });
     expect(document.querySelector('#details-status')!.textContent).toBe('Details saved.');
+    expect(yearError.hidden).toBe(true);
+    expect(document.querySelector('#details-birth-year')!.hasAttribute('aria-invalid')).toBe(false);
     // 99.1 kg, 172 cm, 43 in 2026: body fat 1.2 × 33.50 + 9.89 − 16.2 = 33.9%, BMR 1856 → 1,860
     // (on its day: the made-up diary ends in September).
     expect(root.querySelector('#body-sum')!.textContent).toContain(

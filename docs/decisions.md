@@ -925,8 +925,9 @@ Taken by the owner in issue #64, before the first release.
      fat, lean mass, body water and the energy used at rest from the weight, the height, the year
      of birth and the sex, with published formulas, on the device; it reads nothing new from Apple
      Health (which holds a date of birth and a sex, never asked for). It ships in 1.0, as Sprint 4's
-     story 6. _Alternative:_ Sprint 5's story 1 as planned, reading the scales' body fat and lean
-     mass from Health after the launch.
+     story 6. Sprint 5's story 1, reading what smart scales measure from Health, stays as planned
+     for later, unless the owner changes it. _Alternative:_ wait for Sprint 5 and show only the
+     scales' own body fat and lean mass from Health, after the launch.
 147. **One app, the same name in both languages.** "Weigh to Go" in English and Portuguese, one app
      with its listing in English and Brazilian Portuguese (story 4), not a Portuguese name or a
      second app. _Alternative:_ a translated name for the Portuguese storefronts.
@@ -969,19 +970,23 @@ open to the owner under decision 9, with the team's (its items 8 to 13).
      - Body fat, Deurenberg, Weststrate and Seidell (1991), **±4.5 points**, said "about ±4–5
        points": "Body mass index as a measure of body fatness: age- and sex-specific prediction
        formulas", Br J Nutr 1991;65(2):105–114, adults' formula R² 0.79, standard error of
-       estimate 4.1 points, slightly overestimating in obese people; later validations find more.
-       Kept as the design had it.
+       estimate 4.1 points, slightly overestimating in obese people. 4.5 is that 4.1 rounded up,
+       since the paper's own cross-validation is the most favourable case; no later validation is
+       named here. Kept as the design had it.
      - Lean mass, Boer (1984), **±5 kg** (11 lb), a fixed figure instead of the design's "±5% of
        the weight", which was a rounded estimate: Boer's paper (Am J Physiol 1984;247(4):F632–F636)
        gives the formulas, fitted to normalise body fluid volumes, but no prediction error. Against
        DXA in 747 men and 811 women aged 60 to 65 ("Comparison of ten predictive equations for
        estimating lean body mass with dual-energy X-ray absorptiometry in older patients", Br J
        Radiol 2022;95(1133):20210378), Boer's mean bias was 2.6 kg (men) to 4.5 kg (women) and its
-       95% limits of agreement 12 to 13 kg wide: a typical error of about 4 to 5.5 kg once bias
-       and spread are taken together, and more than 5% of the weight at most weights (5% of 70 kg
-       is 3.5 kg). About says "about 5 kg either way"; lean mass in lb shows ±11 lb. The
-       population is older than most of the app's people; no adult-wide validation of Boer was
-       found.
+       95% limits of agreement 12 to 13 kg wide. That is read as the full width, lower limit to
+       upper (a spread of about 3.1 to 3.3 kg each way for one standard deviation), which the
+       study's correlations (r 0.84 to 0.96) support; were it each side, the error would be twice
+       this. Bias and spread together give a typical error of about 4 to 5.5 kg: about 75% of men
+       and only 55 to 60% of women fall within ±5 kg, since the women's bias is larger. It is more
+       than 5% of the weight at most weights (5% of 70 kg is 3.5 kg). About says "about 5 kg
+       either way"; lean mass in lb shows ±11 lb. The study group was aged 60 to 65, older than
+       most of the app's people, and no adult-wide validation of Boer was found.
      - Body water, Watson, Watson and Batt (1980), **±4 L**: "Total body water volumes for adult
        males and females estimated from simple anthropometric measurements", Am J Clin Nutr
        1980;33(1):27–39 (458 men and 265 women, by dilution); standard errors of estimate of
@@ -999,14 +1004,20 @@ open to the owner under decision 9, with the team's (its items 8 to 13).
      with any loss by construction, which About says. _Alternative:_ ACE-style categories.
 154. **Adults only: a year of birth from this year − 100 to this year − 18** (1926 to 2008 in
      2026), checked against the device's date when typed, as the formulas are adults' and the app
-     isn't made for children. A year once saved stays valid in later years (the store's check is
-     from 1900 to this year − 18), and a weigh-in from before the person turned 18 has no
-     estimate. _Alternative:_ fixed bounds.
+     isn't made for children. A year read back from the store or a backup is checked only for
+     being a whole year from 1900 to next year (a year of slack for a clock behind; review round
+     1), so a year once saved never expires. A last weigh-in from before the person turned 18
+     shows "These estimates are for adults" instead of an estimate. Estimates at the edges of the
+     inputs are held to what can be: body fat from 0 to 100%, lean mass and water at most the
+     weight. _Alternative:_ fixed bounds.
 155. **The card sits between Hiccups and BMI, wide on the one page, on for everyone.** Sections
      stores the sections shown, so anyone who had changed it would have found the new card off:
      the list is now saved with the sections known then (`sections.known`), and a list saved
      without it (up to Sprint 4, story 2) knew every section but `body`, which then shows; turned
-     off afterwards, it stays off. A unit test covers both. Sections counts 14. _Alternative:_ store
+     off afterwards, it stays off. A unit test covers both. One case stays: an older copy of the
+     page still open in another tab saves its list without `body` and without the known list, so
+     once this version has saved one, a later change of Sections in that old tab turns the card
+     off; turning it on again here keeps it on. Sections counts 14. _Alternative:_ store
      the hidden sections instead (a new kind of preference, which an older copy of the page in
      another tab would misread).
 156. **Rounding to what the formulas can say:** whole percent, whole kg or lb, whole litres, the
@@ -1014,12 +1025,13 @@ open to the owner under decision 9, with the team's (its items 8 to 13).
      space; "the same as at the start" when the two round alike. _Alternative:_ a decimal, which
      would claim a precision the errors don't have.
 157. **Change details edits the three inputs together, with one Save; Settings keeps one row
-     each.** Every field is checked before anything is saved; a refusal saves nothing and takes
-     focus to the field. In Settings the year opens a sheet (the year's own help, error and Save)
+     each.** Every field is checked before anything is saved; a refusal saves nothing, takes
+     focus to the field and is said next to it, which it describes (under Save it was off the
+     screen at 320 px with text 150%). In Settings the year opens a sheet (the year's own help, error and Save)
      and its value sits under its name, as the selects' rows show theirs, since "1983 · 43 anos
      este ano" beside "Ano de nascimento" left no room at 320 px and text 150% (the fit test); the
      sex is a native select over its row, applied at once, its value "Left out" for the empty
-     choice. A note under the group says what the three are for and that they stay on the device.
+     choice; a save refused puts the row back and says why under it. A note under the group says what the three are for and that they stay on the device.
      _Alternative:_ Settings only.
 158. **The CSV gains four columns named after their formulas, always there:**
      `body_fat_deurenberg_pct`, `lean_mass_boer_{unit}`, `body_water_watson_l`, `bmr_mifflin_kcal`
@@ -1029,13 +1041,16 @@ open to the owner under decision 9, with the team's (its items 8 to 13).
      when the profile allows them.
 159. **One chart with an estimate chooser, not four charts.** One chip per estimate the profile
      allows, body fat first, the choice kept as a screen preference (`body.metric`); no chips with
-     one estimate. _Alternative:_ four small charts.
+     one estimate. The chips share one row where they fit at their own width (375 to 430 px in
+     both languages) and otherwise make two equal rows of two, measured in the page, never a lone
+     chip across the card. _Alternative:_ four small charts.
 160. **The backup carries the year of birth and sex beside the goal and height, in format 1.** An
      older backup imports with neither; an older version of the app drops them; Add (merge) takes
      a field the file has and keeps the one here when it has none; Replace takes the file's
      profile whole. The iPhone app's diary file holds them the same way, and Erase everything
      removes them. The privacy policy has a section on them and its backup list names them; its
      date stays 22 October 2026, the day this ships. _Alternative:_ a format 2.
-161. **Sprint 5's story 1 changes meaning** (the design's item 13): the estimates come from
-     formulas here, so the story becomes reading what smart scales measure (body fat, lean mass,
-     waist) from Apple Health beside them, if the owner still wants it ([sprint-5.md](sprint-5.md)).
+161. **Sprint 5's story 1 stays as planned** (the design's item 13; the owner in issue #64: it
+     "stays as planned for later, unless the owner changes it"). When it comes, it reads what smart
+     scales measure from Apple Health (body fat, lean mass, waist) and shows those values beside
+     these estimates; [sprint-5.md](sprint-5.md) says so.

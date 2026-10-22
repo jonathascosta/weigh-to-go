@@ -75,8 +75,8 @@ describe('createBackup and parseBackup', () => {
       [1983.5, 'other'],
       ['1983', 'Male'],
       [1899, 'f'],
-      // An 18-year-old's year at the latest: 2009 is 17 in 2026 (the device's year, here 2026 or later).
-      [new Date().getFullYear() - 17, ''],
+      // Not a year of birth yet, even with a year of slack for a clock behind.
+      [new Date().getFullYear() + 2, ''],
       [null, null],
     ])
       expect(read(year, sex), String(year)).toEqual({
@@ -88,6 +88,15 @@ describe('createBackup and parseBackup', () => {
     expect(read(1926, 'female')).toEqual({ goalKg: 90, heightCm: null, birthYear: 1926, sex: 'female' });
     // A year saved long ago stays: the bound below never moves.
     expect(read(1900, 'male')).toEqual({ goalKg: 90, heightCm: null, birthYear: 1900, sex: 'male' });
+    // A year saved on a device whose clock is ahead (or this one's behind) is still read: only the
+    // year typed in is held to an adult's.
+    const next = new Date().getFullYear() + 1;
+    expect(read(next - 18, 'male')).toEqual({
+      goalKg: 90,
+      heightCm: null,
+      birthYear: next - 18,
+      sex: 'male',
+    });
   });
 
   it('skips rows that are not weigh-ins, counting them', () => {

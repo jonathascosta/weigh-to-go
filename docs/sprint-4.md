@@ -199,8 +199,8 @@ both change together, in the same pull request.
    the chart is the built `createPlot` with its readout strip, keys and live line. `Profile` gains
    `birthYear` and `sex`, checked by `toProfile` and `isProfile` and merged field by field
    (decision 160). Sections keeps the sections known with the list it saves (decision 155). The
-   choices of the design's section 10 are decisions 148 to 159, and Sprint 5's story 1 changes as
-   decision 161 says.
+   choices of the design's section 10 are decisions 148 to 159, and Sprint 5's story 1 stays as
+   planned, its measured values to show beside these estimates (decision 161).
 
 ## Not in this sprint
 
