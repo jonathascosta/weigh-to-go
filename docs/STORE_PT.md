@@ -29,6 +29,8 @@ de consentimento.
      ela muda o `name.txt` em `ios/App/fastlane/metadata/en-US` e `pt-BR`, o subtítulo em inglês
      para "See the real trend" (o atual repetiria "Weight Diary") e o teste da listagem (decisão
      164).
+     **Feito em 22 de outubro de 2026:** você criou o app como **Weigh to Go: Weight Diary**; a
+     listagem leva esse nome e o subtítulo em inglês "See the real trend" (decisão 175).
    - App Information: categoria Health & Fitness (Saúde e fitness). Em Pricing and Availability,
      desligue a disponibilidade do app em Macs com Apple silicon: o app Saúde não existe lá.
 2. **O acordo de apps pagos.** Em Business (Agreements, Tax and Banking), aceite o Paid Applications
@@ -127,9 +129,10 @@ de consentimento.
      só aparece onde as suas mensagens valem). Se nenhum dos dois acontecer, pare o lançamento e
      avise uma sessão: o app estaria mostrando anúncios no EEE sem perguntar.
    - Em Blocking controls, defina a classificação máxima dos anúncios como **PG** no máximo (G é
-     mais restrita), para combinar com o 13+ do app (passo 10), e bloqueie as categorias sensíveis
-     que não combinam com um diário de peso (produtos de dieta e emagrecimento, entre outras, onde
-     existirem).
+     mais restrita), para combinar com o 13+ do app (passo 10). As categorias sensíveis são escolha
+     sua: em 22 de outubro de 2026 você decidiu não bloquear nenhuma por enquanto, produtos de
+     emagrecimento inclusive, já que quem usa o app pode querer essa ajuda (decisão 176); cada uma
+     bloqueada baixa um pouco a receita.
    - O `app-ads.txt` já está no jonathas.net para a conta. Quando o app estiver publicado, ligue-o à
      listagem nas configurações do app (passo 12).
    - Cole numa sessão a lista atual de SKAdNetwork do Google

@@ -1123,7 +1123,8 @@ Choices made while building the App Store listing, open to the owner under decis
      characters), comma-separated without spaces, each once and none repeating a word of the name or
      subtitle (App Store search already reads both); promotional text at most 170 characters,
      description at most 4,000, plain text. The subtitle says what the app is for, "Weight diary:
-     the real trend" and "Diário de peso e tendência". The description, in both languages, names
+     the real trend" and "Diário de peso e tendência" (the English one became "See the real trend" with
+     the store name, decision 175). The description, in both languages, names
      Apple Health (in Portuguese "app Saúde (Apple Health)", as iOS calls it there), calls the
      projections and the body composition values estimates and not medical advice, says the data
      stays on the iPhone with no account and no server of ours, and says the ads (one banner, not
@@ -1301,6 +1302,25 @@ Choices made while preparing the first submission, open to the owner under decis
      it already checked. Nothing was typed from memory. STORE.md's "Before each release" already
      says to check the page for a newer date. _Alternative:_ Google's id alone, which loses the
      attribution of the other buyers Google's network sells to.
+
+## 22 October 2026 · The App Store name
+
+175. **The app is "Weigh to Go: Weight Diary" on the App Store** (the owner, 22 October 2026). The
+     owner registered the App ID and created the app in App Store Connect with decision 164's
+     fallback name, the same in both languages. The listing's `name.txt` (en-US and pt-BR) carries
+     it, the English subtitle becomes "See the real trend" (the old one, "Weight diary: the real
+     trend", would repeat it; the Portuguese one stays), and the listing test checks the name and
+     that no word of it is repeated in either subtitle or the keywords. The name under the icon on
+     the home screen (`CFBundleDisplayName`) stays "Weigh to Go", and the app calls itself that
+     everywhere: the store name only adds what it is. _Alternative:_ the home-screen name too,
+     which would be cut off under the icon.
+
+176. **AdMob's sensitive categories: none blocked for now** (the owner, 22 October 2026). The
+     maximum ad content rating stays PG at most (step 6, for the 13+ rating). The owner chose not
+     to block sensitive categories, weight-loss products included: someone using a weight diary may
+     want that help, and each blocked category lowers revenue. STORE.md and STORE_PT.md step 6 say
+     so. _Alternative:_ block weight loss, cosmetic procedures, dating, gambling, get-rich-quick
+     and sexual health, as first proposed.
 
 ## 22 October 2026 · Ads after the first 3 days
 

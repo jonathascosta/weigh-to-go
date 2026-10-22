@@ -156,7 +156,9 @@ both change together, in the same pull request.
 
    _As built (22 October 2026)._ The name stays "Weigh to Go", checked by the owner when creating
    the app (STORE.md, step 1), since the session couldn't reach Apple's search; the fallback is
-   "Weigh to Go: Weight Diary" (decision 164). The text is in `ios/App/fastlane/metadata/en-US` and
+   "Weigh to Go: Weight Diary" (decision 164). The owner then created the app as "Weigh to Go: Weight
+   Diary" (22 October 2026), and the listing took that name and the English subtitle "See the
+   real trend" (decision 175). The text is in `ios/App/fastlane/metadata/en-US` and
    `pt-BR`, with the category (Health & Fitness) and copyright beside them, and
    `scripts/listing.test.ts` holds it to Apple's limits and to what it must say: Apple Health by
    name, estimates and not medical advice, the data on the iPhone with no account, the ads and the
