@@ -81,13 +81,18 @@ function misfits({ width, allowed }: { width: number; allowed: string[] }): stri
   const clips = (o: string) => o === 'hidden' || o === 'clip';
   for (const el of scope.querySelectorAll('*')) {
     if (!(el instanceof HTMLElement) || hiders.some((h) => h.contains(el))) continue;
-    if (el.matches('.visually-hidden, .chart-probe, [hidden]') || el.getClientRects().length === 0) {
+    if (el.matches('.visually-hidden, .chart-probe, [hidden]')) {
       hiders.push(el);
+      continue;
+    }
+    const style = getComputedStyle(el);
+    if (el.getClientRects().length === 0) {
+      // A `display: contents` box has no box of its own, but its children do (Today's notices).
+      if (style.display !== 'contents') hiders.push(el);
       continue;
     }
     const r = el.getBoundingClientRect();
     if (r.width === 0 && r.height === 0) continue;
-    const style = getComputedStyle(el);
     if (r.width <= 1 && r.height <= 1 && style.overflow !== 'visible') {
       hiders.push(el);
       continue;
@@ -100,6 +105,42 @@ function misfits({ width, allowed }: { width: number; allowed: string[] }): stri
       found.push(`${name(el)} holds ${String(el.scrollWidth)} px in ${String(el.clientWidth)} px`);
     if (clips(style.overflowY) && el.scrollHeight > el.clientHeight + 1)
       found.push(`${name(el)} cuts ${String(el.scrollHeight)} px of height to ${String(el.clientHeight)} px`);
+  }
+  return found;
+}
+
+/**
+ * Runs in the page: words broken across lines in headings, labels, buttons and links, where a
+ * word should wrap whole ("Weigh / t"). A word with a hyphen, a slash or a dash may break there,
+ * and a word in two text nodes (a date with `<wbr>`) isn't one here. With a sheet open, the sheet.
+ */
+function brokenWords(): string[] {
+  const found: string[] = [];
+  const scope = document.querySelector('.sheet-layer:not([hidden]) .sheet') ?? document.body;
+  const holders = scope.querySelectorAll('h1, h2, h3, h4, th, label, legend, button, a, summary');
+  for (const holder of holders) {
+    if (holder.getClientRects().length === 0 || holder.closest('.visually-hidden, [hidden], svg')) continue;
+    const walker = document.createTreeWalker(holder, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest('.visually-hidden, [hidden]') || parent.getClientRects().length === 0)
+        continue;
+      const text = node.textContent ?? '';
+      for (const match of text.matchAll(/\S+/g)) {
+        const word = match[0];
+        if (word.length < 2 || /[-‐–—/]/.test(word)) continue;
+        const range = document.createRange();
+        range.setStart(node, match.index);
+        range.setEnd(node, match.index + word.length);
+        const lines = new Set(
+          [...range.getClientRects()].filter((r) => r.width > 0.5).map((r) => Math.round(r.top)),
+        );
+        if (lines.size > 1)
+          found.push(
+            `“${word}” breaks across ${String(lines.size)} lines in ${holder.tagName.toLowerCase()}`,
+          );
+      }
+    }
   }
   return found;
 }
@@ -129,7 +170,9 @@ function smallTargets(): string[] {
     // A control whose ::after covers its positioned box (a card's head) is as big as that box.
     const after = getComputedStyle(el, '::after');
     if (after.content !== 'none' && after.position === 'absolute') {
-      const holder = getComputedStyle(el).position === 'static' ? el.offsetParent : el;
+      // Its containing block: the nearest positioned box, the control itself or an ancestor.
+      let holder: Element | null = el;
+      while (holder && getComputedStyle(holder).position === 'static') holder = holder.parentElement;
       if (holder) {
         const b = holder.getBoundingClientRect();
         r = {
@@ -139,10 +182,11 @@ function smallTargets(): string[] {
       }
     }
     const style = getComputedStyle(el);
-    // A link inside a sentence: WCAG 2.5.8's 24 px (principles, 3).
+    // A link inside a sentence, laid out as text (inline, or an inline block for its padding):
+    // WCAG 2.5.8's 24 px (principles, 3).
     const inSentence =
       el.tagName === 'A' &&
-      style.display.startsWith('inline') &&
+      (style.display === 'inline' || style.display === 'inline-block') &&
       [...(el.parentElement?.childNodes ?? [])].some(
         (n) => n !== el && (n.textContent ?? '').trim() !== '' && !(n instanceof HTMLAnchorElement),
       );
@@ -166,6 +210,15 @@ const settle = (page: Page) =>
     for (let i = 0; i < 3; i++) await new Promise((done) => requestAnimationFrame(done));
   });
 
+/** Everything the fit test checks on the screen as it is now. */
+async function measure(page: Page, width: number, targets: boolean): Promise<string[]> {
+  return [
+    ...(await page.evaluate(misfits, { width, allowed: WIDER_ON_PURPOSE })),
+    ...(await page.evaluate(brokenWords)),
+    ...(targets ? await page.evaluate(smallTargets) : []),
+  ];
+}
+
 /**
  * Checks the screen as it is at every size and text size, then puts back 390 × 844 at 100%.
  * Problems are gathered and compared once, so a failure lists them all.
@@ -180,11 +233,20 @@ async function expectFits(page: Page, screen: string, { targets = true } = {}): 
       }, text);
       await settle(page);
       const where = `${screen} at ${String(size.width)} px, text ${String(text)}%`;
-      for (const p of await page.evaluate(misfits, { width: size.width, allowed: WIDER_ON_PURPOSE }))
-        problems.push(`${where}: ${p}`);
-      if (targets) for (const p of await page.evaluate(smallTargets)) problems.push(`${where}: ${p}`);
+      for (const p of await measure(page, size.width, targets)) problems.push(`${where}: ${p}`);
     }
   }
+  // Dark once, at the narrowest and larger text: a theme changes colours, not boxes, so one pass
+  // keeps that true (axe checks dark's contrast on every screen).
+  await page.setViewportSize(SIZES[0] ?? { width: 320, height: 568 });
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '150%';
+  });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await settle(page);
+  for (const p of await measure(page, 320, targets))
+    problems.push(`${screen} at 320 px, text 150%, dark: ${p}`);
+  await page.emulateMedia({ colorScheme: null });
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '';
   });
@@ -307,11 +369,18 @@ for (const language of LANGUAGES) {
       await sheetFits(page, '#settings-goal', 'the Goal sheet');
       await sheetFits(page, '#settings-height', 'the Height sheet');
       await sheetFits(page, '#data-erase', 'the Erase sheet');
-      // The day sheet with the longest weight, then its delete's Undo notice.
-      await page.locator('tbody button[data-role="day"]').first().tap();
-      await expect(page.locator('.sheet-layer .sheet')).toBeVisible();
-      await page.locator('.sheet input[inputmode="decimal"]').fill(language.longest);
-      await expectFits(page, 'the day sheet');
+      // The day sheet with the longest weight, in kg and in lb, then its delete's Undo notice.
+      for (const unit of ['kg', 'lb']) {
+        if (unit === 'lb') {
+          await page.keyboard.press('Escape');
+          await expect(page.locator('.sheet-layer')).toBeHidden();
+          await page.locator('#setting-weight').selectOption('lb');
+        }
+        await page.locator('tbody button[data-role="day"]').first().tap();
+        await expect(page.locator('.sheet-layer .sheet')).toBeVisible();
+        await page.locator('.sheet input[inputmode="decimal"]').fill(language.longest);
+        await expectFits(page, `the day sheet with ${language.longest} ${unit}`);
+      }
       await page.locator('#day-delete').tap();
       await expect(page.locator('.toast')).toBeVisible();
       await expectFits(page, 'Your data with the Undo notice');
@@ -326,6 +395,43 @@ for (const language of LANGUAGES) {
         await show(page, view);
         await expectFits(page, `the empty ${view}`);
       }
+      await check();
+    });
+
+    test('the in-memory notice fits on Today', async ({ page }) => {
+      // The app keeps its diary in a file, not IndexedDB: these states are the website's.
+      test.skip(test.info().project.name === 'ios', 'The website’s storage only.');
+      const { check } = await watchHere(page);
+      // No IndexedDB at all: the diary runs in memory, and Today says so above the weigh-in.
+      await page.addInitScript(() => {
+        Object.defineProperty(window, 'indexedDB', { value: undefined });
+      });
+      await page.goto(home);
+      await loadBackup(page);
+      await expect(page.locator('#view-today .notice:not([hidden])').first()).toBeVisible();
+      await expectFits(page, 'Today with the in-memory notice');
+      await check();
+    });
+
+    test('the reload notice fits, on Today and on Your data', async ({ page }) => {
+      test.skip(test.info().project.name === 'ios', 'The website’s storage only.');
+      const { check } = await watchHere(page);
+      // IndexedDB that fails to open: the diary can't be reached until a reload, and says so on
+      // Today and at the top of Your data.
+      await page.addInitScript(() => {
+        IDBFactory.prototype.open = function () {
+          const request = {} as { error: { name: string }; onerror?: () => void };
+          request.error = { name: 'UnknownError' };
+          setTimeout(() => request.onerror?.(), 0);
+          return request as unknown as IDBOpenDBRequest;
+        };
+      });
+      await page.goto(home);
+      await expect(page.locator('#view-today .notice:not([hidden])').first()).toBeVisible();
+      await expectFits(page, 'Today with the reload notice');
+      await show(page, 'data');
+      await expect(page.locator('.data-notice')).toBeVisible();
+      await expectFits(page, 'Your data with the reload notice');
       await check();
     });
 
@@ -346,6 +452,7 @@ for (const language of LANGUAGES) {
 test('keeps every focused control clear of the tab bar, in Portuguese at 320 px, text 150%', async ({
   page,
 }) => {
+  const { check } = await watchHere(page);
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/pt/');
   await loadBackup(page);
@@ -379,41 +486,60 @@ test('keeps every focused control clear of the tab bar, in Portuguese at 320 px,
   }
   expect(seen).toBeGreaterThan(40);
   expect(hidden).toEqual([]);
+  await check();
 });
 
 // Today's first screen (principles, 1): the weigh-in field and Save on screen without scrolling,
-// above the tab bar and Safari's bottom 100 px; held sideways, both in view once the field has focus.
-for (const size of [
-  { width: 375, height: 667 },
-  { width: 390, height: 844 },
-  { width: 844, height: 390 },
-])
-  test(`has the weigh-in and Save on the first screen at ${String(size.width)} × ${String(size.height)}`, async ({
-    page,
-  }) => {
-    const { check } = await watchHere(page);
-    await page.setViewportSize(size);
-    await page.goto('/');
-    await loadBackup(page);
-    await page.reload();
-    await expect(page.locator('#entry-weight')).toBeVisible();
-    await settle(page);
-    const sideways = size.width > size.height;
-    if (sideways) await page.locator('#entry-weight').tap();
-    const where = await page.evaluate(() => {
-      const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect();
-      const field = box('#entry-weight');
-      const save = box('.entry button[type=submit]');
-      const bar = document.documentElement.classList.contains('typing') ? undefined : box('nav.tabs');
-      return {
-        top: Math.min(field?.top ?? -1, save?.top ?? -1),
-        bottom: Math.max(field?.bottom ?? Infinity, save?.bottom ?? Infinity),
-        limit: Math.min(window.innerHeight - 100, bar?.top ?? Infinity),
-        height: window.innerHeight,
-      };
-    });
-    expect(where.top).toBeGreaterThanOrEqual(0);
-    // Held sideways, the keypad's screen: in view; upright, above the bar and Safari's bars.
-    expect(where.bottom).toBeLessThanOrEqual(sideways ? where.height : where.limit);
-    await check();
+// above the tab bar and Safari's bottom 100 px; held sideways, both in view once the field has focus;
+// at 320 × 568 with text at 150%, Save at most one screen of scrolling away. In both languages.
+const FIRST_SCREENS = [
+  { width: 375, height: 667, text: 100 },
+  { width: 390, height: 844, text: 100 },
+  { width: 430, height: 932, text: 100 },
+  { width: 844, height: 390, text: 100 },
+  { width: 320, height: 568, text: 150 },
+];
+for (const { lang, locale, home } of LANGUAGES)
+  test.describe(`the first screen in ${lang === 'en' ? 'English' : 'Portuguese'}`, () => {
+    test.use({ locale });
+    for (const { width, height, text } of FIRST_SCREENS)
+      test(`has the weigh-in and Save on the first screen at ${String(width)} × ${String(height)}, text ${String(text)}%`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width, height });
+        const { check } = await watchHere(page);
+        await page.goto(home);
+        await loadBackup(page);
+        await page.reload();
+        await expect(page.locator('#entry-weight')).toBeVisible();
+        if (text !== 100)
+          await page.evaluate((t) => {
+            document.documentElement.style.fontSize = `${String(t)}%`;
+          }, text);
+        await settle(page);
+        const sideways = width > height;
+        if (sideways) await page.locator('#entry-weight').tap();
+        const where = await page.evaluate(() => {
+          const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect();
+          const field = box('#entry-weight');
+          const save = box('.entry button[type=submit]');
+          const bar = document.documentElement.classList.contains('typing') ? undefined : box('nav.tabs');
+          return {
+            top: Math.min(field?.top ?? -1, save?.top ?? -1),
+            bottom: Math.max(field?.bottom ?? Infinity, save?.bottom ?? Infinity),
+            saveBottom: (save?.bottom ?? Infinity) + window.scrollY,
+            limit: Math.min(window.innerHeight - 100, bar?.top ?? Infinity),
+            height: window.innerHeight,
+          };
+        });
+        if (text !== 100) {
+          // Larger text: Save is at most one screen of scrolling below the first.
+          expect(where.saveBottom).toBeLessThanOrEqual(2 * where.height);
+        } else {
+          expect(where.top).toBeGreaterThanOrEqual(0);
+          // Held sideways, the keypad's screen: in view; upright, above the bar and Safari's bars.
+          expect(where.bottom).toBeLessThanOrEqual(sideways ? where.height : where.limit);
+        }
+        await check();
+      });
   });
