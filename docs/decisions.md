@@ -1101,3 +1101,64 @@ the owner under decision 9.
      so they don't change. No goal, or one at or above the first weight, keeps everything as before.
      _Alternative:_ keep the next round milestone past the goal as a stretch target; left out, as
      for the simulator, because it shows a weight past the goal as something to aim for.
+
+## 22 October 2026 · The listing, as built (Sprint 4, story 4)
+
+Choices made while building the App Store listing, open to the owner under decision 9.
+
+164. **The name, "Weigh to Go", checked by the owner, with "Weigh to Go: Weight Diary" behind it.**
+     The session couldn't reach Apple's search (the iTunes Search API was out of its network's
+     reach); a web search found no app named "Weigh to Go", only "Weigh2Go", Cascade's iPad app for
+     industrial scales, which App Store Connect counts as another name. So the check is the owner's,
+     in STORE.md's step 1, where App Store Connect refuses a name in use. The fallback is "Weigh to
+     Go: Weight Diary" (25 characters), the same in both languages as decision 147 asks; if it is
+     needed, both `name.txt` files and the listing's test change together. _Alternative:_ "Weigh to
+     Go: Weight Tracker" (27); "diary" is the word the app uses for itself.
+165. **The listing's text** lives in `ios/App/fastlane/metadata`, the files `fastlane deliver`
+     reads, and `scripts/listing.test.ts` checks it: name and subtitle at most 30 characters,
+     keywords at most 100 bytes (UTF-8, so the Portuguese accents count twice, stricter than Apple's
+     characters), comma-separated without spaces, each once and none repeating a word of the name or
+     subtitle (App Store search already reads both); promotional text at most 170 characters,
+     description at most 4,000, plain text. The subtitle says what the app is for, "Weight diary:
+     the real trend" and "Diário de peso e tendência". The description, in both languages, names
+     Apple Health (in Portuguese "app Saúde (Apple Health)", as iOS calls it there), calls the
+     projections and the body composition values estimates and not medical advice, says the data
+     stays on the iPhone with no account and no server of ours, and says the ads (one banner, not
+     personalised, none in the first week) and the one-time Remove ads purchase, all things the
+     test looks for. The category is Health & Fitness, with no second one. The support address is
+     the project's issues page until decision 63 is taken; the website is the marketing address;
+     the privacy address is the policy in each language. No release notes: App Store Connect has
+     no "What's New" for a first version, and the test says so until the second. _Alternatives:_
+     a secondary category (Medical would claim too much; Lifestyle adds nothing); keywords such as
+     "diet", left out as the ads' blocked categories are.
+166. **Six screenshots, of a made-up diary on an iPhone with no ads.** `npm run store:screenshots`
+     makes, in each language: Today with this morning's weight typed, Progress with the chart and
+     the goal, the Compound daily rate's curve with the simulator's line stopping at the goal (the
+     card set to its curve and simulator, as Options allows), Body composition (estimates), Your
+     data with the daily reminder and Apple Health on, and About, saying what stays on the iPhone.
+     The diary is six months from 106 kg towards a goal of 88 kg (1.80 m, born 1984, a man), a few
+     days filled from a smart scale through Apple Health, a backup made three days before, and the
+     page's clock fixed on Friday 20 November 2026, so every run takes the same pictures. No ad
+     shows: the fake bridge answers no ad unit, so nothing of Google's starts, and StoreKit holds
+     Remove ads, so Your data says "Ads removed. Thank you." rather than a price the owner may not
+     choose. The units are the ones the phone's region gives: pounds on the American English
+     screens, kilograms on the Brazilian ones. Chromium is given the iPhone's safe areas (62 points
+     at the top, 34 at the bottom), the app's band fills the top one as on the phone, and the script
+     draws a status bar there (9:41, full signal and battery), as a screenshot on the phone shows
+     it; no device frame. Each language's screens come from a browser in that language, so the
+     reminder's time reads "07:30" in Portuguese. The purchase's review screenshot is made as
+     before, and left as committed when nothing in it changed (Chromium's text differs by a few
+     pixels from one machine to another). _Alternatives:_ kilograms on both (the brief's 106 kg),
+     left to the region as a person would see it; an empty Remove ads with a price, which App Store
+     Connect's screenshots would then promise.
+167. **`fastlane listing` and the App Store listing workflow, as Arrows'.** The lane sends the text
+     and the screenshots with `deliver`: no binary (`skip_binary_upload`), no new or renamed
+     version (`skip_app_version_update`), the existing screenshots replaced, nothing submitted
+     (`submit_for_review: false`, `automatic_release: false`, no precheck), and `force` as no one is
+     there to confirm deliver's preview. `screenshots/review` holds the purchase's review
+     screenshot, which deliver would refuse as a language: the lane checks that the folders are
+     exactly `en-US`, `pt-BR` and `review`, then lets deliver skip `review`. The workflow runs by
+     hand, on `main` only, in the `app-store` environment with only the App Store Connect API key
+     (no new secret), first runs the listing's test, then fastlane at the version in
+     `ios/App/Gemfile.lock` on Ubuntu (no Mac needed). _Alternative:_ the review screenshot moved
+     out of `screenshots/`, which would change STORE.md's step 5 and decision 144 for no gain.

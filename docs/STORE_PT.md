@@ -19,10 +19,15 @@ de consentimento.
    - Primeiro, em developer.apple.com, Certificates, Identifiers & Profiles, Identifiers, +: um App
      ID explícito, `net.jonathas.weightogo`, com **HealthKit** ligado (In-App Purchase já vem
      ligado). O New App do App Store Connect só oferece ids registrados ali.
-   - Depois, no App Store Connect, Apps, +, New App: iOS, o nome (no máximo 30 caracteres; se "Weigh
-     to Go" estiver ocupado, uma variante como "Weigh to Go: Weight Diary", e avise a sessão, que o
-     põe na listagem), idioma principal English (U.S.), o bundle id `net.jonathas.weightogo`, SKU
-     `net.jonathas.weightogo`, acesso completo.
+   - Depois, no App Store Connect, Apps, +, New App: iOS, o nome **Weigh to Go**, idioma principal
+     English (U.S.), o bundle id `net.jonathas.weightogo`, SKU `net.jonathas.weightogo`, acesso
+     completo. **O nome é conferido aqui**: o App Store Connect recusa um nome que outro app já usa.
+     Uma sessão não conseguiu buscar na App Store (22 de outubro de 2026: a busca da Apple estava
+     fora do alcance da sessão; uma busca na web não achou nenhum app com esse nome, só o
+     "Weigh2Go", um app de iPad para balanças industriais). Se ele for recusado, use a alternativa,
+     **Weigh to Go: Weight Diary** (25 caracteres, a mesma nos dois idiomas), e avise uma sessão:
+     ela muda o `name.txt` em `ios/App/fastlane/metadata/en-US` e `pt-BR` e o teste da listagem
+     (decisão 164).
    - App Information: categoria Health & Fitness (Saúde e fitness). Em Pricing and Availability,
      desligue a disponibilidade do app em Macs com Apple silicon: o app Saúde não existe lá.
 2. **O acordo de apps pagos.** Em Business (Agreements, Tax and Banking), aceite o Paid Applications
@@ -43,7 +48,8 @@ de consentimento.
      5), em base64 (`base64 -w0 dist.p12`); `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD`: a senha dele.
 
    Secrets continuam secretos num repositório público: o workflow `iOS` que os pull requests rodam
-   não usa nenhum, e o workflow do TestFlight roda só no `main`, à mão.
+   não usa nenhum, e os workflows do TestFlight e da listagem (App Store listing) rodam só no `main`,
+   à mão.
 
 4. **O primeiro build.** Quando a primeira story do Sprint 3 estiver integrada, rode o workflow
    **TestFlight** na aba Actions. Um app novo ainda não tem testadores: quando o build aparecer no
@@ -142,12 +148,34 @@ de consentimento.
 
    Confira que os endereços abrem.
 
-8. **A listagem.** Primeiro, grave uma vez a App Review Information da versão no App Store Connect
-   (sem login necessário, o contato, as notas do passo 11): sem isso o workflow da listagem falha com
-   "No data". Depois rode o workflow **App Store listing**: ele envia os textos e as capturas dos dois
-   idiomas e não submete nada. Até você decidir um contato e as páginas de suporte (decisão 63 em
-   [decisions.md](decisions.md)), a Support URL em App Information é a página de issues do projeto,
-   <https://github.com/jonathascosta/weigh-to-go/issues>, nos dois idiomas.
+8. **A listagem.** O texto dela está em `ios/App/fastlane/metadata` (`en-US` e `pt-BR`: nome,
+   subtítulo, palavras-chave, descrição, texto promocional, os endereços da privacidade, do suporte
+   e do site; ao lado, a categoria, Health & Fitness (Saúde e fitness), e o copyright), e as
+   capturas em `ios/App/fastlane/screenshots/en-US` e `pt-BR`: seis telas de um diário inventado em
+   1290 × 2796, o tamanho do iPhone de 6,9 polegadas, a partir das quais o App Store Connect faz as
+   menores (decisões 165 e 166). Um teste de unidade mantém o texto dentro dos limites da Apple.
+   - **Leia antes**, nos dois idiomas, no GitHub: a descrição e o texto promocional dizem o que o
+     app faz, citam o Apple Health (app Saúde), chamam as projeções e a composição corporal de
+     estimativas, não orientação médica, dizem que os dados ficam no iPhone, sem conta, e que
+     Remover anúncios é uma compra única. Peça qualquer mudança a uma sessão;
+     `npm run build:ios && npm run store:screenshots` refaz as capturas depois que uma tela muda.
+   - Grave uma vez a App Review Information da versão no App Store Connect (sem login necessário, o
+     contato, as notas do passo 11): sem isso a listagem falha com "No data".
+   - Rode o workflow **App Store listing** na aba Actions, no `main`. Ele só precisa da chave da API
+     do App Store Connect do passo 3, do ambiente `app-store`. Ele confere o texto de novo, depois o
+     `fastlane listing` envia os textos e as capturas dos dois idiomas (acrescentando a localização
+     Portuguese (Brazil) se ela não existir, e substituindo as capturas que já estiverem lá), sem
+     build, e não submete nada (decisão 167). De um Mac, em vez disso, com os três valores
+     `APP_STORE_CONNECT_API_KEY_*` no ambiente:
+     `cd ios/App && bundle install && bundle exec fastlane listing`.
+   - Depois confira no App Store Connect: as duas localizações mostram o texto e seis capturas para
+     a tela de 6,9 polegadas, a categoria é Health & Fitness, e nada está esperando revisão. A
+     captura de revisão da compra dentro do app (passo 5) não faz parte da listagem.
+
+   Até você decidir um contato e as páginas de suporte (decisão 63 em [decisions.md](decisions.md)),
+   a Support URL é a página de issues do projeto, <https://github.com/jonathascosta/weigh-to-go/issues>,
+   nos dois idiomas; a listagem a envia.
+
 9. **App Privacy.** Primeiro confira a política de privacidade com a página de divulgação de dados
    do Google (<https://developers.google.com/admob/ios/privacy/data-disclosure>): a sessão não
    consegue abri-la, então cole a página numa sessão (ou compare você mesmo). O "Anúncios no app" da
@@ -231,7 +259,9 @@ de consentimento.
 - Suba a versão no `package.json` e o `MARKETING_VERSION` do projeto Xcode juntos (um teste confere
   que são iguais); uma nova versão menor volta a pedir avaliação.
 - Crie antes a nova versão no App Store Connect: o workflow da listagem escreve na versão em
-  preparação. Atualize as notas da versão nos dois idiomas.
+  preparação. A partir da segunda versão, acrescente as notas da versão nos dois idiomas
+  (`release_notes.txt` em `ios/App/fastlane/metadata/en-US` e `pt-BR`; a primeira versão não tem
+  notas, e o teste da listagem diz isso até lá).
 - Se uma tela das capturas mudou, rode `npm run store:screenshots` e faça commit delas.
 - Se o que o app faz com os dados mudou: a política de privacidade (e a data dela), o manifesto de
   privacidade e as respostas do App Privacy, juntos.

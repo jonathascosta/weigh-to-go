@@ -153,6 +153,21 @@ both change together, in the same pull request.
    Playwright from the iOS build (`npm run store:screenshots`, Arrows' spec); the listing workflow
    (`fastlane listing`) that sends text and screenshots without submitting.
 
+   _As built (22 October 2026)._ The name stays "Weigh to Go", checked by the owner when creating
+   the app (STORE.md, step 1), since the session couldn't reach Apple's search; the fallback is
+   "Weigh to Go: Weight Diary" (decision 164). The text is in `ios/App/fastlane/metadata/en-US` and
+   `pt-BR`, with the category (Health & Fitness) and copyright beside them, and
+   `scripts/listing.test.ts` holds it to Apple's limits and to what it must say: Apple Health by
+   name, estimates and not medical advice, the data on the iPhone with no account, the ads and the
+   one-time Remove ads (decision 165). `npm run store:screenshots` now also makes six screens in
+   each language at 1290 × 2796 into `ios/App/fastlane/screenshots/en-US` and `pt-BR`: Today,
+   Progress, the Compound daily rate with the simulator stopping at the goal, Body composition,
+   Apple Health and the reminder, and About; a made-up diary of six months from 106 kg with a goal,
+   no ads (no ad unit, Remove ads held), the iPhone's safe areas and a drawn status bar (decision
+   166). `fastlane listing` and the manual **App Store listing** workflow send them with no build
+   and no submission, with the App Store Connect API key the TestFlight workflow already has
+   (decision 167); STORE.md's step 8 is the owner's round.
+
 5. **Review and release.** The review notes for a new app (Arrows' answers to "Guideline 2.1 -
    Information Needed", adapted: purpose, how to use it, Apple Health, AdMob and the purchase,
    regional differences, no regulated content), the screen recording on an iPhone made by the owner,

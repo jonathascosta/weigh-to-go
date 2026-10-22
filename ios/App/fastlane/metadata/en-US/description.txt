@@ -1,0 +1,16 @@
+Weigh to Go is a weight diary that shows where your weight is really heading. Log one weigh-in a day, and it draws the trend under the daily ups and downs, so a salty dinner or a hot day doesn't hide your progress.
+
+• Today: log your weight in two taps, with your 7-day average, your total loss and your pace
+• Progress: your weight over time with its 7-day average, a projection and your goal
+• Analysis: percentage loss and milestones, the compound daily rate with a simulator that stops at your goal, hiccups (the days the weight climbs back up), BMI, weekly averages, weekdays, day-to-day variation and a calendar
+• Body composition estimates: body fat, lean mass, body water and the energy you use at rest, worked out from your weight, height, year of birth and sex with published formulas (Deurenberg, Boer, Watson, Mifflin-St Jeor), each shown with its usual error
+• Apple Health: if you turn it on, the app reads your weight from Apple Health, so a smart scale's readings join the diary, and saves the weights you log here to it
+• A daily reminder to weigh in, planned on your iPhone
+• Backups you keep: export and import a backup file, or a CSV for a spreadsheet
+• Kilograms or pounds, English or Portuguese, light and dark
+
+Your data stays on your iPhone. There is no account and no server of ours: your weigh-ins stay in the app (and in your iPhone's backup), and in Apple Health only if you turn it on. We keep nothing.
+
+Estimates, not medical advice. Projections extend your past pace, and the body composition values come from formulas, not measurements. Neither is medical advice; for advice about your health, talk to a doctor.
+
+Free, with one banner ad from Google AdMob, away from the weigh-in and none in your first week. The ads are not personalised and never receive your weigh-ins. Remove ads is a one-time purchase that takes them away for good, with no subscription.
