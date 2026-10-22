@@ -1301,3 +1301,15 @@ Choices made while preparing the first submission, open to the owner under decis
      it already checked. Nothing was typed from memory. STORE.md's "Before each release" already
      says to check the page for a newer date. _Alternative:_ Google's id alone, which loses the
      attribution of the other buyers Google's network sells to.
+
+## 22 October 2026 · Ads after the first 3 days
+
+177. **Ads start after the first 3 days, not 7** (the owner's call, 22 October 2026). The rule is
+     otherwise decision 31's (O14): no ads, and no contact with Google, while the diary is empty or
+     in the first 3 days after the app's first launch, so the banner can show from the 4th day with
+     a weigh-in in the diary. `FIRST_DAYS` in `src/ads/ads.ts` is 3, and its tests follow. The
+     listing says "none in your first 3 days" ("nenhum nos 3 primeiros dias"); the App Review notes
+     and STORE.md's and STORE_PT.md's steps 6 and 11 say the first 3 days, the date 4 days ahead
+     and the EEA safeguard from the 4th day. The privacy policy and the app's strings never named
+     the days, so they are unchanged. This changes decision 31 (O14). _Alternative:_ the previous
+     7 days.

@@ -114,7 +114,7 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
      Privacy choices in the EEA, the UK, Switzerland and US states whose laws give them. No IDFA
      explainer: the app never asks for tracking. **A safeguard before the release**, in Portugal, on
      a TestFlight build from a run **for the App Store** (any other build names Google's test app,
-     whose sample message proves nothing about yours): from the 8th day after its first launch, with
+     whose sample message proves nothing about yours): from the 4th day after its first launch, with
      a weigh-in in the diary, either Google's GDPR message shows, or Your data › iPhone app shows
      **Privacy choices** and it opens Google's form (that row shows only where your messages apply).
      If neither happens, stop the release and tell a session: the app would be showing ads in the
@@ -223,15 +223,15 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
     on the same page.
 
 11. **Review and submit.** In this order: everything that needs Remove ads not bought comes before
-    the purchase, which comes last, just before submitting. Two ways to be past the first 7 days
-    (no ads before them): **the install in use**, which keeps its days when each new build is
-    installed over it as a TestFlight update; or **the date ahead**: with a weigh-in in the diary,
-    in Settings › General › Date & Time turn off Set Automatically and set the date 8 days ahead,
+    the purchase, which comes last, just before submitting. Two ways to be past the first 3 days
+    (no ads before them, decision 177): **the install in use**, which keeps its days when each new
+    build is installed over it as a TestFlight update; or **the date ahead**: with a weigh-in in the
+    diary, in Settings › General › Date & Time turn off Set Automatically and set the date 4 days ahead,
     swipe the app away in the app switcher and open it again. Put Set Automatically back on
     afterwards, and before any purchase (the sandbox needs the right date): the banner then goes at
     the next return to the app, as the days are counted again from the true date. Open a fresh
     install for the first time with the date right: a first launch recorded with the date ahead is
-    later than today once the date is put back, and the app then starts the 7 days again from that
+    later than today once the date is put back, and the app then starts the 3 days again from that
     moment (`src/ads/ads.ts`).
     1. **Price and countries.** Price: free. Countries: every one but mainland China, where apps
        need a government filing number (ICP).
@@ -247,7 +247,7 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
        network log, see no request to Google (`*.google.com`, `*.googleapis.com`,
        `*.doubleclick.net`, `*.googlesyndication.com`, `app-measurement.com` and the like) after a
        refusal in Google's message, and, within one session, after withdrawing consent in Privacy
-       choices. The first 7 days are checked on item 5's fresh install, and the states with Remove
+       choices. The first 3 days are checked on item 5's fresh install, and the states with Remove
        ads (bought during a session, then held at the next launch) come last, with the purchase
        itself (item 9). The first tool is the iPhone's own **App Privacy Report** (Settings ›
        Privacy & Security › App Privacy Report, turned on before the test): it lists every domain
@@ -255,11 +255,11 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
        the purchase held). For the states within one session, use a proxy (on a friend's Mac, such
        as Proxyman or Charles) or Instruments' Network template, which show when each request was
        made. If any shows one, stop the release and tell a session. Then **the EEA safeguard** of
-       step 6, in Portugal, past the first 7 days (the install in use, or the date ahead): Google's
+       step 6, in Portugal, past the first 3 days (the install in use, or the date ahead): Google's
        GDPR message showed, or Privacy choices appeared in Your data › iPhone app and opened
        Google's form. If neither did, don't submit.
     4. **The banner clip, on the install in use.** The recording below starts from a fresh
-       install, and reinstalling starts the first 7 days again (a backup doesn't carry them).
+       install, and reinstalling starts the first 3 days again (a backup doesn't carry them).
        Before deleting the app, record a short clip of the diary with the banner at the top (shown,
        never tapped: tapping one's own ads breaks AdMob's policy), and of Your data, iPhone app,
        **Privacy choices**, with Google's form open: Google shows its consent message once per
@@ -275,10 +275,10 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
        Health and its permission sheet, the reminder, Remove ads with its price and Restore
        purchases ("No purchase to restore for this Apple Account."; nothing is bought yet),
        settings and the privacy policy. Two to four minutes; trim the ends in Photos. Then, with
-       the App Privacy Report, use this install for a day or more within its first 7 days: it
+       the App Privacy Report, use this install for a day or more within its first 3 days: it
        contacts no Google domain.
     6. **The reviewer's way to the banner.** On the same fresh install, with its weigh-ins, follow
-       the notes: the date 8 days ahead, the app swiped away and opened again: Google's test banner
+       the notes: the date 4 days ahead, the app swiped away and opened again: Google's test banner
        shows at the top (in Portugal, Google's message first). Put Set Automatically back on. If no
        banner shows, don't submit: tell a session. Then import your backup (Your data, Import
        backup, Replace everything), or keep this install aside if you record item 9 on another
@@ -294,9 +294,9 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
     8. **The age rating** of step 10 is saved and shows 13+ (or 9+, if you answered None).
     9. **Last, the purchase, recorded and logged.** Everything above needs Remove ads not bought,
        so this comes after it all. It needs the banner on screen and the right date for the
-       sandbox, so make it on an install truly past its first 7 days (the one in use, if item 5's
+       sandbox, so make it on an install truly past its first 3 days (the one in use, if item 5's
        fresh install was on another iPhone, or another iPhone that has one, or item 5's install,
-       once 7 days have passed since it was first opened with the date right): with the date ahead,
+       once 3 days have passed since it was first opened with the date right): with the date ahead,
        the banner goes as soon as the date is put right, before the purchase can show it going.
        Start the proxy or Instruments' Network template and the screen recording, then in Your data
        › iPhone app tap **Buy** and confirm: the banner goes at once, the line says "Ads removed.
@@ -346,7 +346,7 @@ before logging today's weight.
 
 ```text
 1. Screen recording
-Attached: a recording on the latest iOS, from a fresh install through typical use, and two clips from an install past its first 7 days: the ad banner with Privacy choices, and the Remove ads purchase. No account, login or user-generated content to show.
+Attached: a recording on the latest iOS, from a fresh install through typical use, and two clips from an install past its first 3 days: the ad banner with Privacy choices, and the Remove ads purchase. No account, login or user-generated content to show.
 
 2. Purpose and audience
 Weigh to Go is a weight diary for adults who want to see where their weight is heading. They log one weigh-in a day, typed or read from Apple Health, and the app shows the trend under the daily noise, projections toward a goal, weekly averages, the days the weight climbs back up, BMI and body composition estimates, in English or Brazilian Portuguese. Its data stays on the iPhone.
@@ -376,7 +376,7 @@ No setup, login or demo account. Tabs: Today, Progress, Analysis, Your data.
 Reads and writes body mass only, once the person turns on "Use Apple Health" and allows it: weights from a smart scale or another app join the diary, and weights logged here are saved to Health. Nothing from Health leaves the iPhone or is used for advertising.
 
 5. Ads (Google AdMob) and consent
-One banner at the top, non-personalised ads only: no tracking, no App Tracking Transparency prompt, no advertising identifier, and no weigh-in data reaches the ad SDK. No ads, and no contact with Google, while the diary is empty or in the first 7 days after the first launch. To see the banner on a fresh install: log a weigh-in, turn off Set Automatically and set the date 8 days ahead (Settings, General, Date & Time), then swipe the app away in the app switcher and open it again. Turn Set Automatically back on before trying Remove ads. With a sandbox receipt (TestFlight, App Review) the app shows Google's test ads. In the EEA, the UK and Switzerland, Google's User Messaging Platform asks for consent first; a refusal means no ads, and the SDK never starts. Privacy choices changes the choice where the law gives one.
+One banner at the top, non-personalised ads only: no tracking, no App Tracking Transparency prompt, no advertising identifier, and no weigh-in data reaches the ad SDK. No ads, and no contact with Google, while the diary is empty or in the first 3 days after the first launch. To see the banner on a fresh install: log a weigh-in, turn off Set Automatically and set the date 4 days ahead (Settings, General, Date & Time), then swipe the app away in the app switcher and open it again. Turn Set Automatically back on before trying Remove ads. With a sandbox receipt (TestFlight, App Review) the app shows Google's test ads. In the EEA, the UK and Switzerland, Google's User Messaging Platform asks for consent first; a refusal means no ads, and the SDK never starts. Privacy choices changes the choice where the law gives one.
 
 6. In-app purchase
 "Remove ads", non-consumable (net.jonathas.weightogo.removeads): Your data, iPhone app, Buy, confirmed on Apple's sheet; a sandbox account works. Once held, the banner goes at once and Google's SDK and consent tool are no longer started. Restore purchases is just below. StoreKit 2, checked on the device; no server.

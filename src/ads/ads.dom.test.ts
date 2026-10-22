@@ -215,7 +215,7 @@ describe('the ads at launch', () => {
 });
 
 describe('the first days', () => {
-  it('show nothing and ask Google nothing in the first 7 days after the first launch', async () => {
+  it('show nothing and ask Google nothing in the first 3 days after the first launch', async () => {
     const first = memoryPref(null);
     const { ads, later } = start({ first, now: LAUNCHED });
     await ads.settled();
@@ -262,9 +262,10 @@ describe('the first days', () => {
     expect(api.calls).toEqual(['info', 'start', 'show']);
   });
 
-  it('count from the first launch, and need a weigh-in', () => {
-    expect(adsDue(LAUNCHED, LAUNCHED + 7 * DAY, 1)).toBe(true);
-    expect(adsDue(LAUNCHED, LAUNCHED + 7 * DAY - 1, 1)).toBe(false);
+  it('count 3 days from the first launch (decision 177), and need a weigh-in', () => {
+    expect(FIRST_DAYS).toBe(3);
+    expect(adsDue(LAUNCHED, LAUNCHED + 3 * DAY, 1)).toBe(true);
+    expect(adsDue(LAUNCHED, LAUNCHED + 3 * DAY - 1, 1)).toBe(false);
     expect(adsDue(LAUNCHED, LAUNCHED + 30 * DAY, 0)).toBe(false);
   });
 });
@@ -359,7 +360,7 @@ describe('the band at launch', () => {
 });
 
 describe('Erase everything during a session', () => {
-  it('starts the 7 days again at once', async () => {
+  it('starts the 3 days again at once', async () => {
     const first = memoryPref(LAUNCHED);
     const { ads } = start({ first });
     await ads.settled();

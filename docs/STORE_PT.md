@@ -121,7 +121,7 @@ de consentimento.
      Suíça e nos estados dos EUA cujas leis as dão. Sem a mensagem explicativa do IDFA: o app nunca
      pede rastreamento. **Uma salvaguarda antes do lançamento**, em Portugal, num build do TestFlight
      de uma execução **For the App Store** (qualquer outro build usa o app de teste do Google, cuja
-     mensagem de exemplo não prova nada sobre as suas): a partir do 8º dia depois da primeira
+     mensagem de exemplo não prova nada sobre as suas): a partir do 4º dia depois da primeira
      abertura, com uma pesagem no diário, ou a mensagem de GDPR do Google aparece, ou Seus dados ›
      App para iPhone mostra **Opções de privacidade** e ela abre o formulário do Google (essa linha
      só aparece onde as suas mensagens valem). Se nenhum dos dois acontecer, pare o lançamento e
@@ -232,16 +232,16 @@ de consentimento.
     respostas; confira-as na mesma página.
 
 11. **Revisão e submissão.** Nesta ordem: tudo o que precisa de Remover anúncios não comprado vem
-    antes da compra, que vem por último, logo antes de submeter. Dois jeitos de passar dos 7
-    primeiros dias (sem anúncios antes deles): **a instalação em uso**, que guarda os seus dias
-    quando cada build novo é instalado por cima dela como atualização do TestFlight; ou **a data
-    adiantada**: com uma pesagem no diário, em Ajustes › Geral › Data e Hora desligue Ajustar
-    Automaticamente e adiante a data em 8 dias, feche o app no seletor de apps e abra de novo.
+    antes da compra, que vem por último, logo antes de submeter. Dois jeitos de passar dos 3
+    primeiros dias (sem anúncios antes deles, decisão 177): **a instalação em uso**, que guarda
+    os seus dias quando cada build novo é instalado por cima dela como atualização do TestFlight;
+    ou **a data adiantada**: com uma pesagem no diário, em Ajustes › Geral › Data e Hora desligue Ajustar
+    Automaticamente e adiante a data em 4 dias, feche o app no seletor de apps e abra de novo.
     Ligue Ajustar Automaticamente de novo depois, e antes de qualquer compra (o sandbox precisa da
     data certa): o banner some na volta seguinte ao app, porque os dias são contados de novo a
     partir da data verdadeira. Abra uma instalação nova pela primeira vez com a data certa: uma
     primeira abertura gravada com a data adiantada fica depois de hoje quando a data volta, e o app
-    então recomeça os 7 dias a partir desse momento (`src/ads/ads.ts`).
+    então recomeça os 3 dias a partir desse momento (`src/ads/ads.ts`).
     1. **Preço e países.** Preço: grátis. Países: todos menos a China continental, onde os apps
        precisam de um número de registro do governo (ICP).
     2. **O build, do `main` atual.** Rode o workflow **TestFlight** no `main` com **For the App
@@ -257,7 +257,7 @@ de consentimento.
        registro de rede, veja que não há nenhum pedido ao Google (`*.google.com`,
        `*.googleapis.com`, `*.doubleclick.net`, `*.googlesyndication.com`, `app-measurement.com` e
        afins) depois de uma recusa na mensagem do Google e, numa mesma sessão, depois de retirar o
-       consentimento em Opções de privacidade. Os 7 primeiros dias são conferidos na instalação nova
+       consentimento em Opções de privacidade. Os 3 primeiros dias são conferidos na instalação nova
        do item 5, e os estados com Remover anúncios (comprado durante uma sessão, depois já
        comprado na abertura seguinte) vêm por último, junto com a própria compra (item 9). A
        primeira ferramenta é o próprio **Relatório de Privacidade dos Apps** do iPhone (Ajustes ›
@@ -266,12 +266,12 @@ de consentimento.
        (os primeiros dias, uma recusa, a compra feita). Para os estados numa mesma sessão, use um
        proxy (no Mac de um amigo, como o Proxyman ou o Charles) ou o modelo Network do Instruments,
        que mostram quando cada pedido foi feito. Se algum aparecer, pare o lançamento e avise uma
-       sessão. Depois, **a salvaguarda do EEE** do passo 6, em Portugal, depois dos 7 primeiros
+       sessão. Depois, **a salvaguarda do EEE** do passo 6, em Portugal, depois dos 3 primeiros
        dias (a instalação em uso, ou a data adiantada): a mensagem de GDPR do Google apareceu, ou
        Opções de privacidade apareceu em Seus dados › App para iPhone e abriu o formulário do
        Google. Se nenhum dos dois aconteceu, não submeta.
     4. **O trecho do banner, na instalação em uso.** A gravação abaixo começa de uma instalação
-       nova, e reinstalar recomeça os 7 primeiros dias (um backup não os leva). Antes de apagar o
+       nova, e reinstalar recomeça os 3 primeiros dias (um backup não os leva). Antes de apagar o
        app, grave um trecho curto do diário com o banner no topo (mostrado, nunca tocado: tocar nos
        próprios anúncios viola a política do AdMob) e de Seus dados, App para iPhone, **Opções de
        privacidade**, com o formulário do Google aberto: o Google mostra a mensagem de
@@ -289,9 +289,9 @@ de consentimento.
        ("No purchase to restore for this Apple Account."; nada foi comprado ainda), as
        configurações e a política de privacidade. Dois a quatro minutos; corte as pontas no app
        Fotos. Depois, com o Relatório de Privacidade dos Apps, use esta instalação por um dia ou
-       mais dentro dos 7 primeiros dias: ela não contata nenhum domínio do Google.
+       mais dentro dos 3 primeiros dias: ela não contata nenhum domínio do Google.
     6. **O caminho do revisor até o banner.** Na mesma instalação nova, com as pesagens, siga as
-       notas: a data 8 dias adiantada, o app fechado no seletor e aberto de novo: o banner de teste
+       notas: a data 4 dias adiantada, o app fechado no seletor e aberto de novo: o banner de teste
        do Google aparece no topo (em Portugal, antes a mensagem do Google). Ligue Ajustar
        Automaticamente de novo. Se nenhum banner aparecer, não submeta: avise uma sessão. Depois
        importe o seu backup (Seus dados, Importar backup, Substituir tudo), ou guarde esta instalação
@@ -309,9 +309,9 @@ de consentimento.
        None).
     9. **Por último, a compra, gravada e registrada.** Tudo acima precisa de Remover anúncios não
        comprado, então isto vem depois de tudo. Ela precisa do banner na tela e da data certa para o
-       sandbox, então faça-a numa instalação que passou de verdade dos 7 primeiros dias (a que está
+       sandbox, então faça-a numa instalação que passou de verdade dos 3 primeiros dias (a que está
        em uso, se a instalação nova do item 5 foi em outro iPhone, ou outro iPhone que tenha uma,
-       ou a instalação do item 5, depois de passados 7 dias desde que ela foi aberta pela primeira
+       ou a instalação do item 5, depois de passados 3 dias desde que ela foi aberta pela primeira
        vez com a data certa):
        com a data adiantada, o banner some assim que a data volta ao certo, antes que a compra
        possa mostrá-lo sumindo. Ligue o proxy ou o modelo Network do Instruments e a gravação de
@@ -360,7 +360,7 @@ as linhas de exemplo são coladas sem erro e que a cópia do STORE.md é o mesmo
 Peça qualquer mudança a uma sessão; as duas mudam juntas. Em resumo, elas dizem, em oito partes:
 
 1. **A gravação de tela:** anexada, de uma instalação nova, com os dois trechos de uma instalação
-   que passou dos 7 primeiros dias (o banner com as Opções de privacidade e a compra); sem conta,
+   que passou dos 3 primeiros dias (o banner com as Opções de privacidade e a compra); sem conta,
    login nem conteúdo dos usuários.
 2. **Propósito e público:** um diário de peso para adultos, com a tendência, as projeções, as médias
    semanais, os repiques, o IMC e as estimativas de composição corporal, em inglês ou português do
@@ -374,9 +374,9 @@ Peça qualquer mudança a uma sessão; as duas mudam juntas. Em resumo, elas diz
 4. **App Saúde (HealthKit):** lê e grava só a massa corporal, depois que a pessoa liga "Use Apple
    Health" e permite; nada do Saúde sai do iPhone nem serve para anúncios.
 5. **Anúncios e consentimento:** um banner no topo, só não personalizados, sem pedido de
-   rastreamento (ATT), sem IDFA, sem pesagens para o SDK; nada nos 7 primeiros dias nem com o
+   rastreamento (ATT), sem IDFA, sem pesagens para o SDK; nada nos 3 primeiros dias nem com o
    diário vazio, e nenhum contato com o Google até lá; **para ver o banner numa instalação nova**:
-   registrar uma pesagem, desligar Ajustar Automaticamente e adiantar a data em 8 dias (Ajustes,
+   registrar uma pesagem, desligar Ajustar Automaticamente e adiantar a data em 4 dias (Ajustes,
    Geral, Data e Hora), fechar o app no seletor de apps e abrir de novo, e religar Ajustar
    Automaticamente antes de tentar Remove ads; com um recibo de
    sandbox (TestFlight, App Review) o app mostra os anúncios de teste do Google; a mensagem do UMP

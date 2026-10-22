@@ -43,7 +43,7 @@ both change together, in the same pull request.
          weigh-ins, what any ad request carries, and that removing the ads stops those requests;
          left out until the ads ship (decision 109).
    - [ ] Before the release, on a TestFlight build from a run for the App Store, a network log (the
-         iPhone's App Privacy Report, then a proxy or Instruments within a session) shows no request to Google in the first 7 days, with Remove ads
+         iPhone's App Privacy Report, then a proxy or Instruments within a session) shows no request to Google in the first 3 days, with Remove ads
          held, after a refusal in Google's message, and from the moment consent is withdrawn in
          Privacy choices or Remove ads is bought during a session (STORE.md, step 11). Info.plist's
          `GADDelayAppMeasurementInit` is a safeguard, not the proof.
@@ -66,7 +66,8 @@ both change together, in the same pull request.
    Store runs carry the owner's ids, and the fit test checks the app with the band. Not yet checked
    on a device: the consent message, the
    banner's place under the status bar, and its hiding; the simulator run starts with an empty
-   diary, so it reaches none of Google's code.
+   diary, so it reaches none of Google's code. The first days are 3 since 22 October 2026, not 7
+   (`FIRST_DAYS`, decision 177).
 
 2. **Remove ads, once and for good.** A non-consumable in-app purchase,
    `net.jonathas.weightogo.removeads`, at the price the owner sets in App Store Connect. Checked on
@@ -186,8 +187,8 @@ both change together, in the same pull request.
    `scripts/review.test.ts`, run by the listing workflow too, keeps them under 4,000 characters and
    checks what they must say (decision 169). A reviewer gets sample data from fifteen made-up lines
    to paste in the paste the log already has, and sees the banner on a fresh install by moving the
-   iPhone's date 8 days ahead: nothing new in the app. The age rating's answers are STORE.md's step
-   10, for an expected 13+, or 9+ if the owner doesn't count the BMI bands as medical information
+   iPhone's date 4 days ahead (8 before decision 177): nothing new in the app. The age rating's
+   answers are STORE.md's step 10, for an expected 13+, or 9+ if the owner doesn't count the BMI bands as medical information
    (decision 170). The version is 1.0.0 everywhere it lives, with a test, and
    the build number stays the run's (decision 172); the TestFlight run's summary names the commit
    of each build and links its comparison with `main`, which step 11 has the owner open before

@@ -9,7 +9,7 @@
  *    Bought later in the session: `stop()`, the banner goes and nothing more is asked of Google.
  * 2. The banner's ad unit: Google's test unit on TestFlight (a sandbox receipt) and in a debug
  *    build; the owner's on the App Store. An App Store build without the owner's unit shows none.
- * 3. The first days (design §8, O14): no ads while the diary is empty or in the first 7 days after
+ * 3. The first days (design §8, O14; decision 177): no ads while the diary is empty or in the first 3 days after
  *    the app's first launch. Until then Google isn't contacted at all.
  * 4. Google's consent message where the law asks for it (consent.ts); a refusal means no ads and no
  *    SDK (decision 64).
@@ -58,8 +58,8 @@ export interface Entitlement {
 /** Nothing can be bought (the tests' default). */
 export const NOTHING_HELD: Entitlement = { held: () => Promise.resolve(false) };
 
-/** Days after the app's first launch with no ads (design §8, O14). */
-export const FIRST_DAYS = 7;
+/** Days after the app's first launch with no ads (design §8, O14; decision 177). */
+export const FIRST_DAYS = 3;
 const DAY_MS = 86_400_000;
 
 /** When the app was first launched (ms since the epoch), kept with the screen preferences. */
@@ -138,7 +138,7 @@ export function startAds(options: AdsOptions): Ads {
   const onError = options.onError ?? (() => undefined);
   const html = doc.documentElement;
 
-  /** The first launch, read each time: Erase everything clears it, and the 7 days start again. */
+  /** The first launch, read each time: Erase everything clears it, and the 3 days start again. */
   const firstLaunch = () => {
     const first = firstLaunchStore.read();
     if (first !== null && first <= now()) return first;
