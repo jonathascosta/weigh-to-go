@@ -66,29 +66,30 @@ de consentimento.
    - O **Compartilhamento Familiar** é escolha sua, e pode ser ligado depois, mas nunca mais
      desligado. O app o lê da App Store: ligado, a linha sob o botão acrescenta "e para o seu grupo
      de Compartilhamento Familiar".
-   - **Teste no TestFlight** assim que a compra existir (ela precisa do acordo do passo 2; pode
-     levar uma hora para chegar ao sandbox). As compras no TestFlight são gratuitas, usam a sua
-     própria Conta Apple e **não podem ser apagadas**: comprado uma vez, essa Conta Apple tem Remover
-     anúncios no TestFlight para sempre. Então confira antes tudo o que precisa dela não comprada, e
-     compre por último. Nesta ordem, em Seus dados › App para iPhone:
+   - **Teste no TestFlight, sem comprar,** assim que a compra existir (ela precisa do acordo do
+     passo 2; pode levar uma hora para chegar ao sandbox). As compras no TestFlight são gratuitas,
+     usam a sua própria Conta Apple e **não podem ser apagadas**: comprado uma vez, essa Conta Apple
+     tem Remover anúncios no TestFlight para sempre, e então nada do Google é iniciado no seu
+     iPhone,
+     de modo que o banner, as Opções de privacidade, a salvaguarda do EEE e quase todo o registro de
+     rede do passo 11 não podem mais ser conferidos. Por isso **a compra em si é a última coisa que
+     você faz antes de submeter** (passo 11). Agora, em Seus dados › App para iPhone, nesta ordem:
      1. **Remover anúncios** mostra o preço vindo da App Store. Sem preço, a linha diz que não foi
         possível acessar a App Store ou que a opção Remover anúncios não está disponível: a compra
         ainda não está no App Store Connect, ou o id dela é outro.
      2. Toque em **Comprar** e cancele a tela da Apple: volta ao botão, sem mensagem.
-     3. Em Ajustes › Tempo de Uso › Restrições de Conteúdo e Privacidade, proíba as compras dentro de
-        apps e volte: a linha diz que as compras estão desativadas. Permita de novo e volte: o preço
-        reaparece.
-     4. No Modo Avião, toque em **Comprar** (ou Tentar de novo): a linha diz que não foi possível
-        acessar a App Store. De volta on-line, **Tentar de novo** mostra o preço.
+     3. Com o preço à vista, em Ajustes › Tempo de Uso › Restrições de Conteúdo e Privacidade,
+        proíba as compras dentro de apps e volte ao app: a linha diz que as compras estão
+        desativadas, sem botão. Permita de novo e volte: o preço reaparece.
+     4. No Modo Avião, toque em **Comprar**: a linha diz que não foi possível acessar a App Store.
+        De
+        volta on-line, **Tentar de novo** mostra o preço.
      5. Toque em **Restaurar compras**: "Nenhuma compra para restaurar nesta Conta Apple."
-     6. **Compre, gravando.** Faça isso na instalação que você usa, depois dos 7 primeiros dias, com
-        o banner no alto, e grave a tela: o banner some na hora e a linha diz "Anúncios removidos.
-        Obrigado.". Guarde esse trecho para a App Review (passo 11): é a única vez que essa Conta
-        Apple pode mostrar uma compra tirando o banner. O Sobre passa a dizer que os anúncios foram
-        removidos.
-     7. Apague o app e instale de novo: Seus dados já diz "Anúncios removidos. Obrigado." ao abrir (o
-        StoreKit guarda a compra), e nenhum banner vem. **Restaurar compras** diz então "Compra
-        restaurada.".
+
+     Se preferir comprar antes do passo 11, use uma segunda Conta Apple: adicione-a como outra
+     testadora do TestFlight (no App Store Connect, TestFlight, Internal Testing) e compre com ela
+     em outro iPhone, ou depois de trocar a conta em Ajustes › seu nome › Mídia e Compras; a sua
+     conta continua sem a compra para as conferências do passo 11.
 
      O Pedir para Comprar ("Aguardando aprovação") precisa de uma conta real de criança numa família
      no TestFlight, ou do arquivo de configuração do StoreKit (`ios/App/Products.storekit`, já
@@ -174,13 +175,13 @@ de consentimento.
       do TestFlight de uma execução **For the App Store**, com um registro de rede, veja que não há
       nenhum pedido ao Google (`*.google.com`, `*.googleapis.com`, `*.doubleclick.net`,
       `*.googlesyndication.com`, `app-measurement.com` e afins) em cada um destes estados: uma
-      instalação nova nos 7 primeiros dias, com pesagens; Remover anúncios comprado (no sandbox, com
-      o app aberto de novo); uma recusa na mensagem do Google; e, numa mesma sessão, depois de
-      retirar o consentimento em Opções de privacidade e depois de comprar Remover anúncios (nenhum
-      pedido novo a partir daí). A primeira ferramenta é o próprio **Relatório de Privacidade dos
-      Apps** do iPhone (Ajustes › Privacidade e Segurança › Relatório de Privacidade dos Apps, ligado
+      instalação nova nos 7 primeiros dias, com pesagens; uma recusa na mensagem do Google; e, numa
+      mesma sessão, depois de retirar o consentimento em Opções de privacidade. Os estados com
+      Remover anúncios (comprado durante uma sessão, depois já comprado na abertura seguinte) vêm
+      por último, junto com a própria compra (o último item abaixo). A primeira ferramenta é o
+      próprio **Relatório de Privacidade dos Apps** do iPhone (Ajustes › Privacidade e Segurança › Relatório de Privacidade dos Apps, ligado
       antes do teste): ele lista cada domínio que cada app contatou, então cobre os estados que
-      atravessam uma abertura (os primeiros dias, a compra feita, uma recusa). Para os estados numa
+      atravessam uma abertura (os primeiros dias, uma recusa, a compra feita). Para os estados numa
       mesma sessão, use um proxy (no Mac de um amigo, como o Proxyman ou o Charles) ou o modelo
       Network do Instruments, que mostram quando cada pedido foi feito. Se algum aparecer, pare o
       lançamento e avise uma sessão.
@@ -200,12 +201,10 @@ de consentimento.
       outro iPhone). Num iPhone em inglês com o iOS mais recente, comece a gravação de tela pela
       Central de Controle e mostre, devagar: a primeira pesagem, o resumo e um gráfico, um cartão de
       análise, ligar o app Saúde e a tela de permissão, o lembrete, Remover anúncios com o preço e
-      Restaurar compras (no TestFlight sua Conta Apple já tem a compra, então Restaurar diz "Compra
-      restaurada."; a compra em si é o trecho do passo 5), as configurações e a política de
-      privacidade. Dois a quatro
-      minutos, mais o trecho do banner e o trecho da compra do passo 5; corte as pontas no app Fotos.
-      Cole as [notas de revisão](STORE.md#app-review-notes) (em inglês, como a Apple as lê) em Notes
-      da App Review Information e anexe os três.
+      Restaurar compras ("Nenhuma compra para restaurar nesta Conta Apple."; nada foi comprado
+      ainda), as configurações e a política de privacidade. Dois a quatro minutos; corte as pontas
+      no app Fotos. Com o trecho do banner e o trecho da compra (o último item abaixo), ela vai com
+      as [notas de revisão](STORE.md#app-review-notes).
     - O status de comerciante (Digital Services Act) é declarado uma vez para a conta (feito para o
       Arrows em 4 de outubro de 2026); nada novo, a menos que a declaração passe para um endereço
       comercial.
@@ -213,6 +212,18 @@ de consentimento.
       Store**, em Portugal: a partir do 8º dia com uma pesagem, a mensagem de GDPR do Google
       apareceu, ou Opções de privacidade apareceu em Seus dados › App para iPhone e abriu o
       formulário do Google. Se nenhum dos dois aconteceu, não submeta.
+    - **Por último, a compra, gravada e registrada.** Tudo acima precisa de Remover anúncios não
+      comprado, então isto vem depois de tudo. Numa instalação com mais de 7 dias, com o banner no
+      topo (a gravação acima recomeça os 7 dias no iPhone de onde ela apaga o app, então faça-a em
+      outro iPhone, ou guarde uma instalação intacta para isto), ligue o proxy ou o modelo Network
+      do Instruments e a gravação de tela, e então em Seus dados › App para iPhone toque em
+      **Comprar** e confirme: o banner some na hora, a linha diz "Anúncios removidos. Obrigado." e o
+      registro não mostra nenhum pedido novo ao Google a partir daí. Feche o app e abra de novo:
+      nenhum anúncio, e nenhum pedido ao Google (o Relatório de Privacidade dos Apps concorda).
+      Depois apague o app e instale de novo: Seus dados diz "Anúncios removidos. Obrigado." ao
+      abrir, e **Restaurar compras** diz "Compra restaurada.". A gravação é o trecho da compra. Cole
+      as [notas de revisão](STORE.md#app-review-notes) (em inglês, como a Apple as lê) em Notes da
+      App Review Information e anexe a gravação, o trecho do banner e o trecho da compra.
     - Submeta. Depois do lançamento, avise a sessão: o site então ganha os links da App Store.
 
 ## Antes de cada versão

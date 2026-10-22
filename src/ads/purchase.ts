@@ -239,6 +239,15 @@ export function startPurchase(options: PurchaseOptions): LivePurchase {
     // Back in the app: what stopped the offer may have gone (online again, purchases allowed).
     const { kind } = view.offer;
     if (kind === 'offline' || kind === 'unavailable' || kind === 'not-allowed') await loadOffer();
+    // Or purchases may have been forbidden meanwhile (Screen Time): the button would only fail.
+    else if (kind === 'ready') {
+      const n = ++asked;
+      const allowed = await api.canPay().catch(() => true);
+      // Read again: the offer may have changed while the App Store was asked.
+      const still = (): Offer['kind'] => view.offer.kind;
+      if (!allowed && n === asked && !heldNow() && still() === 'ready')
+        set({ offer: { kind: 'not-allowed' } });
+    }
   };
 
   const first = ask();
@@ -356,6 +365,10 @@ export function startPurchase(options: PurchaseOptions): LivePurchase {
       } catch (error) {
         onError(error);
         set({ restore: online() ? 'failed' : 'offline' });
+        // Online, a stale "can't be reached" under Remove ads is asked again.
+        const { kind } = view.offer;
+        if (online() && (kind === 'offline' || kind === 'failed' || kind === 'unavailable'))
+          await loadOffer();
       }
     },
     show: () => {

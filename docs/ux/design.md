@@ -860,8 +860,8 @@ Each line is a live region, so a screen reader hears the change.
 
 _As built (Sprint 4, story 2; decisions 138 to 141, open to the owner)._ The row is a card of the
 group (a title, the line, a note and the button at its start, 44 px tall), and the App Store's own
-sheet is the confirmation. A note under the line while the price shows: "Pay once and the ads go
-away straight away, on every iPhone with this Apple Account, offline too." ("Pague uma vez e os
+sheet is the confirmation. A note under the line while the price shows: "Pay once and the ads are
+gone straight away, on every iPhone with this Apple Account, offline too." ("Pague uma vez e os
 anúncios somem na hora, em todo iPhone com esta Conta Apple, mesmo off-line."), with ", and for your
 Family Sharing group" (", e para o seu grupo de Compartilhamento Familiar") when the owner turns
 Family Sharing on. Every line is plain, a failure's too. While the App Store is asked (at first, and

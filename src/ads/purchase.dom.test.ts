@@ -130,6 +130,36 @@ describe('Remove ads at launch', () => {
   });
 });
 
+describe('coming back to the app', () => {
+  it('says purchases are turned off when Screen Time forbade them while the price showed', async () => {
+    const p = start();
+    p.show();
+    await p.settled();
+    expect(offer()).toBe('ready');
+    store.allowed = false;
+    document.dispatchEvent(new Event('visibilitychange'));
+    await settle();
+    await settle();
+    expect(offer()).toBe('not-allowed');
+    // Allowed again: the price comes back on the next return.
+    store.allowed = true;
+    document.dispatchEvent(new Event('visibilitychange'));
+    await settle();
+    await p.settled();
+    expect(offer()).toBe('ready');
+  });
+
+  it('keeps the price when purchases are still allowed', async () => {
+    const p = start();
+    p.show();
+    await p.settled();
+    document.dispatchEvent(new Event('visibilitychange'));
+    await settle();
+    await settle();
+    expect(p.view().offer).toEqual({ kind: 'ready', product: PRODUCT });
+  });
+});
+
 describe('buying Remove ads', () => {
   const ready = async () => {
     const p = start();
@@ -311,6 +341,21 @@ describe('answers that arrive out of order (Spock’s review)', () => {
     store.finishBuy();
     await buying;
     expect(html.classList.contains(BUYING_CLASS)).toBe(false);
+  });
+
+  it('asks for the offer again when a Restore fails online after an offline line', async () => {
+    store.failProduct = 'other';
+    online = false;
+    const p = start();
+    p.show();
+    await p.settled();
+    expect(offer()).toBe('offline');
+    online = true;
+    store.failProduct = null;
+    store.restoreFails = true;
+    await p.restore();
+    await p.settled();
+    expect(p.view()).toEqual({ offer: { kind: 'ready', product: PRODUCT }, restore: 'failed' });
   });
 
   it('reports Restore as restored when it is already held', async () => {

@@ -78,7 +78,7 @@ describe('Remove ads', () => {
     expect(button().hidden).toBe(false);
     expect(button().textContent).toBe('Buy · R$ 14,90');
     expect($('remove-ads-note').textContent).toBe(
-      'Pay once and the ads go away straight away, on every iPhone with this Apple Account, offline too.',
+      'Pay once and the ads are gone straight away, on every iPhone with this Apple Account, offline too.',
     );
     button().click();
     expect(purchase.calls).toContain('buy');

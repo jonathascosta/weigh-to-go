@@ -1072,7 +1072,7 @@ export const en = {
   'iap.title': 'Remove ads',
   'iap.ready': 'One payment, for good; no subscription.',
   'iap.note': (family: boolean): string =>
-    `Pay once and the ads go away straight away, on every iPhone with this Apple Account${family ? ', and for your Family Sharing group' : ''}, offline too.`,
+    `Pay once and the ads are gone straight away, on every iPhone with this Apple Account${family ? ', and for your Family Sharing group' : ''}, offline too.`,
   'iap.buy': (price: string) => `Buy · ${price}`,
   'iap.buying': 'Opening the App Store…',
   'iap.buyingButton': 'Buying…',

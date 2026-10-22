@@ -59,7 +59,7 @@ function fakeBridge({ id, price }) {
       if (method === 'getPurchases') return Promise.resolve({ purchases: [] });
       if (method === 'getProducts')
         return Promise.resolve({
-          products: [{ identifier: id, priceString: price, isFamilyShareable: false }],
+          products: [{ identifier: id, priceString: price, isFamilyShareable: true }],
         });
       return Promise.resolve({});
     },

@@ -94,8 +94,8 @@ both change together, in the same pull request.
    more, decision 139) and **Restore purchases**; `buying` is on `<html>` while Apple's sheet is up.
    About says the ads are gone once held (decision 140); the policy is unchanged (decision 142).
    `check:dist` fails when the website's scripts carry purchase code. STORE.md's step 5 has the
-   owner's sandbox round (in an order that keeps the one purchase an Apple Account can make on
-   TestFlight for last, recorded for App Review), and the review notes the purchase;
+   owner's sandbox round without buying, and step 11 ends with the one TestFlight purchase, recorded
+   and logged (decision 145), and the review notes the purchase;
    `npm run store:screenshots` makes the purchase's review screenshot (decision 144).
    `AppStoreKitTests`, hosted in the app, runs on the macOS runner with `ios/App/Products.storekit`
    in an `SKTestSession`: the product and its price, a purchase held, a refund, Ask to Buy approved
