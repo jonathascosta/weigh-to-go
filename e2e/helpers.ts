@@ -56,11 +56,13 @@ export async function loadBackup(page: Page, buffer = yearBackup()): Promise<voi
 /**
  * Watches a page for console errors, uncaught errors and Content Security Policy (and Trusted
  * Types) violations; `check` fails the test if there were any. Call before the first navigation.
+ * `expected` names console errors that are no problem here (the iPhone app's build in a browser).
  */
-export async function watch(page: Page): Promise<{ check: () => Promise<void> }> {
+export async function watch(page: Page, expected?: RegExp): Promise<{ check: () => Promise<void> }> {
   const problems: string[] = [];
   page.on('console', (message) => {
-    if (message.type() === 'error') problems.push(`console: ${message.text()}`);
+    if (message.type() === 'error' && !expected?.test(message.text()))
+      problems.push(`console: ${message.text()}`);
   });
   page.on('pageerror', (error) => problems.push(`page: ${error.message}`));
   await page.addInitScript(() => {
