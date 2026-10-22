@@ -1023,6 +1023,21 @@ describe('on a phone, the parts drawn only while they show', () => {
     expect(document.activeElement).toBe(button);
   });
 
+  it('says the year on a phone for a day of another year, in its text and its name', async () => {
+    await app.save([{ date: '2025-12-30', kg: 101 }]);
+    await settle();
+    go('#data');
+    const log = root.querySelector<HTMLElement>('section[aria-labelledby="log-title"]')!;
+    log.querySelector<HTMLButtonElement>('.log-more button')!.click();
+    const thisYear = new Date().getFullYear() === 2026;
+    const old = log.querySelector<HTMLButtonElement>('button[data-day="2025-12-30"]')!;
+    expect(old.querySelector('.day-short')!.textContent).toBe('Tue, Dec 30, 2025');
+    expect(old.querySelector('.day-tiny')!.textContent).toBe('Tue, 12/30/2025');
+    expect(old.querySelector('.day-long')!.textContent).toBe('Dec 30, 2025');
+    const recent = log.querySelector<HTMLButtonElement>('button[data-day="2026-09-17"]')!;
+    if (thisYear) expect(recent.querySelector('.day-short')!.textContent).toBe('Thu, Sep 17');
+  });
+
   it('shows the latest 5 weigh-ins, then Show all lists 50 more at a time', async () => {
     await app.save(
       Array.from({ length: 80 }, (_, i) => ({

@@ -539,6 +539,49 @@ test('has the band under the status bar in the iPhone app’s build', async ({ p
   }
 });
 
+test.describe('held sideways in Portuguese', () => {
+  test.use({ locale: 'pt-BR' });
+  for (const size of [
+    { width: 568, height: 320 },
+    { width: 667, height: 375 },
+  ])
+    for (const text of [100, 150])
+      test(`keeps every day of the log inside its cell at ${String(size.width)} × ${String(size.height)}, text ${String(text)}%`, async ({
+        page,
+      }) => {
+        const { check } = await watch(page);
+        await page.setViewportSize(size);
+        await page.goto('/pt/');
+        await loadBackup(page);
+        await page.evaluate((t) => {
+          document.documentElement.style.fontSize = `${String(t)}%`;
+        }, text);
+        await tab(page, 'data').tap();
+        await page.locator('section[aria-labelledby="log-title"] .log-more button').tap();
+        const spills = await page.evaluate(() =>
+          [...document.querySelectorAll('#log-table-box tbody tr')].flatMap((row) => {
+            const cell = row.querySelector('th');
+            const weight = row.querySelector('td');
+            if (!cell || !weight) return [];
+            const box = cell.getBoundingClientRect();
+            // The text of the weight, not its cell's padding.
+            const range = document.createRange();
+            range.selectNodeContents(weight);
+            const digits = range.getBoundingClientRect();
+            return [...cell.querySelectorAll('span')]
+              .filter((span) => span.getClientRects().length > 0)
+              .filter((span) => {
+                const r = span.getBoundingClientRect();
+                return r.right > box.right + 0.5 || r.right > digits.left + 0.5;
+              })
+              .map((span) => span.textContent);
+          }),
+        );
+        expect(spills).toEqual([]);
+        await check();
+      });
+});
+
 test.describe('at 320 × 568 in Portuguese', () => {
   test.use({ viewport: { width: 320, height: 568 }, locale: 'pt-BR' });
 

@@ -534,7 +534,8 @@ Choices made while building story 6, open to the owner under decision 9.
 100. **The log stays a table**: date, weight, change (and the 7-day average where there is room),
      each day a button named by the day it shows, described "Opens the day to change or delete
      it." (`log.editHint`), and the whole row its finger's target, 52 px tall; a chevron says it
-     opens; a day breaks only between its weekday and its date, and below 360 px wide it is in figures
+     opens; a day of another year says its year on a phone too; a day breaks only between its
+     weekday, its date and its year, and below 360 px wide it is in figures
      ("qua., 21/10"), as the date chip (decision 83). Screen readers keep
      the table's columns. On a phone it has no scrolling box (decision 94); the one page keeps
      Sprint 1's box and 100 rows at a time. _Alternative:_ the prototype's rows of buttons with no

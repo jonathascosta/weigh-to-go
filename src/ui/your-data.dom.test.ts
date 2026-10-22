@@ -8,6 +8,7 @@ import { fakeStorage } from '../data/fake-storage.test-helper';
 import { choose, resetSettings, settings } from '../i18n';
 import { mountSettings } from '../settings-ui';
 import { mountAbout } from './about';
+import { dayParts } from './log';
 
 beforeEach(() => {
   resetSettings();
@@ -109,5 +110,20 @@ describe('About', () => {
     expect(box.textContent).not.toMatch(/AdMob|ads/i);
     expect(box.textContent).not.toMatch(/browser/);
     expect(box.querySelector('#about-policy')!.getAttribute('href')).toBe('/privacy.html');
+  });
+});
+
+describe('a day in the log', () => {
+  const pieces = (text: string) =>
+    dayParts(text)
+      .map((p) => (typeof p === 'string' ? p : `[${p.textContent}]`))
+      .join('');
+
+  it('breaks after a comma and before the year, never inside a day and month', () => {
+    expect(pieces('21 de out. de 2026')).toBe('[21 de out.] [de] [2026]');
+    expect(pieces('qua., 21 de out. de 2025')).toBe('[qua.,] [21 de out.] [de] [2025]');
+    expect(pieces('Wed, Oct 21, 2025')).toBe('[Wed,] [Oct 21,] [2025]');
+    expect(pieces('21 Oct 2026')).toBe('[21 Oct] [2026]');
+    expect(pieces('qua., 21 de out.')).toBe('[qua.,] [21 de out.]');
   });
 });

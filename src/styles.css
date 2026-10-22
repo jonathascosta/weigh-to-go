@@ -3597,12 +3597,17 @@ svg.go {
   }
 
   .log-table thead th.num {
-    width: 22%;
+    width: 20%;
   }
 
   /* The change, with its sign and unit, takes the most room of the figures. */
   .log-table thead th.num + th.num {
-    width: 30%;
+    width: 26%;
+  }
+
+  /* Held sideways the 7-day average shows too: the day keeps a third of the row. */
+  .log-table thead th.num + th.num.col-avg7 {
+    width: 18%;
   }
 
   .log-table thead th {
@@ -3629,6 +3634,14 @@ svg.go {
   .log-table th,
   .log-table td {
     padding: 4px 6px;
+  }
+
+  .log-table thead th.num {
+    width: 22%;
+  }
+
+  .log-table thead th.num + th.num {
+    width: 30%;
   }
 
   /* "Weight (lb)" at 150% needs the column's every pixel. */

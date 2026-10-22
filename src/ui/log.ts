@@ -6,10 +6,11 @@
  * back exactly (`app.restore`).
  */
 import { FLAT_KG } from '../analysis/analyze';
+import { localToday } from '../analysis/dates';
 import { ReloadNeeded, type App, type State } from '../app/app';
 import { toKg } from '../data/paste';
 import { settings, type Settings } from '../i18n';
-import { chevron, h, tone } from './dom';
+import { chevron, h, slashBreaks, tone } from './dom';
 import { example, failure } from './entry';
 import { openSheet, type Layout, type OpenSheet } from './sheet';
 import type { UndoNotice, Words } from './undo-notice';
@@ -21,13 +22,20 @@ export const PHONE_FIRST = 5;
 export const PHONE_STEP = 50;
 
 /**
- * A day as text that breaks only between its parts, never inside "21 de out." or "Oct 21": the
- * weekday, then the day and month together.
+ * A day as text that breaks only between its parts, never inside "21 de out." or "Oct 21": after a
+ * comma and before the year ("21 de out. / de 2026", "Oct 21, / 2026"), each part kept whole.
  */
 export function dayParts(text: string): (string | HTMLElement)[] {
-  const comma = text.indexOf(', ');
-  if (comma < 0) return [h('span', { class: 'nowrap', text })];
-  return [text.slice(0, comma + 2), h('span', { class: 'nowrap', text: text.slice(comma + 2) })];
+  const parts: (string | HTMLElement)[] = [];
+  let start = 0;
+  // No lookbehind (Safari 15): a comma's space, or a space before the year (" de 2026", " 2026").
+  for (const match of text.matchAll(/, | (?=(?:de )?\d{4}\b)/g)) {
+    const end = match.index + (match[0].startsWith(',') ? 1 : 0);
+    if (end > start) parts.push(h('span', { class: 'nowrap', text: text.slice(start, end) }), ' ');
+    start = match.index + match[0].length;
+  }
+  parts.push(h('span', { class: 'nowrap', text: text.slice(start) }));
+  return parts;
 }
 
 export interface LogOptions {
@@ -228,6 +236,8 @@ export function mountLog(container: HTMLElement, app: App, { layout, notice }: L
       ),
     );
     editHint.textContent = m['log.editHint'];
+    const year = localToday().slice(0, 4);
+    const thisYear = (date: string) => date.slice(0, 4) === year;
     const days = state.analysis?.series ?? [];
     table.hidden = days.length === 0;
     if (days.length === 0) {
@@ -255,12 +265,20 @@ export function mountLog(container: HTMLElement, app: App, { layout, notice }: L
             },
           },
           h('span', { class: 'day-long' }, ...dayParts(dayText)),
-          h('span', { class: 'day-short' }, ...dayParts(f.day(d.date, 'weekdayDayMonth'))),
-          // The narrowest phones with large text: the day in figures, as the date chip (decision 83).
+          // On a phone, the year only for a day of another year (after Show all).
+          h(
+            'span',
+            { class: 'day-short' },
+            ...dayParts(f.day(d.date, thisYear(d.date) ? 'weekdayDayMonth' : 'weekdayDayMonthYear')),
+          ),
+          // The narrowest phones with large text: the day in figures, as the date chip (decision 83),
+          // breaking after a slash if a year makes it too long.
           h(
             'span',
             { class: 'day-tiny' },
-            ...dayParts(`${f.day(d.date, 'weekday')}, ${f.day(d.date, 'dayMonth')}`),
+            h('span', { class: 'nowrap', text: `${f.day(d.date, 'weekday')},` }),
+            ' ',
+            ...(thisYear(d.date) ? [f.day(d.date, 'dayMonth')] : slashBreaks(f.day(d.date, 'short'))),
           ),
         );
         open.addEventListener('click', () => {
