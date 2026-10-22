@@ -59,6 +59,21 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    and never see ads again"; "Remover anúncios" · "Pague uma vez e nunca mais veja anúncios"), whether
    it is shared with Family Sharing, and the review screenshot (the session makes it). The first
    purchase is submitted together with the first version (step 11).
+   - **Family Sharing** is your choice, and can be turned on later but never off again. The app
+     reads it from the App Store: with it on, the line under the button adds "and for your Family
+     Sharing group".
+   - **Try it on TestFlight** once the purchase exists (it needs step 2's agreement; it may take an
+     hour to reach the sandbox). TestFlight purchases are free and use your own Apple Account. In
+     Your data › iPhone app, **Remove ads** shows the price from the App Store; with no price, the
+     line says the App Store can't be reached or that Remove ads isn't available: the purchase
+     isn't in App Store Connect yet, or its id differs. Tap **Buy**, cancel once (back to the
+     button, no message), then buy: the line says "Ads removed. Thank you." and the banner goes at
+     once. Then delete the app, install it again, and tap **Restore purchases**: the thank-you line
+     comes back. With Screen Time's Content & Privacy Restrictions forbidding in-app purchases, the
+     line says so. Ask to Buy ("Waiting for approval") can be tried with a sandbox account in a
+     family (Users and Access › Sandbox), if you want to.
+   - Nothing needs a server: the app checks the purchase on the iPhone with StoreKit, so there is no
+     shared secret or App Store Server Notifications URL to set.
 6. **AdMob.**
    - Add an iOS app, Weigh to Go, and a **banner** ad unit; put them in the `app-store`
      environment's secrets `ADMOB_APP_ID` (the app id, `ca-app-pub-…~…`) and `ADMOB_BANNER_ID` (the
@@ -187,6 +202,9 @@ Projections are estimates, not medical advice.
 
 3. How to use it
 No setup or login. Type today's weight and tap Save. [Screens and settings to be filled in.]
+The in-app purchase: open Your data (the last tab), scroll to iPhone app, and tap Buy under Remove
+ads; the App Store's sheet confirms it. Restore Purchases is the row just below. Once bought, the
+banner goes at once, and the app no longer starts Google's SDK at all.
 
 4. External services
 - Apple Health (HealthKit): reads and writes body mass, only after the person turns it on; the data
@@ -196,8 +214,10 @@ No setup or login. Type today's weight and tap Save. [Screens and settings to be
   fresh install shows none (an attached clip shows it on an install in use); never while logging.
 - Google User Messaging Platform: the consent message where the law requires it, when the ads first
   start; a refusal means no ads. Privacy choices in Your data where it applies.
-- StoreKit: the one-time "Remove ads" purchase, verified on the device; Restore Purchases in
-  settings.
+- StoreKit 2: the one-time "Remove ads" purchase (non-consumable,
+  net.jonathas.weightogo.removeads), checked on the device from StoreKit's verified current
+  entitlements, with no server of ours or anyone's; Restore Purchases in Your data, iPhone app.
+  It can be bought and restored in the sandbox like any other.
 The app has no backend, no accounts and no analytics: every weigh-in stays on the device.
 
 5. Regional differences

@@ -858,6 +858,20 @@ row's title and at most one button:
 
 Each line is a live region, so a screen reader hears the change.
 
+_As built (Sprint 4, story 2; decisions 138 to 141, open to the owner)._ The row is a card of the
+group (a title, the line, a note and the button at its start, 44 px tall), and the App Store's own
+sheet is the confirmation. A note under the line in Ready: "Bought once, the ads go away at once and
+for good on every iPhone with this Apple Account. They stay away offline too." (with ", and for your
+Family Sharing group" when the owner turns Family Sharing on). States the table didn't have:
+
+| State                               | English                                                                                                                            | Portuguese                                                                                                                                  | Button        |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| Product not in the App Store        | "Remove ads isn’t available from the App Store just now. Try again later."                                                         | "Remover anúncios não está disponível na App Store agora. Tente de novo mais tarde."                                                        | "Try again"   |
+| Purchases not allowed (Screen Time) | "Purchases are turned off on this iPhone, in Screen Time’s Content & Privacy Restrictions. Once they are allowed, come back here." | "As compras estão desativadas neste iPhone, nas Restrições de Conteúdo e Privacidade do Tempo de Uso. Quando forem permitidas, volte aqui." | none          |
+| Restoring                           | "Asking the App Store…"                                                                                                            | "Consultando a App Store…"                                                                                                                  | (Restore row) |
+| Restored                            | "Purchase restored."                                                                                                               | "Compra restaurada."                                                                                                                        | (Restore row) |
+| Restore failed, online              | "Nothing was restored. Try again."                                                                                                 | "Nada foi restaurado. Tente de novo."                                                                                                       | (Restore row) |
+
 ## 8 · The iPhone app's banner (Sprint 4)
 
 Screenshots: [11](design/11-today-375x667-app-banner.png) and [20](design/20-data-390-app.png) show

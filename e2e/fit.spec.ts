@@ -14,6 +14,7 @@
  * turns fine), and the targets are measured under a finger.
  */
 import { expect, test, type Page } from '@playwright/test';
+import { en, pt } from '../src/i18n/messages';
 import { loadBackup, watch } from './helpers';
 
 const SIZES = [
@@ -343,6 +344,58 @@ async function show(page: Page, view: string): Promise<void> {
 }
 
 /**
+ * The iPhone app's rows that only StoreKit and Google's consent tool fill (Remove ads, Restore
+ * purchases, Privacy choices): a browser has neither, so they are shown here by hand, each with its
+ * longest line and button in the page's language and a long price, as the phone would draw them.
+ */
+async function showAppRows(page: Page, lang: 'en' | 'pt'): Promise<void> {
+  const m = lang === 'en' ? en : pt;
+  const longest = (texts: string[]) => texts.reduce((a, b) => (b.length > a.length ? b : a), '');
+  const price = lang === 'en' ? 'US$1,234.99' : 'R$ 1.234,90';
+  const offer = longest([
+    m['iap.ready'],
+    m['iap.buying'],
+    m['iap.pending'],
+    m['iap.failed'],
+    m['iap.offline'],
+    m['iap.unavailable'],
+    m['iap.notAllowed'],
+    m['iap.held'],
+  ]);
+  const button = longest([m['iap.buy'](price), m['iap.buyingButton'], m['iap.tryAgain']]);
+  const restore = longest([
+    m['iap.restoring'],
+    m['iap.restored'],
+    m['iap.restoreNone'],
+    m['iap.restoreOffline'],
+    m['iap.restoreFailed'],
+  ]);
+  await page.evaluate(
+    ({ offer, note, button, restore, choicesFailed }) => {
+      for (const id of [
+        'remove-ads',
+        'restore-purchases',
+        'privacy-choices',
+        'remove-ads-buy',
+        'remove-ads-note',
+      ])
+        document.getElementById(id)?.removeAttribute('hidden');
+      const set = (id: string, text: string) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+      };
+      set('remove-ads-status', offer);
+      set('remove-ads-note', note);
+      set('remove-ads-buy', button);
+      set('restore-status', restore);
+      set('privacy-choices-status', choicesFailed);
+    },
+    { offer, note: m['iap.note'](true), button, restore, choicesFailed: m['ads.choicesFailed'] },
+  );
+  await expect(page.locator('#remove-ads-buy')).toBeVisible();
+}
+
+/**
  * After a sheet closed: its history entry has gone too. Closing calls `history.back()`, whose
  * `popstate` lands later; the next sheet's `pushState` must not interleave with it.
  */
@@ -438,6 +491,7 @@ for (const language of LANGUAGES) {
       await loadBackup(page);
       await show(page, 'data');
       await page.locator('section[aria-labelledby="log-title"] .log-more button').tap();
+      if (test.info().project.name === 'ios') await showAppRows(page, lang);
       await expectFits(page, 'Your data');
       await sheetFits(page, '#paste-panel-button', 'the Paste sheet');
       await sheetFits(page, '#sections-panel-button', 'the Sections sheet');

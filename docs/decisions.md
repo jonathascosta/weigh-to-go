@@ -803,3 +803,71 @@ decisions above.
      `Package.resolved`: Google's Mobile Ads SDK is pinned exactly by the plugin, UMP only to the
      next minor, until the file is committed from that artifact. A banner page restored from the
      back-forward cache asks for its banner anew.
+
+## 22 October 2026 · Remove ads, as built (Sprint 4, story 2)
+
+Choices made while building story 2, open to the owner under decision 9. Numbered on from the
+decisions above.
+
+135. **`@capgo/native-purchases` 8.9.5.** Released 12 October 2026, outside the week's cooldown,
+     as is 8.9.6 (15 October), whose code differs only in its version string. StoreKit 2 on the
+     phone: purchases and current entitlements from verified transactions only (an unverified one is
+     refused), no network code of its own, a Swift package for Capacitor 8 (`capacitor-swift-pm`
+     from 8.0.0, iOS 15), MPL-2.0, used unmodified. Its answers carry the receipt and the signed
+     transaction; the app reads the product id and the refund date and sends nothing anywhere.
+     `scripts/purchase.test.ts` checks the installed source for all of this, and for the fixed
+     messages the app reads (decision 139), so an upgrade that changes them fails.
+     _Alternative:_ a small Swift plugin of our own (4 to 8 hours of CI rounds without a Mac).
+136. **StoreKit decides; a hint only paints.** At launch the app asks for StoreKit's current
+     entitlements (`getPurchases` with `onlyCurrentEntitlements`, `Transaction.currentEntitlements`,
+     answered on the phone, offline too) and the ads wait for that answer (decision 121); no answer
+     counts as held for the ads, so nothing of Google's starts, while the row still offers the
+     purchase. A screen preference (`removeAdsHeld`) keeps the last answer so Your data can say
+     "thank you" before StoreKit answers; it never makes the purchase held, and StoreKit's answer
+     replaces it at every launch. A refund is followed: StoreKit's updates (`transactionUpdated`) and
+     every return to the app ask again; refunded during a session, the ads stay stopped until the
+     next launch. Erase everything clears the hint with the other preferences. _Alternative:_ no
+     hint (the row waits a moment at every launch).
+137. **The price is asked for when Your data is drawn, not at launch,** and with `getProducts`,
+     which answers an unknown product with an empty list: Capacitor logs every rejected plugin call
+     as an error in a debug build, and the iOS workflow's simulator run fails on `[error]`. So a
+     launch makes one call to StoreKit, which stays on the phone. _Alternative:_ the price at
+     launch, with the simulator run taught to ignore that line.
+138. **The App Store's sheet is the confirmation.** Buy opens it at once; it sits at the bottom of
+     the screen, under the thumb, and asks for Face ID or the side button, so a sheet of ours
+     before it would only add a tap. The Remove ads row is a card of the iPhone app group (title,
+     line, note, then the button at its start, 44 px tall), and stays focusable while buying
+     (`aria-disabled`); when its button goes (bought, waiting for approval), the focus moves to its
+     title. _Alternative:_ a sheet of ours with the price and the words, then Apple's.
+139. **How a failure is told apart.** The plugin rejects with fixed English messages for a cancel
+     ("User cancelled": back to Ready, no message), a pending purchase ("Transaction pending": Ask to
+     Buy, or the bank) and an unknown product; anything else is StoreKit's localized text. So after
+     any other failure the app asks whether this iPhone allows purchases (`AppStore.canMakePayments`,
+     a new method of the app's own `AdSetup` plugin) and whether it is online (`navigator.onLine`):
+     not allowed, offline, or "The purchase didn't go through". Two states and three Restore lines
+     are new, in English and proposed Portuguese (design §7, as built): the product not in the App
+     Store, purchases not allowed by Screen Time, "Asking the App Store…", "Purchase restored." and
+     "Nothing was restored. Try again." (a failure while online, a cancelled sign-in included).
+     _Alternative:_ one generic failure line.
+140. **The words say what is true for this purchase.** Under the button: one payment, for good, on
+     every iPhone with this Apple Account, offline too, and "for your Family Sharing group" only when
+     StoreKit says the product is shareable (the owner's choice in App Store Connect, STORE.md,
+     step 5). About's ads sentence becomes, once held, "The ads are removed: Google’s ad software
+     isn’t started, and nothing goes to Google any more." (`about.app.adsRemoved`; Portuguese
+     proposed). _Alternative:_ the design's line alone.
+141. **Restore purchases stays after the purchase is held**, and `buying` is on `<html>` during a
+     restore too, since Apple's sign-in sheet may come up. Waiting for approval lasts the session;
+     the approval comes through StoreKit's updates and the ads stop then. _Alternative:_ hide
+     Restore once held.
+142. **The privacy policy is unchanged.** It says the purchase is handled by Apple, that we receive
+     no payment details, and that the app checks it on the iPhone with Apple's tools and no
+     purchase service in between, and that once Remove ads is bought neither Google's SDK nor its
+     consent tool is started: all true as built (a plugin running on the phone is not a service in
+     between). Its date stays 22 October 2026.
+143. **No StoreKit configuration file and no `SKTestSession` test yet.** Arrows has neither (its
+     Remove ads is still a later idea), the owner has no Mac to run a `.storekit` file in Xcode, and
+     an XCTest target means project edits only a macOS run can prove. The purchase's logic is
+     covered by unit tests with a fake App Store, the plugin by checks of its installed source, and
+     the real thing by the owner's TestFlight sandbox round (STORE.md, step 5). The sprint's
+     `SKTestSession` test is left as an issue for later. _Alternative:_ add the test target now,
+     tried through CI rounds.

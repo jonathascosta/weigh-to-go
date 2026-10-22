@@ -60,6 +60,22 @@ de consentimento.
    ads again"; "Remover anúncios" · "Pague uma vez e nunca mais veja anúncios"), se vale para o
    Compartilhamento Familiar, e a captura de tela para a revisão (a sessão a faz). A primeira compra
    vai junto com a primeira versão (passo 11).
+   - O **Compartilhamento Familiar** é escolha sua, e pode ser ligado depois, mas nunca mais
+     desligado. O app o lê da App Store: ligado, a linha sob o botão acrescenta "e para o seu grupo
+     de Compartilhamento Familiar".
+   - **Teste no TestFlight** assim que a compra existir (ela precisa do acordo do passo 2; pode
+     levar uma hora para chegar ao sandbox). As compras no TestFlight são gratuitas e usam a sua
+     própria Conta Apple. Em Seus dados › App para iPhone, **Remover anúncios** mostra o preço vindo
+     da App Store; sem preço, a linha diz que não foi possível acessar a App Store ou que Remover
+     anúncios não está disponível: a compra ainda não está no App Store Connect, ou o id dela é
+     outro. Toque em **Comprar**, cancele uma vez (volta ao botão, sem mensagem) e depois compre: a
+     linha diz "Anúncios removidos. Obrigado." e o banner some na hora. Depois apague o app,
+     instale de novo e toque em **Restaurar compras**: a linha de agradecimento volta. Com as
+     Restrições de Conteúdo e Privacidade do Tempo de Uso proibindo compras dentro de apps, a linha
+     diz isso. O Pedir para Comprar ("Aguardando aprovação") pode ser testado com uma conta de
+     sandbox numa família (Users and Access › Sandbox), se quiser.
+   - Nada precisa de servidor: o app confere a compra no iPhone com o StoreKit, então não há shared
+     secret nem URL de App Store Server Notifications para configurar.
 6. **AdMob.**
    - Adicione um app iOS, Weigh to Go, e um bloco de anúncio **banner**; ponha-os nos secrets
      `ADMOB_APP_ID` (o id do app, `ca-app-pub-…~…`) e `ADMOB_BANNER_ID` (o id do bloco,
