@@ -6,6 +6,7 @@
  * show and hide each section; a hidden one isn't drawn until it shows again.
  */
 import type { AdProvider } from '../ads/ads';
+import type { Purchase } from '../ads/purchase';
 import type { App, State } from '../app/app';
 import type { Notifier } from '../reminders/keeper';
 import {
@@ -41,6 +42,7 @@ import { bmiSummary, goalEditor, heightEditor, mountBmi, mountGoal } from './pro
 import { mountHealth } from './health';
 import { mountRates, rateSummary } from './rates';
 import { mountReminder } from './reminder';
+import { mountRemoveAds } from './remove-ads';
 import { mountShell, type Shell, type View } from './shell';
 import { closeOpenSheet, openSheet, optionsPanel, type OpenSheet } from './sheet';
 import { undoNotice } from './undo-notice';
@@ -67,6 +69,8 @@ export interface DashboardOptions {
   readonly notifier?: Notifier;
   /** The ads, in the iPhone app only: here, Privacy choices where Google's consent tool asks. */
   readonly ads?: AdProvider;
+  /** Remove ads, in the iPhone app only: its rows, and About's words once it is held. */
+  readonly purchase?: Purchase;
   /** The header's empty `nav` that the shell fills; made here when there is none. */
   readonly nav?: HTMLElement | null;
   /** The static page's intro, shown at the top of Today while the diary is empty. */
@@ -190,9 +194,11 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     if (choicesStatus.textContent !== text) choicesStatus.textContent = text;
   };
   drawChoicesStatus();
+  // Remove ads and Restore purchases (design §7), before Privacy choices.
+  const removeAds = options.purchase ? mountRemoveAds(options.purchase) : null;
   const appTitle = h('h2', { attrs: { id: 'app-title' } });
   const appGroup =
-    reminder || health || choicesRow
+    reminder || health || removeAds || choicesRow
       ? h(
           'section',
           { class: 'data-group', attrs: { 'aria-labelledby': 'app-title' } },
@@ -202,6 +208,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
             { class: 'group' },
             ...(reminder ? [reminder] : []),
             ...(health ? [health] : []),
+            ...(removeAds ? [removeAds.offer, removeAds.restore, removeAds.restoreStatus] : []),
             ...(choicesRow ? [choicesRow, choicesStatus] : []),
           ),
         )
@@ -581,10 +588,22 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
         m['chart.done'],
       );
   });
-  const drawAbout = mountAbout(about, inApp);
-  add('data', null, (_state, s) => {
+  const { purchase } = options;
+  const drawAbout = mountAbout(about, inApp, () => purchase?.view().offer.kind === 'held');
+  const aboutPart = add('data', null, (_state, s) => {
     drawAbout(s);
   });
+  if (removeAds)
+    add('data', null, (_state, s) => {
+      removeAds.draw(s);
+    });
+  // Bought, restored or refunded: About says so (the rows follow the purchase themselves).
+  const stopPurchase = purchase
+    ? purchase.subscribe(() => {
+        aboutPart.dirty = true;
+        drawShown();
+      })
+    : () => undefined;
   // The empty diary's links land on what they name in Your data: the paste box, opened, and
   // Import backup.
   pasteLink.addEventListener('click', (event) => {
@@ -720,6 +739,8 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   let loaded = false;
   const stops = [
     stopChoices,
+    stopPurchase,
+    () => removeAds?.dispose(),
     app.subscribe((state) => {
       render(state, settings());
       // Drawn with what the diary holds: an address naming a part below can be scrolled to now.

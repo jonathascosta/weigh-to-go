@@ -289,6 +289,25 @@ export function findAdCode(files) {
   return files.filter((file) => /\.m?js$/.test(file.name) && AD_CODE.test(file.text)).map((f) => f.name);
 }
 
+/**
+ * Code of the Remove ads purchase (src/ads/purchase.ts, platform/purchase-native.ts): the StoreKit
+ * plugin's name and calls, and the product id. The words "Remove ads" are text, not code.
+ */
+const PURCHASE_CODE =
+  /["']NativePurchases["']|\bpurchaseProduct\b|\brestorePurchases\b|net\.jonathas\.weightogo\.removeads/;
+
+/**
+ * The scripts that carry purchase code: none on the website (it sells nothing), some in the app's
+ * build, or this check no longer looks for the right thing.
+ * @param {{ name: string, text: string }[]} files
+ * @returns {string[]} The names of the scripts with purchase code.
+ */
+export function findPurchaseCode(files) {
+  return files
+    .filter((file) => /\.m?js$/.test(file.name) && PURCHASE_CODE.test(file.text))
+    .map((f) => f.name);
+}
+
 /** The pages that aren't the diary, where the iPhone app's banner must not show. */
 const STATIC_PAGES = ['404.html', 'privacy.html', 'pt/privacidade.html'];
 
@@ -326,6 +345,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     ...findAppProblems(files, (name) => existsSync(join(dist, name))),
     ...findTooNewCss(files),
     ...findAdCode(files).map((name) => `${name}: carries ad code, which the website must not`),
+    ...findPurchaseCode(files).map((name) => `${name}: carries purchase code, which the website must not`),
   ];
   // The iPhone app's build, when it is there (npm run build:ios): the same check of its CSS.
   const app = fileURLToPath(new URL('../dist-ios', import.meta.url));
@@ -336,6 +356,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     problems.push(...findPagesUnderTheBanner(appFiles).map((problem) => `dist-ios/${problem}`));
     if (findAdCode(appFiles).length === 0)
       problems.push("dist-ios/: no ad code found, so the website's check for it looks for the wrong thing");
+    if (findPurchaseCode(appFiles).length === 0)
+      problems.push(
+        "dist-ios/: no purchase code found, so the website's check for it looks for the wrong thing",
+      );
   }
   if (problems.length > 0) {
     console.error(problems.join('\n'));
@@ -343,7 +367,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   }
   console.log(
     `dist/ keeps its protections (${String(files.length)} files checked)` +
-      ', and no ad code' +
+      ', and no ad or purchase code' +
       (appBuilt
         ? '; dist-ios/ has no CSS Safari 15 cannot read, and its ads, kept off the static pages'
         : '; dist-ios/ not built, not checked'),

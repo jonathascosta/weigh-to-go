@@ -119,6 +119,23 @@ describe('About', () => {
     const paragraphs = [...box.querySelectorAll('.about p')].map((p) => p.textContent);
     expect(paragraphs[2]).toMatch(/^Os anúncios vêm do Google AdMob/);
   });
+
+  it('says the ads are gone and nothing goes to Google once Remove ads is held', () => {
+    let held = false;
+    const box = document.createElement('section');
+    document.body.append(box);
+    const draw = mountAbout(box, true, () => held);
+    draw(settings());
+    expect(box.textContent).toContain('Removing the ads stops those requests.');
+    held = true;
+    draw(settings());
+    expect(box.textContent).toContain(
+      'The ads are removed: Google’s ad software isn’t started, and nothing goes to Google any more.',
+    );
+    expect(box.textContent).not.toContain('Ads come from Google AdMob');
+    draw(choose({ lang: 'pt' }));
+    expect(box.textContent).toContain('Os anúncios foram removidos');
+  });
 });
 
 describe('a day in the log', () => {

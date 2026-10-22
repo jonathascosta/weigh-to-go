@@ -5,6 +5,7 @@ import {
   findMissingPages,
   findPagesUnderTheBanner,
   findProblems,
+  findPurchaseCode,
   findTooNewCss,
   SITE,
 } from './check-dist.mjs';
@@ -359,6 +360,21 @@ describe('findAdCode', () => {
         { name: 'assets/consent.js', text: 'await a.requestConsentInfo()' },
       ]),
     ).toEqual(['assets/ads.js', 'assets/plugin.js', 'assets/unit.js', 'assets/consent.js']);
+  });
+});
+
+describe('findPurchaseCode', () => {
+  it("finds the StoreKit plugin's name and calls and the product id in scripts, not the words", () => {
+    expect(
+      findPurchaseCode([
+        { name: 'assets/i18n.js', text: '"iap.title":"Remove ads","iap.restore":"Restore purchases"' },
+        { name: 'assets/plugin.js', text: 'registerPlugin("NativePurchases",{web:()=>0})' },
+        { name: 'assets/buy.js', text: 'await e.purchaseProduct({productIdentifier:t})' },
+        { name: 'assets/restore.js', text: 'e.restorePurchases()' },
+        { name: 'assets/id.js', text: 'const p="net.jonathas.weightogo.removeads"' },
+        { name: 'privacy.html', text: '<p>net.jonathas.weightogo.removeads</p>' },
+      ]),
+    ).toEqual(['assets/plugin.js', 'assets/buy.js', 'assets/restore.js', 'assets/id.js']);
   });
 });
 

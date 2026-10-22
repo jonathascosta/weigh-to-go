@@ -1,5 +1,6 @@
 import Capacitor
 import Foundation
+import StoreKit
 
 /// What the ads need to know about this build and this phone, which the AdMob plugin doesn't say
 /// (docs/sprint-4.md, story 1; src/ads/ads.ts):
@@ -7,7 +8,9 @@ import Foundation
 /// - whether the app came from TestFlight (or Xcode), whose App Store receipt is a sandbox one, so
 ///   that the owner's own use shows Google's test ads and never counts as invalid traffic;
 /// - the consent choices Google's message saved on the phone (the IAB's TCF keys), since a refusal
-///   there must mean no ads at all, not Google's limited ads (decision 64).
+///   there must mean no ads at all, not Google's limited ads (decision 64);
+/// - whether this iPhone allows purchases, for Remove ads (story 2): Screen Time's restrictions can
+///   forbid them, and the purchase plugin doesn't say so.
 /// Nothing here leaves the phone.
 @objc(AdSetupPlugin)
 public class AdSetupPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -16,6 +19,7 @@ public class AdSetupPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "build", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "consentChoices", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "canMakePayments", returnType: CAPPluginReturnPromise),
     ]
 
     @objc func build(_ call: CAPPluginCall) {
@@ -66,5 +70,13 @@ public class AdSetupPlugin: CAPPlugin, CAPBridgedPlugin {
             "tcf": defaults.object(forKey: "IABTCF_TCString") != nil
                 || defaults.object(forKey: "IABTCF_PurposeConsents") != nil,
         ])
+    }
+
+    /// StoreKit 2's own answer, read on the phone (iOS 15 and later), on the main actor whatever
+    /// the SDK's annotation of it.
+    @objc func canMakePayments(_ call: CAPPluginCall) {
+        Task { @MainActor in
+            call.resolve(["allowed": AppStore.canMakePayments])
+        }
     }
 }

@@ -11,7 +11,15 @@ import { h } from './dom';
 export const policyHref = (s: Settings): string =>
   s.locale.lang === 'pt' ? '/pt/privacidade.html' : '/privacy.html';
 
-export function mountAbout(container: HTMLElement, inApp: boolean): (s: Settings) => void {
+/**
+ * About, drawn by the returned function. `adsRemoved` says whether Remove ads is held: then the ads
+ * sentence says the ads are gone and nothing goes to Google any more.
+ */
+export function mountAbout(
+  container: HTMLElement,
+  inApp: boolean,
+  adsRemoved: () => boolean = () => false,
+): (s: Settings) => void {
   const title = h('h2', { attrs: { id: 'about-title' } });
   const first = h('p');
   const second = h('p', { attrs: { hidden: !inApp } });
@@ -46,7 +54,7 @@ export function mountAbout(container: HTMLElement, inApp: boolean): (s: Settings
     if (inApp) {
       first.textContent = m['about.app.storage'];
       second.textContent = m['about.app.shared'];
-      ads.textContent = m['about.app.ads'];
+      ads.textContent = adsRemoved() ? m['about.app.adsRemoved'] : m['about.app.ads'];
     } else first.textContent = `${m['home.privacy']} ${m['about.web']}`;
     policy.textContent = m['about.privacy'];
     policy.setAttribute('href', policyHref(s));
