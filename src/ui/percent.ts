@@ -15,6 +15,7 @@ import {
   METHODS,
   MILESTONE_STEP,
   milestones,
+  pastGoal,
   pctKpis,
   SUSTAINABLE_WEEKLY_PCT,
   weeklyPct,
@@ -483,8 +484,9 @@ export function mountPercent(
     if (on('regression') && regFirst !== null && regLast !== null) ys.push(regFirst, regLast);
     if (on('goal') && goal !== null) ys.push(goal);
     const [lo0 = 0, hi0 = 1] = extent(ys);
-    // The next milestone above everything shown, so the reader sees what comes.
-    if (on('milestones')) ys.push((Math.floor(hi0 / MILESTONE_STEP + 1e-9) + 1) * MILESTONE_STEP);
+    // The next milestone above everything shown, so the reader sees what comes (none past the goal).
+    const nextLine = (Math.floor(hi0 / MILESTONE_STEP + 1e-9) + 1) * MILESTONE_STEP;
+    if (on('milestones') && !pastGoal(analysis, profile.goalKg, nextLine)) ys.push(nextLine);
     const [lo = lo0, hi = hi0] = extent(ys);
     const pad = Math.max(0.3, (hi - lo) * 0.05);
     const top = 16;
@@ -517,7 +519,8 @@ export function mountPercent(
 
     if (on('milestones')) {
       for (let v = MILESTONE_STEP; v <= 95; v += MILESTONE_STEP) {
-        if (!inY(v)) continue;
+        // Past the goal and not reached: not a milestone to show (decision 163).
+        if (!inY(v) || pastGoal(analysis, profile.goalKg, v)) continue;
         g.append(svg('line', { class: 'refline dotted', x1: left, x2: width - right, y1: y(v), y2: y(v) }));
         labels.append(
           svg(

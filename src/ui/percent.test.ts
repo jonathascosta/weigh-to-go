@@ -108,7 +108,8 @@ describe('pctKpiList', () => {
 describe('milestoneRows', () => {
   it('lists reached on, still to go, and the day each projection gets there', () => {
     const rows = milestoneRows(a, 82, en);
-    expect(rows.map((r) => r.name)).toEqual(['5%', '10%', '15%', 'Goal (18.0%)', '20%', '25%']);
+    // The goal ahead ends the table: nothing past it.
+    expect(rows.map((r) => r.name)).toEqual(['5%', '10%', '15%', 'Goal (18.0%)']);
     expect(rows[0]).toMatchObject({
       target: '209.4 lb',
       status: { reached: { long: 'Sep 26, 2026', short: '09/26/2026' } },
@@ -117,6 +118,16 @@ describe('milestoneRows', () => {
     expect(rows[1]!.status).toEqual({ toGo: '9.3 lb' });
     expect(rows[1]!.by.linear).toEqual({ long: 'Oct 21, 2026', short: '10/21/2026' });
     expect(rows[3]!.goal).toBe(true);
+  });
+
+  it('ends on the goal in Portuguese too, and lists as before without a goal', () => {
+    expect(milestoneRows(a, 82, pt).map((r) => [r.name, r.target])).toEqual([
+      ['5%', '95,0 kg'],
+      ['10%', '90,0 kg'],
+      ['15%', '85,0 kg'],
+      ['Meta (18,0%)', '82,0 kg'],
+    ]);
+    expect(milestoneRows(a, null, pt).map((r) => r.name)).toEqual(['5%', '10%', '15%']);
   });
 
   it('says never for a projection going the wrong way, and nothing without a model', () => {

@@ -3232,6 +3232,13 @@ span.cal-none {
     display: inline;
   }
 
+  /* The goal's name as bold text in its colour: the pill's border and padding would widen the
+     Day column past the four that fit at 320 px with text at 150%. */
+  .sim-table .badge-goal {
+    padding: 0;
+    border: 0;
+  }
+
   /* A figure's name and its value share the row evenly. */
   .rows {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
@@ -3575,6 +3582,24 @@ svg.go {
   font-weight: 600;
   color: var(--up);
   white-space: nowrap;
+}
+
+/* The simulator's last row when it reaches the goal: its name under the day, the row in bold. */
+.badge-goal {
+  /* Under the day, on the cell's side (right on the one page, left on a phone). */
+  margin: 2px 0 0;
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.sim-goal-dot {
+  fill: var(--ok);
+  stroke: var(--panel);
+  stroke-width: 1.5px;
+}
+
+.sim-goal > * {
+  font-weight: 600;
 }
 
 .button-wide {

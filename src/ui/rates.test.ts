@@ -90,7 +90,85 @@ describe('simView', () => {
       lossTotal: '1,00 kg',
       pct: '1,00%',
       pctShort: '1,0%',
+      goal: null,
     });
+  });
+
+  it('stops the rows at the goal: the days above it, then the goal day at its weight', () => {
+    // A made-up run: 106 kg at 0.332% a day, to a goal of 77.7 kg, from the last weigh-in.
+    const v = simView({ rate: 0.332, start: 106, target: null }, a, 77.7, pt);
+    expect(v.rows.map((r) => r.day)).toEqual([
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '14',
+      '21',
+      '30',
+      '60',
+      '90',
+      '93',
+      '94',
+    ]);
+    // The lowest weight still above the goal, just before it.
+    expect(v.rows[12]).toMatchObject({ day: '93', weight: '77,80 kg', goal: null });
+    expect(v.rows.filter((r) => r.goal !== null)).toHaveLength(1);
+    expect(v.rows[v.rows.length - 1]).toMatchObject({
+      day: '94',
+      date: '02/01/2027',
+      weight: '77,70 kg',
+      // Reached partway through the day: no day's loss to give.
+      lossDay: '—',
+      lossTotal: '28,30 kg',
+      pct: '26,70%',
+      goal: 'Meta',
+    });
+    expect(v.rows.slice(0, -1).every((r) => r.goal === null)).toBe(true);
+    // Its day as the summary counts it; nothing said of a year, past it (day 90 comes before).
+    expect(v.summary).toBe(
+      '**0,332% ao dia** equivale a 2,30% por semana e 9,5% em 30 dias. No primeiro dia são 0,352 kg; depois de 90 dias, a mesma taxa representa 0,262 kg por dia. Chegaria à meta de 77,7 kg em 94 dias (2 de jan. de 2027).',
+    );
+    const en = resolveSettings(['en-GB'], none);
+    const typed = simView({ rate: 0.332, start: 106, target: 77.7 }, a, null, en);
+    expect(typed.rows[typed.rows.length - 1]).toMatchObject({
+      day: '94',
+      weight: '77.70 kg',
+      goal: 'Target',
+    });
+    expect(typed.summary).toMatch(
+      /^\*\*0\.332% a day\*\* is 2\.30% a week and 9\.5% in 30 days\. On the first day that is 0\.352 kg; after 90 days the same rate means 0\.262 kg a day\. It would reach the target/,
+    );
+  });
+
+  it('lists the goal day once, and no day that shows as the goal’s weight above it', () => {
+    // Exactly day 30 at 1% a day: the listed day is the goal's row.
+    const exact = simView({ rate: 1, start: 100, target: 100 * 0.99 ** 30 }, a, null, pt);
+    expect(exact.rows.map((r) => [r.day, r.goal])).toEqual([
+      ...['1', '2', '3', '4', '5', '6', '7', '14', '21', '29'].map((d) => [d, null]),
+      ['30', 'Alvo'],
+    ]);
+    // Day 30 (the day before the goal, day 31) is 73.97003 kg, just above 73.966 but shown as
+    // 73,97 kg like it: left out.
+    const near = simView({ rate: 1, start: 100, target: 73.966 }, a, null, pt);
+    expect(near.rows.map((r) => r.day).slice(-2)).toEqual(['21', '31']);
+    expect(near.rows[near.rows.length - 1]!.weight).toBe('73,97 kg');
+    // With a short way to go, the summary keeps to the first day.
+    expect(simView({ rate: 1, start: 100, target: 98 }, a, null, en).summary).toMatch(
+      /^On the first day, \*\*1\.000% a day\*\* is [\d.]+ lb\. It would reach the target of [\d.]+ lb in 3 days/,
+    );
+  });
+
+  it('lists every day as before with no target, or one at or above the start', () => {
+    const plain = simView({ rate: 1, start: 100, target: null }, a, null, pt).rows;
+    expect(plain).toHaveLength(14);
+    expect(plain.every((r) => r.goal === null)).toBe(true);
+    expect(simView({ rate: 1, start: 100, target: 120 }, a, 90, pt).rows).toEqual(plain);
+    expect(simView({ rate: 1, start: 100, target: 100 }, a, null, pt).rows).toEqual(plain);
+    // The profile's goal at or above the start leaves the rows alone too.
+    expect(simView({ rate: 1, start: 100, target: null }, a, 100, pt).rows).toEqual(plain);
   });
 
   it('reaches the target typed, or else the goal', () => {
