@@ -152,6 +152,9 @@ to rename.
    feels wrong; each report becomes a story here, one pull request each. Expect two or three rounds
    (Arrows had one after every build).
 
+8. **Dynamic Type.** The app's text follows the iPhone's text size, capped at 34 px (decision 54),
+   and the fit test runs on the app's pages at that cap too (decision 114, issue #59).
+
 ## Not in this sprint
 
 Ads and the purchase, the listing and the review (Sprint 4); Health data beyond weight (Sprint 5);

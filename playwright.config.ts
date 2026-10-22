@@ -33,6 +33,9 @@ const PHONE_ONLY = ['phone.spec.ts', 'fit.spec.ts'];
 const DESKTOP_ONLY = ['app.spec.ts', 'deploy.spec.ts', 'offline.spec.ts', 'update.spec.ts'];
 
 const ios = existsSync('dist-ios/index.html') || Boolean(process.env.CI);
+// Said once, by the runner (its workers load this file too).
+if (!ios && process.env.TEST_WORKER_INDEX === undefined)
+  console.log("The ios project is left out: build the iPhone app's pages with npm run build:ios.");
 
 export default defineConfig({
   testDir: 'e2e',

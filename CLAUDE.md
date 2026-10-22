@@ -68,9 +68,9 @@ of the owner's.
    links the issue) without another round.
 
 5. **Open a pull request**, with the timings and the review table in its description, and, when
-   what people see changed, the before and after screenshots that checklist asks for. Merge it
-   only if the owner has said that pull requests go in automatically; otherwise wait for the
-   owner's approval on each pull request.
+   what people see changed, the before and after screenshots the project's UX checklist asks for.
+   Merge it only if the owner has said that pull requests go in automatically; otherwise wait for
+   the owner's approval on each pull request.
 
    In this project, pull requests go in automatically (the owner's call, 19 October 2026): merge
    each one as soon as its CI passes, then go straight on to the next story of the sprint.

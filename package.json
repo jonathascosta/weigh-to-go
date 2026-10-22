@@ -14,7 +14,7 @@
     "check": "tsc -b",
     "lint": "eslint . && prettier --check .",
     "check:dist": "node scripts/check-dist.mjs",
-    "e2e": "npm run build && playwright test",
+    "e2e": "npm run build && npm run build:ios && playwright test",
     "icons": "node scripts/icons.mjs",
     "lighthouse": "npm ci --prefix tools/lhci && npm run lighthouse:mobile && npm run lighthouse:desktop",
     "lighthouse:mobile": "tools/lhci/node_modules/.bin/lhci autorun --upload.outputDir=lighthouse-report/mobile",

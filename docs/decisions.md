@@ -604,32 +604,43 @@ Choices made while building story 7, open to the owner under decision 9.
      not by tags: each file fits one profile, axe fits both. _Alternative:_ every spec in both
      projects, skipping inside (slower, and most flows would skip).
 113. **What the fit test counts as fitting** (`e2e/fit.spec.ts`), at 320 × 568 and 390 × 844, text
-     100% and 150%, English and Portuguese: the page no wider than the width asked for; no element
-     past the screen's edges; no element whose content is wider than its box, nor cut in height by
-     `overflow: hidden`; every control a finger reaches at least 44 × 44 px. The exceptions, each
-     measured rather than skipped where it can be: a link inside a sentence needs 24 px of height
-     (WCAG 2.5.8, as principles 3 says); a control whose `::after` covers a positioned box (a card's
-     head) is measured by that box; a switch or a box inside its label by the label; half a pixel of
-     rounding; screen-reader text (the class, or a 1 px box that clips, as the date's label over its
-     chip) is left out; a tab's icon may hold more than its box, as the dot for a backup due sits
-     over its corner on purpose, inside the link (story 6's `span.tab-icon` finding: not a real
-     overflow, nothing is cut). Focus never hidden: tabbing through each view in Portuguese at 320
-     px and 150%, no focused control overlaps the tab bar, except a box taller than the room above
-     it (a table's region), whose top must clear it. The targets are measured before any screenshot
-     and the test takes none. _Alternative:_ a CSS change that keeps the dot inside its icon's box.
-114. **The app's 34 px text cap is not in the fit test yet.** Decision 54's Dynamic Type isn't built
-     (no story builds it), so the app's text never reaches the cap today. A trial run of the `ios`
-     project at 34 px (212.5%) found what that story will have to fix: weights with their unit in
-     the tables' cells, the log's day headings in Portuguese and the column headings wider than
-     their cells, and the simulator's fields pushing their unit past the screen at 320 px. Proposed:
-     a Sprint 3 story that builds Dynamic Type with the cap and adds it to the `ios` fit run.
+     100% and 150%, English and Portuguese, light, with one more pass in dark at 320 px and 150% (a
+     theme changes colours, not boxes; axe checks dark's contrast on every screen): the page no
+     wider than the width asked for; no element past the screen's edges; no element whose content
+     is wider than its box, nor cut in height by `overflow: hidden`; no word broken across lines in
+     a heading, label, button or link (a word with a hyphen, a slash or a dash may break there);
+     every control a finger reaches at least 44 × 44 px. A `display: contents` box (Today's notices,
+     the options in place) is looked through, not skipped. The exceptions, each measured rather than
+     skipped where it can be: a link inside a sentence, laid out as text (`inline`, or
+     `inline-block` for its padding), needs 24 px of height (WCAG 2.5.8, as principles 3 says); a
+     control whose `::after` covers its containing block (the nearest positioned box: a card's
+     head, the brand) is measured by that box; a switch or a box inside its label by the label; half
+     a pixel of rounding; screen-reader text (the class, or a 1 px box that clips, as the date's
+     label over its chip) is left out; a tab's icon may hold more than its box, as the dot for a
+     backup due sits over its corner on purpose, inside the link (story 6's `span.tab-icon`
+     finding: not a real overflow, nothing is cut). The screens include the notices (the diary kept
+     in memory, and the reload notice on Today and Your data). Focus never hidden: tabbing through
+     each view in Portuguese at 320 px and 150%, no focused control overlaps the tab bar, except a
+     box taller than the room above it (a table's region), whose top must clear it. Today's first
+     screen, in both languages: the field and Save on it at 375 × 667, 390 × 844 and 430 × 932, in
+     view after focusing at 844 × 390, and Save at most one screen away at 320 × 568 with text at
+     150%. The targets are measured before any screenshot and the test takes none. _Alternative:_ a
+     CSS change that keeps the dot inside its icon's box; every pass in both themes.
+114. **The app's 34 px text cap is not in the fit test yet** (issue
+     [#59](https://github.com/jonathascosta/weigh-to-go/issues/59)). Decision 54's Dynamic Type
+     isn't built, so the app's text never reaches the cap today. A trial run of the `ios` project
+     at 34 px (212.5%) found what that story will have to fix: weights with their unit in the
+     tables' cells, the log's day headings in Portuguese and the column headings wider than their
+     cells, and the simulator's fields pushing their unit past the screen at 320 px. Sprint 3 lists
+     it as a story of its own (`docs/sprint-3.md`, 8), which adds the cap to the `ios` fit run.
      _Alternative:_ fix those layouts now, before anything sets that size.
-115. **What the gates found, fixed here**: the brand's link was 32 px tall (44 px under a finger now,
-     its margins taking back the 12 px so the header keeps its height); the skip link 40 px (44 px);
-     the missing page's link inside its sentence 20 px (26 px, as the reminder's); and the compound
-     rate simulator's % column ("30.59%", which can't break) ran 8 px past its card at 320 px with
-     text at 150% (the column takes 30% of a phone's table). axe found nothing.
-     _Alternative:_ the simulator's percentages to one decimal on a phone.
+115. **What the gates found, fixed here**: the brand's link was 32 px tall (under a finger a box laid
+     over it, 6 px above and below, makes it 44 px without changing the header's layout); the skip
+     link 40 px (44 px, and at least 12 rem wide, so the brand doesn't show beside it); the missing
+     page's link inside its sentence 20 px (26 px, as the reminder's); the footer's "Privacy" 41 px
+     wide (44 px); the compound rate simulator's % ("30.59%", which can't break) ran 8 px past its
+     card at 320 px with text at 150%. axe found nothing. _Alternative:_ the simulator's % column
+     at a fixed 30% (tried first: it broke "Weight" in two).
 116. **Lighthouse: the mobile run, and a desktop run beside it.** The existing run was already
      Lighthouse's default, mobile (a 412 × 823 phone, a slow 4G network and a 4× slower CPU),
      three times a page; it stays as it was, the mobile run (`npm run lighthouse:mobile`, reports in
@@ -639,16 +650,31 @@ Choices made while building story 7, open to the owner under decision 9.
      warning as performance always was: the empty diary's layout shifts by 0.48 when the read
      finishes and the intro and the empty cards come back above the views drawn for loading. A
      trial that kept the intro while loading halved the shift for a new diary but doubled it for a
-     diary with weigh-ins, so it is left as an issue for a loading layout of its own. No threshold
-     changes. _Alternative:_ replace the run with the desktop preset; or three desktop runs a page.
+     diary with weigh-ins, so it is left to issue
+     [#58](https://github.com/jonathascosta/weigh-to-go/issues/58), a loading layout of its own. No
+     threshold changes. _Alternative:_ replace the run with the desktop preset; or three desktop
+     runs a page.
 117. **axe on both projects, every view and sheet**: on a phone the four views (Analysis with every
      card open) and the eight sheets (Layers, the compound rate's options, a day, Erase, Sections,
      Goal, Height, Paste); on the desktop the one page with every card open and the four that are
-     sheets there (a day, Erase, Goal, Height); the empty diary, and the static pages, light and
-     dark. The phone's axe runs at the project's 390 × 844 instead of 360 × 780; the narrowest
-     width is the fit test's. _Alternative:_ axe at 320 px too.
+     sheets there (a day, Erase, Goal, Height); the diary in English and Portuguese, the empty
+     diary, and the static pages, light and dark. The phone's axe runs at the project's 390 × 844
+     instead of 360 × 780; the narrowest width is the fit test's. _Alternative:_ axe at 320 px too.
 118. **DaVinci reviews with the checklist**: `CLAUDE.md` (step 4) and `.claude/agents/davinci.md`
      say DaVinci goes through `docs/ux/principles.md` with its "How to review", and step 5 that the
-     pull request of a change people see carries its before and after screenshots.
-     `scripts/ux-shots.mjs` writes to `ux-shots/` by default, which Git ignores. _Alternative:_ keep
-     the screenshots in a temporary folder.
+     pull request of a change people see carries the before and after screenshots the project's
+     UX checklist asks for. `scripts/ux-shots.mjs` writes to `ux-shots/` by default, which Git
+     ignores; reviewers give it a scratch folder. `npm run e2e` builds the iPhone app's pages too,
+     and a run without them says the `ios` project is left out. _Alternative:_ keep the
+     screenshots in a temporary folder.
+119. **The phone's tables keep words whole** (the fit test's broken-word check): on a phone they lay
+     out by their content (`table-layout: auto`, as on the desktop) instead of fixed shares that
+     broke headings mid-word ("climb / ing", "Weigh / t", "% acumu / lado"), with 3 px of padding
+     a side instead of 4. For that to fit at 320 px with text at 150%: the simulator's % has one
+     decimal on a phone ("30.6%", two on the one page); its Portuguese heading is "% total" (was "%
+     acumulado"); the weekly table's headings are "Week" / "Semana" (was "Week (from Monday)" /
+     "Semana (a partir de segunda)", which the card's note already says) and "Change" / "Variação"
+     (was "vs. previous" / "vs. anterior"); and on a phone the bars' column has no visible heading
+     ("Range" / "Faixa" stays for screen readers; the note says what the bar shows). Proposed
+     wording. _Alternative:_ `hyphens: auto` with fixed columns, which Safari hyphenates only where
+     its dictionary allows and Chromium on Linux not at all.
