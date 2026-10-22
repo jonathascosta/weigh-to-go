@@ -29,6 +29,8 @@ de consentimento.
      ela muda o `name.txt` em `ios/App/fastlane/metadata/en-US` e `pt-BR`, o subtítulo em inglês
      para "See the real trend" (o atual repetiria "Weight Diary") e o teste da listagem (decisão
      164).
+     **Feito em 22 de outubro de 2026:** você criou o app como **Weigh to Go: Weight Diary**; a
+     listagem leva esse nome e o subtítulo em inglês "See the real trend" (decisão 175).
    - App Information: categoria Health & Fitness (Saúde e fitness). Em Pricing and Availability,
      desligue a disponibilidade do app em Macs com Apple silicon: o app Saúde não existe lá.
 2. **O acordo de apps pagos.** Em Business (Agreements, Tax and Banking), aceite o Paid Applications

@@ -1290,3 +1290,15 @@ Choices made while preparing the first submission, open to the owner under decis
      used as its guidelines say; the owner may add it later as a file of the site. The link goes to
      `https://apps.apple.com/app/id…`, which App Store pages answer in every storefront. The
      jonathas.net card and article are in another repository, the owner's step 12.
+
+## 22 October 2026 · The App Store name
+
+175. **The app is "Weigh to Go: Weight Diary" on the App Store** (the owner, 22 October 2026). The
+     owner registered the App ID and created the app in App Store Connect with decision 164's
+     fallback name, the same in both languages. The listing's `name.txt` (en-US and pt-BR) carries
+     it, the English subtitle becomes "See the real trend" (the old one, "Weight diary: the real
+     trend", would repeat it; the Portuguese one stays), and the listing test checks the name and
+     that no word of it is repeated in either subtitle or the keywords. The name under the icon on
+     the home screen (`CFBundleDisplayName`) stays "Weigh to Go", and the app calls itself that
+     everywhere: the store name only adds what it is. _Alternative:_ the home-screen name too,
+     which would be cut off under the icon.

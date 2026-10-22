@@ -27,6 +27,8 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
      characters, the same in both languages), and tell a session: it changes `name.txt` in
      `ios/App/fastlane/metadata/en-US` and `pt-BR`, the English subtitle to "See the real trend"
      (the current one would repeat "Weight Diary"), and the listing's test (decision 164).
+     **Done 22 October 2026:** the owner created the app as **Weigh to Go: Weight Diary**; the
+     listing carries that name and the English subtitle "See the real trend" (decision 175).
    - App Information: category Health & Fitness. In Pricing and Availability, turn off the app's
      availability on Mac computers with Apple silicon: Apple Health isn't there.
 2. **The agreement for paid apps.** In Business (Agreements, Tax and Banking), accept the Paid
