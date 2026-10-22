@@ -1333,3 +1333,14 @@ Choices made while preparing the first submission, open to the owner under decis
      and the EEA safeguard from the 4th day. The privacy policy and the app's strings never named
      the days, so they are unchanged. This changes decision 31 (O14). _Alternative:_ the previous
      7 days.
+
+## 22 October 2026 · The privacy policy and Google's data disclosure
+
+178. **The privacy policy names the app interactions Google's SDK collects.** The owner pasted
+     Google's "data disclosure" page for the iOS Mobile Ads SDK (STORE.md, step 9). It lists IP
+     address (coarse location), crash logs, performance data, a device ID, advertising data and
+     "other user product interactions like app launch taps". The policy already named all but the
+     last; `privacy.ads.collects` (EN and PT, in the app and on both policy pages) now adds "other
+     use of the app such as when it is opened and tapped". The policy's date stays 22 October 2026,
+     the day of the change. The App Privacy answers in step 9 follow the same list.
+
