@@ -1,6 +1,7 @@
-# Signs the iOS app for the App Store and uploads it to TestFlight. Run by the
-# TestFlight workflow (.github/workflows/testflight.yml) from ios/App,
-# after the web build has been copied in (`cap sync ios`). Everything secret comes
+# Two lanes, run from ios/App. `beta` signs the iOS app for the App Store and uploads it to
+# TestFlight (the TestFlight workflow, .github/workflows/testflight.yml), after the web build has
+# been copied in (`cap sync ios`). `listing` sends the store listing's text and screenshots (the
+# App Store listing workflow, .github/workflows/app-store-listing.yml). Everything secret comes
 # from the environment; docs/STORE.md (step 3) lists it.
 
 require "base64"
@@ -12,6 +13,8 @@ APP_ID = "net.jonathas.weightogo"
 # Google's test AdMob app, until the owner's is set (ADMOB_APP_ID, docs/STORE.md step 6). The
 # workflow refuses an App Store build without the owner's ids.
 TEST_ADMOB_APP_ID = "ca-app-pub-3940256099942544~1458002511"
+# The screenshot folders: the listing's two languages, and the purchase's review screenshot.
+LISTING_SCREENSHOT_FOLDERS = ["en-US", "pt-BR", "review"].freeze
 
 platform :ios do
   desc "Build, sign and upload a build to TestFlight"
@@ -83,5 +86,44 @@ platform :ios do
 
     upload_to_testflight(api_key: api_key, skip_waiting_for_build_processing: true)
     UI.success("Uploaded build #{build_number} to TestFlight")
+  end
+
+  # Run by the App Store listing workflow (.github/workflows/app-store-listing.yml) from ios/App:
+  # the text in fastlane/metadata and the screenshots in fastlane/screenshots
+  # (`npm run store:screenshots`), in English and Brazilian Portuguese (docs/STORE.md, step 8).
+  desc "Upload the store listing, its text and screenshots, without a build or a submission"
+  lane :listing do
+    # Only the listing's languages are sent: screenshots/review holds the in-app purchase's review
+    # screenshot (docs/STORE.md, step 5), which App Store Connect takes by hand, and deliver would
+    # refuse it as a language. Any other folder is a mistake, stopped here. (The Fastfile's own
+    # code runs in fastlane/, its actions in ios/App.)
+    folders = Dir.children("screenshots").select { |name| File.directory?(File.join("screenshots", name)) }
+    unless folders.sort == LISTING_SCREENSHOT_FOLDERS
+      UI.user_error!("Unexpected folders in fastlane/screenshots: #{folders.sort.join(", ")}")
+    end
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("APP_STORE_CONNECT_API_KEY_ID"),
+      issuer_id: ENV.fetch("APP_STORE_CONNECT_API_ISSUER_ID"),
+      key_content: ENV.fetch("APP_STORE_CONNECT_API_KEY_P8"),
+      is_key_content_base64: true
+    )
+    deliver(
+      api_key: api_key,
+      app_identifier: APP_ID,
+      platform: "ios",
+      metadata_path: "./fastlane/metadata",
+      screenshots_path: "./fastlane/screenshots",
+      # The review folder, checked above, is left out rather than refused.
+      ignore_language_directory_validation: true,
+      overwrite_screenshots: true,
+      skip_binary_upload: true,
+      skip_app_version_update: true,
+      # Nobody is there to confirm the HTML preview, and nothing goes to review from here.
+      force: true,
+      submit_for_review: false,
+      automatic_release: false,
+      run_precheck_before_submit: false
+    )
+    UI.success("Uploaded the listing's text and screenshots; nothing was submitted for review")
   end
 end

@@ -263,11 +263,16 @@ export function mountData(boxes: DataBoxes, app: App): (state: State, s: Setting
   const offerImport = (parsed: Extract<ParsedBackup, { ok: true }>) => {
     const s = settings();
     const m = s.messages;
-    const merge = h('button', { class: 'button', attrs: { type: 'button' }, text: m['data.merge'] });
+    // `data-import` names each way for scripts (the store's screenshots), whatever the language.
+    const merge = h('button', {
+      class: 'button',
+      attrs: { type: 'button', 'data-import': 'merge' },
+      text: m['data.merge'],
+    });
     const cancel = cancelButton();
     const replace = h('button', {
       class: 'button button-ghost',
-      attrs: { type: 'button' },
+      attrs: { type: 'button', 'data-import': 'replace' },
       text: m['data.replace'],
     });
     merge.addEventListener('click', () => {

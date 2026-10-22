@@ -1101,3 +1101,99 @@ the owner under decision 9.
      so they don't change. No goal, or one at or above the first weight, keeps everything as before.
      _Alternative:_ keep the next round milestone past the goal as a stretch target; left out, as
      for the simulator, because it shows a weight past the goal as something to aim for.
+
+## 22 October 2026 · The listing, as built (Sprint 4, story 4)
+
+Choices made while building the App Store listing, open to the owner under decision 9.
+
+164. **The name, "Weigh to Go", checked by the owner, with "Weigh to Go: Weight Diary" behind it.**
+     The session couldn't reach Apple's search (the iTunes Search API was out of its network's
+     reach); a web search found no app named "Weigh to Go", only "Weigh2Go", Cascade's iPad app for
+     industrial scales, which App Store Connect counts as another name. So the check is the owner's,
+     in STORE.md's step 1, where App Store Connect refuses a name in use. The fallback is "Weigh to
+     Go: Weight Diary" (25 characters), the same in both languages as decision 147 asks. With it,
+     the English subtitle "Weight diary: the real trend" would repeat the name, so it becomes "See
+     the real trend"; the Portuguese one, "Diário de peso e tendência", repeats no word of it and
+     stays. If the fallback is needed, both `name.txt` files, the English `subtitle.txt` and the
+     listing's test (which already checks the fallback's subtitles and keywords) change together.
+     _Alternative:_ "Weigh to Go: Weight Tracker" (27); "diary" is the word the app uses for itself.
+165. **The listing's text** lives in `ios/App/fastlane/metadata`, the files `fastlane deliver`
+     reads, and `scripts/listing.test.ts` checks it: name and subtitle at most 30 characters,
+     keywords at most 100 bytes (UTF-8, so the Portuguese accents count twice, stricter than Apple's
+     characters), comma-separated without spaces, each once and none repeating a word of the name or
+     subtitle (App Store search already reads both); promotional text at most 170 characters,
+     description at most 4,000, plain text. The subtitle says what the app is for, "Weight diary:
+     the real trend" and "Diário de peso e tendência". The description, in both languages, names
+     Apple Health (in Portuguese "app Saúde (Apple Health)", as iOS calls it there), calls the
+     projections and the body composition values estimates and not medical advice, says the data
+     stays on the iPhone with no account and no server of ours, and says the ads (one banner, not
+     personalized, none in the first week) and the one-time Remove ads purchase, all things the
+     test looks for. Logging takes "a few taps", not "two" (the field, the digits, Save); the
+     compound daily rate and its simulator have a line of their own. The English is American
+     ("personalized"), as the en-US storefront reads it; the Portuguese is Brazilian, with few
+     articles before possessives ("seu peso"), and turns Health on with "ligar", as the app does.
+     The category is Health & Fitness, with no second one. The support address is the project's
+     issues page until decision 63 is taken; the website is the marketing address; the privacy
+     address is the policy in each language. No release notes: App Store Connect has no "What's
+     New" for a first version, and the test says so until the second. _Alternatives:_ a secondary
+     category (Medical would claim too much; Lifestyle adds nothing); keywords such as "diet", left
+     out as the ads' blocked categories are.
+166. **Six captioned screenshots of a made-up diary, in the free app with no ads.**
+     `npm run store:screenshots` makes, in each language, in this order: Progress (the trend and the
+     projection's whole sentence), Today in the dark theme with this morning's weight typed, the
+     Compound daily rate's simulator at "Use my current rate" down to its summary with the goal's
+     date and the table under it, Body composition (estimates), Your data's iPhone app group from
+     its label (the daily reminder and Apple Health), and Backup from its label (what stays on the
+     iPhone and the copies the person keeps; the group is shorter than the screen, so the first rows
+     of Settings show under it). Each picture is the screen, scaled down whole with rounded corners and no device
+     frame, under a caption of at most two lines in the top 18%, on the app's background (light, or
+     dark for Today) in its views' heading font (Barlow Condensed) and its text colour: 14.7:1 in
+     light, 15.1:1 in dark, and the script stops under 4.5:1 or over two lines. The captions are the
+     listing's words, not the app's, so they live in `scripts/store-captions.json`, in English and
+     Portuguese, and the test checks every screen has one. Each screen is framed by the script, not
+     by hand: as near as it can to the place asked for (a group's label about 12 points under the
+     status bar, from 6 to 36), with what must show wholly above the tab bar and what must not show
+     under it, and it stops unless no line of text, control or chart is cut by the status bar or
+     within 8 points of the tab bar, no paragraph, heading, label or cell starts above the status
+     bar or runs on under the tab bar, and no heading is the last thing on screen; a list row counts
+     by its words, not its padding. Where a frame can't be had, a second one may be named: the
+     Portuguese iPhone app group is too tall for its label and a clean end, so it starts at the
+     reminder's card, the label just under the status bar, and ends on Remove ads' title with its
+     first line.
+     The diary is six months from 106 kg (1.80 m, born 1984, a man), with a last week a little
+     better than the one before, so Today says a small fall; the goal is a round number in the
+     region's unit, 195 lb on the American screens and 88 kg on the Brazilian ones. A few days come
+     from a smart scale through Apple Health, a backup was made three days before, and the page's
+     clock is fixed on Friday 20 November 2026; with animations off, two runs on the same machine
+     and Chromium give the same files (another machine's fonts may move a pixel). No ad shows: the
+     fake bridge answers no ad unit, so nothing of Google's starts, and Remove ads isn't bought,
+     so nothing on screen is the paid app's (About, with the text after a purchase, isn't shown).
+     Chromium is given the iPhone's safe areas (62 points at the top, 34 at the bottom), the app's
+     band fills the top one as on the phone, and the script draws a status bar there (9:41, full
+     signal and battery), in the theme's text colour. Each language's screens come from a browser
+     in that language, so the reminder's time reads "07:30" in Portuguese. The purchase's review
+     screenshot is made as before, and left as committed when nothing in it changed. The preview
+     server uses port 47327, outside the end-to-end tests' range. _Alternatives:_ kilograms on both,
+     left to the region as a person would see it; About as the privacy screen, which showed the
+     paid app's text and ended on Erase everything.
+167. **`fastlane listing` and the App Store listing workflow, as Arrows'.** The lane sends the text
+     and the screenshots with `deliver`: no binary (`skip_binary_upload`), no new or renamed
+     version (`skip_app_version_update`), the existing screenshots replaced, nothing submitted
+     (`submit_for_review: false`, no precheck), and `force` as no one is there to confirm deliver's
+     preview. `automatic_release: false` is kept although, in deliver 2.241.0, it sets the version
+     to "Manually release this version" on every run, over a choice made in App Store Connect: that
+     is the release STORE.md's step 11 wants, after its checks. `screenshots/review` holds the
+     purchase's review screenshot, which deliver would refuse as a language: the lane checks that
+     the folders are exactly `en-US`, `pt-BR` and `review`, then lets deliver skip `review`. The
+     workflow runs by hand only (the test checks its `on:` holds nothing else), on `main`, in the
+     `app-store` environment with only the App Store Connect API key (no new secret), on
+     `ubuntu-24.04`; it first runs the listing's test, then fastlane at the version in
+     `ios/App/Gemfile.lock` (no Mac needed). _Alternative:_ the review screenshot moved out of
+     `screenshots/`, which would change STORE.md's step 5 and decision 144 for no gain.
+168. **Two small changes to the app, found while framing the screenshots.** A card shown with only
+     some of its blocks (Options › Custom) drew an empty band and a rule above its first block,
+     the rule meant to part it from a hidden one: a block is now ruled off only from a block shown
+     before it (`:not([hidden]) ~ .sub`, no `:has()` for Safari 15). So a card's blocks must be hidden
+     with the `hidden` attribute (as `rates.ts` and `percent.ts` do), not with a class or a style,
+     or the next block would lose its rule. The import's two buttons carry
+     `data-import="merge"` and `"replace"`, so scripts find them in either language.

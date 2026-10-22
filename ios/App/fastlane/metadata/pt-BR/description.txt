@@ -1,0 +1,17 @@
+Weigh to Go é um diário de peso que mostra para onde seu peso está indo de verdade. Registre uma pesagem por dia e ele desenha a tendência por trás das oscilações do dia a dia, para que um jantar salgado ou um dia de calor não escondam seu progresso.
+
+• Hoje: registre seu peso em poucos toques, com a média dos últimos 7 dias, a perda total e o ritmo
+• Progresso: seu peso ao longo do tempo, com a média de 7 dias, uma projeção e sua meta
+• Análise: perda em porcentagem, marcos, soluços (os dias em que o peso volta a subir), IMC, médias semanais, dias da semana, variação de um dia para o outro e um calendário
+• Taxa diária composta, com um simulador que para na sua meta
+• Estimativas de composição corporal: gordura corporal, massa magra, água corporal e a energia que você gasta em repouso, calculadas a partir do seu peso, altura, ano de nascimento e sexo com fórmulas publicadas (Deurenberg, Boer, Watson, Mifflin-St Jeor), cada uma com seu erro habitual
+• App Saúde (Apple Health): se você ligar, o app lê seu peso do app Saúde, para que as medições de uma balança inteligente entrem no diário, e salva lá os pesos que você registra aqui
+• Um lembrete diário para se pesar, programado no seu iPhone
+• Backups que ficam com você: exporte e importe um arquivo de backup, ou um CSV para uma planilha
+• Quilos ou libras, português ou inglês, tema claro ou escuro
+
+Seus dados ficam no seu iPhone. Não há conta nem servidor nosso: suas pesagens ficam no app (e no backup do seu iPhone), e no app Saúde só se você ligar. Nós não guardamos nada.
+
+Estimativas, não orientação médica. As projeções prolongam seu ritmo passado, e os valores de composição corporal vêm de fórmulas, não de medições. Nenhum deles é orientação médica; para cuidar da sua saúde, fale com um médico.
+
+Gratuito, com um anúncio em banner do Google AdMob, longe da pesagem e nenhum na primeira semana. Os anúncios não são personalizados e nunca recebem suas pesagens. Remover anúncios é uma compra única que os remove de vez, sem assinatura.

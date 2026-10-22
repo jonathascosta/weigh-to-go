@@ -1,0 +1,1 @@
+emagrecer,balança,IMC,gordura corporal,massa magra,meta,registro,perda,progresso,TMB,kg,média

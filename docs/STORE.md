@@ -18,10 +18,15 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    - First, in developer.apple.com, Certificates, Identifiers & Profiles, Identifiers, +: an App ID,
      explicit, `net.jonathas.weightogo`, with **HealthKit** turned on (In-App Purchase is on by
      default). App Store Connect's New App only offers ids registered there.
-   - Then, in App Store Connect, Apps, +, New App: iOS, the name (at most 30 characters; if "Weigh to
-     Go" is taken, a variant such as "Weigh to Go: Weight Diary", and tell the session, which puts it
-     in the listing), primary language English (U.S.), the bundle id `net.jonathas.weightogo`, SKU
-     `net.jonathas.weightogo`, full access.
+   - Then, in App Store Connect, Apps, +, New App: iOS, the name **Weigh to Go**, primary language
+     English (U.S.), the bundle id `net.jonathas.weightogo`, SKU `net.jonathas.weightogo`, full
+     access. **The name is checked here**: App Store Connect refuses a name another app already
+     uses. A session couldn't search the App Store (22 October 2026: Apple's search was out of the
+     session's reach; a web search found no app of that name, only "Weigh2Go", an iPad app for
+     industrial scales). If it is refused, use the fallback, **Weigh to Go: Weight Diary** (25
+     characters, the same in both languages), and tell a session: it changes `name.txt` in
+     `ios/App/fastlane/metadata/en-US` and `pt-BR`, the English subtitle to "See the real trend"
+     (the current one would repeat "Weight Diary"), and the listing's test (decision 164).
    - App Information: category Health & Fitness. In Pricing and Availability, turn off the app's
      availability on Mac computers with Apple silicon: Apple Health isn't there.
 2. **The agreement for paid apps.** In Business (Agreements, Tax and Banking), accept the Paid
@@ -42,7 +47,7 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
      in base64 (`base64 -w0 dist.p12`); `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD`: its password.
 
    Secrets stay secret in a public repository: the `iOS` workflow that pull requests run uses none,
-   and the TestFlight workflow runs only on `main`, by hand.
+   and the TestFlight and App Store listing workflows run only on `main`, by hand.
 
 4. **The first build.** Once Sprint 3's first story is merged, run the **TestFlight** workflow from
    the Actions tab. A new app has no testers yet: once the build shows in App Store Connect (the
@@ -136,12 +141,37 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
 
    Check that the addresses open.
 
-8. **The listing.** First save the version's App Review Information once in App Store Connect (no
-   sign-in required, the contact, the notes of step 11): without it the listing workflow fails with
-   "No data". Then run the **App Store listing** workflow: it sends the text and screenshots of both
-   languages and submits nothing. Until you decide on a contact and the support pages (decision 63
-   in [decisions.md](decisions.md)), the Support URL in App Information is the project's issues
-   page, <https://github.com/jonathascosta/weigh-to-go/issues>, in both languages.
+8. **The listing.** Its text is in `ios/App/fastlane/metadata` (`en-US` and `pt-BR`: name,
+   subtitle, keywords, description, promotional text, the privacy, support and website addresses;
+   the category, Health & Fitness, and the copyright beside them), and its screenshots in
+   `ios/App/fastlane/screenshots/en-US` and `pt-BR`: six screens of a made-up diary, each under a
+   caption (`scripts/store-captions.json`), at 1290 × 2796, the 6.9-inch iPhone's size, from which
+   App Store Connect makes the smaller ones (decisions 165 and 166). A unit test keeps the text within Apple's limits.
+   - **Read it first**, in both languages, on GitHub: the description and promotional text say what
+     the app does, name Apple Health, call the projections and body composition estimates, not
+     medical advice, say the data stays on the iPhone with no account, and that Remove ads is a
+     one-time purchase. Ask a session for any change;
+     `npm run build:ios && npm run store:screenshots` makes the screenshots again after a screen
+     changes.
+   - Save the version's App Review Information once in App Store Connect (no sign-in required, the
+     contact, the notes of step 11): without it the listing fails with "No data".
+   - Run the **App Store listing** workflow from the Actions tab, on `main`. It needs only the App
+     Store Connect API key of step 3, from the `app-store` environment. It checks the text again,
+     then `fastlane listing` sends the text and screenshots of both languages (adding the
+     Portuguese (Brazil) localisation if it isn't there, and replacing the screenshots already
+     there), with no build, and submits nothing. It also sets the version to **Manually release this
+     version**, on every run, whatever was chosen in App Store Connect: the release is yours, after
+     step 11 (decision 167). From a Mac instead, with the three
+     `APP_STORE_CONNECT_API_KEY_*` values in the environment:
+     `cd ios/App && bundle install && bundle exec fastlane listing`.
+   - Then check App Store Connect: both localisations show the text and six screenshots for the
+     6.9-inch display, the category is Health & Fitness, and nothing is waiting for review. The
+     in-app purchase's review screenshot (step 5) is not part of the listing.
+
+   Until you decide on a contact and the support pages (decision 63 in [decisions.md](decisions.md)),
+   the Support URL is the project's issues page, <https://github.com/jonathascosta/weigh-to-go/issues>,
+   in both languages; the listing sends it.
+
 9. **App Privacy.** First check the privacy policy against Google's data disclosure page
    (<https://developers.google.com/admob/ios/privacy/data-disclosure>): a session can't open it, so
    paste the page into one (or compare it yourself). The policy's "Ads in the app" says the SDK
@@ -163,7 +193,8 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
     - Pick the TestFlight build for the version, after checking it was built from the current `main`
       (Arrows 1.0 was approved with an older build and needed a 1.0.1 at once) and by a run with
       **For the App Store** ticked (the run's page in the Actions tab shows its inputs). Add the
-      in-app purchase to the version.
+      in-app purchase to the version. Leave the release as **Manually release this version** (the
+      listing workflow sets it so anyway): once approved, you release it yourself.
     - **Before the release, check that the app sends Google nothing when it mustn't.** On a TestFlight
       build from a run **for the App Store**, with a network log, see no request to Google
       (`*.google.com`, `*.googleapis.com`, `*.doubleclick.net`, `*.googlesyndication.com`,
@@ -269,7 +300,9 @@ diagnosis or treatment. Fonts and libraries are used under open licences, listed
 - Raise the version in `package.json` and the Xcode project's `MARKETING_VERSION` together (a test
   checks they match); a new minor version asks for a rating again.
 - Create the new version in App Store Connect first: the listing workflow writes to the version
-  being prepared. Update the release notes in both languages.
+  being prepared. From the second version on, add the release notes in both languages
+  (`release_notes.txt` in `ios/App/fastlane/metadata/en-US` and `pt-BR`; the first version has
+  none, and the listing's test says so until then).
 - If a screen in the screenshots changed, run `npm run store:screenshots` and commit them.
 - If what the app does with data changed: the privacy policy (and its date), the privacy manifest,
   and the App Privacy answers, together.
