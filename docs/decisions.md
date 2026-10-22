@@ -591,3 +591,64 @@ Choices made while building story 6, open to the owner under decision 9.
      `:focus-visible`, or on `:focus` where Safari 15.0 to 15.3 lack it. The face is hidden from
      screen readers: the select is named by the label and says its value.
      _Alternative:_ `:has(:focus-visible)`, from iOS 15.4.
+
+## 22 October 2026 · Phone quality gates, as built (Sprint 2, story 7)
+
+Choices made while building story 7, open to the owner under decision 9.
+
+112. **Three Playwright projects** (`playwright.config.ts`): `desktop` at 1280 × 900 with a mouse
+     runs the one page's flows (`app`, `deploy`, `offline`, `update`) and axe; `phone` at 390 × 844
+     (touch, `isMobile`, device scale 3) runs `phone.spec.ts`, `fit.spec.ts` and axe; `ios` is the
+     same phone on the iPhone app's build (`dist-ios/`, its own preview server on port 47326) and
+     runs the fit test only, when `dist-ios/` is built and always in CI. Specs are split by file,
+     not by tags: each file fits one profile, axe fits both. _Alternative:_ every spec in both
+     projects, skipping inside (slower, and most flows would skip).
+113. **What the fit test counts as fitting** (`e2e/fit.spec.ts`), at 320 × 568 and 390 × 844, text
+     100% and 150%, English and Portuguese: the page no wider than the width asked for; no element
+     past the screen's edges; no element whose content is wider than its box, nor cut in height by
+     `overflow: hidden`; every control a finger reaches at least 44 × 44 px. The exceptions, each
+     measured rather than skipped where it can be: a link inside a sentence needs 24 px of height
+     (WCAG 2.5.8, as principles 3 says); a control whose `::after` covers a positioned box (a card's
+     head) is measured by that box; a switch or a box inside its label by the label; half a pixel of
+     rounding; screen-reader text (the class, or a 1 px box that clips, as the date's label over its
+     chip) is left out; a tab's icon may hold more than its box, as the dot for a backup due sits
+     over its corner on purpose, inside the link (story 6's `span.tab-icon` finding: not a real
+     overflow, nothing is cut). Focus never hidden: tabbing through each view in Portuguese at 320
+     px and 150%, no focused control overlaps the tab bar, except a box taller than the room above
+     it (a table's region), whose top must clear it. The targets are measured before any screenshot
+     and the test takes none. _Alternative:_ a CSS change that keeps the dot inside its icon's box.
+114. **The app's 34 px text cap is not in the fit test yet.** Decision 54's Dynamic Type isn't built
+     (no story builds it), so the app's text never reaches the cap today. A trial run of the `ios`
+     project at 34 px (212.5%) found what that story will have to fix: weights with their unit in
+     the tables' cells, the log's day headings in Portuguese and the column headings wider than
+     their cells, and the simulator's fields pushing their unit past the screen at 320 px. Proposed:
+     a Sprint 3 story that builds Dynamic Type with the cap and adds it to the `ios` fit run.
+     _Alternative:_ fix those layouts now, before anything sets that size.
+115. **What the gates found, fixed here**: the brand's link was 32 px tall (44 px under a finger now,
+     its margins taking back the 12 px so the header keeps its height); the skip link 40 px (44 px);
+     the missing page's link inside its sentence 20 px (26 px, as the reminder's); and the compound
+     rate simulator's % column ("30.59%", which can't break) ran 8 px past its card at 320 px with
+     text at 150% (the column takes 30% of a phone's table). axe found nothing.
+     _Alternative:_ the simulator's percentages to one decimal on a phone.
+116. **Lighthouse: the mobile run, and a desktop run beside it.** The existing run was already
+     Lighthouse's default, mobile (a 412 × 823 phone, a slow 4G network and a 4× slower CPU),
+     three times a page; it stays as it was, the mobile run (`npm run lighthouse:mobile`, reports in
+     `lighthouse-report/mobile`), and passes every threshold (performance 94 to 99, the rest 100). A
+     desktop run with the desktop preset follows, once a page to keep the job short
+     (`lighthouse:desktop`), with the same assertions. Its performance is 0.79 on the diary, a
+     warning as performance always was: the empty diary's layout shifts by 0.48 when the read
+     finishes and the intro and the empty cards come back above the views drawn for loading. A
+     trial that kept the intro while loading halved the shift for a new diary but doubled it for a
+     diary with weigh-ins, so it is left as an issue for a loading layout of its own. No threshold
+     changes. _Alternative:_ replace the run with the desktop preset; or three desktop runs a page.
+117. **axe on both projects, every view and sheet**: on a phone the four views (Analysis with every
+     card open) and the eight sheets (Layers, the compound rate's options, a day, Erase, Sections,
+     Goal, Height, Paste); on the desktop the one page with every card open and the four that are
+     sheets there (a day, Erase, Goal, Height); the empty diary, and the static pages, light and
+     dark. The phone's axe runs at the project's 390 × 844 instead of 360 × 780; the narrowest
+     width is the fit test's. _Alternative:_ axe at 320 px too.
+118. **DaVinci reviews with the checklist**: `CLAUDE.md` (step 4) and `.claude/agents/davinci.md`
+     say DaVinci goes through `docs/ux/principles.md` with its "How to review", and step 5 that the
+     pull request of a change people see carries its before and after screenshots.
+     `scripts/ux-shots.mjs` writes to `ux-shots/` by default, which Git ignores. _Alternative:_ keep
+     the screenshots in a temporary folder.

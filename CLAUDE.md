@@ -60,13 +60,15 @@ of the owner's.
    | -------- | ----------------- | -------- | -------------- |
    | P0 to P4 | …                 | Yes / No | …              |
    - **DaVinci** (`.claude/agents/davinci.md`), the user-experience specialist, knows the design
-     (`docs/ux/` once it exists) and reviews every task that changes what people see.
+     (`docs/ux/`) and reviews every task that changes what people see, going through the checklist
+     in `docs/ux/principles.md` ("How to review").
 
    After presenting the table, if any P0, P1 or P2 finding is still unresolved, go back to step 1.
    P3 and P4 findings that don't matter yet may instead be recorded as issues for later (the table
    links the issue) without another round.
 
-5. **Open a pull request**, with the timings and the review table in its description. Merge it
+5. **Open a pull request**, with the timings and the review table in its description, and, when
+   what people see changed, the before and after screenshots that checklist asks for. Merge it
    only if the owner has said that pull requests go in automatically; otherwise wait for the
    owner's approval on each pull request.
 

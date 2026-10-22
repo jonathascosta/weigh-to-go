@@ -61,8 +61,9 @@ in `docs/decisions.md` as open to the owner, who can correct it later (decision 
 
 Read the diff and the pull request, build the branch, and look at every changed screen at the review
 sizes, light and dark, both languages, text at 150%, with touch and with the keyboard.
-Check it against the approved design in `docs/ux/design.md` and against the principles above. Do not
-edit files or push when reviewing. Report every finding in the table `CLAUDE.md` asks for:
+Check it against the approved design in `docs/ux/design.md` and go through the checklist in
+`docs/ux/principles.md`, following its "How to review"; the fit test (`e2e/fit.spec.ts`) and axe
+(`e2e/a11y.spec.ts`) must pass in both Playwright projects. Do not edit files or push when reviewing. Report every finding in the table `CLAUDE.md` asks for:
 
 | Priority | Short description | Resolved | How to resolve |
 | -------- | ----------------- | -------- | -------------- |
