@@ -889,8 +889,10 @@ decisions above.
      after the app's launch check (`xcodebuild test -only-testing:AppStoreKitTests`), so its first
      run is the pull request's. The test repeats the plugin's StoreKit calls in Swift rather than
      calling the plugin; `scripts/purchase.test.ts` covers the plugin itself, from its installed
-     source. _Alternative:_ a Swift package of its own under `ios/`, whose tests
-     would run without a host app, where `SKTestSession` isn't dependable.
+     source. The test run is signed ad hoc ("Sign to Run Locally", no team): its first run, unsigned,
+     failed in all five tests because StoreKit's test daemon refuses a session from an unsigned
+     app (SKInternalErrorDomain Code=3). _Alternative:_ a Swift package of its own under `ios/`,
+     whose tests would run without a host app, where `SKTestSession` isn't dependable.
 144. **The purchase's review screenshot is made here** (Atlas's review): App Store Connect won't
      submit the purchase without one. `npm run store:screenshots` (story 4 adds the listing's to
      it) runs the app's build in Chromium with a stand-in for Capacitor's native bridge whose
