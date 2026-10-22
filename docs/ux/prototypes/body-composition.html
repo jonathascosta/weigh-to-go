@@ -1,0 +1,1622 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Weigh to Go · prototype (body composition estimates)</title>
+    <!--
+  Prototype of docs/ux/body-composition.md. Not shipped. Made-up data only.
+  Built as the product must be: the DOM from nodes (no innerHTML), styles from classes and tokens,
+  positions through the CSSOM. The strings are the spec's proposed keys, in English and Portuguese.
+  One responsive file: tabs below 960 px, one page (two columns) at 960 px and wider.
+  Query parameters set a state for screenshots:
+    view=analysis|data        lang=pt   unit=lb   theme=light|dark   text=150
+    open=0 (the card closed)  about=1 (About the formulas open)   metric=fat|lean|water|bmr
+    profile=full|noyear|nosex|noheight|empty   sex=female
+    sheet=details|year        error=year (the year sheet with a refused year)
+    scrub=<weigh-ins back> (the readout on an earlier day)   shot=1 (the tab bar at the page's end, for full-page shots)
+-->
+    <style>
+      @font-face {
+        font-family: 'Barlow';
+        font-weight: 400;
+        font-display: swap;
+        src: url(fonts/barlow-latin-400-normal.woff2) format('woff2');
+      }
+      @font-face {
+        font-family: 'Barlow';
+        font-weight: 500;
+        font-display: swap;
+        src: url(fonts/barlow-latin-500-normal.woff2) format('woff2');
+      }
+      @font-face {
+        font-family: 'Barlow';
+        font-weight: 600;
+        font-display: swap;
+        src: url(fonts/barlow-latin-600-normal.woff2) format('woff2');
+      }
+      @font-face {
+        font-family: 'Barlow Condensed';
+        font-weight: 500;
+        font-display: swap;
+        src: url(fonts/barlow-condensed-latin-500-normal.woff2) format('woff2');
+      }
+      @font-face {
+        font-family: 'Barlow Condensed';
+        font-weight: 600;
+        font-display: swap;
+        src: url(fonts/barlow-condensed-latin-600-normal.woff2) format('woff2');
+      }
+      /* Today's tokens (src/styles.css), plus the two marked NEW. */
+      :root {
+        --bg: #f2f5f6;
+        --panel: #ffffff;
+        --fg: #1a2227;
+        --muted: #5b6870;
+        --line: #dae1e4;
+        --soft: #e8edef;
+        --accent: #2f6690;
+        --on-accent: #ffffff;
+        --bad: #bf4038;
+        --c-weight: #2f6690;
+        --grid: #e5eaec;
+        --axis: #b6c0c5;
+        --scrim: rgb(20 32 42 / 0.45);
+        /* NEW: the estimate's line, and the band of the formula's usual error. */
+        --c-est: #3b8686;
+        --est-band: rgb(59 134 134 / 0.16);
+        --f-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        --f-num: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+        --r: 10px;
+        --tab-h: 56px;
+        color-scheme: light;
+      }
+      :root.dark {
+        --bg: #0f1417;
+        --panel: #172025;
+        --fg: #e3e9ec;
+        --muted: #92a0a8;
+        --line: #28333a;
+        --soft: #1f292f;
+        --accent: #74aad9;
+        --on-accent: #0f1417;
+        --bad: #ea786e;
+        --c-weight: #74aad9;
+        --grid: #222c32;
+        --axis: #3c484f;
+        --scrim: rgb(0 0 0 / 0.6);
+        --c-est: #6cc0be;
+        --est-band: rgb(108 192 190 / 0.18);
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 1rem/1.4 var(--f-body);
+        padding-bottom: calc(var(--tab-h) + 16px);
+      }
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 12px 12px 0;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin: 8px 4px 2px;
+      }
+      .lede {
+        margin: 0 4px 12px;
+        color: var(--muted);
+        font-size: 0.9375rem;
+      }
+      .grid {
+        display: grid;
+        gap: 12px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        padding: 14px 16px;
+        min-width: 0;
+      }
+      .card-head {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .card-head h2 {
+        margin: 0;
+        font-size: 1.125rem;
+        flex: 1;
+      }
+      .card-head button {
+        all: unset;
+        cursor: pointer;
+      }
+      .card-head button::after {
+        content: '';
+        position: absolute;
+        inset: -14px -16px -40px;
+      }
+      .card-head button:focus-visible::after {
+        outline: 3px solid var(--accent);
+        border-radius: var(--r);
+      }
+      .chev {
+        width: 20px;
+        height: 20px;
+        flex: none;
+        stroke: var(--muted);
+        fill: none;
+        stroke-width: 2;
+        transition: transform 150ms;
+      }
+      .open > .card-head .chev {
+        transform: rotate(180deg);
+      }
+      .sum {
+        margin: 4px 0 0;
+        font-size: 0.9375rem;
+      }
+      .sum b {
+        font-family: var(--f-num);
+        font-size: 1.125rem;
+        font-weight: 600;
+      }
+      .body {
+        margin-top: 12px;
+      }
+      .note {
+        color: var(--muted);
+        font-size: 0.875rem;
+        margin: 0 0 10px;
+      }
+      .honest {
+        margin: 0 0 8px;
+        font-size: 0.875rem;
+        color: var(--muted);
+        border-left: 3px solid var(--c-est);
+        padding-left: 8px;
+      }
+      /* The readout strip, fixed above the plot (design §6). */
+      .strip {
+        min-height: 3.6rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px 16px;
+        align-items: baseline;
+        font-size: 0.875rem;
+        padding: 4px 0;
+      }
+      .strip .day {
+        flex-basis: 100%;
+        color: var(--muted);
+      }
+      .strip b {
+        font-family: var(--f-num);
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+      .strip .sub {
+        color: var(--muted);
+        margin-left: 4px;
+        white-space: nowrap;
+      }
+      .plot {
+        display: block;
+        width: 100%;
+        touch-action: pan-y;
+      }
+      .plot:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+      .plot text {
+        font-size: 0.75rem;
+        fill: var(--muted);
+        font-family: var(--f-body);
+      }
+      .plot .gridline {
+        stroke: var(--grid);
+      }
+      .plot .axis {
+        stroke: var(--axis);
+      }
+      .plot .band {
+        fill: var(--est-band);
+      }
+      .plot .line {
+        fill: none;
+        stroke: var(--c-est);
+        stroke-width: 2;
+      }
+      .plot .cursor {
+        stroke: var(--muted);
+        stroke-dasharray: 3 3;
+      }
+      .plot .dot {
+        fill: var(--c-est);
+        stroke: var(--panel);
+        stroke-width: 2;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 16px;
+        font-size: 0.8125rem;
+        color: var(--muted);
+        margin: 4px 0 8px;
+        padding: 0;
+        list-style: none;
+      }
+      .legend span {
+        display: inline-block;
+        width: 18px;
+        height: 10px;
+        margin-right: 6px;
+        vertical-align: middle;
+        border-radius: 2px;
+      }
+      .sw-line {
+        background: var(--c-est);
+        height: 3px !important;
+      }
+      .sw-band {
+        background: var(--est-band);
+        outline: 1px solid var(--c-est);
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 4px 0 12px;
+      }
+      .chip {
+        min-height: 44px;
+        flex: 1 1 auto;
+        padding: 4px 10px;
+        border-radius: 8px;
+        line-height: 1.15;
+        border: 1px solid var(--axis);
+        background: var(--panel);
+        color: var(--fg);
+        font: 500 0.9375rem var(--f-body);
+      }
+      .chip[aria-pressed='true'] {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-color: var(--accent);
+      }
+      dl.rows {
+        margin: 0;
+      }
+      dl.rows > div {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        column-gap: 12px;
+        border-top: 1px solid var(--line);
+        padding: 8px 0;
+      }
+      dl.rows dt {
+        font-size: 0.9375rem;
+        font-weight: 600;
+      }
+      dl.rows dd {
+        margin: 0;
+        display: contents;
+      }
+      dl.rows dd b {
+        font-family: var(--f-num);
+        font-size: 1.375rem;
+        font-weight: 600;
+      }
+      dl.rows .rows-sub {
+        flex-basis: 100%;
+      }
+      .rows-sub {
+        display: block;
+        color: var(--muted);
+        font-size: 0.8125rem;
+      }
+      .tools {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .button {
+        min-height: 44px;
+        padding: 0 16px;
+        border-radius: 8px;
+        border: 1px solid var(--accent);
+        background: var(--panel);
+        color: var(--accent);
+        font: 600 0.9375rem var(--f-body);
+        cursor: pointer;
+      }
+      .button.primary {
+        background: var(--accent);
+        color: var(--on-accent);
+      }
+      .button:focus-visible,
+      .chip:focus-visible,
+      .row:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .about {
+        margin-top: 12px;
+        border-top: 1px solid var(--line);
+      }
+      .about-toggle {
+        all: unset;
+        display: flex;
+        width: 100%;
+        min-height: 48px;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        color: var(--accent);
+        cursor: pointer;
+      }
+      .about-toggle span {
+        flex: 1;
+      }
+      .about-toggle .chev {
+        stroke: var(--accent);
+      }
+      .about-toggle[aria-expanded='true'] .chev {
+        transform: rotate(180deg);
+      }
+      .about-toggle:focus-visible {
+        outline: 3px solid var(--accent);
+      }
+      .about-body p {
+        margin: 0 0 10px;
+        font-size: 0.9375rem;
+        max-width: 70ch;
+      }
+      .missing {
+        list-style: none;
+        margin: 0 0 4px;
+        padding: 0;
+        border-top: 1px solid var(--line);
+      }
+      .missing li {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+        flex-wrap: wrap;
+      }
+      .missing .unset {
+        color: var(--muted);
+      }
+      .closed-stub .sum {
+        color: var(--fg);
+      }
+      /* Your data › Settings. */
+      .group-title {
+        margin: 18px 4px 8px;
+        font-size: 1.125rem;
+      }
+      .group {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        overflow: hidden;
+      }
+      .row {
+        all: unset;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        min-height: 52px;
+        padding: 8px 16px;
+        border-bottom: 1px solid var(--line);
+        cursor: pointer;
+        position: relative;
+      }
+      .row:last-child {
+        border-bottom: 0;
+      }
+      .row .grow {
+        flex: 1;
+        min-width: 0;
+      }
+      .row .val {
+        color: var(--muted);
+        text-align: right;
+      }
+      .row .row-sub {
+        display: block;
+        color: var(--muted);
+        font-size: 0.8125rem;
+      }
+      .row select {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        width: 100%;
+        font-size: 16px;
+      }
+      .row.new {
+        background: var(--soft);
+      }
+      .group-note {
+        margin: 8px 4px 0;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      /* The sheet (a div with role=dialog, not <dialog>: Safari 15.0). */
+      .scrim {
+        position: fixed;
+        inset: 0;
+        background: var(--scrim);
+        z-index: 10;
+      }
+      .sheet {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        max-height: 92svh;
+        overflow: auto;
+        background: var(--panel);
+        border-radius: 16px 16px 0 0;
+        padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+        z-index: 11;
+      }
+      .sheet:focus {
+        outline: none;
+      }
+      .grab {
+        width: 40px;
+        height: 5px;
+        border-radius: 3px;
+        background: var(--axis);
+        margin: 0 auto 8px;
+      }
+      .sheet-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .sheet-head h2 {
+        flex: 1;
+        margin: 0;
+        font-size: 1.125rem;
+      }
+      .done {
+        all: unset;
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0 8px;
+        color: var(--accent);
+        font-weight: 600;
+        text-align: center;
+        cursor: pointer;
+      }
+      .field {
+        margin-bottom: 14px;
+      }
+      .field label,
+      legend {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 4px;
+        padding: 0;
+      }
+      .with-unit {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      input[type='text'] {
+        font: 16px var(--f-body);
+        font-size: max(16px, 1rem);
+        min-height: 44px;
+        width: 9rem;
+        max-width: 100%;
+        padding: 0 10px;
+        border: 1px solid var(--axis);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--fg);
+      }
+      input[aria-invalid='true'] {
+        border-color: var(--bad);
+        border-width: 2px;
+      }
+      .help {
+        color: var(--muted);
+        font-size: 0.875rem;
+        margin: 4px 0 0;
+      }
+      fieldset {
+        border: 0;
+        margin: 0 0 14px;
+        padding: 0;
+        min-width: 0;
+      }
+      .radios {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+      }
+      .radio {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 0 14px;
+        border: 1px solid var(--axis);
+        border-radius: 22px;
+        cursor: pointer;
+      }
+      .radio input {
+        width: 20px;
+        height: 20px;
+        margin: 0;
+        accent-color: var(--accent);
+      }
+      .status {
+        margin: 10px 0 0;
+        font-size: 0.9375rem;
+      }
+      .status.bad {
+        color: var(--bad);
+      }
+      .tabs {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        background: var(--panel);
+        border-top: 1px solid var(--line);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        z-index: 5;
+      }
+      .tabs a {
+        flex: 1;
+        min-height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.8125rem;
+        position: relative;
+        text-align: center;
+        padding: 4px 2px;
+      }
+      .tabs a[aria-current] {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .tabs a[aria-current]::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 20%;
+        right: 20%;
+        height: 3px;
+        background: var(--accent);
+      }
+      /* For full-page screenshots: the bar at the page's end instead of mid-page. */
+      :root.shot body {
+        padding-bottom: 0;
+      }
+      :root.shot .tabs {
+        position: static;
+      }
+      @media (min-width: 960px) {
+        body {
+          padding-bottom: 24px;
+        }
+        .tabs {
+          display: none;
+        }
+        .grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .grid > .wide {
+          grid-column: 1 / -1;
+        }
+        .body-cols {
+          display: grid;
+          grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+          gap: 24px;
+        }
+        .card-head button::after {
+          inset: -14px -16px -10px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .chev {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="main"></main>
+    <nav class="tabs" id="tabs"></nav>
+    <script>
+      'use strict';
+      const Q = new URLSearchParams(location.search);
+      const root = document.documentElement;
+      if (
+        Q.get('theme') === 'dark' ||
+        (!Q.get('theme') && matchMedia('(prefers-color-scheme: dark)').matches)
+      )
+        root.classList.add('dark');
+      if (Q.get('shot') === '1') root.classList.add('shot');
+      if (Q.get('text') === '150') root.style.fontSize = '150%';
+      const LANG = Q.get('lang') === 'pt' ? 'pt' : 'en';
+      const LOCALE = LANG === 'pt' ? 'pt-BR' : 'en-GB';
+      root.lang = LANG === 'pt' ? 'pt-BR' : 'en';
+      const UNIT = Q.get('unit') === 'lb' ? 'lb' : 'kg';
+      const LB = 2.20462;
+      const VIEW = Q.get('view') === 'data' ? 'data' : 'analysis';
+      const wide = matchMedia('(min-width: 960px)');
+
+      // ---------- The strings: the spec's keys (docs/ux/body-composition.md §8) ----------
+      const nf = (v, d = 0) =>
+        new Intl.NumberFormat(LOCALE, { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+      const pf = (share) =>
+        new Intl.NumberFormat(LOCALE, { style: 'percent', maximumFractionDigits: 0 }).format(share);
+      const M = {
+        en: {
+          'analysis.title': 'Analysis',
+          'analysis.lede': 'Each card says its point. Open one for the detail.',
+          'data.title': 'Your data',
+          'settings.label': 'Settings',
+          'body.title': 'Body composition (estimates)',
+          'body.sum': (fat, bmr) => [
+            `Estimated `,
+            [fat],
+            ` body fat and `,
+            [bmr],
+            ` a day at rest, from formulas.`,
+          ],
+          'body.sumLean': (lean, water) =>
+            water === null
+              ? [
+                  `Estimated lean mass `,
+                  [lean],
+                  `, from a formula. Body fat and BMR also need your year of birth.`,
+                ]
+              : [
+                  `Estimated lean mass `,
+                  [lean],
+                  ` and body water `,
+                  [water],
+                  `, from formulas. Body fat and BMR also need your year of birth.`,
+                ],
+          'body.sumNeeds': 'Appears once your height, year of birth and sex are set.',
+          'card.needsFirst': 'Appears from the first weigh-in.',
+          'body.caveat':
+            'Estimates from formulas, not measurements. They follow your weight, and can’t tell a change in fat from a change in muscle.',
+          'body.needs':
+            'These estimates use your height, year of birth and sex. Each one is optional and stays on this device.',
+          'body.change': 'Change details',
+          'body.fat': 'Body fat',
+          'body.lean': 'Lean mass',
+          'body.water': 'Body water',
+          'body.bmr': 'Calories at rest (BMR)',
+          'body.chip.fat': 'Body fat',
+          'body.chip.lean': 'Lean mass',
+          'body.chip.water': 'Water',
+          'body.chip.bmr': 'BMR',
+          'body.chips': 'Estimate on the chart',
+          'body.kcalDay': (n) => `${n}\u00a0kcal a day`,
+          'body.litres': (n) => `${n}\u00a0L`,
+          'body.waterShare': (p) => `${p} of your weight`,
+          'body.atStart': (v) => `${v} at the start`,
+          'body.sameAsStart': 'the same as at the start',
+          'body.err.fat': 'Deurenberg formula, about ±4–5 points',
+          'body.err.lean': (x) => `Boer formula, about ±${x}`,
+          'body.err.water': 'Watson formula, about ±4\u00a0L',
+          'body.err.bmr': 'Mifflin-St Jeor formula, about ±10%',
+          'body.needsYear': 'Needs your year of birth',
+          'body.range': (lo, hi) => `range ${lo}–${hi}`,
+          'body.legend.line': 'Estimate at each weigh-in',
+          'body.legend.band': 'The formula’s usual error',
+          'body.chart.fat': 'Body fat estimate over time (Deurenberg formula)',
+          'body.chart.lean': 'Lean mass estimate over time (Boer formula)',
+          'body.chart.water': 'Body water estimate over time (Watson formula)',
+          'body.chart.bmr': 'Calories at rest estimate over time (Mifflin-St Jeor formula)',
+          'body.chartKeys': 'Use the left and right arrows to move between weigh-ins.',
+          'tip.weight': 'Weight',
+          'body.about': 'About the formulas',
+          'body.about.bmr': [
+            ['BMR'],
+            ', Mifflin-St Jeor (1990): the energy your body uses at complete rest, from weight, height, age and sex. Within about 10% for most adults, more for some. A whole day uses more, since moving and digesting add to it.',
+          ],
+          'body.about.fat': [
+            ['Body fat'],
+            ', Deurenberg (1991): from BMI, age and sex. About 4–5 points either way; it reads too high for very muscular people, and is less sure at a very high or very low BMI.',
+          ],
+          'body.about.lean': [
+            ['Lean mass'],
+            ', Boer (1984): everything that isn’t fat (muscle, bone, organs and water), from weight, height and sex. It goes down a little whenever your weight does, because the formula assumes part of any loss is lean; it can’t tell whether yours is.',
+          ],
+          'body.about.water': [
+            ['Body water'],
+            ', Watson (1980): from weight, height, sex and, for men, age. About 4 litres either way. It can’t see the day-to-day swings in water that move the scale.',
+          ],
+          'body.about.left':
+            'Muscle, bone and visceral fat aren’t shown: no formula estimates them reliably from weight. Measuring them takes a body-composition scale or a scan.',
+          'body.about.adults':
+            'The formulas were made from adults’ data, and each value uses your age in the year of that weigh-in. They are estimates for interest, not a diagnosis.',
+          'settings.language': 'Language',
+          'settings.weightUnit': 'Weight unit',
+          'settings.heightUnit': 'Height unit',
+          'settings.sections': 'Sections',
+          'settings.goal': 'Goal',
+          'settings.height': 'Height',
+          'settings.notSet': 'Not set',
+          'settings.birthYear': 'Year of birth',
+          'settings.birthYearNone': 'Not set',
+          'settings.birthYearValue': (y, a) => `${y} · ${a} this year`,
+          'settings.sex': 'Sex, for the formulas',
+          'profile.sex.leaveOut': 'Leave out',
+          'profile.sex.leftOut': 'Left out',
+          'profile.sex.female': 'Female',
+          'profile.sex.male': 'Male',
+          'profile.note':
+            'Height, year of birth and sex are used only for BMI and the body composition estimates, and stay on this device. Each is optional.',
+          'profile.birthYear.change': 'Change year of birth',
+          'profile.birthYear.help':
+            'Only the year: the formulas use your age, which moves on by itself each January.',
+          'profile.birthYear.bad': (lo, hi) =>
+            `Type the year you were born, from ${lo} to ${hi}, or leave it empty to remove it. The formulas are for adults.`,
+          'profile.sex.help':
+            'The formulas were made from data on women and men separately. Choose the one that fits your body, or leave it out: the estimates that need it won’t show.',
+          'profile.saved': 'Details saved.',
+          'entry.example': (e) => `e.g. ${e}`,
+          'goal.save': 'Save',
+          'chart.done': 'Done',
+          'bmi.height': 'Height',
+          'unit.cm': 'cm',
+          tabs: ['Today', 'Progress', 'Analysis', 'Your data'],
+          stubs: [
+            ['Hiccups', [['3 climbs'], ' back up in a year; the last, ending on 26 Sept, lasted 5 days.']],
+            ['BMI', [['32.6'], ' now, 2.6 lower than at the start.']],
+            ['Facts', '330 weigh-ins in 365 days; the biggest one-day drop was 1.3 kg.'],
+          ],
+          lang: 'Automatic (English)',
+        },
+        pt: {
+          'analysis.title': 'Análise',
+          'analysis.lede': 'Cada cartão diz o essencial. Abra um para ver os detalhes.',
+          'data.title': 'Seus dados',
+          'settings.label': 'Configurações',
+          'body.title': 'Composição corporal (estimativas)',
+          'body.sum': (fat, bmr) => [
+            `Estimativa de `,
+            [fat],
+            ` de gordura corporal e `,
+            [bmr],
+            ` por dia em repouso, por fórmulas.`,
+          ],
+          'body.sumLean': (lean, water) =>
+            water === null
+              ? [
+                  `Estimativa de massa magra de `,
+                  [lean],
+                  `, por fórmula. Gordura corporal e TMB precisam também do seu ano de nascimento.`,
+                ]
+              : [
+                  `Estimativa de massa magra de `,
+                  [lean],
+                  ` e água corporal de `,
+                  [water],
+                  `, por fórmulas. Gordura corporal e TMB precisam também do seu ano de nascimento.`,
+                ],
+          'body.sumNeeds': 'Aparece quando altura, ano de nascimento e sexo estiverem definidos.',
+          'card.needsFirst': 'Aparece a partir da primeira pesagem.',
+          'body.caveat':
+            'Estimativas por fórmulas, não medições. Elas acompanham o seu peso e não distinguem uma mudança de gordura de uma mudança de músculo.',
+          'body.needs':
+            'Estas estimativas usam sua altura, ano de nascimento e sexo. Cada um é opcional e fica neste aparelho.',
+          'body.change': 'Alterar informações',
+          'body.fat': 'Gordura corporal',
+          'body.lean': 'Massa magra',
+          'body.water': 'Água corporal',
+          'body.bmr': 'Gasto em repouso (TMB)',
+          'body.chip.fat': 'Gordura',
+          'body.chip.lean': 'Massa magra',
+          'body.chip.water': 'Água',
+          'body.chip.bmr': 'TMB',
+          'body.chips': 'Estimativa no gráfico',
+          'body.kcalDay': (n) => `${n}\u00a0kcal por dia`,
+          'body.litres': (n) => `${n}\u00a0L`,
+          'body.waterShare': (p) => `${p} do seu peso`,
+          'body.atStart': (v) => `${v} no início`,
+          'body.sameAsStart': 'o mesmo do início',
+          'body.err.fat': 'Fórmula de Deurenberg, cerca de ±4–5 pontos',
+          'body.err.lean': (x) => `Fórmula de Boer, cerca de ±${x}`,
+          'body.err.water': 'Fórmula de Watson, cerca de ±4\u00a0L',
+          'body.err.bmr': 'Fórmula de Mifflin-St Jeor, cerca de ±10%',
+          'body.needsYear': 'Precisa do seu ano de nascimento',
+          'body.range': (lo, hi) => `faixa ${lo}–${hi}`,
+          'body.legend.line': 'Estimativa em cada pesagem',
+          'body.legend.band': 'Erro habitual da fórmula',
+          'body.chart.fat': 'Estimativa de gordura corporal ao longo do tempo (fórmula de Deurenberg)',
+          'body.chart.lean': 'Estimativa de massa magra ao longo do tempo (fórmula de Boer)',
+          'body.chart.water': 'Estimativa de água corporal ao longo do tempo (fórmula de Watson)',
+          'body.chart.bmr': 'Estimativa do gasto em repouso ao longo do tempo (fórmula de Mifflin-St Jeor)',
+          'body.chartKeys':
+            'Use as setas para a esquerda e para a direita para passar de uma pesagem a outra.',
+          'tip.weight': 'Peso',
+          'body.about': 'Sobre as fórmulas',
+          'body.about.bmr': [
+            ['TMB'],
+            ', Mifflin-St Jeor (1990): a energia que o corpo gasta em repouso completo, a partir de peso, altura, idade e sexo. Erra até cerca de 10% para a maioria dos adultos, mais para alguns. Um dia inteiro gasta mais, porque movimento e digestão se somam a ela.',
+          ],
+          'body.about.fat': [
+            ['Gordura corporal'],
+            ', Deurenberg (1991): a partir do IMC, da idade e do sexo. Cerca de 4–5 pontos para mais ou para menos; dá valores altos demais para pessoas muito musculosas e é menos segura com IMC muito alto ou muito baixo.',
+          ],
+          'body.about.lean': [
+            ['Massa magra'],
+            ', Boer (1984): tudo o que não é gordura (músculos, ossos, órgãos e água), a partir de peso, altura e sexo. Ela cai um pouco sempre que o peso cai, porque a fórmula supõe que parte de qualquer perda é magra; não tem como saber se a sua é.',
+          ],
+          'body.about.water': [
+            ['Água corporal'],
+            ', Watson (1980): a partir de peso, altura, sexo e, para homens, idade. Cerca de 4 litros para mais ou para menos. Não vê as variações de água de um dia para o outro, que mexem na balança.',
+          ],
+          'body.about.left':
+            'Músculos, ossos e gordura visceral não aparecem: nenhuma fórmula os estima com segurança a partir do peso. Medi-los exige uma balança de bioimpedância ou um exame.',
+          'body.about.adults':
+            'As fórmulas foram feitas com dados de adultos, e cada valor usa a sua idade no ano daquela pesagem. São estimativas para referência, não um diagnóstico.',
+          'settings.language': 'Idioma',
+          'settings.weightUnit': 'Unidade de peso',
+          'settings.heightUnit': 'Unidade de altura',
+          'settings.sections': 'Seções',
+          'settings.goal': 'Meta',
+          'settings.height': 'Altura',
+          'settings.notSet': 'Não definida',
+          'settings.birthYear': 'Ano de nascimento',
+          'settings.birthYearNone': 'Não definido',
+          'settings.birthYearValue': (y, a) => `${y} · ${a} anos este ano`,
+          'settings.sex': 'Sexo, para as fórmulas',
+          'profile.sex.leaveOut': 'Não informar',
+          'profile.sex.leftOut': 'Não informado',
+          'profile.sex.female': 'Feminino',
+          'profile.sex.male': 'Masculino',
+          'profile.note':
+            'Altura, ano de nascimento e sexo servem só para o IMC e as estimativas de composição corporal, e ficam neste aparelho. Todos são opcionais.',
+          'profile.birthYear.change': 'Alterar ano de nascimento',
+          'profile.birthYear.help':
+            'Só o ano: as fórmulas usam a sua idade, que avança sozinha a cada janeiro.',
+          'profile.birthYear.bad': (lo, hi) =>
+            `Digite o ano em que você nasceu, de ${lo} a ${hi}, ou deixe o campo vazio para removê-lo. As fórmulas são para adultos.`,
+          'profile.sex.help':
+            'As fórmulas foram feitas com dados de mulheres e de homens, em separado. Escolha o que corresponde ao seu corpo, ou não informe: as estimativas que dependem disso não aparecem.',
+          'profile.saved': 'Informações salvas.',
+          'entry.example': (e) => `Ex.: ${e}`,
+          'goal.save': 'Salvar',
+          'chart.done': 'Concluir',
+          'bmi.height': 'Altura',
+          'unit.cm': 'cm',
+          tabs: ['Hoje', 'Progresso', 'Análise', 'Seus dados'],
+          stubs: [
+            ['Soluços', [['3 subidas'], ' em um ano; a última, até 26 de set., durou 5 dias.']],
+            ['IMC', [['32,6'], ' agora, 2,6 abaixo do início.']],
+            ['Curiosidades', '330 pesagens em 365 dias; a maior queda em um dia foi de 1,3 kg.'],
+          ],
+          lang: 'Automático (Português)',
+        },
+      }[LANG];
+
+      // ---------- DOM from nodes ----------
+      function h(tag, props, ...kids) {
+        const el = document.createElement(tag);
+        for (const [k, v] of Object.entries(props || {})) {
+          if (k === 'class') el.className = v;
+          else if (k === 'text') el.textContent = v;
+          else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+          else if (v !== false && v !== null && v !== undefined) el.setAttribute(k, v === true ? '' : v);
+        }
+        for (const kid of kids.flat()) if (kid !== null && kid !== undefined) el.append(kid);
+        return el;
+      }
+      const SVGNS = 'http://www.w3.org/2000/svg';
+      function s(tag, attrs, ...kids) {
+        const el = document.createElementNS(SVGNS, tag);
+        for (const [k, v] of Object.entries(attrs || {})) el.setAttribute(k, v);
+        for (const kid of kids) el.append(kid);
+        return el;
+      }
+      /** A sentence with bold parts: strings, and [bold] arrays. */
+      const rich = (parts) =>
+        typeof parts === 'string'
+          ? [parts]
+          : parts.map((p) => (Array.isArray(p) ? h('b', { text: p[0] }) : p));
+      const chev = () =>
+        s(
+          'svg',
+          { class: 'chev', viewBox: '0 0 20 20', 'aria-hidden': 'true' },
+          s('path', { d: 'M5 8l5 5 5-5' }),
+        );
+
+      // ---------- A made-up year (no personal data) and a made-up profile ----------
+      const DAY = 86400000;
+      const TODAY = Date.UTC(2026, 9, 21);
+      let seed = 11;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      let days = [];
+      for (let i = 0; i < 365; i++) {
+        const t = TODAY - (365 - i) * DAY;
+        const base = 104 - (7.6 * i) / 364 + 0.45 * Math.sin(i / 19) + 0.25 * Math.sin(i / 5.3);
+        const kg = Math.round((base + (rnd() - 0.5) * 1.0) * 10) / 10;
+        if (rnd() < 0.085 && i < 364) continue;
+        days.push({ t, kg });
+      }
+      const PROFILE = Q.get('profile') || 'full';
+      if (PROFILE === 'empty') days = [];
+      const profile = {
+        heightCm: PROFILE === 'noheight' ? null : 172,
+        birthYear: PROFILE === 'noyear' ? null : 1983,
+        sex: PROFILE === 'nosex' ? null : Q.get('sex') === 'female' ? 'female' : 'male',
+      };
+
+      // ---------- The four formulas (the engine's, src/analysis/body.ts in the spec) ----------
+      const yearOf = (t) => new Date(t).getUTCFullYear();
+      function estimates(kg, t) {
+        const { heightCm: H, birthYear, sex } = profile;
+        const age = birthYear === null ? null : yearOf(t) - birthYear;
+        const male = sex === 'male';
+        const out = { fat: null, lean: null, water: null, bmr: null };
+        if (H === null || sex === null) return out;
+        out.lean = male ? 0.407 * kg + 0.267 * H - 19.2 : 0.252 * kg + 0.473 * H - 48.3;
+        if (!male) out.water = -2.097 + 0.1069 * H + 0.2466 * kg;
+        if (age !== null) {
+          const bmi = kg / (H / 100) ** 2;
+          out.fat = 1.2 * bmi + 0.23 * age - 10.8 * (male ? 1 : 0) - 5.4;
+          out.bmr = 10 * kg + 6.25 * H - 5 * age + (male ? 5 : -161);
+          if (male) out.water = 2.447 - 0.09516 * age + 0.1074 * H + 0.3362 * kg;
+        }
+        return out;
+      }
+      /** The usual error each way, at a weight. */
+      const ERR = {
+        fat: () => 4.5,
+        lean: (kg) => 0.05 * kg,
+        water: () => 4,
+        bmr: (_kg, v) => 0.1 * v,
+      };
+      const wv = (kg) => (UNIT === 'lb' ? kg * LB : kg);
+      const fmt = {
+        fat: (v) => pf(Math.round(v) / 100),
+        lean: (kg) => `${nf(Math.round(wv(kg)))}\u00a0${UNIT}`,
+        water: (l) => M['body.litres'](nf(Math.round(l))),
+        bmr: (v) => `${nf(Math.round(v / 10) * 10)}\u00a0kcal`,
+        // Without the unit, for range ends.
+        bare: {
+          fat: (v) => nf(Math.round(v)),
+          lean: (kg) => nf(Math.round(wv(kg))),
+          water: (l) => nf(Math.round(l)),
+          bmr: (v) => nf(Math.round(v / 10) * 10),
+        },
+      };
+      const METRICS = ['fat', 'lean', 'water', 'bmr'];
+      const series = days.map((d) => ({ ...d, e: estimates(d.kg, d.t) }));
+      const last = series[series.length - 1];
+      const first = series[0];
+      const available = last ? METRICS.filter((k) => last.e[k] !== null) : [];
+      let metric = available.includes(Q.get('metric')) ? Q.get('metric') : available[0];
+
+      // ---------- The card ----------
+      const shortDay = (t) =>
+        new Intl.DateTimeFormat(LOCALE, {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+          timeZone: 'UTC',
+        }).format(t);
+
+      function summary() {
+        if (!last) return M['card.needsFirst'];
+        if (profile.heightCm === null || profile.sex === null) return M['body.sumNeeds'];
+        const e = last.e;
+        if (e.fat !== null) return M['body.sum'](fmt.fat(e.fat), fmt.bmr(e.bmr));
+        return M['body.sumLean'](fmt.lean(e.lean), e.water === null ? null : fmt.water(e.water));
+      }
+
+      function rowsFor() {
+        const dl = h('dl', { class: 'rows' });
+        const at = (k, v0, v1) => {
+          const a = fmt[k](v0);
+          return a === fmt[k](v1) ? M['body.sameAsStart'] : M['body.atStart'](a);
+        };
+        for (const k of METRICS) {
+          const v = last.e[k];
+          const name = M[`body.${k}`];
+          const err = k === 'lean' ? M['body.err.lean'](fmt.lean(ERR.lean(last.kg))) : M[`body.err.${k}`];
+          if (v === null) {
+            dl.append(
+              h(
+                'div',
+                {},
+                h('dt', { text: name }),
+                h(
+                  'dd',
+                  {},
+                  h('b', { text: '—' }),
+                  h('span', { class: 'rows-sub', text: M['body.needsYear'] }),
+                ),
+              ),
+            );
+            continue;
+          }
+          const value = k === 'bmr' ? M['body.kcalDay'](fmt.bare.bmr(v)) : fmt[k](v);
+          dl.append(
+            h(
+              'div',
+              {},
+              h('dt', { text: name }),
+              h(
+                'dd',
+                {},
+                h('b', { text: value }),
+                k === 'water'
+                  ? h('span', {
+                      class: 'rows-sub',
+                      text: M['body.waterShare'](pf(Math.round((v / last.kg) * 100) / 100)),
+                    })
+                  : null,
+                h('span', { class: 'rows-sub', text: at(k, first.e[k], v) }),
+                h('span', { class: 'rows-sub', text: err }),
+              ),
+            ),
+          );
+        }
+        return dl;
+      }
+
+      /** The plot's width in CSS px, so its text stays at its rem size (the product measures the box). */
+      function chartWidth() {
+        const mainW = document.getElementById('main').clientWidth - 24;
+        const inner = mainW - 34;
+        return wide.matches ? (inner - 24) * (1.6 / 2.6) : inner;
+      }
+      function chart() {
+        const pts = series.filter((d) => d.e[metric] !== null);
+        const wrap = h('div', {});
+        const strip = h('div', { class: 'strip', 'aria-hidden': 'true' });
+        const live = h('p', { class: 'sr', 'aria-live': 'polite', hidden: true });
+        const W = Math.round(chartWidth()),
+          Hh = 200,
+          top = 10,
+          bottom = 26,
+          left = 44,
+          right = 8;
+        const val = (d) => (metric === 'lean' ? wv(d.e.lean) : d.e[metric]);
+        const err = (d) => (metric === 'lean' ? wv(ERR.lean(d.kg)) : ERR[metric](d.kg, d.e[metric]));
+        let lo = Infinity,
+          hi = -Infinity;
+        for (const d of pts) {
+          lo = Math.min(lo, val(d) - err(d));
+          hi = Math.max(hi, val(d) + err(d));
+        }
+        const step = metric === 'bmr' ? 100 : metric === 'fat' ? 5 : 5;
+        lo = Math.floor(lo / step) * step;
+        hi = Math.ceil(hi / step) * step;
+        const t0 = pts[0].t,
+          t1 = pts[pts.length - 1].t;
+        const x = (t) => left + ((t - t0) / (t1 - t0)) * (W - left - right);
+        const y = (v) => top + (1 - (v - lo) / (hi - lo)) * (Hh - top - bottom);
+        const svg = s('svg', {
+          class: 'plot',
+          viewBox: `0 0 ${W} ${Hh}`,
+          width: W,
+          height: Hh,
+          role: 'group',
+          tabindex: '0',
+          'aria-label': M[`body.chart.${metric}`],
+          'aria-description': M['body.chartKeys'],
+        });
+        for (let v = lo; v <= hi + 1e-9; v += step) {
+          svg.append(s('line', { class: 'gridline', x1: left, x2: W - right, y1: y(v), y2: y(v) }));
+          const label = metric === 'fat' ? pf(v / 100) : nf(v);
+          svg.append(s('text', { x: left - 6, y: y(v) + 4, 'text-anchor': 'end' }, label));
+        }
+        // Month ticks.
+        const d0 = new Date(t0);
+        for (let m = 1; m <= 13; m += 3) {
+          const t = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + m, 1);
+          if (t > t1) break;
+          svg.append(
+            s(
+              'text',
+              { x: x(t), y: Hh - 6, 'text-anchor': 'middle' },
+              new Intl.DateTimeFormat(LOCALE, { month: 'short', timeZone: 'UTC' }).format(t),
+            ),
+          );
+        }
+        svg.append(s('line', { class: 'axis', x1: left, x2: W - right, y1: Hh - bottom, y2: Hh - bottom }));
+        const up = pts.map((d) => `${x(d.t).toFixed(1)},${y(val(d) + err(d)).toFixed(1)}`);
+        const down = pts.map((d) => `${x(d.t).toFixed(1)},${y(val(d) - err(d)).toFixed(1)}`).reverse();
+        svg.append(s('path', { class: 'band', d: `M${up.join('L')}L${down.join('L')}Z` }));
+        svg.append(
+          s('path', {
+            class: 'line',
+            d: `M${pts.map((d) => `${x(d.t).toFixed(1)},${y(val(d)).toFixed(1)}`).join('L')}`,
+          }),
+        );
+        const cursor = s('line', { class: 'cursor', y1: top, y2: Hh - bottom });
+        const dot = s('circle', { class: 'dot', r: 5 });
+        svg.append(cursor, dot);
+        let at = pts.length - 1 - Math.min(Number(Q.get('scrub')) || 0, pts.length - 1);
+        const show = () => {
+          const d = pts[at];
+          cursor.setAttribute('x1', x(d.t));
+          cursor.setAttribute('x2', x(d.t));
+          dot.setAttribute('cx', x(d.t));
+          dot.setAttribute('cy', y(val(d)));
+          const v = d.e[metric];
+          const e = metric === 'lean' ? ERR.lean(d.kg) : ERR[metric](d.kg, v);
+          const value = fmt[metric](v);
+          const lowV = metric === 'fat' ? fmt.bare.fat(v - e) : fmt.bare[metric](v - e);
+          const highV = metric === 'fat' ? fmt.fat(v + e) : fmt[metric](v + e);
+          strip.replaceChildren(
+            h('span', { class: 'day', text: shortDay(d.t) }),
+            h(
+              'span',
+              {},
+              `${M[`body.${metric}`]} `,
+              h('b', { text: value }),
+              h('span', { class: 'sub', text: M['body.range'](lowV, highV) }),
+            ),
+            h('span', {}, `${M['tip.weight']} `, h('b', { text: `${nf(wv(d.kg), 1)} ${UNIT}` })),
+          );
+          live.textContent = `${shortDay(d.t)}: ${M[`body.${metric}`]} ${value}, ${M['body.range'](lowV, highV)}; ${M['tip.weight']} ${nf(wv(d.kg), 1)} ${UNIT}`;
+        };
+        const near = (clientX) => {
+          const r = svg.getBoundingClientRect();
+          const px = ((clientX - r.left) / r.width) * W;
+          let best = 0;
+          for (let i = 0; i < pts.length; i++)
+            if (Math.abs(x(pts[i].t) - px) < Math.abs(x(pts[best].t) - px)) best = i;
+          at = best;
+          show();
+        };
+        svg.addEventListener('pointerdown', (ev) => near(ev.clientX));
+        svg.addEventListener('pointermove', (ev) => {
+          if (ev.buttons || ev.pointerType === 'mouse') near(ev.clientX);
+        });
+        svg.addEventListener('keydown', (ev) => {
+          if (ev.key === 'ArrowLeft') at = Math.max(0, at - 1);
+          else if (ev.key === 'ArrowRight') at = Math.min(pts.length - 1, at + 1);
+          else if (ev.key === 'Home') at = 0;
+          else if (ev.key === 'End') at = pts.length - 1;
+          else return;
+          ev.preventDefault();
+          live.hidden = false;
+          show();
+        });
+        show();
+        wrap.append(
+          strip,
+          svg,
+          live,
+          h(
+            'ul',
+            { class: 'legend' },
+            h('li', {}, h('span', { class: 'sw-line', 'aria-hidden': 'true' }), M['body.legend.line']),
+            h('li', {}, h('span', { class: 'sw-band', 'aria-hidden': 'true' }), M['body.legend.band']),
+          ),
+        );
+        if (available.length > 1)
+          wrap.append(
+            h(
+              'div',
+              { class: 'chips', role: 'group', 'aria-label': M['body.chips'] },
+              available.map((k) =>
+                h('button', {
+                  class: 'chip',
+                  type: 'button',
+                  'aria-pressed': String(k === metric),
+                  text: M[`body.chip.${k}`],
+                  onclick: () => {
+                    metric = k;
+                    render();
+                    document.querySelector(`.chip[aria-pressed='true']`)?.focus();
+                  },
+                }),
+              ),
+            ),
+          );
+        return wrap;
+      }
+
+      function about(open) {
+        const id = 'body-about';
+        const panel = h(
+          'div',
+          { class: 'about-body', id, hidden: !open },
+          ['bmr', 'fat', 'lean', 'water'].map((k) => h('p', {}, rich(M[`body.about.${k}`]))),
+          h('p', { text: M['body.about.left'] }),
+          h('p', { text: M['body.about.adults'] }),
+        );
+        const btn = h(
+          'button',
+          {
+            class: 'about-toggle',
+            type: 'button',
+            'aria-expanded': String(open),
+            'aria-controls': id,
+            onclick: () => {
+              const now = btn.getAttribute('aria-expanded') !== 'true';
+              btn.setAttribute('aria-expanded', String(now));
+              panel.hidden = !now;
+            },
+          },
+          h('span', { text: M['body.about'] }),
+          chev(),
+        );
+        return h('div', { class: 'about' }, btn, panel);
+      }
+
+      let cardOpen = Q.get('open') !== '0';
+      let aboutOpen = Q.get('about') === '1' || (wide.matches && Q.get('about') !== '0');
+
+      function bodyCard() {
+        const card = h('section', {
+          class: `card wide${cardOpen ? ' open' : ''}`,
+          'aria-labelledby': 'body-title',
+        });
+        const sum = h('p', { class: 'sum', id: 'body-sum' }, rich(summary()));
+        const btn = h(
+          'button',
+          {
+            type: 'button',
+            'aria-expanded': String(cardOpen),
+            'aria-controls': 'body-body',
+            'aria-describedby': 'body-sum',
+            onclick: () => {
+              cardOpen = !cardOpen;
+              render();
+              document.querySelector('#body-title button').focus();
+            },
+          },
+          M['body.title'],
+        );
+        card.append(h('div', { class: 'card-head' }, h('h2', { id: 'body-title' }, btn), chev()), sum);
+        if (!cardOpen) return card;
+        const body = h('div', { class: 'body', id: 'body-body' });
+        const change = h('button', {
+          class: 'button',
+          type: 'button',
+          text: M['body.change'],
+          onclick: () => openSheet('details', change),
+        });
+        if (!last) {
+          body.append(h('p', { class: 'note', text: M['card.needsFirst'] }));
+        } else if (available.length === 0) {
+          change.classList.add('primary');
+          const year = profile.birthYear;
+          body.append(
+            h('p', { class: 'note', text: M['body.needs'] }),
+            h(
+              'ul',
+              { class: 'missing' },
+              h(
+                'li',
+                {},
+                h('span', { text: M['settings.height'] }),
+                h(
+                  'span',
+                  profile.heightCm === null
+                    ? { class: 'unset', text: M['settings.notSet'] }
+                    : { text: `${nf(172)} cm` },
+                ),
+              ),
+              h(
+                'li',
+                {},
+                h('span', { text: M['settings.birthYear'] }),
+                h(
+                  'span',
+                  year === null
+                    ? { class: 'unset', text: M['settings.birthYearNone'] }
+                    : { text: String(year) },
+                ),
+              ),
+              h(
+                'li',
+                {},
+                h('span', { text: M['settings.sex'] }),
+                h(
+                  'span',
+                  profile.sex === null
+                    ? { class: 'unset', text: M['profile.sex.leftOut'] }
+                    : { text: M[`profile.sex.${profile.sex}`] },
+                ),
+              ),
+            ),
+            h('div', { class: 'tools' }, change),
+          );
+        } else {
+          const main = h('div', {}, chart());
+          const side = h('div', {}, h('p', { class: 'honest', text: M['body.caveat'] }), rowsFor());
+          body.append(
+            h('div', { class: 'body-cols' }, main, side),
+            about(aboutOpen),
+            h('div', { class: 'tools' }, change),
+          );
+        }
+        card.append(body);
+        return card;
+      }
+
+      /** The BMI card's line, from the same made-up series and height. */
+      function bmiStub() {
+        if (!last || profile.heightCm === null) return M.stubs[1];
+        const b = (kg) => Math.round((kg / (profile.heightCm / 100) ** 2) * 10) / 10;
+        const now = b(last.kg),
+          diff = Math.round((b(first.kg) - now) * 10) / 10;
+        return [
+          M.stubs[1][0],
+          LANG === 'pt'
+            ? [[nf(now, 1)], ` agora, ${nf(diff, 1)} abaixo do início.`]
+            : [[nf(now, 1)], ` now, ${nf(diff, 1)} lower than at the start.`],
+        ];
+      }
+      function stub([title, line], wideCard) {
+        return h(
+          'section',
+          { class: `card closed-stub${wideCard ? ' wide' : ''}` },
+          h(
+            'div',
+            { class: 'card-head' },
+            h('h2', {}, h('button', { type: 'button', 'aria-expanded': 'false', text: title })),
+            chev(),
+          ),
+          h('p', { class: 'sum' }, rich(line)),
+        );
+      }
+
+      // ---------- Your data › Settings ----------
+      function settingsView() {
+        const row = (name, value, extra) =>
+          h(
+            'button',
+            { class: `row${extra || ''}`, type: 'button', 'aria-haspopup': 'dialog' },
+            h('span', { class: 'grow', text: name }),
+            h('span', { class: 'val', text: value }),
+            chev(),
+          );
+        const age = profile.birthYear === null ? null : yearOf(TODAY) - profile.birthYear;
+        const yearRow = row(
+          M['settings.birthYear'],
+          profile.birthYear === null
+            ? M['settings.birthYearNone']
+            : M['settings.birthYearValue'](profile.birthYear, age),
+          ' new',
+        );
+        yearRow.addEventListener('click', () => openSheet('year', yearRow));
+        const sel = h(
+          'select',
+          { 'aria-label': M['settings.sex'] },
+          h('option', { value: '', text: M['profile.sex.leaveOut'] }),
+          h('option', { value: 'female', text: M['profile.sex.female'] }),
+          h('option', { value: 'male', text: M['profile.sex.male'] }),
+        );
+        sel.value = profile.sex || '';
+        const sexValue = h('span', {
+          class: 'val',
+          text: profile.sex === null ? M['profile.sex.leftOut'] : M[`profile.sex.${profile.sex}`],
+        });
+        sel.addEventListener('change', () => {
+          profile.sex = sel.value || null;
+          sexValue.textContent =
+            profile.sex === null ? M['profile.sex.leftOut'] : M[`profile.sex.${profile.sex}`];
+        });
+        const sexRow = h(
+          'div',
+          { class: 'row new' },
+          h('span', { class: 'grow', 'aria-hidden': 'true', text: M['settings.sex'] }),
+          sexValue,
+          chev(),
+          sel,
+        );
+        return [
+          h('h1', { text: M['data.title'] }),
+          h('h2', { class: 'group-title', text: M['settings.label'] }),
+          h(
+            'div',
+            { class: 'group' },
+            row(M['settings.language'], M.lang),
+            row(M['settings.weightUnit'], UNIT),
+            row(M['settings.heightUnit'], 'cm'),
+            row(M['settings.sections'], LANG === 'pt' ? 'Todas as 14 visíveis' : 'All 14 shown'),
+            row(M['settings.goal'], `${nf(wv(88), 0)} ${UNIT}`),
+            row(M['settings.height'], profile.heightCm === null ? M['settings.notSet'] : `${nf(172)} cm`),
+            yearRow,
+            sexRow,
+          ),
+          h('p', { class: 'group-note', text: M['profile.note'] }),
+        ];
+      }
+
+      // ---------- Sheets ----------
+      function yearField(prefix, invalid) {
+        const input = h('input', {
+          id: `${prefix}year`,
+          type: 'text',
+          inputmode: 'numeric',
+          autocomplete: 'bday-year',
+          maxlength: '4',
+          placeholder: M['entry.example']('1985'),
+          'aria-describedby': `${prefix}year-help${invalid ? ` ${prefix}status` : ''}`,
+          'aria-invalid': invalid ? 'true' : null,
+        });
+        input.value = invalid ? '2015' : profile.birthYear === null ? '' : String(profile.birthYear);
+        return h(
+          'div',
+          { class: 'field' },
+          h('label', { for: `${prefix}year`, text: M['settings.birthYear'] }),
+          input,
+          h('p', { class: 'help', id: `${prefix}year-help`, text: M['profile.birthYear.help'] }),
+        );
+      }
+      function openSheet(which, opener) {
+        const close = () => {
+          layer.remove();
+          opener?.focus();
+        };
+        const invalid = Q.get('error') === 'year';
+        const status = h('p', {
+          class: `status${invalid ? ' bad' : ''}`,
+          role: 'status',
+          id: 'sheet-status',
+        });
+        if (invalid) status.textContent = M['profile.birthYear.bad'](yearOf(TODAY) - 100, yearOf(TODAY) - 18);
+        let content;
+        if (which === 'year') {
+          content = h(
+            'form',
+            {
+              novalidate: true,
+              onsubmit: (e) => {
+                e.preventDefault();
+                status.textContent = M['profile.saved'];
+              },
+            },
+            yearField('sheet-', invalid),
+            h('button', { class: 'button primary', type: 'submit', text: M['goal.save'] }),
+            status,
+          );
+        } else {
+          const height = h('input', {
+            id: 'd-height',
+            type: 'text',
+            inputmode: 'decimal',
+            autocomplete: 'off',
+            'aria-describedby': 'd-height-unit',
+          });
+          height.value = profile.heightCm === null ? '' : nf(profile.heightCm);
+          const radio = (value, label) =>
+            h(
+              'label',
+              { class: 'radio' },
+              h('input', { type: 'radio', name: 'd-sex', value, checked: (profile.sex || '') === value }),
+              label,
+            );
+          content = h(
+            'form',
+            {
+              novalidate: true,
+              onsubmit: (e) => {
+                e.preventDefault();
+                status.textContent = M['profile.saved'];
+              },
+            },
+            h(
+              'div',
+              { class: 'field' },
+              h('label', { for: 'd-height', text: M['bmi.height'] }),
+              h(
+                'span',
+                { class: 'with-unit' },
+                height,
+                h('span', { id: 'd-height-unit', text: M['unit.cm'] }),
+              ),
+            ),
+            yearField('d-', invalid),
+            h(
+              'fieldset',
+              { 'aria-describedby': 'd-sex-help' },
+              h('legend', { text: M['settings.sex'] }),
+              h(
+                'div',
+                { class: 'radios' },
+                radio('female', M['profile.sex.female']),
+                radio('male', M['profile.sex.male']),
+                radio('', M['profile.sex.leaveOut']),
+              ),
+              h('p', { class: 'help', id: 'd-sex-help', text: M['profile.sex.help'] }),
+            ),
+            h('button', { class: 'button primary', type: 'submit', text: M['goal.save'] }),
+            status,
+          );
+        }
+        const title = which === 'year' ? M['profile.birthYear.change'] : M['body.change'];
+        const sheet = h(
+          'div',
+          {
+            class: 'sheet',
+            role: 'dialog',
+            'aria-modal': 'true',
+            'aria-labelledby': 'sheet-title',
+            tabindex: '-1',
+          },
+          h('div', { class: 'grab', 'aria-hidden': 'true' }),
+          h(
+            'div',
+            { class: 'sheet-head' },
+            h('h2', { id: 'sheet-title', text: title }),
+            h('button', { class: 'done', type: 'button', text: M['chart.done'], onclick: close }),
+          ),
+          content,
+        );
+        const layer = h('div', {}, h('div', { class: 'scrim', onclick: close }), sheet);
+        document.body.append(layer);
+        sheet.addEventListener('keydown', (e) => e.key === 'Escape' && close());
+        sheet.focus();
+      }
+
+      // ---------- The page ----------
+      function render() {
+        const main = document.getElementById('main');
+        if (VIEW === 'data') main.replaceChildren(...settingsView());
+        else
+          main.replaceChildren(
+            h('h1', { text: M['analysis.title'] }),
+            h('p', { class: 'lede', text: M['analysis.lede'] }),
+            h(
+              'div',
+              { class: 'grid' },
+              stub(M.stubs[0], true),
+              bodyCard(),
+              stub(bmiStub()),
+              stub(M.stubs[2]),
+            ),
+          );
+      }
+      document.getElementById('tabs').replaceChildren(
+        ...M.tabs.map((name, i) =>
+          h('a', {
+            href: '#',
+            'aria-current': (VIEW === 'data' ? i === 3 : i === 2) ? 'page' : null,
+            text: name,
+          }),
+        ),
+      );
+      render();
+      if (Q.get('sheet') === 'details') openSheet('details', document.querySelector('.tools .button'));
+      if (Q.get('sheet') === 'year') openSheet('year', null);
+    </script>
+  </body>
+</html>
