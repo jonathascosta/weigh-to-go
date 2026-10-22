@@ -3191,6 +3191,7 @@ span.cal-none {
 
   .table-fit td.num {
     white-space: normal;
+    overflow-wrap: normal;
     word-break: normal;
     -webkit-hyphens: manual;
     hyphens: manual;
@@ -3288,7 +3289,9 @@ span.cal-none {
 /* A choice in a sheet is a finger's target: 44 px (the BMI's height unit). */
 @media (pointer: coarse) {
   .options-content .chip {
+    min-width: 44px;
     min-height: 44px;
+    justify-content: center;
   }
 }
 

@@ -268,6 +268,16 @@ test('opens an analysis card from its line, and its options in a sheet', async (
   // The head closes it again.
   await tapOn(page, '#pct-sum');
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  // Every choice in a sheet is a finger's target, 44 × 44 at least (the BMI's height unit).
+  await tapOn(page, '#bmi-sum');
+  await page.locator('#bmi-change-button').tap();
+  await expect(page.getByRole('dialog', { name: 'Change height' })).toBeVisible();
+  const sizes = await page
+    .locator('.sheet .chip, .sheet .segment, .sheet .toggle')
+    .evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => [r.width, r.height]));
+  expect(sizes.length).toBeGreaterThan(2);
+  for (const [w, h] of sizes) expect(Math.min(w ?? 0, h ?? 0)).toBeGreaterThanOrEqual(44);
+  await page.keyboard.press('Escape');
   await check();
 });
 

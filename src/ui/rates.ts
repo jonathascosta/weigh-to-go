@@ -373,7 +373,10 @@ export function mountRates(
   const simBody = h('tbody');
   const simTable = h(
     'div',
-    { class: 'table-box', attrs: { tabindex: 0, role: 'region', 'aria-labelledby': 'sim-title' } },
+    {
+      class: 'table-box table-short',
+      attrs: { tabindex: 0, role: 'region', 'aria-labelledby': 'sim-title' },
+    },
     h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'sim-title' } }, simHead, simBody),
   );
   const simBlock = h(
@@ -683,10 +686,12 @@ export function mountRates(
           const d = at(i);
           const gap = d.day.index - d.previous.index;
           const pct = f.percent(Math.abs(d.rate) / 100, 3);
+          // A rate that shows as 0.000% is neither a loss nor a gain.
+          const none = pct === f.percent(0, 3);
           const rows: TipRow[] = [
             {
-              name: d.rate >= 0 ? m['rate.readout.loss'] : m['rate.readout.gain'],
-              value: gap > 1 ? m['rate.tip.perDay'](pct) : pct,
+              name: none ? '' : d.rate >= 0 ? m['rate.readout.loss'] : m['rate.readout.gain'],
+              value: none ? m['rate.readout.none'] : gap > 1 ? m['rate.tip.perDay'](pct) : pct,
               swatch: d.rate >= 0 ? 'sw-down sw-bar' : 'sw-up sw-bar',
             },
           ];

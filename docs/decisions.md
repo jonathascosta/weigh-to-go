@@ -483,7 +483,7 @@ Choices made while building story 5, open to the owner under decision 9.
     the strips are 98 px, the design's height, except the % chart and the daily rate at 126 px (the
     named 7-day and window averages). Measured on every draw as before, and one height over every
     stop (Playwright). The daily rate's strip reads as its chart does, a loss above zero: "Loss
-    0.208%" / "Perda 0,208%" in words, and the window's average with the chart's sign (positive, a
+    0.208%" / "Perda 0,208%" in words ("No change" / "Sem mudança" at 0.000%), and the window's average with the chart's sign (positive, a
     loss), as the card's line and figures say a loss. **On a phone a card's plot is capped** as the
     main chart's is, under its strip in the small viewport left (never under 160 px), so the strip
     stays on screen while a finger reads the plot held sideways or with large text; the calendar's
@@ -497,10 +497,10 @@ Choices made while building story 5, open to the owner under decision 9.
     green and red for the bars.
 94. **Tables and lists on a phone** show their first rows, then 20 more with Show more and a count
     ("4 of 52 weeks"): weeks 4, hiccups 5, milestones 3, facts 5 (`moreRows` in `dom.ts`). Those
-    three tables lose their scrolling box (`table-short`; the log keeps its own until story 6, and the
-    simulator's long table too), share the width (`table-layout: fixed`), break a date after its
-    slashes only, and a heading's word where it must (`word-break: break-word`). The one page keeps Sprint 1's counts (weeks a year at a time, the rest whole). The log's
-    rows are story 6's. _Alternative:_ a box that scrolls inside the page.
+    tables, and the simulator's (about 12 rows), lose their scrolling box (`table-short`; the log
+    keeps its own until story 6), share the width (`table-layout: fixed`), break a date after its
+    slashes only, and a heading's word where it must (`word-break: break-word`). The one page keeps
+    Sprint 1's counts (weeks a year at a time, the rest whole). The log's rows are story 6's. _Alternative:_ a box that scrolls inside the page.
 95. **The empty diary on Progress and Analysis**: one card, "The chart and figures appear from the
     second weigh-in." on Progress and "The analysis cards appear from the second weigh-in." on
     Analysis, with Log a weigh-in (to Today); the chart, the weekly averages and the cards step
