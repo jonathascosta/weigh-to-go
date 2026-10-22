@@ -1342,7 +1342,7 @@ working and tested.
   - Settings: `settings.sections`, `settings.sectionsOn`, `settings.goal`, `settings.height`.
   - About: `about.web`, `about.app.*`.
   - The purchase: `iap.*`, the table in section 7.
-  - `privacy.choices`.
+  - `ads.choices` (named `privacy.choices` here first; decision 127 in decisions.md).
 - **Tests.**
   - DOM tests for delete with Undo, the record restored exactly.
   - The day sheet and focus.

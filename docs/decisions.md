@@ -689,3 +689,78 @@ Choices made while building story 7, open to the owner under decision 9.
      "Days" / "Dias" on a phone (screen readers keep the full name), so the last column has more
      room, with 6 px before its words. Proposed wording. _Alternative:_ `hyphens: auto` with fixed columns, which Safari
      hyphenates only where its dictionary allows and Chromium on Linux not at all.
+
+## 22 October 2026 · Ads in the app, as built (Sprint 4, story 1)
+
+Choices made while building story 1, open to the owner under decision 9. Numbered on from the
+decisions above.
+
+120. **`@capacitor-community/admob` 8.2.1, unpatched.** The newest release outside the week's
+     cooldown (6 October 2026). Its `load()` wires the consent forms, which Arrows patched into
+     8.1.0, so consent can come before the SDK starts; `scripts/ads.test.ts` checks that in the
+     installed source, and that a banner request carries `npa=1` when asked. The plugin lists
+     `@rdlabo/capacitor-docgen` (a documentation tool, with an old TypeScript) among its runtime
+     dependencies; it is installed but never imported. _Alternative:_ pin 8.1.0 with Arrows' patch.
+121. **Google is contacted only when an ad is due.** At launch the app asks for the Remove ads
+     entitlement (story 2; a stub that holds nothing until then, and no answer counts as held), then
+     works out the ad unit; then, only once the first 7 days are over and the diary has a weigh-in
+     (O14), Google's consent tool (UMP), then the SDK, then the banner. In the first days nothing of
+     Google's runs. Consent is asked at launch or on coming back to the app, never in the middle of
+     a session (a first weigh-in saved on day 8 waits for the next return), and not while a sheet
+     or the keypad is up. A refusal stands until the next launch or return, or Privacy choices.
+     _Alternative:_ start UMP at every launch, as Arrows does.
+122. **A refusal is read from the saved choices, not from UMP's `canRequestAds`.** After a refusal
+     UMP still says ads may be requested (Google's limited ads), which decision 64 rules out. So the
+     app's own plugin (`AdSetupPlugin.swift`) reads the IAB TCF keys Google's message saves on the
+     phone: where the GDPR applies, ads need consent to purpose 1 (storing and reading on the device)
+     and to Google as a vendor (755); anything else is a refusal, with no SDK started. Privacy
+     choices can change that either way: a consent then starts the SDK; a withdrawal takes the
+     banner away (the SDK, once started, stays started until the app closes, and requests nothing).
+     _Alternative:_ follow `canRequestAds` and accept limited ads.
+123. **Test ads by the sandbox receipt, and no ads rather than test ads.** The banner unit is
+     Google's iOS test unit when the app's App Store receipt is a sandbox one (TestFlight, Xcode,
+     the simulator) or in a debug build; the owner's from Info.plist otherwise; and none at all,
+     with nothing of Google's started, when an App Store install has no unit of the owner's. The
+     TestFlight workflow gains a **For the App Store** input that fails without both AdMob ids
+     (`ADMOB_APP_ID`, `ADMOB_BANNER_ID`, in Google's forms, not Google's test ids) or without
+     Google's SKAdNetwork list; unticked, it uploads as before, for TestFlight. The ids go into
+     Info.plist through fastlane's `xcargs` in the signing step only, never into the web build; the
+     project's settings carry Google's test app id, so `GADApplicationIdentifier` is always set.
+     _Alternative:_ require the ids on every upload, which would stop TestFlight builds until AdMob
+     is set up.
+124. **SKAdNetwork: an empty, marked place in Info.plist.** `SKAdNetworkItems` is there, empty, under
+     a comment saying where the list comes from and its date ("none yet"); a test checks any ids in
+     it are well formed and unique, and the App Store run fails while it is empty. No id was typed
+     or copied, not even Arrows', whose list this session can't check against Google's page.
+     _Alternative:_ a JSON file the build turns into Info.plist entries.
+125. **The banner and its band.** One 320 × 50 banner (`BANNER`, as the design asks), at the top,
+     `margin` 0, below the safe area. `--ad-h` follows the plugin's size event; the 0 the plugin
+     reports for a hide of ours is ignored, so the band stays and nothing jumps; it goes back to 0
+     when no ad comes (the plugin removes its view) or the banner is taken away. A banner isn't
+     requested while it would have to hide at once; one that loads (or refreshes) while a sheet, the
+     keypad or the purchase is up is hidden again, since the plugin adds its view shown on every
+     load. A failed banner is asked for again on the next return to the app. The purchase's class
+     on `<html>` is `buying`, for story 2. _Alternative:_ the adaptive banner, which is taller on
+     wide phones.
+126. **Off the diary, no banner.** The diary hides it on `pagehide` (and shows it again on a
+     `pageshow` from the back-forward cache), and every static page of the app's build (the privacy
+     policy in both languages and the 404 page) hides it again as it opens, and once more if a
+     banner still loading arrives; `check:dist` checks each of those pages' scripts does.
+     _Alternative:_ a navigation hook in Swift.
+127. **Privacy choices is a row of the iPhone app group**, after Apple Health, shown only while UMP
+     says the choices must be reachable; it opens Google's form and gets the focus back after. Its
+     string is `ads.choices` ("Privacy choices" / "Opções de privacidade"), not decision 109's
+     `privacy.choices`: the `privacy.*` keys are the policy's, and a test asks the policy pages to
+     carry every one of them.
+128. **About's ads sentences** are design §7's in English; the Portuguese is proposed wording: "Os
+     anúncios vêm do Google AdMob: não são personalizados e nunca recebem suas pesagens, mas o
+     Google recebe o que qualquer pedido de anúncio leva, como o modelo do iPhone e o endereço de
+     rede. Remover os anúncios acaba com esses pedidos."
+129. **The first launch is a screen preference** (`firstLaunch`, ms), as the rating prompt's days
+     are; Erase everything clears it with the rest, so after an erase the 7 days start again (the
+     diary is empty then anyway). _Alternative:_ keep it through an erase.
+130. **The policy is unchanged.** What it says of the ads matches what is built (the banner in the
+     app only, non-personalised, no tracking prompt or IDFA, the consent message where the law asks,
+     no SDK and no ads on a refusal, Privacy choices where it applies, nothing started once Remove
+     ads is held), except what only Google's data disclosure page can confirm: what the SDK
+     collects (`privacy.ads.collects`). Checking it is the owner's (STORE.md, step 9).

@@ -49,7 +49,9 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    app's TestFlight tab, after a few minutes of processing), create an **Internal Testing** group,
    turn on automatic distribution, and add yourself. Then install Apple's TestFlight app on the
    iPhone, accept the invitation, install the build and use it. Every later build is the same: run
-   the workflow, install it from TestFlight, report what feels wrong.
+   the workflow, install it from TestFlight, report what feels wrong. Leave **For the App Store**
+   unticked for these: such a build shows Google's test ads from TestFlight and none at all if it
+   ever reached the App Store (step 11 needs a build with it ticked).
 5. **The in-app purchase.** In the app's Monetization, In-App Purchases, create a **Non-Consumable**
    with the product id `net.jonathas.weightogo.removeads`, a reference name ("Remove ads"), the price
    you choose, the display name and description in English and Portuguese ("Remove ads" · "Pay once
@@ -58,8 +60,12 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    purchase is submitted together with the first version (step 11).
 6. **AdMob.**
    - Add an iOS app, Weigh to Go, and a **banner** ad unit; put them in the `app-store`
-     environment's secrets `ADMOB_APP_ID` and `ADMOB_BANNER_ID`. TestFlight builds show Google's test
-     ads anyway; a build for the App Store needs both.
+     environment's secrets `ADMOB_APP_ID` (the app id, `ca-app-pub-…~…`) and `ADMOB_BANNER_ID` (the
+     unit id, `ca-app-pub-…/…`), both or neither. Installed from TestFlight the app shows Google's
+     test ads anyway (it knows TestFlight by its sandbox receipt), so your own use never counts as
+     invalid traffic; from the App Store it shows yours. A run of the TestFlight workflow with **For
+     the App Store** ticked fails without both. The ids reach only the workflow's check and its
+     signing step.
    - Add your iPhone as a test device (Settings, Test devices), as for Arrows.
    - In Privacy & messaging, add the app to a European regulations (GDPR) message and to a US
      state regulations message, and publish both: the privacy policy promises the choices in
@@ -70,8 +76,10 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    - `app-ads.txt` is already on jonathas.net for the account. Once the app is live, link it to its
      listing in the app's settings.
    - Paste Google's current SKAdNetwork list into a session
-     (<https://developers.google.com/admob/ios/3p-skadnetworks>): a session can't open that page and
-     must not type the ids from memory.
+     (<https://developers.google.com/admob/ios/3p-skadnetworks>), with the date the page gives: a
+     session can't open that page and must not type the ids from memory. The session puts it in the
+     marked `SKAdNetworkItems` of `ios/App/App/Info.plist`, with the date; until then a run **For
+     the App Store** fails.
 7. **The pages on jonathas.net.** The privacy policy lives on the website, at
    `https://weightogo.jonathas.net/privacy.html` and `/pt/privacidade.html` in Portuguese (and in the
    app, from the footer). Its contact is the project's GitHub issues until you decide on a private
@@ -91,9 +99,14 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    languages and submits nothing. Until you decide on a contact and the support pages (decision 63
    in [decisions.md](decisions.md)), the Support URL in App Information is the project's issues
    page, <https://github.com/jonathascosta/weigh-to-go/issues>, in both languages.
-9. **App Privacy.** Answer for Google's ad SDK, following Google's guide
-   (<https://developers.google.com/admob/ios/privacy/data-disclosure>), for non-personalised ads
-   without tracking. What the person types and what the app reads from Apple Health stay on the phone
+9. **App Privacy.** First check the privacy policy against Google's data disclosure page
+   (<https://developers.google.com/admob/ios/privacy/data-disclosure>): a session can't open it, so
+   paste the page into one (or compare it yourself). The policy's "Ads in the app" says the SDK
+   collects the IP address, the device's model and system, the IDFV, advertising data and ad
+   interactions, an approximate location from the IP address, and crash and performance data
+   (`privacy.ads.collects`); where the page says otherwise, the session changes the policy and its
+   date. Then answer for Google's ad SDK, following that page, for non-personalised ads without
+   tracking. What the person types and what the app reads from Apple Health stay on the phone
    and reach no one, which Apple's definitions don't count as collected; purchases go through Apple.
    The answers must agree with the privacy policy. The Privacy Policy URL (App Privacy) is
    `https://weightogo.jonathas.net/privacy.html`, and `https://weightogo.jonathas.net/pt/privacidade.html`
@@ -105,8 +118,9 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
     - Price: free. Countries: every one but mainland China, where apps need a government filing
       number (ICP).
     - Pick the TestFlight build for the version, after checking it was built from the current `main`
-      (Arrows 1.0 was approved with an older build and needed a 1.0.1 at once). Add the in-app
-      purchase to the version.
+      (Arrows 1.0 was approved with an older build and needed a 1.0.1 at once) and by a run with
+      **For the App Store** ticked (the run's page in the Actions tab shows its inputs). Add the
+      in-app purchase to the version.
     - **The first submission needs a screen recording and the full review notes**, or a new app
       gets "Guideline 2.1 - Information Needed" instead of a review (Arrows, 5 October 2026). The
       recording starts from a fresh install, which erases the diary on that phone: first export a
@@ -114,9 +128,11 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
       TestFlight, record, and import the backup afterwards (or record on another iPhone). On an
       iPhone set to English with the latest iOS, start the screen recording from Control Center, and
       show, slowly: the first weigh-in, the summary and a chart, an analysis card, turning on Apple
-      Health and its permission sheet, the reminder, the consent message if it shows, the banner
-      (shown, never tapped: tapping one's own ads breaks AdMob's policy), buying Remove ads in the
-      sandbox and Restore Purchases, settings and the privacy policy. Two to four minutes; trim the
+      Health and its permission sheet, the reminder, buying Remove ads in the sandbox and Restore
+      Purchases, settings and the privacy policy. The banner and the consent message come only from
+      the 8th day after the first launch, once the diary has a weigh-in, so a fresh install shows
+      neither: record them afterwards on your own install (the banner shown, never tapped: tapping
+      one's own ads breaks AdMob's policy) and add that clip. Two to four minutes; trim the
       ends in Photos. Paste the [review notes](#app-review-notes) in the App Review Information's
       Notes and attach the recording.
     - Trader status (Digital Services Act) is declared once for the account (done for Arrows on 4
@@ -148,8 +164,11 @@ No setup or login. Type today's weight and tap Save. [Screens and settings to be
 4. External services
 - Apple Health (HealthKit): reads and writes body mass, only after the person turns it on; the data
   stays on the device and in Health, and is never used for advertising.
-- Google AdMob (Google Mobile Ads SDK): a banner, non-personalised ads only, no tracking prompt.
-- Google User Messaging Platform: the consent message where the law requires it.
+- Google AdMob (Google Mobile Ads SDK): a banner at the top, non-personalised ads only, no tracking
+  prompt. It shows from the 8th day after the first launch, once the diary has a weigh-in, so a
+  fresh install shows none (the recording shows it on an install in use); never while logging.
+- Google User Messaging Platform: the consent message where the law requires it, when the ads first
+  start; a refusal means no ads. Privacy choices in Your data where it applies.
 - StoreKit: the one-time "Remove ads" purchase, verified on the device; Restore Purchases in
   settings.
 The app has no backend, no accounts and no analytics: every weigh-in stays on the device.
