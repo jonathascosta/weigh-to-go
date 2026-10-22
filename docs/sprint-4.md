@@ -94,9 +94,14 @@ both change together, in the same pull request.
    more, decision 139) and **Restore purchases**; `buying` is on `<html>` while Apple's sheet is up.
    About says the ads are gone once held (decision 140); the policy is unchanged (decision 142).
    `check:dist` fails when the website's scripts carry purchase code. STORE.md's step 5 has the
-   owner's sandbox round, and the review notes the purchase. Not done here: the `SKTestSession`
-   test on the macOS runner (decision 143); and, on a device, the purchase sheet, Restore and the
-   banner going at once, which are the owner's TestFlight round.
+   owner's sandbox round (in an order that keeps the one purchase an Apple Account can make on
+   TestFlight for last, recorded for App Review), and the review notes the purchase;
+   `npm run store:screenshots` makes the purchase's review screenshot (decision 144).
+   `AppStoreKitTests`, hosted in the app, runs on the macOS runner with `ios/App/Products.storekit`
+   in an `SKTestSession`: the product and its price, a purchase held, a refund, Ask to Buy approved
+   and declined (decision 143). Launch's answer about the purchase never undoes a newer one
+   (decision 136). Not checked on a device yet: the purchase sheet, Restore and the banner going at
+   once, which are the owner's TestFlight round.
 
 3. **Privacy.** The privacy policy in both languages, in the app and on jonathas.net: what stays on
    the phone (everything typed), what Apple holds (Health, backups, purchases), what Google's ad SDK

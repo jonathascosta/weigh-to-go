@@ -11,25 +11,11 @@ import {
   BannerAdSize,
   type AdmobConsentInfo,
 } from '@capacitor-community/admob';
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
 import type { App } from '../app/app';
-import { NO_ADS, startAds, type AdProvider, type AdsApi, type BuildAds, type Entitlement } from '../ads/ads';
+import { NO_ADS, startAds, type AdProvider, type AdsApi, type Entitlement } from '../ads/ads';
 import type { ConsentChoices, ConsentInfo } from '../ads/consent';
-
-interface SavedChoices {
-  readonly gdprApplies: number;
-  readonly purposeConsents: string;
-  readonly vendorConsents: string;
-  /** Whether `IABTCF_TCString` or `IABTCF_PurposeConsents` is saved. */
-  readonly tcf: boolean;
-}
-
-interface AdSetupPlugin {
-  build(): Promise<BuildAds>;
-  consentChoices(): Promise<SavedChoices>;
-}
-
-const AdSetup = registerPlugin<AdSetupPlugin>('AdSetup');
+import { AdSetup, type SavedChoices } from './ad-setup';
 
 const report = (error: unknown): void => {
   console.warn('weigh-to-go: ads:', error);

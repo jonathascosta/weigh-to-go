@@ -58,22 +58,43 @@ de consentimento.
    com o product id `net.jonathas.weightogo.removeads`, um nome de referência ("Remove ads"), o preço
    que escolher, o nome e a descrição em inglês e português ("Remove ads" · "Pay once and never see
    ads again"; "Remover anúncios" · "Pague uma vez e nunca mais veja anúncios"), se vale para o
-   Compartilhamento Familiar, e a captura de tela para a revisão (a sessão a faz). A primeira compra
-   vai junto com a primeira versão (passo 11).
+   Compartilhamento Familiar, e a captura de tela para a revisão:
+   `ios/App/fastlane/screenshots/review/remove-ads.png` neste repositório (1290 × 2796, Seus dados ›
+   App para iPhone com "Buy · $2.99"; `npm run build:ios && npm run store:screenshots` a refaz). O App
+   Store Connect não submete a compra sem ela. A primeira compra vai junto com a primeira versão
+   (passo 11).
    - O **Compartilhamento Familiar** é escolha sua, e pode ser ligado depois, mas nunca mais
      desligado. O app o lê da App Store: ligado, a linha sob o botão acrescenta "e para o seu grupo
      de Compartilhamento Familiar".
    - **Teste no TestFlight** assim que a compra existir (ela precisa do acordo do passo 2; pode
-     levar uma hora para chegar ao sandbox). As compras no TestFlight são gratuitas e usam a sua
-     própria Conta Apple. Em Seus dados › App para iPhone, **Remover anúncios** mostra o preço vindo
-     da App Store; sem preço, a linha diz que não foi possível acessar a App Store ou que Remover
-     anúncios não está disponível: a compra ainda não está no App Store Connect, ou o id dela é
-     outro. Toque em **Comprar**, cancele uma vez (volta ao botão, sem mensagem) e depois compre: a
-     linha diz "Anúncios removidos. Obrigado." e o banner some na hora. Depois apague o app,
-     instale de novo e toque em **Restaurar compras**: a linha de agradecimento volta. Com as
-     Restrições de Conteúdo e Privacidade do Tempo de Uso proibindo compras dentro de apps, a linha
-     diz isso. O Pedir para Comprar ("Aguardando aprovação") pode ser testado com uma conta de
-     sandbox numa família (Users and Access › Sandbox), se quiser.
+     levar uma hora para chegar ao sandbox). As compras no TestFlight são gratuitas, usam a sua
+     própria Conta Apple e **não podem ser apagadas**: comprado uma vez, essa Conta Apple tem Remover
+     anúncios no TestFlight para sempre. Então confira antes tudo o que precisa dela não comprada, e
+     compre por último. Nesta ordem, em Seus dados › App para iPhone:
+     1. **Remover anúncios** mostra o preço vindo da App Store. Sem preço, a linha diz que não foi
+        possível acessar a App Store ou que a opção Remover anúncios não está disponível: a compra
+        ainda não está no App Store Connect, ou o id dela é outro.
+     2. Toque em **Comprar** e cancele a tela da Apple: volta ao botão, sem mensagem.
+     3. Em Ajustes › Tempo de Uso › Restrições de Conteúdo e Privacidade, proíba as compras dentro de
+        apps e volte: a linha diz que as compras estão desativadas. Permita de novo e volte: o preço
+        reaparece.
+     4. No Modo Avião, toque em **Comprar** (ou Tentar de novo): a linha diz que não foi possível
+        acessar a App Store. De volta on-line, **Tentar de novo** mostra o preço.
+     5. Toque em **Restaurar compras**: "Nenhuma compra para restaurar nesta Conta Apple."
+     6. **Compre, gravando.** Faça isso na instalação que você usa, depois dos 7 primeiros dias, com
+        o banner no alto, e grave a tela: o banner some na hora e a linha diz "Anúncios removidos.
+        Obrigado.". Guarde esse trecho para a App Review (passo 11): é a única vez que essa Conta
+        Apple pode mostrar uma compra tirando o banner. O Sobre passa a dizer que os anúncios foram
+        removidos.
+     7. Apague o app e instale de novo: Seus dados já diz "Anúncios removidos. Obrigado." ao abrir (o
+        StoreKit guarda a compra), e nenhum banner vem. **Restaurar compras** diz então "Compra
+        restaurada.".
+
+     O Pedir para Comprar ("Aguardando aprovação") precisa de uma conta real de criança numa família
+     no TestFlight, ou do arquivo de configuração do StoreKit (`ios/App/Products.storekit`, já
+     escolhido no scheme App) com um build feito no Xcode; é opcional, e o teste de StoreKit do
+     workflow iOS o cobre.
+
    - Nada precisa de servidor: o app confere a compra no iPhone com o StoreKit, então não há shared
      secret nem URL de App Store Server Notifications para configurar.
 6. **AdMob.**
@@ -178,11 +199,13 @@ de consentimento.
       apague o app, instale-o de novo pelo TestFlight, grave e importe o backup no fim (ou grave em
       outro iPhone). Num iPhone em inglês com o iOS mais recente, comece a gravação de tela pela
       Central de Controle e mostre, devagar: a primeira pesagem, o resumo e um gráfico, um cartão de
-      análise, ligar o app Saúde e a tela de permissão, o lembrete, comprar Remover anúncios no
-      sandbox e Restaurar compras, as configurações e a política de privacidade. Dois a quatro
-      minutos, mais o trecho do banner; corte as pontas no app Fotos. Cole as
-      [notas de revisão](STORE.md#app-review-notes) (em inglês, como a Apple as lê) em Notes da App
-      Review Information e anexe os dois.
+      análise, ligar o app Saúde e a tela de permissão, o lembrete, Remover anúncios com o preço e
+      Restaurar compras (no TestFlight sua Conta Apple já tem a compra, então Restaurar diz "Compra
+      restaurada."; a compra em si é o trecho do passo 5), as configurações e a política de
+      privacidade. Dois a quatro
+      minutos, mais o trecho do banner e o trecho da compra do passo 5; corte as pontas no app Fotos.
+      Cole as [notas de revisão](STORE.md#app-review-notes) (em inglês, como a Apple as lê) em Notes
+      da App Review Information e anexe os três.
     - O status de comerciante (Digital Services Act) é declarado uma vez para a conta (feito para o
       Arrows em 4 de outubro de 2026); nada novo, a menos que a declaração passe para um endereço
       comercial.

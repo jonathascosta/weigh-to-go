@@ -71,13 +71,14 @@ afterEach(() => {
 describe('Remove ads', () => {
   it('asks for the price once drawn, and offers it on a button: one payment, no subscription', () => {
     expect(purchase.calls).toEqual(['show']);
-    expect(line()).toBe('One payment, for good; no subscription.');
+    expect(line()).toBe('Asking the App Store…');
     expect(button().hidden).toBe(true);
     purchase.set({ offer: { kind: 'ready', product: PRODUCT } });
+    expect(line()).toBe('One payment, for good; no subscription.');
     expect(button().hidden).toBe(false);
     expect(button().textContent).toBe('Buy · R$ 14,90');
     expect($('remove-ads-note').textContent).toBe(
-      'Bought once, the ads go away at once and for good on every iPhone with this Apple Account. They stay away offline too.',
+      'Pay once and the ads go away straight away, on every iPhone with this Apple Account, offline too.',
     );
     button().click();
     expect(purchase.calls).toContain('buy');
@@ -92,12 +93,16 @@ describe('Remove ads', () => {
   it('says each state calmly, with at most one button', () => {
     const states: [PurchaseView['offer'], unknown, string | null][] = [
       [{ kind: 'buying', product: PRODUCT }, 'Opening the App Store…', 'Buying…'],
-      [{ kind: 'pending' }, 'Waiting for approval. The ads go away as soon as it is approved.', null],
+      [
+        { kind: 'pending' },
+        'Waiting for approval. The ads go away as soon as the purchase is approved.',
+        null,
+      ],
       [{ kind: 'failed' }, 'The purchase didn’t go through. Try again later.', 'Try again'],
       [{ kind: 'offline' }, 'The App Store can’t be reached. Try again when you’re online.', 'Try again'],
       [
         { kind: 'unavailable' },
-        'Remove ads isn’t available from the App Store just now. Try again later.',
+        '“Remove ads” isn’t available from the App Store just now. Try again later.',
         'Try again',
       ],
       [{ kind: 'not-allowed' }, expect.stringContaining('Screen Time'), null],
@@ -119,10 +124,33 @@ describe('Remove ads', () => {
     expect(purchase.calls).not.toContain('buy');
   });
 
-  it('asks again on Try again', () => {
+  it('asks again on Try again, keeping the button and the focus on it while it asks', () => {
     purchase.set({ offer: { kind: 'offline' } });
+    expect($('remove-ads-status').classList.contains('status-bad')).toBe(false);
+    button().focus();
     button().click();
     expect(purchase.calls).toContain('retry');
+    purchase.set({ offer: { kind: 'checking' } });
+    expect(line()).toBe('Asking the App Store…');
+    expect(button().hidden).toBe(false);
+    expect(button().textContent).toBe('Try again');
+    expect(button().getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(button());
+    purchase.calls.length = 0;
+    button().click();
+    expect(purchase.calls).toEqual([]);
+    purchase.set({ offer: { kind: 'ready', product: PRODUCT } });
+    expect(button().getAttribute('aria-disabled')).toBeNull();
+    expect(button().textContent).toBe('Buy · R$ 14,90');
+    expect(document.activeElement).toBe(button());
+    // A state with no button: the focus goes to the title.
+    purchase.set({ offer: { kind: 'not-allowed' } });
+    expect(document.activeElement).toBe($('remove-ads-title'));
+  });
+
+  it('draws every line plain, a failure too (design §7)', () => {
+    purchase.set({ offer: { kind: 'failed' } });
+    expect($('remove-ads-status').className).toBe('status');
   });
 
   it('hands the focus to its title when the button goes, bought', () => {

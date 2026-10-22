@@ -225,6 +225,117 @@ describe('buying Remove ads', () => {
   });
 });
 
+describe('answers that arrive out of order (Spock’s review)', () => {
+  /** StoreKit's answers to `held()`, one per question, resolved by hand in any order. */
+  const answers = () => {
+    const pending: ((held: boolean) => void)[] = [];
+    store.held = () => {
+      store.calls.push('held');
+      return new Promise((resolve) => pending.push(resolve));
+    };
+    return pending;
+  };
+
+  it('keeps it held when launch’s older answer “not held” comes after an update’s “held”', async () => {
+    const pending = answers();
+    const p = start();
+    let launchHeld: boolean | null = null;
+    void p.held().then((held) => (launchHeld = held));
+    // An Ask to Buy approved, or a purchase on another device: an update, asked after launch.
+    store.change();
+    await settle();
+    expect(pending).toHaveLength(2);
+    pending[1]?.(true);
+    await settle();
+    expect(offer()).toBe('held');
+    pending[0]?.(false);
+    await p.settled();
+    expect(offer()).toBe('held');
+    expect(hint.value).toBe(true);
+    expect(launchHeld).toBe(true);
+    expect(await p.held()).toBe(true);
+  });
+
+  it('keeps it held when Restore, tapped during launch, finds it before launch answers', async () => {
+    const pending = answers();
+    const p = start();
+    const restoring = p.restore();
+    await settle();
+    expect(pending).toHaveLength(2);
+    pending[1]?.(true);
+    await restoring;
+    expect(p.view()).toEqual({ offer: { kind: 'held' }, restore: 'restored' });
+    pending[0]?.(false);
+    await p.settled();
+    expect(offer()).toBe('held');
+    expect(await p.held()).toBe(true);
+  });
+
+  it('lets a newer “not held” (a refund) win over an older “held”', async () => {
+    const pending = answers();
+    const p = start();
+    store.change();
+    await settle();
+    pending[1]?.(false);
+    pending[0]?.(true);
+    await p.settled();
+    expect(offer()).not.toBe('held');
+    expect(await p.held()).toBe(false);
+  });
+
+  it('changes nothing once disposed, whatever comes in after', async () => {
+    const pending = answers();
+    const p = start();
+    const seen: string[] = [];
+    p.subscribe((view) => seen.push(view.offer.kind));
+    store.change();
+    await settle();
+    p.dispose();
+    pending[1]?.(true);
+    pending[0]?.(true);
+    await settle();
+    document.dispatchEvent(new Event('visibilitychange'));
+    await settle();
+    expect(seen).toEqual([]);
+    expect(store.listeners()).toBe(0);
+  });
+
+  it('keeps `buying` on <html> until the last of two App Store sheets has gone', async () => {
+    const p = start();
+    p.show();
+    await p.settled();
+    store.holdBuy = true;
+    const buying = p.buy();
+    await p.restore();
+    expect(html.classList.contains(BUYING_CLASS)).toBe(true);
+    store.finishBuy();
+    await buying;
+    expect(html.classList.contains(BUYING_CLASS)).toBe(false);
+  });
+
+  it('reports Restore as restored when it is already held', async () => {
+    store.entitled = true;
+    const p = start();
+    await p.settled();
+    await p.restore();
+    expect(p.view()).toEqual({ offer: { kind: 'held' }, restore: 'restored' });
+  });
+
+  it('asks for the offer again after a Restore when the App Store couldn’t be reached', async () => {
+    store.failProduct = 'other';
+    online = false;
+    const p = start();
+    p.show();
+    await p.settled();
+    expect(offer()).toBe('offline');
+    online = true;
+    store.failProduct = null;
+    await p.restore();
+    await p.settled();
+    expect(p.view()).toEqual({ offer: { kind: 'ready', product: PRODUCT }, restore: 'none' });
+  });
+});
+
 describe('Restore purchases', () => {
   it('finds a purchase made on another iPhone, under `buying`', async () => {
     const p = start();
@@ -320,6 +431,42 @@ describe('the ads with Remove ads (story 2)', () => {
     await a.settled();
     expect(admob.calls).toHaveLength(count);
     expect(a.privacyChoices()).toBe(false);
+  });
+
+  it('start nothing when launch’s stale “not held” comes after an update’s “held”', async () => {
+    const pending: ((held: boolean) => void)[] = [];
+    store.held = () => new Promise((resolve) => pending.push(resolve));
+    const p = start();
+    const a = startTheAds(p);
+    store.change();
+    await settle();
+    pending[1]?.(true);
+    await settle();
+    pending[0]?.(false);
+    await a.settled();
+    document.dispatchEvent(new Event('visibilitychange'));
+    await a.settled();
+    expect(admob.calls).toEqual([]);
+  });
+
+  it('send nothing more once stopped, whatever StoreKit says after', async () => {
+    const p = start();
+    const a = startTheAds(p);
+    await a.settled();
+    admob.load();
+    store.entitled = true;
+    store.change();
+    await settle();
+    const count = admob.calls.length;
+    store.entitled = false;
+    store.change();
+    await settle();
+    store.entitled = true;
+    store.change();
+    document.dispatchEvent(new Event('visibilitychange'));
+    await settle();
+    await a.settled();
+    expect(admob.calls).toHaveLength(count);
   });
 
   it('stop too when an approval (Ask to Buy) comes in later', async () => {

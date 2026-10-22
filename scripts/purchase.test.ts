@@ -67,3 +67,52 @@ describe('the app’s own plugin', () => {
     expect(setup).toContain('call.resolve(["allowed": AppStore.canMakePayments])');
   });
 });
+
+describe('the StoreKit test on the macOS runner', () => {
+  const project = read('ios/App/App.xcodeproj/project.pbxproj');
+  const scheme = read('ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme');
+
+  it('has a StoreKit configuration with Remove ads, non-consumable, shared with the family', () => {
+    const config = JSON.parse(read('ios/App/Products.storekit')) as {
+      products: { productID: string; type: string; familyShareable: boolean; displayPrice: string }[];
+      subscriptionGroups: unknown[];
+    };
+    expect(config.products).toEqual([
+      expect.objectContaining({
+        productID: 'net.jonathas.weightogo.removeads',
+        type: 'NonConsumable',
+        familyShareable: true,
+        displayPrice: '2.99',
+      }),
+    ]);
+    expect(config.subscriptionGroups).toEqual([]);
+    expect(read('ios/App/AppStoreKitTests/RemoveAdsStoreKitTests.swift')).toContain(
+      'static let removeAds = "net.jonathas.weightogo.removeads"',
+    );
+  });
+
+  it('builds a unit test bundle hosted in the app, carrying the configuration', () => {
+    expect(project).toContain('productType = "com.apple.product-type.bundle.unit-test";');
+    expect(project).toContain('TEST_HOST = "$(BUILT_PRODUCTS_DIR)/App.app/App";');
+    expect(project).toContain('A10E00232F00000000000001 /* Products.storekit in Resources */,');
+    expect(project).toContain('A10E00212F00000000000001 /* RemoveAdsStoreKitTests.swift in Sources */,');
+    // Only the app is built for running and archiving: TestFlight's archive stays the app alone.
+    expect(scheme.match(/<BuildActionEntry\b/g)).toHaveLength(1);
+    expect(scheme).toContain('BlueprintName = "AppStoreKitTests"');
+    expect(scheme).toContain('identifier = "../../Products.storekit"');
+  });
+
+  it('covers the product, a purchase, a refund and Ask to Buy, and runs in the iOS workflow', () => {
+    const tests = read('ios/App/AppStoreKitTests/RemoveAdsStoreKitTests.swift');
+    for (const name of [
+      'testTheProductIsFoundWithItsPrice',
+      'testABuyIsVerifiedAndHeldInTheCurrentEntitlements',
+      'testARefundRevokesIt',
+      'testAskToBuyIsPendingThenApproved',
+      'testAskToBuyIsPendingThenDeclined',
+    ])
+      expect(tests).toContain(`func ${name}()`);
+    expect(tests).toContain('Transaction.currentEntitlements');
+    expect(read('.github/workflows/ios.yml')).toMatch(/xcodebuild test[\s\S]*-only-testing:AppStoreKitTests/);
+  });
+});

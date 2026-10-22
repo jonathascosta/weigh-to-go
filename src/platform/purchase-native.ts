@@ -15,7 +15,7 @@
  * simulator run counts as a failure.
  */
 import { NativePurchases, PURCHASE_TYPE, type Transaction } from '@capgo/native-purchases';
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
 import {
   REMOVE_ADS,
   StoreError,
@@ -24,12 +24,7 @@ import {
   type StoreApi,
   type StoreFailure,
 } from '../ads/purchase';
-
-interface PaymentsPlugin {
-  canMakePayments(): Promise<{ allowed: boolean }>;
-}
-
-const AdSetup = registerPlugin<PaymentsPlugin>('AdSetup');
+import { AdSetup } from './ad-setup';
 
 const report = (error: unknown): void => {
   console.warn('weigh-to-go: purchase:', error);

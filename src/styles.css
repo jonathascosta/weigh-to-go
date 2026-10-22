@@ -3389,6 +3389,15 @@ span.cal-none {
   cursor: default;
 }
 
+/* A line under a row belongs to it: it covers the row's bottom rule, with the group's own panel
+   (no :has(), for Safari 15.0). */
+.row + .choices-status:not(:empty) {
+  position: relative;
+  margin-top: -1px;
+  padding-top: 0;
+  background: var(--panel);
+}
+
 .choices-status:empty {
   min-height: 0;
   padding: 0;

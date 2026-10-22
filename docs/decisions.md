@@ -826,8 +826,11 @@ decisions above.
      "thank you" before StoreKit answers; it never makes the purchase held, and StoreKit's answer
      replaces it at every launch. A refund is followed: StoreKit's updates (`transactionUpdated`) and
      every return to the app ask again; refunded during a session, the ads stay stopped until the
-     next launch. Erase everything clears the hint with the other preferences. _Alternative:_ no
-     hint (the row waits a moment at every launch).
+     next launch. Erase everything clears the hint with the other preferences. Every answer about the
+     entitlement (launch's, an update's, a return to the app's, a restore's, a purchase's) is
+     numbered when it is asked for, and only one newer than the last applied counts, so a slow
+     launch answer never undoes a purchase held since (Spock's review); `held()` then resolves with
+     the newest. _Alternative:_ no hint (the row waits a moment at every launch).
 137. **The price is asked for when Your data is drawn, not at launch,** and with `getProducts`,
      which answers an unknown product with an empty list: Capacitor logs every rejected plugin call
      as an error in a debug build, and the iOS workflow's simulator run fails on `[error]`. So a
@@ -837,8 +840,10 @@ decisions above.
      the screen, under the thumb, and asks for Face ID or the side button, so a sheet of ours
      before it would only add a tap. The Remove ads row is a card of the iPhone app group (title,
      line, note, then the button at its start, 44 px tall), and stays focusable while buying
-     (`aria-disabled`); when its button goes (bought, waiting for approval), the focus moves to its
-     title. _Alternative:_ a sheet of ours with the price and the words, then Apple's.
+     (`aria-disabled`); while the App Store is asked again (Try again) the button stays where it was,
+     unavailable, with the line "Asking the App Store…", so the focus stays on it; the focus moves
+     to the title only when the new state has no button (bought, waiting for approval, not allowed;
+     DaVinci's review). Every line is plain, a failure's too, as design §7 draws them. _Alternative:_ a sheet of ours with the price and the words, then Apple's.
 139. **How a failure is told apart.** The plugin rejects with fixed English messages for a cancel
      ("User cancelled": back to Ready, no message), a pending purchase ("Transaction pending": Ask to
      Buy, or the bank) and an unknown product; anything else is StoreKit's localized text. So after
@@ -852,22 +857,37 @@ decisions above.
 140. **The words say what is true for this purchase.** Under the button: one payment, for good, on
      every iPhone with this Apple Account, offline too, and "for your Family Sharing group" only when
      StoreKit says the product is shareable (the owner's choice in App Store Connect, STORE.md,
-     step 5). About's ads sentence becomes, once held, "The ads are removed: Google’s ad software
-     isn’t started, and nothing goes to Google any more." (`about.app.adsRemoved`; Portuguese
-     proposed). _Alternative:_ the design's line alone.
+     step 5). About's ads sentence becomes, once held, "The ads are removed: the app no longer starts Google’s
+     ad software, and nothing more is sent to Google." (`about.app.adsRemoved`; Portuguese "Os
+     anúncios foram removidos: o app não inicia mais o software de anúncios do Google, e nada mais é
+     enviado ao Google."). The note is "Pay once and the ads go away straight away, on every iPhone
+     with this Apple Account, offline too." (revised after Atlas's and DaVinci's reviews). _Alternative:_ the design's line alone.
 141. **Restore purchases stays after the purchase is held**, and `buying` is on `<html>` during a
      restore too, since Apple's sign-in sheet may come up. Waiting for approval lasts the session;
-     the approval comes through StoreKit's updates and the ads stop then. _Alternative:_ hide
-     Restore once held.
+     the approval comes through StoreKit's updates and the ads stop then. Restore says "Purchase
+     restored." whenever the purchase is held after it, and asks for the price again when the
+     offer was offline, failed or unavailable; two App Store sheets at once keep `buying` until the
+     last has gone. _Alternative:_ hide Restore once held.
 142. **The privacy policy is unchanged.** It says the purchase is handled by Apple, that we receive
      no payment details, and that the app checks it on the iPhone with Apple's tools and no
      purchase service in between, and that once Remove ads is bought neither Google's SDK nor its
      consent tool is started: all true as built (a plugin running on the phone is not a service in
      between). Its date stays 22 October 2026.
-143. **No StoreKit configuration file and no `SKTestSession` test yet.** Arrows has neither (its
-     Remove ads is still a later idea), the owner has no Mac to run a `.storekit` file in Xcode, and
-     an XCTest target means project edits only a macOS run can prove. The purchase's logic is
-     covered by unit tests with a fake App Store, the plugin by checks of its installed source, and
-     the real thing by the owner's TestFlight sandbox round (STORE.md, step 5). The sprint's
-     `SKTestSession` test is left as an issue for later. _Alternative:_ add the test target now,
-     tried through CI rounds.
+143. **Remove ads is tested against StoreKit's own test environment on the macOS runner** (revised
+     after Atlas's review). `ios/App/Products.storekit` is a StoreKit configuration with the
+     non-consumable `net.jonathas.weightogo.removeads` at 2.99, shared with the family; the App
+     scheme, now shared in the repository (`App.xcscheme`, building and archiving the app alone, as
+     the one Xcode made did), chooses it for runs from Xcode. `AppStoreKitTests`, a unit test target
+     of the app's project hosted in the app, opens it in an `SKTestSession` and makes the StoreKit 2
+     calls the plugin makes (`Product.products`, `purchase`, `Transaction.currentEntitlements`,
+     verified only), deciding as the app does: the product found with its price, a purchase held,
+     a refund revoking it, Ask to Buy pending then approved, and declined. The iOS workflow runs it
+     after the app's launch check (`xcodebuild test -only-testing:AppStoreKitTests`), so its first
+     run is the pull request's. _Alternative:_ a Swift package of its own under `ios/`, whose tests
+     would run without a host app, where `SKTestSession` isn't dependable.
+144. **The purchase's review screenshot is made here** (Atlas's review): App Store Connect won't
+     submit the purchase without one. `npm run store:screenshots` (story 4 adds the listing's to
+     it) runs the app's build in Chromium with a stand-in for Capacitor's native bridge whose
+     StoreKit sells Remove ads at $2.99, and writes Your data › iPhone app with "Buy · $2.99" at
+     1290 × 2796 to `ios/App/fastlane/screenshots/review/remove-ads.png`, committed. The app's own
+     plugin is registered once (`platform/ad-setup.ts`) for the ads and the purchase.

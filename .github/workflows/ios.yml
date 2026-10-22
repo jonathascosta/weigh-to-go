@@ -141,6 +141,7 @@ jobs:
           runtimes = sorted((r for r in devices if "iOS" in r and any(d["name"].startswith("iPhone") for d in devices[r])), key=version)
           print([d for d in devices[runtimes[-1]] if d["name"].startswith("iPhone")][0]["udid"])')
           xcrun simctl bootstatus "$udid" -b
+          echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
           xcrun simctl install "$udid" ios/App/build/Build/Products/Debug-iphonesimulator/App.app
           xcrun simctl launch --console-pty "$udid" net.jonathas.weightogo > launch.log 2>&1 &
           pid=$!
@@ -163,6 +164,24 @@ jobs:
             exit 1
           fi
 
+      # Remove ads against StoreKit's own test environment (docs/sprint-4.md, story 2; decision
+      # 143): AppStoreKitTests, hosted in the app, with ios/App/Products.storekit in an
+      # SKTestSession: the product and its price, a verified purchase held in the current
+      # entitlements, a refund, Ask to Buy approved and declined. After the launch above, so its log
+      # is the app's alone. Nothing reaches the App Store.
+      - name: Test Remove ads with StoreKit's test environment
+        working-directory: ios/App
+        run: >-
+          xcodebuild test
+          -project App.xcodeproj
+          -scheme App
+          -configuration Debug
+          -destination "id=$SIM_UDID"
+          -derivedDataPath build
+          -only-testing:AppStoreKitTests
+          -resultBundlePath ../../storekit-tests.xcresult
+          CODE_SIGNING_ALLOWED=NO
+
       - name: Keep the screenshot
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -171,4 +190,5 @@ jobs:
           path: |
             first-screen.png
             resolved/Package.resolved
+            storekit-tests.xcresult
           if-no-files-found: ignore

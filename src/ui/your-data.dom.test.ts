@@ -130,11 +130,13 @@ describe('About', () => {
     held = true;
     draw(settings());
     expect(box.textContent).toContain(
-      'The ads are removed: Google’s ad software isn’t started, and nothing goes to Google any more.',
+      'The ads are removed: the app no longer starts Google’s ad software, and nothing more is sent to Google.',
     );
     expect(box.textContent).not.toContain('Ads come from Google AdMob');
     draw(choose({ lang: 'pt' }));
-    expect(box.textContent).toContain('Os anúncios foram removidos');
+    expect(box.textContent).toContain(
+      'Os anúncios foram removidos: o app não inicia mais o software de anúncios do Google, e nada mais é enviado ao Google.',
+    );
   });
 });
 

@@ -29,7 +29,7 @@ export function mountRemoveAds(purchase: Purchase): RemoveAdsRows {
   // aria-disabled rather than disabled while buying: a disabled button drops the focus.
   const button = h('button', {
     class: 'button iap-buy',
-    attrs: { type: 'button', id: 'remove-ads-buy', 'aria-describedby': 'remove-ads-note' },
+    attrs: { type: 'button', id: 'remove-ads-buy', 'aria-describedby': 'remove-ads-note', hidden: true },
   });
   const offer = h(
     'section',
@@ -82,12 +82,16 @@ export function mountRemoveAds(purchase: Purchase): RemoveAdsRows {
                     ? m['iap.notAllowed']
                     : o.kind === 'none'
                       ? ''
-                      : m['iap.ready'];
+                      : o.kind === 'checking'
+                        ? m['iap.restoring']
+                        : m['iap.ready'];
     if (status.textContent !== line) status.textContent = line;
-    status.classList.toggle('status-bad', o.kind === 'failed');
     const product = o.kind === 'ready' || o.kind === 'buying' ? o.product : null;
     note.hidden = product === null;
     note.textContent = product ? m['iap.note'](product.family) : '';
+    // While the App Store is asked again (Try again), the button stays where it was, unavailable,
+    // so the focus stays on it; at launch, with no button yet, there is none.
+    const keep = o.kind === 'checking' && !button.hidden ? button.textContent : null;
     const label =
       o.kind === 'ready'
         ? m['iap.buy'](o.product.price)
@@ -95,12 +99,12 @@ export function mountRemoveAds(purchase: Purchase): RemoveAdsRows {
           ? m['iap.buyingButton']
           : o.kind === 'failed' || o.kind === 'offline' || o.kind === 'unavailable'
             ? m['iap.tryAgain']
-            : null;
+            : keep;
     const hadFocus = document.activeElement === button;
     button.hidden = label === null;
     button.textContent = label ?? '';
     button.classList.toggle('button-ghost', label === m['iap.tryAgain']);
-    if (o.kind === 'buying') button.setAttribute('aria-disabled', 'true');
+    if (o.kind === 'buying' || o.kind === 'checking') button.setAttribute('aria-disabled', 'true');
     else button.removeAttribute('aria-disabled');
     if (hadFocus && button.hidden) title.focus({ preventScroll: true });
 
