@@ -31,6 +31,7 @@ export function mountAbout(
     class: 'about-link own-line',
     attrs: { href: '/privacy.html', id: 'about-policy' },
   });
+  const storeBackup = h('span');
   const store =
     inApp || appStoreUrl === ''
       ? null
@@ -54,7 +55,7 @@ export function mountAbout(
         second,
         ads,
         h('p', {}, policy),
-        store === null ? null : h('p', {}, store),
+        store === null ? null : h('p', {}, store, '. ', storeBackup),
         h('p', { class: 'note' }, version, ' · ', madeBy, ' ', author),
       ),
     ),
@@ -69,7 +70,11 @@ export function mountAbout(
     } else first.textContent = `${m['home.privacy']} ${m['about.web']}`;
     policy.textContent = m['about.privacy'];
     policy.setAttribute('href', policyHref(s));
-    if (store) store.textContent = m['about.appStore'];
+    if (store) {
+      // The link is named by the destination only; the backup sentence follows it as text.
+      store.textContent = m['about.appStore'];
+      storeBackup.textContent = m['about.appStoreBackup'];
+    }
     version.textContent = m['about.version'](__APP_VERSION__);
     madeBy.textContent = m['footer.madeBy'];
   };

@@ -153,15 +153,18 @@ describe('About', () => {
     drawWeb(settings());
     const link = web.querySelector('#about-app-store')!;
     expect(link.getAttribute('href')).toBe(url);
-    // "App Store" never splits over two lines; the backup is how a web diary moves to the app.
-    expect(link.textContent).toBe(
+    // The link is named by where it goes ("App Store" never split over two lines); the backup,
+    // how a web diary moves to the app, follows it as text in the same line (WCAG 2.4.4).
+    expect(link.textContent).toBe('Weigh to Go for iPhone, on the App\u00a0Store');
+    expect(link.parentElement!.textContent).toBe(
       'Weigh to Go for iPhone, on the App\u00a0Store. A backup brings your diary with you.',
     );
     // A link on a line of its own, 44 px high like the policy's (styles.css, .about-link.own-line).
     expect(link.classList.contains('own-line')).toBe(true);
     expect(web.querySelector('#about-policy')!.classList.contains('own-line')).toBe(true);
     drawWeb(choose({ lang: 'pt' }));
-    expect(link.textContent).toBe(
+    expect(link.textContent).toBe('O Weigh to Go para iPhone, na App\u00a0Store');
+    expect(link.parentElement!.textContent).toBe(
       'O Weigh to Go para iPhone, na App\u00a0Store. Um backup leva seu diário junto.',
     );
     const app = document.createElement('section');

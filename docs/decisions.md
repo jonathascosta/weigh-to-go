@@ -1276,11 +1276,13 @@ Choices made while preparing the first submission, open to the owner under decis
      With it, the website's build writes `<meta name="apple-itunes-app" content="app-id=…">` into
      every page and keeps the footer's "On the App Store" (Na App Store) link, which every page's
      source carries ready (`data-app-store`, its text in the dictionary as `footer.appStore`), and
-     About on the website shows "Weigh to Go for iPhone, on the App Store. A backup brings your diary
-     with you." (`about.appStore`, Vite's `__APP_STORE_URL__`; "App Store" with a no-break space),
-     since the app starts empty and a backup is how a website diary moves to it; a link on a line
-     of its own, 44 px high like the policy's (`.about-link.own-line`, DaVinci's review). The
-     footer's link needs no no-break space: it sits in a `nowrap` span, as the policy's does. Without it, the build removes the link, and nothing of the App Store is
+     About on the website shows the link "Weigh to Go for iPhone, on the App Store"
+     (`about.appStore`, Vite's `__APP_STORE_URL__`; "App Store" with a no-break space) followed, as
+     plain text, by "A backup brings your diary with you." (`about.appStoreBackup`), since the app
+     starts empty and a backup is how a website diary moves to it; the sentence is outside the link
+     so that the link's name is only where it goes (WCAG 2.4.4). The link sits on a line of its
+     own, 44 px high like the policy's (`.about-link.own-line`, DaVinci's review). The footer's
+     link needs no no-break space: it sits in a `nowrap` span, as the policy's does. Without it, the build removes the link, and nothing of the App Store is
      on any page; the app's build never has either, as it is the app. `check:dist` checks both
      builds, and the tests check both ways. A meta tag and a link load nothing from Apple, so the
      policy is unchanged (`connect-src 'none'`). A plain link, not Apple's badge: the badge must be

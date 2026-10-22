@@ -310,7 +310,9 @@ de consentimento.
     9. **Por último, a compra, gravada e registrada.** Tudo acima precisa de Remover anúncios não
        comprado, então isto vem depois de tudo. Ela precisa do banner na tela e da data certa para o
        sandbox, então faça-a numa instalação que passou de verdade dos 7 primeiros dias (a que está
-       em uso, se a instalação nova do item 5 foi em outro iPhone, ou outro iPhone que tenha uma):
+       em uso, se a instalação nova do item 5 foi em outro iPhone, ou outro iPhone que tenha uma,
+       ou a instalação do item 5, depois de passados 7 dias desde que ela foi aberta pela primeira
+       vez com a data certa):
        com a data adiantada, o banner some assim que a data volta ao certo, antes que a compra
        possa mostrá-lo sumindo. Ligue o proxy ou o modelo Network do Instruments e a gravação de
        tela, e então em Seus dados › App para iPhone toque em **Comprar** e confirme: o banner some

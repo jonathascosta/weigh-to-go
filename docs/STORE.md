@@ -295,7 +295,8 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
     9. **Last, the purchase, recorded and logged.** Everything above needs Remove ads not bought,
        so this comes after it all. It needs the banner on screen and the right date for the
        sandbox, so make it on an install truly past its first 7 days (the one in use, if item 5's
-       fresh install was on another iPhone, or another iPhone that has one): with the date ahead,
+       fresh install was on another iPhone, or another iPhone that has one, or item 5's install,
+       once 7 days have passed since it was first opened with the date right): with the date ahead,
        the banner goes as soon as the date is put right, before the purchase can show it going.
        Start the proxy or Instruments' Network template and the screen recording, then in Your data
        › iPhone app tap **Buy** and confirm: the banner goes at once, the line says "Ads removed.
