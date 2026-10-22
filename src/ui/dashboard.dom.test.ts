@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp, type App } from '../app/app';
+import { createApp, ReloadNeeded, type App } from '../app/app';
 import { chartLayers, resetView } from '../app/view';
 import { fakeStorage } from '../data/fake-storage.test-helper';
 import { memoryStore, type Store } from '../data/store';
@@ -207,6 +207,80 @@ describe('the log', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('gives focus to the nearest row when the notice of a delete ends, and to the day after an undo', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    try {
+      await app.save([
+        { date: '2026-09-19', kg: 100.2 },
+        { date: '2026-09-20', kg: 100 },
+        { date: '2026-09-21', kg: 99.8 },
+      ]);
+      await vi.advanceTimersByTimeAsync(10);
+      dayButton('2026-09-20').click();
+      document.querySelector<HTMLButtonElement>('#day-delete')!.click();
+      await vi.advanceTimersByTimeAsync(10);
+      expect(document.activeElement).toBe(toast().querySelector('.toast-text'));
+      await vi.advanceTimersByTimeAsync(10_100);
+      expect(toast().hidden).toBe(true);
+      // The next older day took its place.
+      expect(document.activeElement).toBe(dayButton('2026-09-19'));
+
+      dayButton('2026-09-21').click();
+      document.querySelector<HTMLButtonElement>('#day-delete')!.click();
+      await vi.advanceTimersByTimeAsync(10);
+      undoButton().click();
+      await vi.advanceTimersByTimeAsync(10);
+      expect(toast().textContent).toContain('Undone.');
+      await vi.advanceTimersByTimeAsync(5_100);
+      expect(toast().hidden).toBe(true);
+      expect(document.activeElement).toBe(dayButton('2026-09-21'));
+
+      // The last day deleted: the log's heading takes focus.
+      for (const date of ['2026-09-19', '2026-09-21']) {
+        dayButton(date).click();
+        document.querySelector<HTMLButtonElement>('#day-delete')!.click();
+        await vi.advanceTimersByTimeAsync(10);
+      }
+      await vi.advanceTimersByTimeAsync(10_100);
+      expect(document.activeElement).toBe(root.querySelector('#log-title'));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('says nothing of an undo that ends after the notice went, and the reload message when refused', async () => {
+    await app.save([{ date: '2026-09-20', kg: 100 }]);
+    await settle();
+    let finish: (value: boolean) => void = () => undefined;
+    const restore = vi.spyOn(app, 'restore').mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    dayButton('2026-09-20').click();
+    document.querySelector<HTMLButtonElement>('#day-delete')!.click();
+    await settle();
+    undoButton().click();
+    // The person leaves Your data before the undo is done.
+    board!.shell.goTo('analysis');
+    finish(true);
+    await settle();
+    expect(toast().hidden).toBe(true);
+    expect(toast().textContent).not.toContain('Undone.');
+
+    board!.shell.goTo('data');
+    await app.save([{ date: '2026-09-22', kg: 99 }]);
+    await settle();
+    restore.mockRejectedValueOnce(new ReloadNeeded());
+    dayButton('2026-09-22').click();
+    document.querySelector<HTMLButtonElement>('#day-delete')!.click();
+    await settle();
+    undoButton().click();
+    await settle();
+    expect(toast().textContent).toContain("The diary can't reach its data. Reload the page, then try again.");
+    restore.mockRestore();
   });
 
   it('shows the newest 100 on the one page, and 100 more at a time', async () => {

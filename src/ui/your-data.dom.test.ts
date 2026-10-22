@@ -101,10 +101,12 @@ describe('About', () => {
     expect(box.textContent).toContain('Feito por Jonathas Costa');
   });
 
-  it('speaks of the app in the app, with Apple Health and the ads, and the bundled policy', () => {
+  it('speaks of the app in the app, with Apple Health and no ads before they ship, and the bundled policy', () => {
     const { box } = mount(true);
     expect(box.textContent).toContain('Your weigh-ins stay in this app on your iPhone');
-    expect(box.textContent).toContain('Ads come from Google AdMob');
+    expect(box.textContent).toContain('If you turn on Apple Health, weights are shared with Health');
+    // The ads come with Sprint 4: until then About says nothing of them.
+    expect(box.textContent).not.toMatch(/AdMob|ads/i);
     expect(box.textContent).not.toMatch(/browser/);
     expect(box.querySelector('#about-policy')!.getAttribute('href')).toBe('/privacy.html');
   });

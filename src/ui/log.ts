@@ -6,14 +6,13 @@
  * back exactly (`app.restore`).
  */
 import { FLAT_KG } from '../analysis/analyze';
-import type { App, State } from '../app/app';
+import { ReloadNeeded, type App, type State } from '../app/app';
 import { toKg } from '../data/paste';
-import type { StoredWeighIn } from '../data/records';
 import { settings, type Settings } from '../i18n';
 import { chevron, h, tone } from './dom';
 import { example, failure } from './entry';
 import { openSheet, type Layout, type OpenSheet } from './sheet';
-import type { UndoNotice } from './undo-notice';
+import type { UndoNotice, Words } from './undo-notice';
 
 /** Rows shown at first, and added by each "Show more", on the one page. */
 export const PAGE = 100;
@@ -21,17 +20,29 @@ export const PAGE = 100;
 export const PHONE_FIRST = 5;
 export const PHONE_STEP = 50;
 
+/**
+ * A day as text that breaks only between its parts, never inside "21 de out." or "Oct 21": the
+ * weekday, then the day and month together.
+ */
+export function dayParts(text: string): (string | HTMLElement)[] {
+  const comma = text.indexOf(', ');
+  if (comma < 0) return [h('span', { class: 'nowrap', text })];
+  return [text.slice(0, comma + 2), h('span', { class: 'nowrap', text: text.slice(comma + 2) })];
+}
+
 export interface LogOptions {
   readonly layout: Layout;
   /** Where a change made in the day sheet is answered, with Undo. */
   readonly notice: UndoNotice;
 }
 
-export function mountLog(
-  container: HTMLElement,
-  app: App,
-  { layout, notice }: LogOptions,
-): (state: State, s: Settings) => void {
+export interface Log {
+  readonly draw: (state: State, s: Settings) => void;
+  /** Lets go of the listeners (for tests). */
+  readonly dispose: () => void;
+}
+
+export function mountLog(container: HTMLElement, app: App, { layout, notice }: LogOptions): Log {
   const note = h('p', { class: 'note' });
   const head = h('thead');
   const body = h('tbody');
@@ -43,12 +54,39 @@ export function mountLog(
   );
   const box = h('div', { class: 'table-box log-box', attrs: { id: 'log-table-box' } }, table);
   const more = h('div', { class: 'log-more' });
-  container.replaceChildren(note, box, more);
+  const editHint = h('span', { class: 'visually-hidden', attrs: { id: 'log-edit-hint' } });
+  container.replaceChildren(note, box, more, editHint);
 
   /** How many times "Show more" (or "Show all") was pressed. */
   let pages = 0;
   const shownCount = () =>
     layout.isWide() ? PAGE + pages * PAGE : pages === 0 ? PHONE_FIRST : PHONE_FIRST + pages * PHONE_STEP;
+
+  /** Why an undo failed: the diary needs a reload, or the built words for what stays. */
+  const undoFailed =
+    (key: 'log.undoFailed' | 'log.undoChangeFailed') =>
+    (error: unknown): Words =>
+    (s) =>
+      error instanceof ReloadNeeded || app.state().store?.needsReload
+        ? s.messages['data.reload']
+        : s.messages[key];
+
+  /**
+   * Where focus goes once the notice about `date` goes: the day's row, or the nearest row (a day
+   * deleted), or the log's heading when no row shows.
+   */
+  const focusFor = (date: string): HTMLElement | null => {
+    const buttons = [...body.querySelectorAll<HTMLButtonElement>('button[data-day]')];
+    const same = buttons.find((b) => b.dataset.day === date);
+    if (same) return same;
+    // Newest first: the first row older than the day, else the last one newer.
+    const older = buttons.find((b) => (b.dataset.day ?? '') < date);
+    const near = older ?? buttons[buttons.length - 1];
+    if (near) return near;
+    const heading = document.getElementById('log-title');
+    heading?.setAttribute('tabindex', '-1');
+    return heading;
+  };
 
   /** The day sheet open now, if any. */
   let sheet: OpenSheet | null = null;
@@ -122,15 +160,17 @@ export function mountLog(
         .then((result) => {
           const saved = result.find((r) => r.date === date);
           sheet?.close(false);
-          notice.show(
-            (later) =>
+          notice.show({
+            text: (later) =>
               later.messages['entry.updated'](
                 later.format.weight(kg, later.weightUnit),
                 later.format.day(date, 'medium'),
               ),
-            async () =>
+            undo: async () =>
               saved && (await app.restore(date, saved.previous, saved.written)) ? 'undone' : 'changed',
-          );
+            failed: undoFailed('log.undoChangeFailed'),
+            focusAfter: () => focusFor(date),
+          });
         })
         .catch((error: unknown) => {
           failed(error, failure(error, app, settings()));
@@ -142,15 +182,17 @@ export function mountLog(
     del.addEventListener('click', () => {
       if (busy) return;
       busy = true;
-      const removed: StoredWeighIn = record;
       app
         .remove(date)
-        .then(() => {
+        .then((removed) => {
           sheet?.close(false);
-          notice.show(
-            (later) => later.messages['log.deleted'](later.format.day(date, 'medium')),
-            async () => ((await app.restore(date, removed, null)) ? 'undone' : 'changed'),
-          );
+          notice.show({
+            text: (later) => later.messages['log.deleted'](later.format.day(date, 'medium')),
+            // What the store took away in the same step, not what was shown when the sheet opened.
+            undo: async () => (removed && (await app.restore(date, removed, null)) ? 'undone' : 'changed'),
+            failed: undoFailed('log.undoFailed'),
+            focusAfter: () => focusFor(date),
+          });
         })
         .catch((error: unknown) => {
           failed(error, settings().messages['log.failed']);
@@ -185,6 +227,7 @@ export function mountLog(
         h('td', { class: 'col-go', attrs: { 'aria-hidden': 'true' } }),
       ),
     );
+    editHint.textContent = m['log.editHint'];
     const days = state.analysis?.series ?? [];
     table.hidden = days.length === 0;
     if (days.length === 0) {
@@ -198,20 +241,27 @@ export function mountLog(
     body.replaceChildren(
       ...newest.map((d) => {
         const dayText = f.day(d.date, 'medium');
+        // Named by the day it shows; what it does is its description.
         const open = h(
           'button',
           {
             class: 'log-day',
             attrs: {
               type: 'button',
-              'aria-label': m['log.editDay'](dayText),
+              'aria-describedby': 'log-edit-hint',
               'aria-haspopup': 'dialog',
               'data-day': d.date,
               'data-role': 'day',
             },
           },
-          h('span', { class: 'day-long', text: dayText }),
-          h('span', { class: 'day-short', text: f.day(d.date, 'weekdayDayMonth') }),
+          h('span', { class: 'day-long' }, ...dayParts(dayText)),
+          h('span', { class: 'day-short' }, ...dayParts(f.day(d.date, 'weekdayDayMonth'))),
+          // The narrowest phones with large text: the day in figures, as the date chip (decision 83).
+          h(
+            'span',
+            { class: 'day-tiny' },
+            ...dayParts(`${f.day(d.date, 'weekday')}, ${f.day(d.date, 'dayMonth')}`),
+          ),
         );
         open.addEventListener('click', () => {
           openDay(d.date, open);
@@ -249,7 +299,7 @@ export function mountLog(
             chevron(),
           )
         : h('button', {
-            class: 'link log-show',
+            class: 'link more-button log-show',
             attrs: { type: 'button', 'data-role': 'more' },
             text: m['log.showMore'],
           });
@@ -266,8 +316,14 @@ export function mountLog(
     if (focusedDay) body.querySelector<HTMLButtonElement>(`button[data-day="${focusedDay}"]`)?.focus();
   };
   // A change of layout starts the count again: a phone's 5, or the one page's 100.
-  layout.onWide(() => {
+  const stop = layout.onWide(() => {
     pages = 0;
   });
-  return render;
+  return {
+    draw: render,
+    dispose: () => {
+      stop();
+      sheet?.close(false);
+    },
+  };
 }

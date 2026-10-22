@@ -33,10 +33,17 @@ export function selectRow(id: string): {
   const label = h('label', { attrs: { for: id, id: `${id}-label` } });
   // The select says its value itself; the text is for the eye.
   const value = h('span', { class: 'row-sub', attrs: { 'aria-hidden': 'true' } });
-  const select = h('select', { attrs: { id } });
+  const select = h('select', { attrs: { id, 'aria-labelledby': `${id}-label` } });
   // The select comes first, so its focus ring can be drawn on the row's face after it (no :has()
   // on Safari 15.0 to 15.3).
-  const face = h('span', { class: 'row-face' }, h('span', { class: 'grow' }, label, value), chevron());
+  // The select is named by the label and says its value: the face is for the eye only, so the
+  // label isn't read twice.
+  const face = h(
+    'span',
+    { class: 'row-face', attrs: { 'aria-hidden': 'true' } },
+    h('span', { class: 'grow' }, label, value),
+    chevron(),
+  );
   const row = h('div', { class: 'row row-select' }, select, face);
   return { row, label, value, select };
 }

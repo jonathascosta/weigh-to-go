@@ -57,7 +57,8 @@ export interface App {
    * delete, `expected` is null: the day comes back only if nothing was written to it since.
    */
   restore(date: string, previous: StoredWeighIn | null, expected: StoredWeighIn | null): Promise<boolean>;
-  remove(date: string): Promise<void>;
+  /** Deletes a day; resolves what the diary showed for it (null: nothing), for an undo. */
+  remove(date: string): Promise<StoredWeighIn | null>;
   setProfile(profile: Profile): Promise<void>;
   /** Changes only the profile fields given (null removes one): saves made close together all land. */
   updateProfile(change: Partial<Profile>): Promise<void>;

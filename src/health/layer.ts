@@ -175,6 +175,13 @@ export async function withHealth(
     { typed: StoredWeighIn | null; own: HealthSample[]; tombstone: Tombstone | undefined }
   >();
 
+  /** Whether `w` is this app's own sample in Health for its day (another device's, say). */
+  const ownSample = (w: StoredWeighIn) =>
+    samples.some(
+      (x) =>
+        dayOfSyncId(x.syncId) === w.date && x.kg === w.kg && Date.parse(x.start) === Date.parse(w.savedAt),
+    );
+
   /** Whether `w` is a reading another app (a scale) put in Health, as the diary would show it. */
   const readingFromHealth = (w: StoredWeighIn) =>
     samples.some(
@@ -244,7 +251,15 @@ export async function withHealth(
       readFailed = true;
       return;
     }
-    const missing = toWrite(await inner.weighIns(), samples);
+    const typed = await inner.weighIns();
+    // A day typed here is the diary's: a tombstone left for it (a save that failed after an undo
+    // of a delete) would delete its sample on every read, and the next read write it again.
+    const typedDays = new Set(typed.map((w) => w.date));
+    if (tombstones.some((t) => typedDays.has(t.date))) {
+      tombstones = tombstones.filter((t) => !typedDays.has(t.date));
+      await quietly(save);
+    }
+    const missing = toWrite(typed, samples);
     if (writing && missing.length > 0) await quietly(() => backend.write(missing));
     // Days deleted while Health was off: this app's older samples for them go now (H5).
     const stale = samples.filter((s) => {
@@ -320,7 +335,13 @@ export async function withHealth(
    */
   const undelete = async (date: string, previous: StoredWeighIn | null): Promise<boolean> => {
     const known = beforeDelete.get(date);
-    const typed = known ? known.typed : previous && !readingFromHealth(previous) ? previous : null;
+    // Without what the delete found, `previous` stands, unless it is a reading from Health or this
+    // app's own sample there (which Health gives back by itself once the tombstone goes).
+    const typed = known
+      ? known.typed
+      : previous && !readingFromHealth(previous) && !ownSample(previous)
+        ? previous
+        : null;
     if (typed) {
       if (!(await inner.restore(date, typed, null))) return false;
     } else if ((await inner.weighIns()).some((w) => w.date === date)) return false;
@@ -517,9 +538,12 @@ export async function withHealth(
         });
         for (const day of [...beforeDelete.keys()].slice(0, Math.max(0, beforeDelete.size - UNDO_KEPT)))
           beforeDelete.delete(day);
+        // What the diary showed: the typed record, or the reading from Health shown for the day.
+        const shown = typed ?? derived.find((w) => w.date === date) ?? null;
         if (typed) await inner.remove(date);
         // A day from Health, or one written here: either way it stays deleted.
         await deleted([date]);
+        return shown;
       }),
     profile: () => inner.profile(),
     setProfile: (profile) => inner.setProfile(profile),

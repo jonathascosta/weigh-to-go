@@ -525,11 +525,17 @@ Choices made while building story 6, open to the owner under decision 9.
     sheet and says "Updated: 99.5 kg on 20 Oct 2026." (the built `entry.updated`) with Undo for 10
     seconds, through `app.restore`, as a delete does. The notice sits above the tab bar, takes focus
     so its text is read (the live region says only that Undo is available, as decision 73), ends
-    when the person leaves Your data, and after an Undo says "Undone." for 5 seconds.
+    when the person leaves Your data, and after an Undo says "Undone." for 5 seconds. When it goes
+    with focus in it, focus goes to the day's row, or the nearest row after a delete, or the log's
+    heading when no row is left. An undo that can't be done says what stays: "Couldn't undo: the
+    weigh-in stays deleted. You can log it again." (or "the new weight stays"), or the reload
+    message when the diary needs one; an answer that arrives after the notice went says nothing.
     _Alternative:_ a plain confirmation for a change, Undo for a delete only.
 100. **The log stays a table**: date, weight, change (and the 7-day average where there is room),
-     each day a button named "Change or delete the weigh-in of 20 Oct 2026" (`log.editDay`), and
-     the whole row its finger's target, 52 px tall; a chevron says it opens. Screen readers keep
+     each day a button named by the day it shows, described "Opens the day to change or delete
+     it." (`log.editHint`), and the whole row its finger's target, 52 px tall; a chevron says it
+     opens; a day breaks only between its weekday and its date, and below 360 px wide it is in figures
+     ("qua., 21/10"), as the date chip (decision 83). Screen readers keep
      the table's columns. On a phone it has no scrolling box (decision 94); the one page keeps
      Sprint 1's box and 100 rows at a time. _Alternative:_ the prototype's rows of buttons with no
      table, and no 7-day average.
@@ -557,7 +563,8 @@ Choices made while building story 6, open to the owner under decision 9.
 107. **About on the website links the privacy policy too** (the bundled `privacy.html`, or
      `pt/privacidade.html` in Portuguese, as in the app), since the footer that held the link is
      not shown on a phone (O21); the version reads "Weigh to Go 0.1.0". Issue #48's 16 px author
-     link goes with the footer on a phone; in About the links are 28 px tall. _Alternative:_ the
+     link goes with the footer on a phone; in About the author's link is 28 px tall in its
+     sentence, and the policy's, on a line of its own, 44 px. _Alternative:_ the
      design's website About without the link.
 108. **No write while the diary needs a reload** (issue #47): saving, pasting, a day's change or
      delete, an import or a profile change is refused with the built "Reload the page" message
@@ -566,14 +573,20 @@ Choices made while building story 6, open to the owner under decision 9.
      in memory and say it isn't kept.
 109. **Remove ads, Restore purchases and Privacy choices wait for Sprint 4**: their rows aren't
      shown until their stories fill them (design §13), so their strings (`iap.*`,
-     `privacy.choices`) come with those stories. The iPhone app group holds the Daily reminder and
+     `privacy.choices`) come with those stories. So do About's ads sentences (`about.app.shared`
+     keeps only Apple Health's for now): they come with Sprint 4, story 1, which lists them. The iPhone app group holds the Daily reminder and
      Apple Health as built, their headings one level under the group's. _Alternative:_ add the
      strings now.
 110. **Undo of a delete with Apple Health** puts the day back as it was: the diary's record
      (savedAt included), its tombstone (or none) and this app's samples with their old sync
      versions; a day that came from Health alone comes back by its tombstone going, nothing of
      ours written. Only while nothing was written to the day since (`restore` with no expected
-     record). _Alternative:_ a new save of the old weight.
+     record): what comes back is what the store removed, read in the same step as the delete. A
+     tombstone left on a day typed here (a file save that failed) is dropped on the next read of
+     Health, so the day's sample isn't deleted and written again on every read. _Alternative:_ a
+     new save of the old weight.
 111. **The settings rows draw their focus ring without `:has()`** (Safari 15.0, decision 98): the
-     select comes first in the row and the ring is drawn on the row's face after it.
+     select comes first in the row and the ring is drawn on the row's face after it, on
+     `:focus-visible`, or on `:focus` where Safari 15.0 to 15.3 lack it. The face is hidden from
+     screen readers: the select is named by the label and says its value.
      _Alternative:_ `:has(:focus-visible)`, from iOS 15.4.

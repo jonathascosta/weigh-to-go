@@ -38,6 +38,10 @@ both change together, in the same pull request.
    - [ ] Where the law asks for consent, the SDK starts only once consent is given (or when it
          isn't required); on a refusal the app shows no ads and never starts the SDK (no limited
          ads), with a unit test of the refusal (decision 64).
+   - [ ] The app's About in Your data (`about.app.shared`, EN and PT) gains the ads sentences the
+         design wrote (design §7): ads from Google AdMob, not personalised, never given the
+         weigh-ins, what any ad request carries, and that removing the ads stops those requests;
+         left out until the ads ship (decision 109).
 
 2. **Remove ads, once and for good.** A non-consumable in-app purchase,
    `net.jonathas.weightogo.removeads`, at the price the owner sets in App Store Connect. Checked on

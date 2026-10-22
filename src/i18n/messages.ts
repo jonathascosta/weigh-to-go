@@ -800,7 +800,6 @@ export const en = {
   'hiccups.tableEmpty':
     'No hiccup with the chosen rules. Try a shorter minimum length or a smaller minimum gain.',
 
-  'sections.label': 'Show',
   'sections.kpis': 'Key figures',
   'sections.chart': 'Main chart',
   'sections.percent': 'Percentage loss',
@@ -1043,19 +1042,17 @@ export const en = {
   'log.weight': (unit: string) => `Weight (${unit})`,
   'log.change': 'Change',
   'log.avg7': '7-day average',
-  'log.actions': 'Actions',
   'log.delete': 'Delete',
   'log.deleteDay': (day: string) => `Delete the weigh-in of ${day}`,
-  'log.confirm': (day: string) => `Delete ${day}?`,
-  'log.keep': 'Keep',
   'log.deleted': (day: string) => `Deleted the weigh-in of ${day}.`,
   'log.failed': "Couldn't delete the weigh-in. Try again.",
   'log.empty': 'No weigh-ins yet.',
   'log.more': (shown: string, total: string) => `Showing the latest ${shown} of ${total}.`,
   'log.showMore': 'Show more',
   'log.showAll': 'Show all',
-  'log.editDay': (day: string) => `Change or delete the weigh-in of ${day}`,
-  'log.undoFailed': "Couldn't undo it. Try again from the day.",
+  'log.editHint': 'Opens the day to change or delete it.',
+  'log.undoFailed': "Couldn't undo: the weigh-in stays deleted. You can log it again.",
+  'log.undoChangeFailed': "Couldn't undo: the new weight stays. You can change it again.",
 
   'data.group.backup': 'Backup',
   'data.group.app': 'iPhone app',
@@ -1064,8 +1061,7 @@ export const en = {
   'about.web': 'No account, no server of ours, no tracking.',
   'about.app.storage':
     'Your weigh-ins stay in this app on your iPhone, and in your iPhone’s backup if you use iCloud Backup or back up to a computer. We keep nothing: no account, no server of ours, no analytics.',
-  'about.app.shared':
-    'If you turn on Apple Health, weights are shared with Health on this iPhone. Ads come from Google AdMob: they are not personalised and never receive your weigh-ins, but Google gets what any ad request carries, such as the iPhone’s model and network address. Removing the ads stops those requests.',
+  'about.app.shared': 'If you turn on Apple Health, weights are shared with Health on this iPhone.',
   'about.privacy': 'Privacy policy',
   'about.version': (version: string) => `Weigh to Go ${version}`,
   'data.note':
@@ -1697,7 +1693,6 @@ export const pt: Messages = {
   'hiccups.tableEmpty':
     'Nenhum soluço com as regras escolhidas. Tente reduzir a duração mínima ou o ganho mínimo.',
 
-  'sections.label': 'Mostrar',
   'sections.kpis': 'Indicadores',
   'sections.chart': 'Gráfico principal',
   'sections.percent': 'Perda percentual',
@@ -1941,19 +1936,17 @@ export const pt: Messages = {
   'log.weight': (unit: string) => `Peso (${unit})`,
   'log.change': 'Variação',
   'log.avg7': 'Média de 7 dias',
-  'log.actions': 'Ações',
   'log.delete': 'Apagar',
   'log.deleteDay': (day: string) => `Apagar a pesagem de ${day}`,
-  'log.confirm': (day: string) => `Apagar ${day}?`,
-  'log.keep': 'Manter',
   'log.deleted': (day: string) => `Pesagem de ${day} apagada.`,
   'log.failed': 'Não foi possível apagar a pesagem. Tente de novo.',
   'log.empty': 'Nenhuma pesagem ainda.',
   'log.more': (shown: string, total: string) => `Mostrando as ${shown} mais recentes de ${total}.`,
   'log.showMore': 'Mostrar mais',
   'log.showAll': 'Mostrar todas',
-  'log.editDay': (day: string) => `Alterar ou apagar a pesagem de ${day}`,
-  'log.undoFailed': 'Não foi possível desfazer. Tente de novo pelo dia.',
+  'log.editHint': 'Abre o dia para alterá-lo ou apagá-lo.',
+  'log.undoFailed': 'Não foi possível desfazer: a pesagem continua apagada. Você pode registrá-la de novo.',
+  'log.undoChangeFailed': 'Não foi possível desfazer: o novo peso continua. Você pode alterá-lo de novo.',
 
   'data.group.backup': 'Backup',
   'data.group.app': 'App para iPhone',
@@ -1962,8 +1955,7 @@ export const pt: Messages = {
   'about.web': 'Sem conta, sem servidor nosso, sem rastreamento.',
   'about.app.storage':
     'Suas pesagens ficam neste app, no seu iPhone, e no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador. Nós não guardamos nada: sem conta, sem servidor nosso, sem análise de uso.',
-  'about.app.shared':
-    'Se você ligar o app Saúde, os pesos são compartilhados com o Saúde neste iPhone. Os anúncios vêm do Google AdMob: não são personalizados e nunca recebem suas pesagens, mas o Google recebe o que qualquer pedido de anúncio leva, como o modelo do iPhone e o endereço de rede. Remover os anúncios encerra esses pedidos.',
+  'about.app.shared': 'Se você ligar o app Saúde, os pesos são compartilhados com o Saúde neste iPhone.',
   'about.privacy': 'Política de privacidade',
   'about.version': (version: string) => `Weigh to Go ${version}`,
   'data.note':

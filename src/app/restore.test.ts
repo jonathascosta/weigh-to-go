@@ -101,7 +101,21 @@ describe('a store that needs a reload (issue #47)', () => {
     await expect(app.save([{ date: '2026-10-21', kg: 95.8 }])).rejects.toBeInstanceOf(ReloadNeeded);
     await expect(app.updateProfile({ goalKg: 90 })).rejects.toBeInstanceOf(ReloadNeeded);
     await expect(app.remove('2026-10-21')).rejects.toBeInstanceOf(ReloadNeeded);
+    await expect(app.restore('2026-10-21', earlier, null)).rejects.toBeInstanceOf(ReloadNeeded);
+    await expect(app.setProfile({ goalKg: 90, heightCm: null })).rejects.toBeInstanceOf(ReloadNeeded);
+    await expect(
+      app.importBackup(
+        { ok: true, source: 'backup', weighIns: [earlier], profile: null, skipped: 0 },
+        'merge',
+      ),
+    ).rejects.toBeInstanceOf(ReloadNeeded);
     expect(await store.weighIns()).toEqual([]);
+  });
+
+  it('still erases on a store that needs a reload', async () => {
+    const store = memoryStore('version');
+    const app = await appOn(store);
+    await expect(app.erase()).resolves.toBeTypeOf('boolean');
   });
 });
 
@@ -269,6 +283,80 @@ describe('restore with Apple Health (stubbed)', () => {
     expect(ours(health, '2026-10-21')).toEqual([]);
     await store.health.refresh();
     expect(await store.weighIns()).toEqual([scale]);
+  });
+
+  it('undoes nothing of a delete when the day was typed again since', async () => {
+    const health = fakeHealth();
+    const { store, app } = await open(health, true);
+    await store.put([earlier]);
+    await settle();
+    expect(await app.remove('2026-10-21')).toEqual(earlier);
+    vi.setSystemTime(new Date(local('2026-10-21', 10)));
+    const [again] = await app.save([{ date: '2026-10-21', kg: 95.1 }]);
+    expect(await app.restore('2026-10-21', earlier, null)).toBe(false);
+    expect(await store.health.typed()).toEqual([again!.written]);
+    expect(ours(health, '2026-10-21')).toMatchObject([{ kg: 95.1 }]);
+  });
+
+  it('undoes a delete even when Health refuses the write, and keeps the day on the next read', async () => {
+    const health = fakeHealth();
+    const { store, app } = await open(health, true);
+    await store.put([earlier]);
+    await settle();
+    await app.remove('2026-10-21');
+    health.state.failWrite = true;
+    expect(await app.restore('2026-10-21', earlier, null)).toBe(true);
+    expect(await store.health.typed()).toEqual([earlier]);
+    // Health is back: the next read writes the missing sample, and the day stays.
+    health.state.failWrite = false;
+    await store.health.refresh();
+    expect(await store.weighIns()).toEqual([earlier]);
+    expect(ours(health, '2026-10-21')).toMatchObject([{ kg: 96.2 }]);
+  });
+
+  it('changes nothing when the diary file cannot be written for an undo of a delete', async () => {
+    const health = fakeHealth();
+    const { store, app, files } = await open(health, true);
+    await store.put([earlier]);
+    await settle();
+    await app.remove('2026-10-21');
+    files.fail.write = true;
+    await expect(app.restore('2026-10-21', earlier, null)).rejects.toThrow();
+    files.fail.write = false;
+    expect(await store.health.typed()).toEqual([]);
+  });
+
+  it('undoes a delete with Health off: the diary only, no call to Health', async () => {
+    const health = fakeHealth();
+    const { store, app } = await open(health, false);
+    await store.put([earlier]);
+    await settle();
+    await app.remove('2026-10-21');
+    expect(await app.restore('2026-10-21', earlier, null)).toBe(true);
+    expect(app.state().weighIns).toEqual([earlier]);
+    expect(health.state.calls).toEqual([]);
+  });
+
+  it('drops a tombstone left on a day typed here, so its sample stays put', async () => {
+    const health = fakeHealth();
+    const files = fakeFiles();
+    files.files.set(
+      HEALTH_FILE,
+      JSON.stringify({
+        setting: { on: true, rule: 'first' },
+        tombstones: [{ date: '2026-10-21', at: local('2026-10-21', 10) }],
+        everOn: true,
+      }),
+    );
+    const inner = await deviceStore(files.backend);
+    await inner.put([earlier]);
+    const store = await withHealth(inner, health.backend, files.backend, () => new Date());
+    await store.health.refresh();
+    await store.health.refresh();
+    expect(ours(health, '2026-10-21')).toMatchObject([{ kg: 96.2 }]);
+    expect(health.state.calls.filter((c) => c.startsWith('write'))).toHaveLength(1);
+    expect(JSON.parse(files.files.get(HEALTH_FILE) ?? '{}')).toMatchObject({ tombstones: [] });
+    expect(await store.weighIns()).toEqual([earlier]);
   });
 
   it('leaves Health alone when another device wrote the day there after this save', async () => {

@@ -82,7 +82,8 @@ export interface Store {
    * (not null) replace the ones here. All at once.
    */
   merge(weighIns: readonly StoredWeighIn[], profile: Profile | null): Promise<MergeResult>;
-  remove(date: string): Promise<void>;
+  /** Removes a day; resolves the record it held (null: none), read in the same step. */
+  remove(date: string): Promise<StoredWeighIn | null>;
   /**
    * Puts a day back as it was before a write, `previous` exactly (null: no weigh-in), if the day
    * still holds `expected`, the record that write saved (null: the day was deleted, and still holds
@@ -185,11 +186,11 @@ function tabs(): {
   };
 }
 
-/** A store in memory: for when the browser keeps nothing, and for tests. */
 /** Whether a day holds what an undo expects: that record, or nothing at all (after a delete). */
 const holds = (now: StoredWeighIn | null, expected: StoredWeighIn | null): boolean =>
   expected === null ? now === null : now !== null && sameRecord(now, expected);
 
+/** A store in memory: for when the browser keeps nothing, and for tests. */
 export function memoryStore(reason: MemoryReason = 'unsupported'): Store {
   const data = new Map<string, StoredWeighIn>();
   let profile = EMPTY_PROFILE;
@@ -239,7 +240,9 @@ export function memoryStore(reason: MemoryReason = 'unsupported'): Store {
       }),
     remove: (date) =>
       run(() => {
+        const was = data.get(date) ?? null;
         data.delete(date);
+        return was;
       }),
     profile: () => Promise.resolve(profile),
     setProfile: (next) =>
@@ -508,11 +511,18 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
         return result;
       });
     },
-    remove: async (date) => {
-      await write([WEIGH_INS], (tx) => {
-        tx.objectStore(WEIGH_INS).delete(date);
-      });
-    },
+    remove: (date) =>
+      write([WEIGH_INS], (tx) => {
+        const store = tx.objectStore(WEIGH_INS);
+        const result: { was: StoredWeighIn | null } = { was: null };
+        // The read and the delete in one transaction: what an undo puts back is what went.
+        const get = store.get(date);
+        get.onsuccess = () => {
+          result.was = toWeighIn(get.result, '');
+          store.delete(date);
+        };
+        return result;
+      }).then((result) => result.was),
     profile: async () => toProfile(await read(PROFILE, (s) => s.get(PROFILE_KEY))),
     setProfile: async (profile) => {
       check([], profile);

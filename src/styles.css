@@ -3385,14 +3385,35 @@ svg.go {
   padding: 8px 14px 8px 16px;
 }
 
-.row-select .row-sub {
-  font-size: 0.9375rem;
-}
-
 /* The ring for the keyboard, on the row (the select is invisible); no :has() on Safari 15.0. */
 .row-select select:focus-visible + .row-face {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
+}
+
+/* Safari 15.0 to 15.3 have no :focus-visible: the ring on any focus there. */
+@supports not selector(:focus-visible) {
+  .row-select select:focus + .row-face,
+  .log-day:focus,
+  .row:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+}
+
+/* A row that opens in place on the one page: its chevron turns when it is open. */
+.row[aria-expanded] svg.go {
+  transition: transform 150ms;
+}
+
+.row[aria-expanded='true'] svg.go {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row[aria-expanded] svg.go {
+    transition: none;
+  }
 }
 
 .row:focus-visible {
@@ -3424,7 +3445,8 @@ svg.go {
   padding: 1px 8px;
   border: 1px solid var(--up);
   border-radius: 999px;
-  font-size: 0.75rem;
+  /* Secondary text: 13 px at least (principles §5). */
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--up);
   white-space: nowrap;
@@ -3609,6 +3631,11 @@ svg.go {
     padding: 4px 6px;
   }
 
+  /* "Weight (lb)" at 150% needs the column's every pixel. */
+  .log-table thead th.num {
+    padding-left: 2px;
+  }
+
   .log-table tr > :first-child {
     padding-left: 16px;
   }
@@ -3618,10 +3645,33 @@ svg.go {
   }
 }
 
-/* About: the links are 28 px tall, inside their sentences (WCAG 2.5.8 asks 24). */
+.log-table .day-tiny {
+  display: none;
+}
+
+/* Below 360 px, the day in figures ("qua., 21/10"): "21 de out." doesn't fit its column at 150%. */
+@media (max-width: 359.98px) {
+  .log-table .day-short {
+    display: none;
+  }
+
+  .log-table .day-tiny {
+    display: inline;
+  }
+}
+
+/* About: the author's link is 28 px tall, inside its sentence (WCAG 2.5.8 asks 24); the policy's,
+   on a line of its own, a finger's 44 px. */
 .about-link {
   display: inline-block;
   padding-block: 4px;
+}
+
+#about-policy {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-block: 0;
 }
 
 /* The notice after a change in the day sheet: above the tab bar, with Undo. */

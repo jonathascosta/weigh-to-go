@@ -469,14 +469,14 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     logTitle,
     h('div', { class: 'group' }, logBody, pastePanel.button, pastePanel.panel),
   );
-  const drawLog = mountLog(logBody, app, { layout: shell, notice: undo });
+  const log = mountLog(logBody, app, { layout: shell, notice: undo });
   add('data', null, (_state, s) => {
     logTitle.textContent = s.messages['log.title'];
     pasteRowText.textContent = s.messages['paste.open'];
     pastePanel.words(s.messages['paste.open'], s.messages['chart.done']);
     undo.draw(s);
   });
-  add('data', 'log', drawLog);
+  add('data', 'log', log.draw);
   add('data', null, mountData({ backup: data, erase: eraseBox, status: eraseStatus }, app));
   const paste = mountPaste(pastePanel.content, app, () => {
     pastePanel.show();
@@ -702,6 +702,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
       for (const stop of stops) stop();
       weighIn.dispose();
       undo.dispose();
+      log.dispose();
       closeOpenSheet();
       sectionsPanel.dispose();
       pastePanel.dispose();

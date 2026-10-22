@@ -25,6 +25,7 @@ export function fakeHealth(samples: HealthSample[] = [], allowed = true) {
     asked: 0,
     failRead: false,
     failRemoveAll: false,
+    failWrite: false,
     calls: [] as string[],
   };
   const backend: HealthBackend = {
@@ -40,6 +41,7 @@ export function fakeHealth(samples: HealthSample[] = [], allowed = true) {
     },
     write: (written: readonly SampleToWrite[]) => {
       state.calls.push(`write ${written.map((s) => s.syncId).join(',')}`);
+      if (state.failWrite) return Promise.reject(new Error('Health is locked'));
       for (const s of written) {
         const old = state.samples.find((x) => x.syncId === s.syncId);
         if (old && (old.syncVersion ?? 0) >= s.syncVersion) continue;
