@@ -16,11 +16,16 @@ describe('eraseEverything', () => {
   it('erases the data and the preferences', async () => {
     vi.stubGlobal('localStorage', fakeStorage());
     const store = await openStore(new IDBFactory());
-    await store.put([{ date: '2026-10-17', kg: 100, savedAt: at }], { goalKg: 90, heightCm: 180 });
+    await store.put([{ date: '2026-10-17', kg: 100, savedAt: at }], {
+      goalKg: 90,
+      heightCm: 180,
+      birthYear: null,
+      sex: null,
+    });
     writePref('unit', 'lb');
     await eraseEverything(store);
     expect(await store.weighIns()).toEqual([]);
-    expect(await store.profile()).toEqual({ goalKg: null, heightCm: null });
+    expect(await store.profile()).toEqual({ goalKg: null, heightCm: null, birthYear: null, sex: null });
     expect(unit.read()).toBe('kg');
     store.close();
   });

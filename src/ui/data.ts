@@ -66,7 +66,7 @@ async function exportBackup(app: App): Promise<string | null> {
 
 /** Saves the weigh-ins as a CSV for a spreadsheet, in the reader's unit and locale. */
 async function exportCsv(app: App, s: Settings): Promise<string | null> {
-  const { weighIns, analysis } = app.state();
+  const { weighIns, analysis, profile } = app.state();
   const file = csvFileName(localToday(new Date()));
   const savedAt = new Map(weighIns.map((w) => [w.date, w.savedAt]));
   const text = createCsv(
@@ -76,6 +76,7 @@ async function exportCsv(app: App, s: Settings): Promise<string | null> {
     s.locale.tag,
     s.messages['csv.headers'],
     csvFormatPref.read(),
+    profile,
   );
   return (await saveFile(file, text, 'text/csv')) ? file : null;
 }

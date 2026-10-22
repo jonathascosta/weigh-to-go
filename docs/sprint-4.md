@@ -161,6 +161,47 @@ both change together, in the same pull request.
    App Store link on the website, and the jonathas.net card and article; the owner links the app in
    AdMob (STORE.md, step 6).
 
+6. **Body composition estimates from formulas.** The owner's call in issue #64 (decision 146),
+   before the first release: body fat (Deurenberg), lean mass (Boer), body water (Watson) and the
+   energy used at rest (Mifflin-St Jeor), estimated on the device at each weigh-in from the weight,
+   the height, the year of birth and the sex, as DaVinci designed it
+   ([ux/body-composition.md](ux/body-composition.md)). Nothing new is read from Apple Health. It
+   ships with 1.0, so it is built before story 5's submission, and the listing (story 4) may name
+   it. Done when:
+   - [x] Your data › Settings has **Year of birth** (a sheet: digits only, an adult up to 100 this
+         year, empty removes it) and **Sex, for the formulas** (Female, Male, Leave out, the
+         default) under Height, with the note that they are optional and stay on the device.
+   - [x] Analysis has **Body composition (estimates)** between Hiccups and BMI, wide on the one
+         page, on for everyone, including people who changed Sections before it existed (a unit
+         test). Closed, its line says body fat and BMR, or lean mass (and a woman's water) without
+         a year of birth, or what it needs; open, the chart of one estimate with the formula's
+         error as a band, the chooser, the honesty line, the four estimates with their start and
+         their error, About the formulas and Change details (the three inputs, one Save).
+   - [x] The formulas are a pure module with unit tests on made-up values (the design's worked
+         example and a woman's), the age is the one in each weigh-in's year, and the error figures
+         are checked against the published sources (decision 152).
+   - [x] Every value is called an estimate and names its formula; no categories, healthy ranges
+         or targets; rounded to whole %, kg or lb, litres and 10 kcal; every string in English
+         and Portuguese, the app's wording speaking of no browser or page.
+   - [x] The backup carries `birthYear` and `sex` (export, import, Add and Replace), an older
+         backup still imports, and the CSV has four columns named after the formulas, always
+         there, empty where an estimate can't be worked out.
+   - [x] The privacy policy, in both languages, says what the fields are, where they live and that
+         they go nowhere.
+   - [x] The fit test and axe cover the card (every estimate, BMR's readout, a single estimate and
+         the needs state), Change details, and the Settings rows and the year's sheet, refusal
+         included, in both languages, at 320 and 390 px, text 100% and 150%, on the website and the
+         app's build: 44 px targets and no overflow. Safari 15 as decision 72 says.
+
+   _As built (22 October 2026)._ `src/analysis/body.ts` holds the formulas, the age rule (decision
+   148), the errors (`ERRORS`, decision 152) and which estimates a profile allows; `src/ui/body.ts`
+   the card, its texts (pure and tested in both languages), Change details and the year's editor;
+   the chart is the built `createPlot` with its readout strip, keys and live line. `Profile` gains
+   `birthYear` and `sex`, checked by `toProfile` and `isProfile` and merged field by field
+   (decision 160). Sections keeps the sections known with the list it saves (decision 155). The
+   choices of the design's section 10 are decisions 148 to 159, and Sprint 5's story 1 changes as
+   decision 161 says.
+
 ## Not in this sprint
 
 Ads on the website (backlog, once AdSense approves jonathas.net); Health insights (Sprint 5).

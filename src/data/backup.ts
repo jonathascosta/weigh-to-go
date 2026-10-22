@@ -1,7 +1,8 @@
 /**
  * The JSON backup: the only way data moves between devices, and the only copy outside the
- * browser. Export writes every weigh-in and the profile; import reads that file back, or the data
- * of the original dashboard, and checks every row before anything is saved.
+ * browser. Export writes every weigh-in and the profile (the goal, the height and, when given, the
+ * year of birth and sex: a file without them, older or not, simply has none); import reads that
+ * file back, or the data of the original dashboard, and checks every row before anything is saved.
  *
  * The original kept each weigh-in as `{ "data": "YYYY-MM-DD", "peso": 108.2, "registrado_em": … }`
  * and the profile as `{ "meta": 90, "altura": 178 }`; import takes those rows as an array, or under
@@ -15,6 +16,7 @@ import {
   byDate,
   isIsoTime,
   isWeighInDay,
+  profileFields,
   toProfile,
   toWeighIn,
   type Profile,
@@ -73,7 +75,7 @@ export function createBackup(weighIns: readonly StoredWeighIn[], profile: Profil
     format: BACKUP_FORMAT,
     exportedAt: now.toISOString(),
     weighIns: weighIns.map(({ date, kg, savedAt }) => ({ date, kg, savedAt })),
-    profile: { goalKg: profile.goalKg, heightCm: profile.heightCm },
+    profile: profileFields(profile),
   };
   return `${JSON.stringify(backup, null, 2)}\n`;
 }
@@ -95,7 +97,8 @@ const isOriginalRow = (row: unknown): row is Record<string, unknown> =>
   isObject(row) && typeof row.data === 'string' && 'peso' in row;
 
 /** Whether the profile holds anything. */
-const hasValue = (p: Profile | null): boolean => p !== null && (p.goalKg !== null || p.heightCm !== null);
+const hasValue = (p: Profile | null): boolean =>
+  p !== null && (p.goalKg !== null || p.heightCm !== null || p.birthYear !== null || p.sex !== null);
 
 /** The original dashboard's weigh-ins and profile in `value`, or null if it doesn't hold them. */
 function original(value: unknown): { rows: unknown[]; profile: Profile | null } | null {

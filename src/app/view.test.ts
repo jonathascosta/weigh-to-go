@@ -30,6 +30,9 @@ import {
   pctLayersPref,
   simRatePref,
   simStartPref,
+  bodyMetric,
+  SECTIONS,
+  sections,
 } from './view';
 
 let storage: Storage;
@@ -83,6 +86,48 @@ describe('the section preferences', () => {
     expect(hiccupRules()).toEqual(DEFAULT_RULES);
     save('hiccups.rules', { basis: 'kg', minDays: 2, minGain: 1, tolerance: 0, maxGap: 999 });
     expect(hiccupRules().maxGap).toBe(DEFAULT_RULES.maxGap);
+  });
+});
+
+describe('which sections show', () => {
+  it('shows every section, the body composition card included, with nothing saved', () => {
+    expect(SECTIONS.filter((k) => sections.has(k))).toEqual([...SECTIONS]);
+    expect(SECTIONS).toContain('body');
+  });
+
+  it('shows the body composition card to someone who changed Sections before it existed', () => {
+    // Saved by Sprint 4, story 2: every section but the calendar, and no list of those known.
+    const before = SECTIONS.filter((k) => k !== 'body' && k !== 'calendar');
+    save('sections', before);
+    expect(sections.has('body')).toBe(true);
+    expect(sections.has('calendar')).toBe(false);
+    expect(sections.has('kpis')).toBe(true);
+  });
+
+  it('keeps the card off once turned off, and on the next visit', () => {
+    save(
+      'sections',
+      SECTIONS.filter((k) => k !== 'body' && k !== 'calendar'),
+    );
+    sections.toggle('body');
+    expect(sections.has('body')).toBe(false);
+    expect(JSON.parse(storage.getItem(`${PREFS_PREFIX}sections.known`) ?? 'null')).toEqual([...SECTIONS]);
+    resetView();
+    expect(sections.has('body')).toBe(false);
+    expect(sections.has('calendar')).toBe(false);
+    // Turned back on, it stays on.
+    sections.toggle('body');
+    resetView();
+    expect(sections.has('body')).toBe(true);
+  });
+
+  it('chart body fat until another estimate is chosen, and nothing that isn’t one', () => {
+    expect(bodyMetric.get()).toBe('fat');
+    bodyMetric.set('water');
+    resetView();
+    expect(bodyMetric.get()).toBe('water');
+    save('body.metric', 'muscle');
+    expect(bodyMetric.get()).toBe('fat');
   });
 });
 

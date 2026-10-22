@@ -207,7 +207,12 @@ export function readHeight(
 // ---------- Mounting ----------
 
 /** A labelled text field with its unit next to it. */
-function unitField(id: string) {
+export function unitField(id: string): {
+  input: HTMLInputElement;
+  label: HTMLLabelElement;
+  tag: HTMLSpanElement;
+  element: HTMLDivElement;
+} {
   const input = h('input', {
     attrs: { id, type: 'text', inputmode: 'decimal', autocomplete: 'off', spellcheck: 'false' },
   });
@@ -222,8 +227,8 @@ function unitField(id: string) {
   };
 }
 
-/** Saves the profile with one field changed, saying how it went in `status`. */
-async function saveProfile(
+/** Saves the profile with the fields given changed, saying how it went in `status`. */
+export async function saveProfile(
   app: App,
   status: HTMLElement,
   change: Partial<State['profile']>,

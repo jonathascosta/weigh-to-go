@@ -19,10 +19,15 @@ describe('deviceStore', () => {
     expect(store.kind).toBe('device');
     expect(store.setAside).toBeNull();
     expect(await store.weighIns()).toEqual([]);
-    await store.put([w('2026-10-18', 99.5), w('2026-10-17', 100)], { goalKg: 90, heightCm: null });
+    await store.put([w('2026-10-18', 99.5), w('2026-10-17', 100)], {
+      goalKg: 90,
+      heightCm: null,
+      birthYear: null,
+      sex: null,
+    });
     expect(diaryOn(files)).toEqual({
       weighIns: [w('2026-10-17', 100), w('2026-10-18', 99.5)],
-      profile: { goalKg: 90, heightCm: null },
+      profile: { goalKg: 90, heightCm: null, birthYear: null, sex: null },
     });
     expect(files.has(DIARY_TEMP)).toBe(false);
   });
@@ -31,17 +36,17 @@ describe('deviceStore', () => {
     const { backend } = fakeFiles();
     const first = await deviceStore(backend);
     await first.put([w('2026-10-17', 100)]);
-    await first.updateProfile({ heightCm: 176 });
+    await first.updateProfile({ heightCm: 176, birthYear: 1983, sex: 'male' });
     const again = await deviceStore(backend);
     expect(await again.weighIns()).toEqual([w('2026-10-17', 100)]);
-    expect(await again.profile()).toEqual({ goalKg: null, heightCm: 176 });
+    expect(await again.profile()).toEqual({ goalKg: null, heightCm: 176, birthYear: 1983, sex: 'male' });
   });
 
   it('lands two changes made close together', async () => {
     const { files, backend } = fakeFiles();
     const store = await deviceStore(backend);
     await Promise.all([store.updateProfile({ goalKg: 90 }), store.updateProfile({ heightCm: 176 })]);
-    expect(diaryOn(files)?.profile).toEqual({ goalKg: 90, heightCm: 176 });
+    expect(diaryOn(files)?.profile).toEqual({ goalKg: 90, heightCm: 176, birthYear: null, sex: null });
   });
 
   it('undoes a change whose write fails, and keeps the last good file', async () => {
@@ -138,10 +143,15 @@ describe('deviceStore', () => {
     expect(await again.weighIns()).toEqual([w('2026-10-17', 100), w('2026-10-18', 99)]);
   });
 
-  it("keeps the diary's own goal and height over the seed's, and says when the seed is in", async () => {
+  it("keeps the diary's own profile fields over the seed's, and says when the seed is in", async () => {
     const seed = () =>
-      Promise.resolve({ weighIns: [w('2026-10-17', 100)], profile: { goalKg: 80, heightCm: 170 } });
-    const { backend } = fakeFiles({ [DIARY_FILE]: text([], { goalKg: 90, heightCm: null }) });
+      Promise.resolve({
+        weighIns: [w('2026-10-17', 100)],
+        profile: { goalKg: 80, heightCm: 170, birthYear: 1990, sex: 'female' as const },
+      });
+    const { backend } = fakeFiles({
+      [DIARY_FILE]: text([], { goalKg: 90, heightCm: null, birthYear: 1983, sex: null }),
+    });
     let seeded = 0;
     const store = await deviceStore(backend, {
       seed,
@@ -150,7 +160,8 @@ describe('deviceStore', () => {
         return Promise.resolve();
       },
     });
-    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 170 });
+    // Field by field: the year of birth too is the diary's, the sex the seed's where the diary has none.
+    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 170, birthYear: 1983, sex: 'female' });
     expect(seeded).toBe(1);
   });
 
@@ -174,7 +185,7 @@ describe('deviceStore', () => {
   it('is erased by erase everything, with any copy set aside', async () => {
     const { files, backend } = fakeFiles({ [DIARY_FILE]: '{"not": "a diary"' });
     const store = await deviceStore(backend, { now });
-    await store.put([w('2026-10-17', 100)], { goalKg: 90, heightCm: 176 });
+    await store.put([w('2026-10-17', 100)], { goalKg: 90, heightCm: 176, birthYear: null, sex: null });
     expect(store.setAside).toBe(asideName(now));
     expect(await eraseEverything(store, null)).toBe(true);
     expect(diaryOn(files)).toEqual({ weighIns: [], profile: EMPTY_PROFILE });

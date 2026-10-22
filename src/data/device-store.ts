@@ -10,6 +10,7 @@
 import {
   byDate,
   EMPTY_PROFILE,
+  mergeProfile,
   toProfile,
   isStoredWeighIn,
   type Profile,
@@ -195,10 +196,8 @@ export async function deviceStore(fs: FileBackend, options: DeviceStoreOptions =
     const seed = await options.seed();
     // A seed that can't be written stays where it was, for the next opening to try again.
     if (seed) {
-      const profile = {
-        goalKg: diary.profile.goalKg ?? seed.profile.goalKg,
-        heightCm: diary.profile.heightCm ?? seed.profile.heightCm,
-      };
+      // What the diary holds wins; the seed fills what it lacks.
+      const profile = mergeProfile(seed.profile, diary.profile);
       const written = await change(() => inner.replace(seed.weighIns, profile)).then(
         () => true,
         (error: unknown) => {

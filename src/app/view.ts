@@ -4,6 +4,7 @@
  * saved value that no longer makes sense falls back to the default, as in the original dashboard.
  */
 import type { Method } from '../analysis/analyze';
+import { METRICS, type Metric } from '../analysis/body';
 import { METHODS } from '../analysis/goals';
 import { DEFAULT_RULES, type HiccupBasis, type HiccupRules } from '../analysis/hiccups';
 import { isWeight } from '../data/records';
@@ -590,6 +591,7 @@ export const SECTIONS = [
   'percent',
   'rate',
   'hiccups',
+  'body',
   'goal',
   'bmi',
   'facts',
@@ -600,8 +602,39 @@ export const SECTIONS = [
   'log',
 ] as const;
 export type Section = (typeof SECTIONS)[number];
-export const sectionsPref = pref('sections', someOf<Section>(SECTIONS), [...SECTIONS]);
+/** The sections shown, as saved. */
+const shownPref = pref('sections', someOf<Section>(SECTIONS), [...SECTIONS]);
+/**
+ * The sections that existed when the list was saved. Lists saved before it was kept (up to Sprint 4,
+ * story 2) knew every section but `body`, the body composition card.
+ */
+const knownPref = pref(
+  'sections.known',
+  (v: unknown): v is string[] => Array.isArray(v) && v.every((k) => typeof k === 'string'),
+  SECTIONS.filter((k) => k !== 'body'),
+);
+/**
+ * Which sections show. A section added after the list was saved (the body composition card, for
+ * anyone who changed Sections before it existed) is on, as it is for everyone else: the list says
+ * what was shown, and only the sections known then could have been turned off.
+ */
+export const sectionsPref: Pref<Section[]> = {
+  read: () => {
+    const shown = shownPref.read();
+    const known = knownPref.read();
+    return [...shown, ...SECTIONS.filter((k) => !shown.includes(k) && !known.includes(k))];
+  },
+  write: (value) => {
+    const kept = shownPref.write(value);
+    knownPref.write([...SECTIONS]);
+    return kept;
+  },
+};
 export const sections = many(sectionsPref);
+
+/** The estimate the body composition card charts (docs/ux/body-composition.md §2). */
+export const bodyMetricPref = pref('body.metric', oneOf<Metric>(METRICS), 'fat');
+export const bodyMetric = one(bodyMetricPref);
 
 /** How many months the calendar shows: the last 3, the last 12, or all. */
 export const CALENDAR_SPANS = [3, 12, 'all'] as const;

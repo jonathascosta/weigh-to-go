@@ -335,9 +335,12 @@ export const en = {
   'privacy.app.storage':
     'Everything you type stays in the app’s own files and storage on your iPhone. Like any app’s data, it is in your iPhone’s backup if you use iCloud Backup or back up to a computer; those backups are kept by Apple or on your computer, not by us. With Apple Health on, the weights you type are in Health too, which Apple keeps as it keeps the rest of your Health data.',
   'privacy.app.exports':
-    'A backup or CSV file you export goes only where you send it, through the share sheet (Files, AirDrop, Mail or another app you choose); the app keeps no copy once the sheet closes. The backup holds what you typed in the app (weights, goal, height); the CSV also has the days read from Apple Health.',
+    'A backup or CSV file you export goes only where you send it, through the share sheet (Files, AirDrop, Mail or another app you choose); the app keeps no copy once the sheet closes. The backup holds what you typed in the app (weights, goal, height and, if you gave them, year of birth and sex); the CSV also has the days read from Apple Health.',
   'privacy.app.apple':
     'If you turn on “Share with App Developers” in your iPhone’s settings, Apple shares crash reports and statistics about how you use the app with us, as it does for every app. It is off unless you turn it on.',
+  'privacy.profile.heading': 'Height, year of birth and sex',
+  'privacy.profile.text':
+    'You can give your height, year of birth and sex, each optional, for BMI and the body composition estimates, which are worked out on your device. They are kept with your diary and in your backup file, never sent to us or anyone else, and never read from or written to Apple Health. Erasing everything removes them.',
   'privacy.health.heading': 'Apple Health',
   'privacy.health.optional':
     'Apple Health is optional, and off until you turn it on in the app. The app then reads and writes weight only: it reads the readings of a smart scale or another app, and saves there the weights you type.',
@@ -423,6 +426,27 @@ export const en = {
   'settings.goal': 'Goal',
   'settings.height': 'Height',
   'settings.notSet': 'Not set',
+  'settings.birthYear': 'Year of birth',
+  'settings.birthYearNone': 'Not set',
+  // The year as typed ("1983", never grouped) and the age reached this year.
+  'settings.birthYearValue': (year: string, age: string) => `${year} · ${age} this year`,
+  'settings.sex': 'Sex, for the formulas',
+  'profile.sex.leaveOut': 'Leave out',
+  'profile.sex.leftOut': 'Left out',
+  'profile.sex.female': 'Female',
+  'profile.sex.male': 'Male',
+  'profile.sex.help':
+    'The formulas were made from data on women and men separately. Choose the one that fits your body, or leave it out: the estimates that need it won’t show.',
+  'profile.note':
+    'Height, year of birth and sex are used only for BMI and the body composition estimates, and stay on this device. Each is optional.',
+  'profile.birthYear.change': 'Change year of birth',
+  'profile.birthYear.help':
+    'Only the year: the formulas use your age, which moves on by itself each January.',
+  'profile.birthYear.bad': (lo: string, hi: string) =>
+    `Type the year you were born, from ${lo} to ${hi}, or leave it empty to remove it. The formulas are for adults.`,
+  'profile.birthYear.saved': (year: string) => `Year of birth saved: ${year}.`,
+  'profile.birthYear.removed': 'Year of birth removed.',
+  'profile.saved': 'Details saved.',
   'unit.kg': 'kg',
   'unit.lb': 'lb',
   'unit.cm': 'cm',
@@ -806,6 +830,7 @@ export const en = {
   'sections.percent': 'Percentage loss',
   'sections.rate': 'Compound daily rate',
   'sections.hiccups': 'Hiccups',
+  'sections.body': 'Body composition',
   'sections.goal': 'Goal',
   'sections.bmi': 'BMI',
   'sections.facts': 'Facts',
@@ -1022,6 +1047,66 @@ export const en = {
       : `**${now}** ${when}, ${diff} ${way} than at the start.`;
   },
   'bmi.sumNone': 'Add your height to see it.',
+  'body.title': 'Body composition (estimates)',
+  'body.sum': (fat: string, bmr: string, on: string | null) =>
+    on === null
+      ? `Estimated **${fat}** body fat and **${bmr}** a day at rest, from formulas.`
+      : `On ${on}, estimated **${fat}** body fat and **${bmr}** a day at rest, from formulas.`,
+  'body.sumLean': (lean: string, water: string | null, on: string | null) => {
+    const what =
+      water === null
+        ? `lean mass **${lean}**, from a formula`
+        : `lean mass **${lean}** and body water **${water}**, from formulas`;
+    return `${on === null ? 'Estimated' : `On ${on}, estimated`} ${what}. Body fat and BMR also need your year of birth.`;
+  },
+  'body.sumNeeds': 'Appears once your height, year of birth and sex are set.',
+  'body.needs':
+    'These estimates use your height, year of birth and sex. Each one is optional and stays on this device.',
+  'body.caveat':
+    'Estimates from formulas, not measurements. They follow your weight, and can’t tell a change in fat from a change in muscle.',
+  'body.change': 'Change details',
+  'body.fat': 'Body fat',
+  'body.lean': 'Lean mass',
+  'body.water': 'Body water',
+  'body.bmr': 'Calories at rest (BMR)',
+  'body.chips': 'Estimate on the chart',
+  'body.chip.fat': 'Body fat',
+  'body.chip.lean': 'Lean mass',
+  'body.chip.water': 'Water',
+  'body.chip.bmr': 'BMR',
+  'body.kcalDay': (n: string) => `${n}\u00a0kcal a day`,
+  'body.kcal': (n: string) => `${n}\u00a0kcal`,
+  'body.litres': (n: string) => `${n}\u00a0L`,
+  'body.waterShare': (pct: string) => `${pct} of your weight`,
+  'body.atStart': (value: string) => `${value} at the start`,
+  'body.sameAsStart': 'the same as at the start',
+  'body.err.fat': 'Deurenberg formula, about ±4–5\u00a0points',
+  'body.err.lean': (weight: string) => `Boer formula, about ±${weight}`,
+  'body.err.water': 'Watson formula, about ±4\u00a0L',
+  'body.err.bmr': 'Mifflin-St Jeor formula, about ±10%',
+  'body.needsYear': 'Needs your year of birth',
+  'body.range': (lo: string, hi: string) => `range ${lo}–${hi}`,
+  'body.legend.line': 'Estimate at each weigh-in',
+  'body.legend.band': 'The formula’s usual error',
+  'body.chart.fat': 'Body fat estimate over time (Deurenberg formula)',
+  'body.chart.lean': 'Lean mass estimate over time (Boer formula)',
+  'body.chart.water': 'Body water estimate over time (Watson formula)',
+  'body.chart.bmr': 'Calories at rest estimate over time (Mifflin-St Jeor formula)',
+  'body.aria': (first: string, last: string, value: string, range: string) =>
+    `From ${first} to ${last}; at the last weigh-in ${value}, ${range}.`,
+  'body.about': 'About the formulas',
+  'body.about.bmr':
+    '**BMR**, Mifflin-St Jeor (1990): the energy your body uses at complete rest, from weight, height, age and sex. Within about 10% for most adults, more for some. A whole day uses more, since moving and digesting add to it.',
+  'body.about.fat':
+    '**Body fat**, Deurenberg (1991): from BMI, age and sex. About 4–5 points either way; it reads too high for very muscular people, and is less sure at a very high or very low BMI.',
+  'body.about.lean': (weight: string) =>
+    `**Lean mass**, Boer (1984): everything that isn’t fat (muscle, bone, organs and water), from weight, height and sex. About ${weight} either way. It goes down a little whenever your weight does, because the formula assumes part of any loss is lean; it can’t tell whether yours is.`,
+  'body.about.water':
+    '**Body water**, Watson (1980): from weight, height, sex and, for men, age. About 4 litres either way. It can’t see the day-to-day swings in water that move the scale.',
+  'body.about.left':
+    'Muscle, bone and visceral fat aren’t shown: no formula estimates them reliably from weight. Measuring them takes a body-composition scale or a scan.',
+  'body.about.adults':
+    'The formulas were made from adults’ data, and each value uses your age in the year of that weigh-in. They are estimates for interest, not a diagnosis.',
   'facts.sum': (n: string, days: string, drop: { value: string; over: string | null } | null) =>
     drop === null
       ? `${n} in ${days}.`
@@ -1108,6 +1193,10 @@ export const en = {
     average7: 'average_7_days',
     trend: 'trend',
     lostPct: 'lost_pct',
+    bodyFat: 'body_fat_deurenberg_pct',
+    leanMass: 'lean_mass_boer',
+    bodyWater: 'body_water_watson_l',
+    bmr: 'bmr_mifflin_kcal',
     savedAt: 'saved_at',
   },
   'data.exportFailed': "Couldn't save the file. Try again.",
@@ -1250,9 +1339,12 @@ export const pt: Messages = {
   'privacy.app.storage':
     'Tudo o que você digita fica nos arquivos e no armazenamento do próprio app, no seu iPhone. Como os dados de qualquer app, eles entram no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador; esses backups ficam com a Apple ou no seu computador, não conosco. Com o app Saúde ligado, os pesos que você digita ficam lá também, guardados pela Apple como o resto dos seus dados de saúde.',
   'privacy.app.exports':
-    'Um backup ou arquivo CSV que você exporta vai só para onde você o mandar, pela tela de compartilhamento (Arquivos, AirDrop, Mail ou outro app que você escolher); o app não guarda cópia depois que a tela fecha. O backup guarda o que você digitou no app (pesos, meta, altura); o CSV também traz os dias lidos do app Saúde.',
+    'Um backup ou arquivo CSV que você exporta vai só para onde você o mandar, pela tela de compartilhamento (Arquivos, AirDrop, Mail ou outro app que você escolher); o app não guarda cópia depois que a tela fecha. O backup guarda o que você digitou no app (pesos, meta, altura e, se você os informou, ano de nascimento e sexo); o CSV também traz os dias lidos do app Saúde.',
   'privacy.app.apple':
     'Se você ligar “Compartilhar com Desenvolvedores de Apps” nos ajustes do iPhone, a Apple compartilha conosco relatórios de falhas e estatísticas de uso do app, como faz com todo app. Isso fica desligado, a menos que você ligue.',
+  'privacy.profile.heading': 'Altura, ano de nascimento e sexo',
+  'privacy.profile.text':
+    'Você pode informar altura, ano de nascimento e sexo, todos opcionais, para o IMC e as estimativas de composição corporal, que são calculados no seu aparelho. Eles ficam guardados com o seu diário e no seu arquivo de backup, nunca são enviados para nós nem para ninguém, e nunca são lidos do app Saúde nem gravados nele. Apagar tudo os remove.',
   'privacy.health.heading': 'App Saúde',
   'privacy.health.optional':
     'O app Saúde é opcional e fica desligado até você ligá-lo no app. A partir daí, o app lê e grava só o peso: lê as medições de uma balança inteligente ou de outro app e salva lá os pesos que você digita.',
@@ -1338,6 +1430,25 @@ export const pt: Messages = {
   'settings.goal': 'Meta',
   'settings.height': 'Altura',
   'settings.notSet': 'Não definida',
+  'settings.birthYear': 'Ano de nascimento',
+  'settings.birthYearNone': 'Não definido',
+  'settings.birthYearValue': (year: string, age: string) => `${year} · ${age} anos este ano`,
+  'settings.sex': 'Sexo, para as fórmulas',
+  'profile.sex.leaveOut': 'Não informar',
+  'profile.sex.leftOut': 'Não informado',
+  'profile.sex.female': 'Feminino',
+  'profile.sex.male': 'Masculino',
+  'profile.sex.help':
+    'As fórmulas foram feitas com dados de mulheres e de homens, em separado. Escolha o que corresponde ao seu corpo, ou não informe: as estimativas que dependem disso não aparecem.',
+  'profile.note':
+    'Altura, ano de nascimento e sexo servem só para o IMC e as estimativas de composição corporal, e ficam neste aparelho. Todos são opcionais.',
+  'profile.birthYear.change': 'Alterar ano de nascimento',
+  'profile.birthYear.help': 'Só o ano: as fórmulas usam a sua idade, que avança sozinha a cada janeiro.',
+  'profile.birthYear.bad': (lo: string, hi: string) =>
+    `Digite o ano em que você nasceu, de ${lo} a ${hi}, ou deixe o campo vazio para removê-lo. As fórmulas são para adultos.`,
+  'profile.birthYear.saved': (year: string) => `Ano de nascimento salvo: ${year}.`,
+  'profile.birthYear.removed': 'Ano de nascimento removido.',
+  'profile.saved': 'Informações salvas.',
   'unit.kg': 'kg',
   'unit.lb': 'lb',
   'unit.cm': 'cm',
@@ -1728,6 +1839,7 @@ export const pt: Messages = {
   'sections.percent': 'Perda percentual',
   'sections.rate': 'Taxa diária composta',
   'sections.hiccups': 'Soluços',
+  'sections.body': 'Composição corporal',
   'sections.goal': 'Meta',
   'sections.bmi': 'IMC',
   'sections.facts': 'Curiosidades',
@@ -1944,6 +2056,66 @@ export const pt: Messages = {
       : `**${now}** ${when}, ${diff} ${way === 'lower' ? 'abaixo' : 'acima'} do início.`;
   },
   'bmi.sumNone': 'Informe sua altura para vê-lo.',
+  'body.title': 'Composição corporal (estimativas)',
+  'body.sum': (fat: string, bmr: string, on: string | null) =>
+    on === null
+      ? `Estimativa de **${fat}** de gordura corporal e **${bmr}** por dia em repouso, por fórmulas.`
+      : `Em ${on}, estimativa de **${fat}** de gordura corporal e **${bmr}** por dia em repouso, por fórmulas.`,
+  'body.sumLean': (lean: string, water: string | null, on: string | null) => {
+    const what =
+      water === null
+        ? `massa magra de **${lean}**, por fórmula`
+        : `massa magra de **${lean}** e água corporal de **${water}**, por fórmulas`;
+    return `${on === null ? 'Estimativa' : `Em ${on}, estimativa`} de ${what}. Gordura corporal e TMB precisam também do seu ano de nascimento.`;
+  },
+  'body.sumNeeds': 'Aparece quando altura, ano de nascimento e sexo estiverem definidos.',
+  'body.needs':
+    'Estas estimativas usam sua altura, ano de nascimento e sexo. Cada um é opcional e fica neste aparelho.',
+  'body.caveat':
+    'Estimativas por fórmulas, não medições. Elas acompanham o seu peso e não distinguem uma mudança de gordura de uma mudança de músculo.',
+  'body.change': 'Alterar informações',
+  'body.fat': 'Gordura corporal',
+  'body.lean': 'Massa magra',
+  'body.water': 'Água corporal',
+  'body.bmr': 'Gasto em repouso (TMB)',
+  'body.chips': 'Estimativa no gráfico',
+  'body.chip.fat': 'Gordura',
+  'body.chip.lean': 'Massa magra',
+  'body.chip.water': 'Água',
+  'body.chip.bmr': 'TMB',
+  'body.kcalDay': (n: string) => `${n}\u00a0kcal por dia`,
+  'body.kcal': (n: string) => `${n}\u00a0kcal`,
+  'body.litres': (n: string) => `${n}\u00a0L`,
+  'body.waterShare': (pct: string) => `${pct} do seu peso`,
+  'body.atStart': (value: string) => `${value} no início`,
+  'body.sameAsStart': 'o mesmo do início',
+  'body.err.fat': 'Fórmula de Deurenberg, cerca de ±4–5\u00a0pontos',
+  'body.err.lean': (weight: string) => `Fórmula de Boer, cerca de ±${weight}`,
+  'body.err.water': 'Fórmula de Watson, cerca de ±4\u00a0L',
+  'body.err.bmr': 'Fórmula de Mifflin-St Jeor, cerca de ±10%',
+  'body.needsYear': 'Precisa do seu ano de nascimento',
+  'body.range': (lo: string, hi: string) => `faixa ${lo}–${hi}`,
+  'body.legend.line': 'Estimativa em cada pesagem',
+  'body.legend.band': 'Erro habitual da fórmula',
+  'body.chart.fat': 'Estimativa de gordura corporal ao longo do tempo (fórmula de Deurenberg)',
+  'body.chart.lean': 'Estimativa de massa magra ao longo do tempo (fórmula de Boer)',
+  'body.chart.water': 'Estimativa de água corporal ao longo do tempo (fórmula de Watson)',
+  'body.chart.bmr': 'Estimativa do gasto em repouso ao longo do tempo (fórmula de Mifflin-St Jeor)',
+  'body.aria': (first: string, last: string, value: string, range: string) =>
+    `De ${first} a ${last}; no último registro, ${value}, ${range}.`,
+  'body.about': 'Sobre as fórmulas',
+  'body.about.bmr':
+    '**TMB**, Mifflin-St Jeor (1990): a energia que o corpo gasta em repouso completo, a partir de peso, altura, idade e sexo. Erra até cerca de 10% para a maioria dos adultos, mais para alguns. Um dia inteiro gasta mais, porque movimento e digestão se somam a ela.',
+  'body.about.fat':
+    '**Gordura corporal**, Deurenberg (1991): a partir do IMC, da idade e do sexo. Cerca de 4–5 pontos para mais ou para menos; dá valores altos demais para pessoas muito musculosas e é menos segura com IMC muito alto ou muito baixo.',
+  'body.about.lean': (weight: string) =>
+    `**Massa magra**, Boer (1984): tudo o que não é gordura (músculos, ossos, órgãos e água), a partir de peso, altura e sexo. Cerca de ${weight} para mais ou para menos. Ela cai um pouco sempre que o peso cai, porque a fórmula supõe que parte de qualquer perda é magra; não tem como saber se a sua é.`,
+  'body.about.water':
+    '**Água corporal**, Watson (1980): a partir de peso, altura, sexo e, para homens, idade. Cerca de 4 litros para mais ou para menos. Não vê as variações de água de um dia para o outro, que mexem na balança.',
+  'body.about.left':
+    'Músculos, ossos e gordura visceral não aparecem: nenhuma fórmula os estima com segurança a partir do peso. Medi-los exige uma balança de bioimpedância ou um exame.',
+  'body.about.adults':
+    'As fórmulas foram feitas com dados de adultos, e cada valor usa a sua idade no ano daquela pesagem. São estimativas para referência, não um diagnóstico.',
   'facts.sum': (n: string, days: string, drop: { value: string; over: string | null } | null) =>
     drop === null
       ? `${n} em ${days}.`
@@ -2033,6 +2205,10 @@ export const pt: Messages = {
     average7: 'media_7_dias',
     trend: 'tendencia',
     lostPct: 'perda_pct',
+    bodyFat: 'gordura_deurenberg_pct',
+    leanMass: 'massa_magra_boer',
+    bodyWater: 'agua_watson_l',
+    bmr: 'tmb_mifflin_kcal',
     savedAt: 'salvo_em',
   },
   'data.exportFailed': 'Não foi possível salvar o arquivo. Tente de novo.',
