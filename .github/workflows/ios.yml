@@ -168,7 +168,10 @@ jobs:
       # 143): AppStoreKitTests, hosted in the app, with ios/App/Products.storekit in an
       # SKTestSession: the product and its price, a verified purchase held in the current
       # entitlements, a refund, Ask to Buy approved and declined. After the launch above, so its log
-      # is the app's alone. Nothing reaches the App Store.
+      # is the app's alone. Nothing reaches the App Store. Signed ad hoc ("Sign to Run Locally", no
+      # team, no profile): StoreKit's test daemon refuses an SKTestSession from an unsigned app
+      # (SKInternalErrorDomain Code=3 on every call, and no product), which the builds above are.
+      # This signing is for this simulator run only; TestFlight's archive is signed by fastlane.
       - name: Test Remove ads with StoreKit's test environment
         working-directory: ios/App
         run: >-
@@ -180,7 +183,12 @@ jobs:
           -derivedDataPath build
           -only-testing:AppStoreKitTests
           -resultBundlePath ../../storekit-tests.xcresult
-          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_ALLOWED=YES
+          CODE_SIGNING_REQUIRED=NO
+          CODE_SIGN_STYLE=Manual
+          CODE_SIGN_IDENTITY=-
+          DEVELOPMENT_TEAM=
+          PROVISIONING_PROFILE_SPECIFIER=
 
       - name: Keep the screenshot
         if: always()

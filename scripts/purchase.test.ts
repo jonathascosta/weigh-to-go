@@ -113,6 +113,11 @@ describe('the StoreKit test on the macOS runner', () => {
     ])
       expect(tests).toContain(`func ${name}()`);
     expect(tests).toContain('Transaction.currentEntitlements');
-    expect(read('.github/workflows/ios.yml')).toMatch(/xcodebuild test[\s\S]*-only-testing:AppStoreKitTests/);
+    const workflow = read('.github/workflows/ios.yml');
+    const step = /xcodebuild test[\s\S]*?\n\n/.exec(workflow)?.[0] ?? '';
+    expect(step).toContain('-only-testing:AppStoreKitTests');
+    // Signed ad hoc: StoreKit's test daemon refuses a session from an unsigned app.
+    expect(step).toContain('CODE_SIGN_IDENTITY=-');
+    expect(step).not.toContain('CODE_SIGNING_ALLOWED=NO');
   });
 });
