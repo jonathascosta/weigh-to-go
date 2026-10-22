@@ -74,9 +74,12 @@ de consentimento.
      mensagem de regulamentos de estados dos EUA (US state regulations), e publique as duas: a
      política de privacidade promete as escolhas em Opções de privacidade no EEE, no Reino Unido, na
      Suíça e nos estados dos EUA cujas leis as dão. Sem a mensagem explicativa do IDFA: o app nunca
-     pede rastreamento. **Uma salvaguarda antes do lançamento:** na sua própria instalação, em
-     Portugal, a mensagem de GDPR do Google tem de aparecer no 8º dia depois da primeira abertura (na
-     primeira abertura a partir daí, com uma pesagem no diário). Se não aparecer, pare o lançamento e
+     pede rastreamento. **Uma salvaguarda antes do lançamento**, em Portugal, num build do TestFlight
+     de uma execução **For the App Store** (qualquer outro build usa o app de teste do Google, cuja
+     mensagem de exemplo não prova nada sobre as suas): a partir do 8º dia depois da primeira
+     abertura, com uma pesagem no diário, ou a mensagem de GDPR do Google aparece, ou Seus dados ›
+     App para iPhone mostra **Opções de privacidade** e ela abre o formulário do Google (essa linha
+     só aparece onde as suas mensagens valem). Se nenhum dos dois acontecer, pare o lançamento e
      avise uma sessão: o app estaria mostrando anúncios no EEE sem perguntar.
    - Em Blocking controls, defina a classificação máxima dos anúncios e bloqueie as categorias
      sensíveis que não combinam com um diário de peso (produtos de dieta e emagrecimento, entre
@@ -131,14 +134,19 @@ de consentimento.
       execução com **For the App Store** marcado (a página da execução na aba Actions mostra as
       entradas dela). Junte a compra dentro do app à versão.
     - **Antes do lançamento, confira que o app não envia nada ao Google quando não deve.** Num build
-      do TestFlight de uma execução **For the App Store**, com um registro de rede (um proxy no Mac
-      de um amigo, como o Proxyman ou o Charles, ou o modelo Network do Instruments), veja que não há
+      do TestFlight de uma execução **For the App Store**, com um registro de rede, veja que não há
       nenhum pedido ao Google (`*.google.com`, `*.googleapis.com`, `*.doubleclick.net`,
       `*.googlesyndication.com`, `app-measurement.com` e afins) em cada um destes estados: uma
       instalação nova nos 7 primeiros dias, com pesagens; Remover anúncios comprado (no sandbox, com
       o app aberto de novo); uma recusa na mensagem do Google; e, numa mesma sessão, depois de
       retirar o consentimento em Opções de privacidade e depois de comprar Remover anúncios (nenhum
-      pedido novo a partir daí). Se algum aparecer, pare o lançamento e avise uma sessão.
+      pedido novo a partir daí). A primeira ferramenta é o próprio **Relatório de Privacidade dos
+      Apps** do iPhone (Ajustes › Privacidade e Segurança › Relatório de Privacidade dos Apps, ligado
+      antes do teste): ele lista cada domínio que cada app contatou, então cobre os estados que
+      atravessam uma abertura (os primeiros dias, a compra feita, uma recusa). Para os estados numa
+      mesma sessão, use um proxy (no Mac de um amigo, como o Proxyman ou o Charles) ou o modelo
+      Network do Instruments, que mostram quando cada pedido foi feito. Se algum aparecer, pare o
+      lançamento e avise uma sessão.
     - **Primeiro o trecho do banner, na instalação que você usa.** A gravação abaixo começa de uma
       instalação nova, e reinstalar recomeça os 7 primeiros dias (um backup não os leva), então o
       banner só aparece nessa instalação depois de uma semana. Antes de apagar o app, numa
@@ -162,8 +170,10 @@ de consentimento.
     - O status de comerciante (Digital Services Act) é declarado uma vez para a conta (feito para o
       Arrows em 4 de outubro de 2026); nada novo, a menos que a declaração passe para um endereço
       comercial.
-    - A salvaguarda do EEE do passo 6: na sua própria instalação, em Portugal, a mensagem de GDPR do
-      Google apareceu no 8º dia. Se não apareceu, não submeta.
+    - A salvaguarda do EEE do passo 6, num build do TestFlight de uma execução **For the App
+      Store**, em Portugal: a partir do 8º dia com uma pesagem, a mensagem de GDPR do Google
+      apareceu, ou Opções de privacidade apareceu em Seus dados › App para iPhone e abriu o
+      formulário do Google. Se nenhum dos dois aconteceu, não submeta.
     - Submeta. Depois do lançamento, avise a sessão: o site então ganha os links da App Store.
 
 ## Antes de cada versão

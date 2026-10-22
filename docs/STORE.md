@@ -71,10 +71,13 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    - In Privacy & messaging, add the app to a European regulations (GDPR) message and to a US
      state regulations message, and publish both: the privacy policy promises the choices in
      Privacy choices in the EEA, the UK, Switzerland and US states whose laws give them. No IDFA
-     explainer: the app never asks for tracking. **A safeguard before the release:** on your own
-     install in Portugal, Google's GDPR message must show on the 8th day after the first launch
-     (at the first launch from then on, with a weigh-in in the diary). If it doesn't, stop the release
-     and tell a session: the app would be showing ads in the EEA without asking.
+     explainer: the app never asks for tracking. **A safeguard before the release**, in Portugal, on
+     a TestFlight build from a run **for the App Store** (any other build names Google's test app,
+     whose sample message proves nothing about yours): from the 8th day after its first launch, with
+     a weigh-in in the diary, either Google's GDPR message shows, or Your data › iPhone app shows
+     **Privacy choices** and it opens Google's form (that row shows only where your messages apply).
+     If neither happens, stop the release and tell a session: the app would be showing ads in the
+     EEA without asking.
    - In Blocking controls, set the maximum ad content rating, and block sensitive categories that
      don't belong next to a weight diary (dieting and weight-loss products among them, where offered).
    - `app-ads.txt` is already on jonathas.net for the account. Once the app is live, link it to its
@@ -126,14 +129,18 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
       **For the App Store** ticked (the run's page in the Actions tab shows its inputs). Add the
       in-app purchase to the version.
     - **Before the release, check that the app sends Google nothing when it mustn't.** On a TestFlight
-      build from a run **for the App Store**, with a network log (a proxy on the Mac of a friend,
-      such as Proxyman or Charles, or Instruments' Network template), see no request to Google
+      build from a run **for the App Store**, with a network log, see no request to Google
       (`*.google.com`, `*.googleapis.com`, `*.doubleclick.net`, `*.googlesyndication.com`,
       `app-measurement.com` and the like) in each of these states: a fresh install in its first 7
       days, with weigh-ins; Remove ads held (bought in the sandbox, the app opened again); a refusal
       in Google's message; and, within one session, after withdrawing consent in Privacy choices and
-      after buying Remove ads (no new requests from then on). If any shows one, stop the release and
-      tell a session.
+      after buying Remove ads (no new requests from then on). The first tool is the iPhone's own
+      **App Privacy Report** (Settings › Privacy & Security › App Privacy Report, turned on before
+      the test): it lists every domain each app contacted, so it covers the states that span a
+      launch (the first days, the purchase held, a refusal). For the states within one session, use
+      a proxy (on a friend's Mac, such as Proxyman or Charles) or Instruments' Network template,
+      which show when each request was made. If any shows one, stop the release and tell a
+      session.
     - **The banner clip first, on the install you use.** The recording below starts from a fresh
       install, and reinstalling starts the first 7 days again (a backup doesn't carry them), so the
       banner shows on that install only after a week. Before deleting the app, on an install in use
@@ -154,8 +161,9 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
       Notes and attach both.
     - Trader status (Digital Services Act) is declared once for the account (done for Arrows on 4
       October 2026); nothing new is needed unless the declaration moves to a business address.
-    - The EEA safeguard of step 6: on your own install in Portugal, Google's GDPR message showed on
-      the 8th day. If it didn't, don't submit.
+    - The EEA safeguard of step 6, on a TestFlight build from a run **for the App Store**, in
+      Portugal: from the 8th day with a weigh-in, Google's GDPR message showed, or Privacy choices
+      appeared in Your data › iPhone app and opened Google's form. If neither did, don't submit.
     - Submit. After the release, tell the session: the website then gets the App Store links.
 
 ## App Review notes

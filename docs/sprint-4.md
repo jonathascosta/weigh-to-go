@@ -42,8 +42,8 @@ both change together, in the same pull request.
          design wrote (design §7): ads from Google AdMob, not personalised, never given the
          weigh-ins, what any ad request carries, and that removing the ads stops those requests;
          left out until the ads ship (decision 109).
-   - [ ] Before the release, on a TestFlight build from a run for the App Store, a network log (a
-         proxy, or Instruments) shows no request to Google in the first 7 days, with Remove ads
+   - [ ] Before the release, on a TestFlight build from a run for the App Store, a network log (the
+         iPhone's App Privacy Report, then a proxy or Instruments within a session) shows no request to Google in the first 7 days, with Remove ads
          held, after a refusal in Google's message, and from the moment consent is withdrawn in
          Privacy choices or Remove ads is bought during a session (STORE.md, step 11). Info.plist's
          `GADDelayAppMeasurementInit` is a safeguard, not the proof.

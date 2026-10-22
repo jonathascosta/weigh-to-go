@@ -62,6 +62,9 @@ public class AdSetupPlugin: CAPPlugin, CAPBridgedPlugin {
             "gdprApplies": Self.gdprApplies(defaults.object(forKey: "IABTCF_gdprApplies")),
             "purposeConsents": defaults.string(forKey: "IABTCF_PurposeConsents") ?? "",
             "vendorConsents": defaults.string(forKey: "IABTCF_VendorConsents") ?? "",
+            // Google's GDPR message saves TCF keys; its US state messages save GPP keys instead.
+            "tcf": defaults.object(forKey: "IABTCF_TCString") != nil
+                || defaults.object(forKey: "IABTCF_PurposeConsents") != nil,
         ])
     }
 }

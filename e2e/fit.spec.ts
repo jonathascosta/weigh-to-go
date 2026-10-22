@@ -622,7 +622,8 @@ test.describe("the iPhone app with its banner's band", () => {
     ['data', '#data-erase'],
   ] as const;
 
-  for (const size of SIZES)
+  // Held sideways too (DaVinci): the app is portrait only, but a band that fits there fits anywhere.
+  for (const size of [...SIZES, { width: 844, height: 390 }])
     for (const text of TEXTS)
       test(`keeps the page, its sheets and its focus clear of the band at ${String(size.width)} × ${String(size.height)}, text ${String(text)}%`, async ({
         page,
@@ -632,8 +633,11 @@ test.describe("the iPhone app with its banner's band", () => {
         const { check } = await watchHere(page);
         await page.setViewportSize(size);
         const cdp = await context.newCDPSession(page);
+        const sideways = size.width > size.height;
         await cdp.send('Emulation.setSafeAreaInsetsOverride', {
-          insets: { top: 47, bottom: 34, left: 0, right: 0 },
+          insets: sideways
+            ? { top: 0, bottom: 21, left: 47, right: 47 }
+            : { top: 47, bottom: 34, left: 0, right: 0 },
         });
         await page.goto('/');
         await loadBackup(page);
@@ -645,7 +649,7 @@ test.describe("the iPhone app with its banner's band", () => {
           .locator('.ad-space')
           .evaluate((el) => el.getBoundingClientRect().bottom);
         // The safe area and the banner: the band is really there.
-        expect(bandBottom).toBeGreaterThanOrEqual(97);
+        expect(bandBottom).toBeGreaterThanOrEqual(sideways ? 50 : 97);
         const problems: string[] = [];
 
         for (const view of ['today', 'progress', 'analysis', 'data']) {
@@ -713,4 +717,28 @@ test.describe("the iPhone app with its banner's band", () => {
         expect(problems).toEqual([]);
         await check();
       });
+});
+
+// A launch after one with the band up (decision 125): the band is there before the diary is, so
+// the page never moves when the banner comes.
+test('starts the iPhone app with the band up when it was up last time', async ({ page }) => {
+  test.skip(test.info().project.name !== 'ios', "The band is the iPhone app's only.");
+  const { check } = await watchHere(page);
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('weigh-to-go:adBand', 'true');
+    } catch {
+      // Without storage there is nothing to remember.
+    }
+    const seen = window as unknown as { bandAtField?: string };
+    new MutationObserver((_records, observer) => {
+      if (!document.getElementById('entry-weight')) return;
+      seen.bandAtField = getComputedStyle(document.documentElement).getPropertyValue('--ad-h').trim();
+      observer.disconnect();
+    }).observe(document, { childList: true, subtree: true });
+  });
+  await page.goto('/');
+  await expect(page.locator('#entry-weight')).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { bandAtField?: string }).bandAtField)).toBe('50px');
+  await check();
 });

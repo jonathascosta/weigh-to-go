@@ -10,15 +10,30 @@ export const CONSENTED: ConsentChoices = {
   gdprApplies: true,
   purposeConsents: '1111111111',
   vendorConsents: `${'0'.repeat(754)}1`,
+  tcf: true,
 };
 
 export const REFUSED: ConsentChoices = {
   gdprApplies: true,
   purposeConsents: '0000000000',
   vendorConsents: '0'.repeat(755),
+  tcf: true,
 };
 
-export const NO_GDPR: ConsentChoices = { gdprApplies: false, purposeConsents: '', vendorConsents: '' };
+export const NO_GDPR: ConsentChoices = {
+  gdprApplies: false,
+  purposeConsents: '',
+  vendorConsents: '',
+  tcf: false,
+};
+
+/** A US state message answered: GPP keys saved, no TCF ones. */
+export const US_STATE: ConsentChoices = {
+  gdprApplies: null,
+  purposeConsents: '',
+  vendorConsents: '',
+  tcf: false,
+};
 
 export class FakeAdMob implements AdsApi {
   readonly calls: string[] = [];

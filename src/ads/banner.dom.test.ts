@@ -179,7 +179,7 @@ describe('the banner', () => {
     expect(api.calls).toEqual(['hide', 'resume']);
   });
 
-  it('asks for the banner anew back from the back-forward cache', () => {
+  it('mounts the banner again back from the back-forward cache', async () => {
     const b = mount();
     b.want(true);
     api.load();
@@ -188,6 +188,11 @@ describe('the banner', () => {
     Object.defineProperty(event, 'persisted', { value: true });
     window.dispatchEvent(event);
     expect(api.banners).toHaveLength(2);
+    // Its listeners are back, once each.
+    await settle();
+    expect(api.listeners()).toBe(3);
+    api.load();
+    expect(api.view).toBe('shown');
   });
 
   it('never resumes a banner that isn’t there', async () => {

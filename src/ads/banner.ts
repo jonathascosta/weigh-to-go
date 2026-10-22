@@ -106,7 +106,8 @@ export function mountBanner(
       if (blocked()) return;
       phase = 'loading';
       hidden = false;
-      pending++;
+      // One request at a time: a new one replaces any still loading.
+      pending = 1;
       // The band first, at the banner's fixed height: the page doesn't move when it arrives.
       setBand(doc, BANNER_HEIGHT);
       band.write(true);
@@ -142,38 +143,42 @@ export function mountBanner(
     if (disposed && pending === 0) void release(handles);
   };
 
-  pageHandles.push(
-    api.onSize((height) => {
-      // The band is set when the banner is asked for; a size of 0 (our hide, or a failure) leaves
-      // it, so nothing jumps.
-      if (height > 0 && phase !== 'off' && !disposed) setBand(doc, height);
-    }),
-  );
-  handles.push(
-    api.onLoaded(() => {
-      pending = Math.max(0, pending - 1);
-      if (phase === 'off' || disposed) {
-        // Taken away while it was loading: the plugin had no view to remove then, and adds it now.
-        call(() => api.removeBanner());
+  /** The plugin's listeners, added at mount and again after a return from the back-forward cache. */
+  const listen = () => {
+    pageHandles.push(
+      api.onSize((height) => {
+        // The band is set when the banner is asked for; a size of 0 (our hide, or a failure) leaves
+        // it, so nothing jumps.
+        if (height > 0 && phase !== 'off' && !disposed) setBand(doc, height);
+      }),
+    );
+    handles.push(
+      api.onLoaded(() => {
+        pending = Math.max(0, pending - 1);
+        if (phase === 'off' || disposed) {
+          // Taken away while it was loading: the plugin had no view to remove then, and adds it now.
+          call(() => api.removeBanner());
+          settleLate();
+          return;
+        }
+        phase = 'loaded';
+        // The plugin adds its view, shown, on a new banner's load: hidden again if it must be.
+        if (blocked()) {
+          hidden = true;
+          call(() => api.hideBanner());
+        } else hidden = false;
+      }),
+      api.onFailed(() => {
+        pending = Math.max(0, pending - 1);
         settleLate();
-        return;
-      }
-      phase = 'loaded';
-      // The plugin adds its view, shown, on a new banner's load: hidden again if it must be.
-      if (blocked()) {
-        hidden = true;
-        call(() => api.hideBanner());
-      } else hidden = false;
-    }),
-    api.onFailed(() => {
-      pending = Math.max(0, pending - 1);
-      settleLate();
-      if (phase === 'off' || disposed) return;
-      // The plugin takes its view away. The band stays, empty, for the rest of the session.
-      phase = 'failed';
-      hidden = false;
-    }),
-  );
+        if (phase === 'off' || disposed) return;
+        // The plugin takes its view away. The band stays, empty, for the rest of the session.
+        phase = 'failed';
+        hidden = false;
+      }),
+    );
+  };
+  listen();
 
   const observer =
     typeof MutationObserver === 'function'
@@ -188,8 +193,17 @@ export function mountBanner(
   };
   const onPageShow = (event: Event) => {
     leaving = false;
-    // Back from the back-forward cache: the static page may have hidden the banner; ask anew.
-    if ((event as PageTransitionEvent).persisted && phase !== 'off') phase = 'off';
+    if ((event as PageTransitionEvent).persisted && !disposed) {
+      // Back from the back-forward cache: the static page may have hidden the banner, and the
+      // plugin's listeners may be gone with the page it left. Mounted again: new listeners, a new
+      // request.
+      void release(pageHandles);
+      void release(handles);
+      listen();
+      pending = 0;
+      phase = 'off';
+      hidden = false;
+    }
     sync();
   };
   const onVisibility = () => {

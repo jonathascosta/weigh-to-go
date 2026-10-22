@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AdConsent, refused, type ConsentChoices } from './consent';
-import { CONSENTED, FakeAdMob, NO_GDPR, REFUSED } from './fake-admob.test-helper';
+import { CONSENTED, FakeAdMob, NO_GDPR, REFUSED, US_STATE } from './fake-admob.test-helper';
 
 const consentWith = (api: FakeAdMob, choices: ConsentChoices, errors: unknown[] = []) =>
   new AdConsent(
@@ -100,11 +100,25 @@ describe('a refusal, in the choices saved on the phone', () => {
   });
 
   it('counts unreadable choices as a refusal where Google said consent was needed', () => {
-    const unread = { gdprApplies: null, purposeConsents: '', vendorConsents: '' };
+    // The TCF in use (Google's GDPR message saved its keys), but no word on the GDPR.
+    const unread = { gdprApplies: null, purposeConsents: '', vendorConsents: '', tcf: true };
     expect(refused(unread, 'REQUIRED')).toBe(true);
     expect(refused(unread, 'OBTAINED')).toBe(true);
     expect(refused(unread, 'NOT_REQUIRED')).toBe(false);
     expect(refused(unread, 'UNKNOWN')).toBe(false);
+  });
+
+  it('never reads a US state message’s answer (GPP keys, no TCF ones) as a refusal', () => {
+    expect(refused(US_STATE, 'OBTAINED')).toBe(false);
+    expect(refused(US_STATE, 'REQUIRED')).toBe(false);
+  });
+
+  it('allows ads after a US state message was answered', async () => {
+    const api = new FakeAdMob();
+    api.info = { ...api.info, status: 'OBTAINED', privacyOptionsRequirementStatus: 'REQUIRED' };
+    expect(await consentWith(api, US_STATE).decide()).toBe('ads');
+    api.info = { ...api.info, status: 'OBTAINED' };
+    expect(await consentWith(api, { ...US_STATE, tcf: true }).decide()).toBe('none');
   });
 
   it('says when Privacy choices’ form couldn’t open', async () => {

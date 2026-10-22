@@ -186,8 +186,8 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   const drawChoicesStatus = () => {
     const text =
       choicesFailed && choicesRow && !choicesRow.hidden ? settings().messages['ads.choicesFailed'] : '';
+    // Never hidden: a live region that leaves the accessibility tree isn't read when it comes back.
     if (choicesStatus.textContent !== text) choicesStatus.textContent = text;
-    choicesStatus.hidden = text === '';
   };
   drawChoicesStatus();
   const appTitle = h('h2', { attrs: { id: 'app-title' } });

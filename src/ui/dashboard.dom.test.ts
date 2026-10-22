@@ -1269,7 +1269,9 @@ describe('Privacy choices, in the iPhone app', () => {
     expect(document.activeElement).toBe(row);
     const status = root.querySelector<HTMLElement>('#privacy-choices-status')!;
     expect(status.getAttribute('role')).toBe('status');
-    expect(status.hidden).toBe(true);
+    // Empty, but never hidden: a live region has to stay in the accessibility tree to be read.
+    expect(status.hidden).toBe(false);
+    expect(status.textContent).toBe('');
     // Google's form can't open (offline): a line says so, until the next try.
     fake.failNext();
     row.click();

@@ -761,14 +761,14 @@ decisions above.
      string is `ads.choices` ("Privacy choices" / "Opções de privacidade"), not decision 109's
      `privacy.choices`: the `privacy.*` keys are the policy's, and a test asks the policy pages to
      carry every one of them.
-128. **About's ads sentences** are design §7's in English; the Portuguese is proposed wording: "Os
+128. **About's ads sentences** (revised in 134) are design §7's in English; the Portuguese is proposed wording: "Os
      anúncios vêm do Google AdMob: não são personalizados e nunca recebem suas pesagens, mas o
      Google recebe o que qualquer pedido de anúncio leva, como o modelo do iPhone e o endereço de
      rede. Remover os anúncios acaba com esses pedidos."
 129. **The first launch is a screen preference** (`firstLaunch`, ms), as the rating prompt's days
      are; Erase everything clears it with the rest, so after an erase the 7 days start again (the
      diary is empty then anyway). _Alternative:_ keep it through an erase.
-130. **The policy is unchanged.** What it says of the ads matches what is built (the banner in the
+130. **The policy is unchanged.** (revised in 134) What it says of the ads matches what is built (the banner in the
      app only, non-personalised, no tracking prompt or IDFA, the consent message where the law asks,
      no SDK and no ads on a refusal, Privacy choices where it applies, nothing started once Remove
      ads is held), except what only Google's data disclosure page can confirm: what the SDK
@@ -782,10 +782,13 @@ decisions above.
      `WTG_APP_STORE_BUILD=YES` (Info.plist's `WTGAppStoreBuild`), only when **For the App Store** is
      ticked; any other build names Google's test app, and outside TestFlight it shows no ads at all
      (`bannerUnit` is null without the flag). _Alternative:_ the ids in every build that has them.
-133. **The consent, read strictly** (Spock's review). Where the saved choices say nothing of the
-     GDPR but Google's status is REQUIRED or OBTAINED, they count as a refusal; `IABTCF_gdprApplies`
-     is read as a number or a string. In a US state, a person who used Privacy choices could then
-     see no ads if Google saved no TCF keys there (to check on a device). The SDK's start is one
+133. **The consent, read strictly** (Spock's reviews). Where the TCF is in use on the phone
+     (`IABTCF_TCString` or `IABTCF_PurposeConsents` saved, as Google's GDPR message does) but the
+     saved choices say nothing of the GDPR, and Google's status is REQUIRED or OBTAINED, they count
+     as a refusal. Without the TCF there is nothing to refuse in them: Google's US state messages
+     report the same statuses but save GPP keys (`IABGPP_*`), so an answer there leaves the decision
+     to `canRequestAds`, and the app shows ads as the person allowed. `IABTCF_gdprApplies` is read
+     as a number or a string. The SDK's start is one
      shared call. Privacy choices that can't open say so under the row ("Google’s privacy choices
      couldn’t open. Try again when you’re online." / "Não foi possível abrir as opções de privacidade
      do Google. Tente de novo quando estiver on-line.", proposed wording). Info.plist's

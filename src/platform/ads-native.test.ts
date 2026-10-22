@@ -12,7 +12,8 @@ vi.mock('@capacitor/core', () => ({
   Capacitor: { isNativePlatform: () => native, isPluginAvailable: () => true },
   registerPlugin: () => ({
     build: () => Promise.resolve({ bannerId: '', sandbox: true, debug: false }),
-    consentChoices: () => Promise.resolve({ gdprApplies: -1, purposeConsents: '', vendorConsents: '' }),
+    consentChoices: () =>
+      Promise.resolve({ gdprApplies: -1, purposeConsents: '', vendorConsents: '', tcf: false }),
   }),
 }));
 vi.mock('@capacitor-community/admob', () => ({
@@ -81,7 +82,7 @@ describe('the plugin, as the ads call it', () => {
 
 describe('the choices saved on the phone, as the plugin gives them', () => {
   it('read 1 as the GDPR applying, 0 as not, and -1 (not saved) as unknown', () => {
-    const saved = { purposeConsents: '11', vendorConsents: '01' };
+    const saved = { purposeConsents: '11', vendorConsents: '01', tcf: true };
     expect(toChoices({ ...saved, gdprApplies: 1 })).toEqual({ ...saved, gdprApplies: true });
     expect(toChoices({ ...saved, gdprApplies: 0 })).toEqual({ ...saved, gdprApplies: false });
     expect(toChoices({ ...saved, gdprApplies: -1 })).toEqual({ ...saved, gdprApplies: null });
@@ -89,6 +90,6 @@ describe('the choices saved on the phone, as the plugin gives them', () => {
       toChoices({ gdprApplies: 1, purposeConsents: null, vendorConsents: undefined } as unknown as Parameters<
         typeof toChoices
       >[0]),
-    ).toEqual({ gdprApplies: true, purposeConsents: '', vendorConsents: '' });
+    ).toEqual({ gdprApplies: true, purposeConsents: '', vendorConsents: '', tcf: false });
   });
 });

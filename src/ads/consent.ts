@@ -35,6 +35,11 @@ export interface ConsentChoices {
   readonly purposeConsents: string;
   /** One digit per vendor id, "1" for consent; vendor 1 first. */
   readonly vendorConsents: string;
+  /**
+   * Whether the TCF is in use on the phone (`IABTCF_TCString` or `IABTCF_PurposeConsents` saved):
+   * Google's GDPR message saves them; its US state messages save GPP keys instead.
+   */
+  readonly tcf: boolean;
 }
 
 /** Google's id in the IAB's vendor list. */
@@ -43,12 +48,13 @@ export const GOOGLE_VENDOR_ID = 755;
 /**
  * Whether the person refused where the law asks for consent: UMP lets ads be requested after a
  * refusal too ("limited ads"), so the saved choices say it. Consent means purpose 1 (storing and
- * reading on the device, which any ad request needs) and Google as a vendor. With no word on the
- * GDPR from the saved choices but a consent Google says was needed (`status` REQUIRED or OBTAINED),
- * the choices can't be read, and count as a refusal.
+ * reading on the device, which any ad request needs) and Google as a vendor. With the TCF in use
+ * but no word on the GDPR, and a consent Google says was needed (`status` REQUIRED or OBTAINED),
+ * the choices can't be read, and count as a refusal. Without the TCF (a US state message, whose
+ * choices are GPP keys, or no message), nothing here is a refusal: Google's `canRequestAds` decides.
  */
 export function refused(choices: ConsentChoices, status = 'NOT_REQUIRED'): boolean {
-  if (choices.gdprApplies === null) return status === 'REQUIRED' || status === 'OBTAINED';
+  if (choices.gdprApplies === null) return choices.tcf && (status === 'REQUIRED' || status === 'OBTAINED');
   if (!choices.gdprApplies) return false;
   return (
     choices.purposeConsents.charAt(0) !== '1' || choices.vendorConsents.charAt(GOOGLE_VENDOR_ID - 1) !== '1'
