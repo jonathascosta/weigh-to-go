@@ -3,7 +3,7 @@
  * change on each weekday, and a calendar that colours each day by how much the weight moved. The
  * models are pure functions (tested); the charts share the cursor, keys and tooltip of plot.ts.
  */
-import { max } from 'd3-array';
+import { max, quantileSorted } from 'd3-array';
 import { scaleBand, scaleLinear } from 'd3-scale';
 import { FLAT_KG, type Analysis, type Day } from '../analysis/analyze';
 import { addDays, isoDay, localToday, parseDay } from '../analysis/dates';
@@ -12,9 +12,22 @@ import { CALENDAR_SPANS, calendarSpan, chartPeriod, viewGeneration, type Calenda
 import { count, settings, type Settings } from '../i18n';
 import { fromKg } from '../units';
 import { periodStart } from './chart';
+import type { Disclosure } from './card';
 import { control, oneChips } from './controls';
 import { h, rich, s as svg } from './dom';
-import { barsPath, barTimeAxis, createPlot, leftFor, textWidth, yGrid, type TipRow } from './plot';
+import {
+  barsPath,
+  barTimeAxis,
+  capHeight,
+  createPlot,
+  leftFor,
+  readoutDay,
+  textWidth,
+  yGrid,
+  type TipRow,
+} from './plot';
+import type { Layout } from './sheet';
+import { staleTo } from './summary';
 
 // ---------- Daily variation ----------
 
@@ -145,6 +158,100 @@ export function calendarMonths(
   return months;
 }
 
+// ---------- The cards' lines ----------
+
+/**
+ * The variation card's line (design §5): the typical day's move (the median of the one-day
+ * changes) and the ±range that holds 8 days in 10, over the main chart's period.
+ */
+export function variationSummary(state: State, s: Settings, start: Date): string {
+  const m = s.messages;
+  const { format: f, weightUnit: unit } = s;
+  const { analysis } = state;
+  if (!analysis || analysis.series.length < 3) return m['card.needsThird'];
+  const moves = variationDays(analysis, start)
+    .filter((d) => d.gap === 1)
+    .map((d) => Math.abs(d.change))
+    .sort((a, b) => a - b);
+  if (moves.length < 2) return m['variation.sumNeeds'];
+  const typical = quantileSorted(moves, 0.5) ?? 0;
+  const within = quantileSorted(moves, 0.8) ?? 0;
+  return m['variation.sum'](f.weight(typical, unit), f.weight(within, unit));
+}
+
+/**
+ * The weekdays card's line (design §5): the weekday whose mean change is lowest and the one whose
+ * is highest, each saying what it does (a fall, or a smallest rise).
+ */
+export function weekdaysSummary(state: State, s: Settings): string {
+  const m = s.messages;
+  const { format: f, weightUnit: unit } = s;
+  const { analysis } = state;
+  if (!analysis || analysis.summary.days < 14) return m['weekdays.sumNeeds'];
+  const known = analysis.weekdays.filter((w): w is typeof w & { mean: number } => w.mean !== null);
+  const first = known[0];
+  if (!first || known.length < 2) return m['weekdays.sumNeeds'];
+  let low = first;
+  let high = first;
+  for (const w of known) {
+    if (w.mean < low.mean) low = w;
+    if (w.mean > high.mean) high = w;
+  }
+  const name = (weekday: number) => s.format.day(isoDay(addDays(MONDAY, weekday)), 'weekdayLong');
+  // A fall or a rise as shown (two decimals in the reader's unit): "±0.00" is neither.
+  const way = (kg: number) => {
+    const shown = Math.round(fromKg(kg, unit) * 100);
+    return shown < 0 ? 'fall' : shown > 0 ? 'rise' : 'flat';
+  };
+  return m['weekdays.sum']({
+    low: name(low.weekday),
+    lowChange: f.weightChange(low.mean, unit, 2),
+    lowWay: way(low.mean),
+    high: name(high.weekday),
+    highChange: f.weightChange(high.mean, unit, 2),
+    highWay: way(high.mean),
+  });
+}
+
+/**
+ * The calendar card's line (design §5): over the months it shows, the days down, up, steady and
+ * without a weigh-in, from the first weigh-in on.
+ */
+export function calendarSummary(
+  state: State,
+  s: Settings,
+  span: CalendarSpan,
+  today: string = localToday(),
+): string {
+  const m = s.messages;
+  const { format: f } = s;
+  const { analysis } = state;
+  if (!analysis || analysis.series.length < 2) return m['card.needsSecond'];
+  const months = calendarMonths(analysis, span, today);
+  const tally = { down: 0, up: 0, flat: 0, none: 0 };
+  for (const mo of months)
+    for (const d of mo.days) {
+      if (d.date < analysis.first.date || d.tone === 'future') continue;
+      if (d.tone.startsWith('down')) tally.down++;
+      else if (d.tone.startsWith('up')) tally.up++;
+      else if (d.tone === 'flat') tally.flat++;
+      else tally.none++;
+    }
+  // The months shown hold every weigh-in: "Since" the first, rather than a count of months.
+  const all = (months[0]?.first ?? '') <= `${analysis.first.date.slice(0, 7)}-01`;
+  const stale = staleTo(analysis, today);
+  return m['calendar.sum']({
+    months: all ? null : count(months.length, m['word.month'], s),
+    // A diary left weeks ago: the months to its last weigh-in's.
+    to: !all && stale !== null ? f.day(stale, 'monthYear') : null,
+    from: f.day(analysis.first.date, 'medium'),
+    down: count(tally.down, m['word.day'], s),
+    up: f.number(tally.up, 0),
+    flat: tally.flat > 0 ? count(tally.flat, m['word.steady'], s) : null,
+    none: f.number(tally.none, 0),
+  });
+}
+
 // ---------- Mounting ----------
 
 /** Months the calendar shows at a time on "All". */
@@ -152,48 +259,41 @@ export const ALL_PAGE = 24;
 
 /** The variation chart, following the main chart's period. */
 export function mountVariation(
-  container: HTMLElement,
+  card: Pick<Disclosure, 'body'>,
   app: { state(): State },
 ): (state: State, s: Settings) => void {
-  const title = h('h2', { attrs: { id: 'variation-title' } });
-  const note = h('p', { class: 'note' });
+  const note = h('p', { class: 'note card-note' });
   const legend = h('p', { class: 'legend' });
   const plot = createPlot(() => {
     render(app.state(), settings());
   });
-  container.replaceChildren(
-    h('div', { class: 'card-head' }, h('div', {}, title, note)),
-    plot.element,
-    plot.live,
-    legend,
-  );
+  card.body.replaceChildren(plot.element, plot.live, legend, note);
 
   const render = (state: State, s: Settings) => {
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
-    title.textContent = m['variation.title'];
     note.textContent = m['variation.note'](m[`unit.${unit}`]);
     legend.replaceChildren(
       h(
         'span',
         {},
-        h('span', { class: 'swatch sw-ok', attrs: { 'aria-hidden': 'true' } }),
+        h('span', { class: 'swatch sw-down sw-bar', attrs: { 'aria-hidden': 'true' } }),
         m['variation.down'],
       ),
       h(
         'span',
         {},
-        h('span', { class: 'swatch sw-up', attrs: { 'aria-hidden': 'true' } }),
+        h('span', { class: 'swatch sw-up sw-bar', attrs: { 'aria-hidden': 'true' } }),
         m['variation.up'],
       ),
       h(
         'span',
         {},
-        h('span', { class: 'swatch sw-up sw-faded', attrs: { 'aria-hidden': 'true' } }),
+        h('span', { class: 'swatch sw-up sw-bar sw-faded', attrs: { 'aria-hidden': 'true' } }),
         m['variation.gap'],
       ),
     );
-    const height = 220;
+    const height = capHeight(220, plot.strip());
     const { analysis } = state;
     if (!analysis || analysis.series.length < 2) {
       plot.empty(state.status === 'loading' ? m['home.placeholder'] : m['variation.empty'], height);
@@ -282,6 +382,26 @@ export function mountVariation(
           ];
           return { heading: f.day(d.date, 'long'), rows: tipRows };
         },
+        // The strip: the day, the change (over how many days) and the weight.
+        readout: (i) => {
+          const d = at(i);
+          const change =
+            d.gap === 1
+              ? f.weightChange(d.change, unit)
+              : m['chart.inDays'](f.weightChange(d.change, unit), count(d.gap, m['word.day'], s));
+          return {
+            heading: readoutDay(d.date, f),
+            rows: [
+              {
+                name: '',
+                value: change,
+                swatch:
+                  d.change < -FLAT_KG ? 'sw-down sw-bar' : d.change > FLAT_KG ? 'sw-up sw-bar' : undefined,
+              },
+              { name: '', value: f.weight(d.kg, unit), swatch: 'sw-weight sw-dot' },
+            ],
+          };
+        },
         near: (px) => {
           const i = Math.floor((px - left) / x.step());
           return i >= 0 && i < rows.length ? i : -1;
@@ -296,26 +416,20 @@ export function mountVariation(
 
 /** The weekdays chart: a row a day, its bar the mean change from the day before. */
 export function mountWeekdays(
-  container: HTMLElement,
+  card: Pick<Disclosure, 'body'>,
   app: { state(): State },
 ): (state: State, s: Settings) => void {
-  const title = h('h2', { attrs: { id: 'weekdays-title' } });
-  const note = h('p', { class: 'note' });
-  const foot = h('p', { class: 'foot' });
+  const note = h('p', { class: 'note card-note' });
+  // On a phone the card's line says the same: the sentence is the one page's.
+  const foot = h('p', { class: 'foot desk-only' });
   const plot = createPlot(() => {
     render(app.state(), settings());
   });
-  container.replaceChildren(
-    h('div', { class: 'card-head' }, h('div', {}, title, note)),
-    plot.element,
-    plot.live,
-    foot,
-  );
+  card.body.replaceChildren(plot.element, plot.live, foot, note);
 
   const render = (state: State, s: Settings) => {
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
-    title.textContent = m['weekdays.title'];
     note.textContent = m['weekdays.note'];
     foot.replaceChildren();
     const rowH = 28;
@@ -403,37 +517,37 @@ export function mountWeekdays(
 
 /** The calendar: months side by side, a square a day, coloured by the change. */
 export function mountCalendar(
-  container: HTMLElement,
+  card: Pick<Disclosure, 'body'>,
   app: { state(): State },
+  layout: Pick<Layout, 'isWide'>,
+  onSpan: () => void = () => undefined,
 ): (state: State, s: Settings) => void {
-  const title = h('h2', { attrs: { id: 'calendar-title' } });
-  const note = h('p', { class: 'note' });
-  const controls = h('div', { class: 'controls' });
+  // Until the reader picks, the last 3 months on a narrow screen and 12 on the one page.
+  calendarSpan.useWidth(() => layout.isWide());
+  const note = h('p', { class: 'note card-note' });
+  const controls = h('div', { class: 'controls span' });
   const legend = h('p', { class: 'legend' });
   const redraw = () => {
     render(app.state(), settings());
   };
   const plot = createPlot(redraw);
-  container.replaceChildren(
-    h('div', { class: 'card-head' }, h('div', {}, title, note)),
-    controls,
-    plot.element,
-    plot.live,
-    legend,
-  );
-
+  // A calendar of many months is taller than a phone's screen: its strip stays at the top of it
+  // while a finger reads the squares below.
+  plot.element.classList.add('plot-sticky');
   /** On "All", the newest months shown; "Show earlier" adds more. */
   let allShown = ALL_PAGE;
   const earlier = h('div', { class: 'log-more' });
-  container.append(earlier);
+  // The months, then the Months control under them, and the key (design §4).
+  card.body.replaceChildren(plot.element, plot.live, earlier, controls, legend, note);
 
   let built = '';
   const render = (state: State, s: Settings) => {
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
-    title.textContent = m['calendar.title'];
     note.textContent = m['calendar.note'];
-    const key = `${s.locale.tag}|${String(viewGeneration())}`;
+    // Built again when the months in force change by themselves too (the screen's default, until
+    // the reader picks), so the pressed one is always the one shown.
+    const key = `${s.locale.tag}|${String(viewGeneration())}|${String(calendarSpan.get())}`;
     if (built !== key) {
       built = key;
       controls.replaceChildren(
@@ -449,7 +563,11 @@ export function mountCalendar(
             () => {
               allShown = ALL_PAGE;
               redraw();
+              onSpan();
+              // The control was built again with the new months: focus stays on the choice.
+              controls.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus();
             },
+            'segmented',
           ),
         ),
       );
@@ -492,7 +610,7 @@ export function mountCalendar(
         allShown += ALL_PAGE;
         redraw();
         // The new months are at the top: the reader goes on from the calendar itself.
-        container.querySelector<SVGSVGElement>('svg.chart-svg')?.focus();
+        card.body.querySelector<SVGSVGElement>('svg.chart-svg')?.focus();
       });
       earlier.replaceChildren(
         h('span', {
@@ -513,10 +631,15 @@ export function mountCalendar(
     const width = plot.width();
     // Months side by side, as many as fit: a square a day, Monday first.
     const gap = 2;
-    const cell = width < 400 ? 16 : 15;
+    const monthGap = 14;
+    // On a narrow card two months still share a row (at 320 px a square is 15 px), so the last 3
+    // months take two rows, not three, and the strip stays in view above them.
+    const cell =
+      width < 400
+        ? Math.max(12, Math.min(16, Math.floor(((width + monthGap) / 2 - monthGap) / 7) - gap))
+        : 15;
     const step = cell + gap;
     const monthW = 7 * step;
-    const monthGap = 14;
     const cols = Math.max(1, Math.floor((width + monthGap) / (monthW + monthGap)));
     const headH = 32;
     const monthH = headH + 6 * step + 10;
@@ -608,6 +731,30 @@ export function mountCalendar(
               ]
             : [{ name: m['calendar.none'], value: '—' }];
           return { heading: f.day(d.date, 'long'), rows };
+        },
+        // The strip: the day, its weight and change, as the tooltip's, under a shorter day.
+        readout: (i) => {
+          const d = at(i);
+          const rows: TipRow[] = d.day
+            ? [
+                { name: '', value: f.weight(d.day.kg, unit), swatch: 'sw-weight sw-dot' },
+                ...(d.day.change === null
+                  ? []
+                  : [
+                      {
+                        name: '',
+                        value:
+                          d.day.gap !== null && d.day.gap > 1
+                            ? m['chart.inDays'](
+                                f.weightChange(d.day.change, unit),
+                                count(d.day.gap, m['word.day'], s),
+                              )
+                            : f.weightChange(d.day.change, unit),
+                      },
+                    ]),
+              ]
+            : [{ name: '', value: m['calendar.none'] }];
+          return { heading: readoutDay(d.date, f), rows };
         },
         near: (px, py) => {
           for (const [i, d] of days.entries()) {

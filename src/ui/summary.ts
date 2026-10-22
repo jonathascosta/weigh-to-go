@@ -6,7 +6,7 @@
  * page.
  */
 import { FLAT_KG, STABLE_KG_PER_WEEK, type Analysis } from '../analysis/analyze';
-import { localToday } from '../analysis/dates';
+import { daysBetween, localToday, parseDay } from '../analysis/dates';
 import type { State } from '../app/app';
 import { count, type Settings } from '../i18n';
 import { h, rich, tone } from './dom';
@@ -20,6 +20,25 @@ export function dayShort(date: string, analysis: Analysis, s: Settings, today = 
   const year = analysis.first.date.slice(0, 4);
   const sameYear = year === analysis.last.date.slice(0, 4) && year === String(today.getFullYear());
   return s.format.day(date, sameYear ? 'dayMonth' : 'short');
+}
+
+/**
+ * A day inside a sentence: "26 Sept" ("26 de set.") in this year, "26 Sept 2025" otherwise. Put
+ * mid-sentence (design §5): `rich()` mends a short date that ends one.
+ */
+export function sentenceDay(date: string, s: Settings, today = new Date()): string {
+  return s.format.day(date, date.slice(0, 4) === String(today.getFullYear()) ? 'dayMonthShort' : 'medium');
+}
+
+/** A last weigh-in older than this, in days, makes "the last 3 weeks" the diary's, not today's. */
+export const STALE_DAYS = 14;
+
+/**
+ * The last weigh-in's date when it is weeks old (more than `STALE_DAYS` before `today`), so a
+ * card's "last" window is worded to it; null while the diary is current.
+ */
+export function staleTo(analysis: Analysis, today: string = localToday()): string | null {
+  return daysBetween(analysis.last.t, parseDay(today)) > STALE_DAYS ? analysis.last.date : null;
 }
 
 /** The line above the sentence: the period and how many weigh-ins. */

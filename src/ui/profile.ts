@@ -5,15 +5,25 @@
  * pure functions (tested); the numbers from the analysis engine.
  */
 import type { Analysis, Method } from '../analysis/analyze';
-import { isoDay } from '../analysis/dates';
-import { BMI_BANDS, bmiSummary, dateAfterLast, goalPlan, METHODS, type BmiBand } from '../analysis/goals';
+import { isoDay, localToday, parseDay } from '../analysis/dates';
+import {
+  BMI_BANDS,
+  bmiSummary as bmiFigures,
+  dateAfterLast,
+  goalPlan,
+  METHODS,
+  type BmiBand,
+} from '../analysis/goals';
 import type { App, State } from '../app/app';
 import { parseNumber, toKg } from '../data/paste';
 import { isHeight } from '../data/records';
 import { automatic, choose, count, settings, type Settings } from '../i18n';
 import { fromFeetInches, HEIGHT_UNITS, toFeetInches, type HeightUnit } from '../units';
+import type { Disclosure } from './card';
 import { chips, h, say } from './dom';
 import { failure } from './entry';
+import { optionsPanel, type Layout } from './sheet';
+import { sentenceDay, staleTo } from './summary';
 
 // ---------- The goal ----------
 
@@ -115,7 +125,7 @@ export interface BmiView {
 export function bmiView(analysis: Analysis, heightCm: number, s: Settings): BmiView | null {
   const m = s.messages;
   const { format: f, weightUnit: unit } = s;
-  const b = bmiSummary(analysis, heightCm);
+  const b = bmiFigures(analysis, heightCm);
   if (!b) return null;
   const [lo, hi] = BMI_SCALE;
   return {
@@ -136,6 +146,27 @@ export function bmiView(analysis: Analysis, heightCm: number, s: Settings): BmiV
       })),
     ],
   };
+}
+
+/**
+ * The BMI card's line (design §5): the BMI now and how far it moved since the start; or that it
+ * needs a height, or a weigh-in.
+ */
+export function bmiSummary(state: State, s: Settings, today: string = localToday()): string {
+  const m = s.messages;
+  const { format: f } = s;
+  const height = state.profile.heightCm;
+  if (height === null) return m['bmi.sumNone'];
+  const b = state.analysis ? bmiFigures(state.analysis, height) : null;
+  if (!b) return m['card.needsFirst'];
+  const now = f.number(b.now, 1);
+  const diff = b.start - b.now;
+  const shown = f.number(Math.abs(diff), 1);
+  // A change too small to show is no change.
+  const way = shown === f.number(0, 1) ? 'same' : diff > 0 ? 'lower' : 'higher';
+  // "now" only while the last weigh-in is recent; else its day.
+  const stale = state.analysis ? staleTo(state.analysis, today) : null;
+  return m['bmi.sum'](now, shown, way, stale === null ? null : sentenceDay(stale, s, parseDay(today)));
 }
 
 /** The bands the BMI bar draws, as shares of the scale, from the top of "underweight". */
@@ -210,7 +241,11 @@ async function saveProfile(
   }
 }
 
-export function mountGoal(container: HTMLElement, app: App): (state: State, s: Settings) => void {
+export function mountGoal(
+  container: HTMLElement,
+  app: App,
+  layout: Layout,
+): (state: State, s: Settings) => void {
   const title = h('h2', { attrs: { id: 'goal-title' } });
   const field = unitField('goal-weight');
   const save = h('button', { class: 'button', attrs: { type: 'submit' } });
@@ -222,7 +257,16 @@ export function mountGoal(container: HTMLElement, app: App): (state: State, s: S
     save,
   );
   const body = h('div', { class: 'profile-body' });
-  container.replaceChildren(h('div', { class: 'card-head' }, title), form, status, body);
+  // The goal's field is a change made now and then: behind Change, in a sheet on a phone, in
+  // place on the one page (design §13, story 5).
+  const change = optionsPanel('goal-change', layout);
+  change.panel.classList.add('options-card');
+  change.content.replaceChildren(form, status);
+  container.replaceChildren(
+    h('div', { class: 'card-head card-head-row' }, title, change.button),
+    change.panel,
+    body,
+  );
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -251,6 +295,8 @@ export function mountGoal(container: HTMLElement, app: App): (state: State, s: S
     const m = s.messages;
     const { format: f, weightUnit: unit } = s;
     title.textContent = m['goal.title'];
+    change.words(m['goal.change'], m['chart.done']);
+    change.label.textContent = m['goal.change'];
     field.label.textContent = m['goal.label'];
     field.tag.textContent = m[`unit.${unit}`];
     field.input.placeholder = m['entry.example'](f.weightValue(90, unit));
@@ -317,8 +363,11 @@ export function mountGoal(container: HTMLElement, app: App): (state: State, s: S
   };
 }
 
-export function mountBmi(container: HTMLElement, app: App): (state: State, s: Settings) => void {
-  const title = h('h2', { attrs: { id: 'bmi-title' } });
+export function mountBmi(
+  card: Pick<Disclosure, 'body' | 'tools'>,
+  app: App,
+  layout: Layout,
+): (state: State, s: Settings) => void {
   const unitRow = h('div', { class: 'control' });
   const cm = unitField('height-cm');
   const feet = unitField('height-ft');
@@ -333,8 +382,14 @@ export function mountBmi(container: HTMLElement, app: App): (state: State, s: Se
     save,
   );
   const body = h('div', { class: 'profile-body' });
-  const caveat = h('p', { class: 'note' });
-  container.replaceChildren(h('div', { class: 'card-head' }, title), unitRow, form, status, body, caveat);
+  const caveat = h('p', { class: 'note card-note' });
+  // The height and its unit behind Change height: a sheet on a phone, in place on the one page.
+  // (The unit moves to Your data's settings in story 6.)
+  const change = optionsPanel('bmi-change', layout);
+  change.panel.classList.add('options-card');
+  change.content.replaceChildren(unitRow, form, status);
+  card.tools.replaceChildren(change.button);
+  card.body.replaceChildren(body, caveat, change.panel, card.tools);
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -363,7 +418,8 @@ export function mountBmi(container: HTMLElement, app: App): (state: State, s: Se
   return (state, s) => {
     const m = s.messages;
     const { format: f, heightUnit } = s;
-    title.textContent = m['bmi.title'];
+    change.words(m['bmi.change'], m['chart.done']);
+    change.label.textContent = m['bmi.change'];
     save.textContent = m['goal.save'];
     const chosen = s.chosen.heightUnit;
     if (builtFor !== `${s.locale.tag}|${heightUnit}|${String(chosen)}`) {

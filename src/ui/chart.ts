@@ -45,6 +45,7 @@ import {
   nearDay,
   plotGroups,
   plotHeight,
+  readoutDay,
   remPx,
   textWidth,
   timeAxis,
@@ -60,9 +61,10 @@ const METHOD_KEYS: readonly Method[] = ['linear', 'recent', 'smoothed'];
 const BMI_LINES = [25, 30, 35, 40] as const;
 /**
  * The layer's colour and form, for its switch and the legend: a dot, a solid line, a dashed line or
- * a pale area, so colour is not the only signal.
+ * a pale area, so colour is not the only signal. The analysis cards draw their layers with the same
+ * forms (issue #51).
  */
-const SWATCH: Partial<Record<Layer, string>> = {
+export const SWATCH: Partial<Record<Layer, string>> = {
   points: 'sw-weight sw-dot',
   line: 'sw-weight',
   avg7: 'sw-avg7',
@@ -140,13 +142,6 @@ export interface ChartOptions {
   /** Told when the period changes: the daily variation follows it. */
   readonly onPeriod?: () => void;
 }
-
-/** The readout's day: "Tue, 20 Oct", with the year only when it isn't this year. */
-const readoutDay = (iso: string, s: Settings, today = new Date()): string =>
-  s.format.day(
-    iso,
-    iso.slice(0, 4) === String(today.getFullYear()) ? 'weekdayDayMonth' : 'weekdayDayMonthYear',
-  );
 
 export function mountChart(
   container: HTMLElement,
@@ -329,7 +324,7 @@ export function mountChart(
       const item = at(i);
       if (item.day) {
         const d = item.day;
-        const day = readoutDay(d.date, s);
+        const day = readoutDay(d.date, f);
         const rows: TipRow[] = [{ name: '', value: w(d.kg), swatch: SWATCH.points }];
         if (on('avg7') && d.avg7 !== null)
           rows.push({ name: m['tip.avg7'], value: w(d.avg7), swatch: SWATCH.avg7 });
@@ -340,7 +335,7 @@ export function mountChart(
       // An estimate always comes with its range, whether the band is drawn or not.
       if (p.lo !== null && p.hi !== null)
         rows.push({ name: '', value: m['chart.rangeLabel'](w(p.lo), w(p.hi)) });
-      return { heading: `${readoutDay(p.t.toISOString().slice(0, 10), s)} · ${m['chart.estimate']}`, rows };
+      return { heading: `${readoutDay(p.t.toISOString().slice(0, 10), f)} · ${m['chart.estimate']}`, rows };
     };
     const words: ReadoutSpec = {
       count: days.length,

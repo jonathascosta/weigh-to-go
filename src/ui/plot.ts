@@ -116,12 +116,26 @@ const rootPx = (name: string): number => {
 export function plotHeight(strip: number): number {
   const rem = remPx();
   if (isWideNow()) return Math.round(22 * rem);
+  return Math.round(Math.max(160, Math.min(15.5 * rem, roomLeft(strip))));
+}
+
+/** On a phone, the small viewport's height left for a plot under a strip `strip` px tall. */
+function roomLeft(strip: number): number {
   // iOS 15.0 to 15.3 have no svh: the visible height then.
   const svh =
     typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('height', '100svh');
   const viewport = (svh ? measures()?.svh.getBoundingClientRect().height : 0) || window.innerHeight;
-  const room = viewport - (rootPx('--tab-h') || 56) - rootPx('--ad-h') - strip - 3 * rem;
-  return Math.round(Math.max(160, Math.min(15.5 * rem, room)));
+  return viewport - (rootPx('--tab-h') || 56) - rootPx('--ad-h') - strip - 3 * remPx();
+}
+
+/**
+ * An analysis card's plot height: its own (`natural`) on the one page; on a phone no more than
+ * the main chart's cap leaves under its strip (`strip` px), so the strip stays on screen while a
+ * finger reads the plot's lower part (a phone held sideways, large text), and never under 160 px.
+ */
+export function capHeight(natural: number, strip: number): number {
+  if (isWideNow()) return natural;
+  return Math.round(Math.min(natural, Math.max(160, roomLeft(strip))));
 }
 
 export interface TipRow {
@@ -212,9 +226,18 @@ export interface Plot {
   readout(spec: ReadoutSpec): number;
   /** A chart's root: a focusable group the keyboard moves through, not an image. */
   root(frame: Frame): SVGSVGElement;
+  /**
+   * The strip's height as last measured (0 before): an analysis card caps its plot under it
+   * (`capHeight`), and is drawn again once if the strip comes out another height.
+   */
+  strip(): number;
   /** Puts `root` on the page with its cursor, keeping focus and the day if the reader was on it. */
   show(root: SVGSVGElement, cursor: CursorSpec | null, height: number): void;
 }
+
+/** A readout's day: "Tue, 20 Oct", with the year only when it isn't this year. */
+export const readoutDay = (iso: string, f: Formatter, today = new Date()): string =>
+  f.day(iso, iso.slice(0, 4) === String(today.getFullYear()) ? 'weekdayDayMonth' : 'weekdayDayMonthYear');
 
 /** The text a readout says aloud: "Tue, 20 Oct: 96.2 kg; 7-day average 96.3 kg". */
 export const spoken = ({ heading, rows }: TipContent): string =>
@@ -306,6 +329,8 @@ export function createPlot(redraw: () => void): Plot {
   let shown: Element | null = null;
   /** The readout spec the strip was last measured with. */
   let measured: ReadoutSpec | null = null;
+  /** The strip's height as last measured. */
+  let stripPx = 0;
 
   let lastWidth = 0;
   let frame = 0;
@@ -360,6 +385,7 @@ export function createPlot(redraw: () => void): Plot {
     }
     // Not laid out (hidden, or no layout at all): no height is fixed rather than a wrong one.
     if (tallest > 0) strip.style.minHeight = `${String(tallest)}px`;
+    stripPx = tallest;
     fillStrip(readoutOf(spec, Math.min(Math.max(spec.from, 0), spec.count - 1)));
     return tallest;
   };
@@ -378,6 +404,7 @@ export function createPlot(redraw: () => void): Plot {
       replace(h('p', { class: 'empty', text }));
     },
     readout: fit,
+    strip: () => stripPx,
     root: (f) => {
       const root = svg('svg', {
         width: f.width,
@@ -409,7 +436,16 @@ export function createPlot(redraw: () => void): Plot {
       if (!spec) {
         strip.hidden = true;
         range.hidden = true;
-      } else if (measured !== spec) fit(spec);
+      } else if (measured !== spec) {
+        // A plot capped under its strip (capHeight) was drawn with the height measured before: if
+        // the strip came out another height, it is drawn once more to fit.
+        const before = stripPx;
+        fit(spec);
+        if (stripPx !== before && stripPx > 0 && !isWideNow()) {
+          cancelAnimationFrame(frame);
+          frame = requestAnimationFrame(redraw);
+        }
+      }
       const cursor = spec ? attachCursor(root, spec, { box, tip, live, range, strip: fillStrip }) : null;
       replace(root);
       current = cursor ? { root, key: cursor.key, show: cursor.show } : null;

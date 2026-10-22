@@ -11,8 +11,20 @@ import {
   hiccupChoice,
   hiccupRules,
   hiccupRulesPref,
+  calendarSpan,
+  CURVE_DETAILED_LAYERS,
+  curveLayers,
+  PCT_BLOCKS,
+  PCT_ESSENTIAL_BLOCKS,
+  PCT_ESSENTIAL_LAYERS,
+  PCT_LAYERS,
   pctBlocks,
   pctBlocksPref,
+  pctLayers,
+  pctView,
+  RATE_BLOCKS,
+  rateBlocks,
+  rateView,
   resetView,
   watchView,
   pctLayersPref,
@@ -37,20 +49,23 @@ const save = (key: string, value: unknown) => {
 };
 
 describe('the section preferences', () => {
-  it('start as in the original dashboard', () => {
-    expect(pctBlocksPref.read()).toEqual(['kpis', 'chart', 'weekly', 'milestones']);
-    expect(pctLayersPref.read()).not.toContain('regression');
+  it('start as in the original dashboard on the one page (Detailed), saving nothing', () => {
+    expect(PCT_BLOCKS.filter((b) => pctBlocks.has(b))).toEqual(['kpis', 'chart', 'weekly', 'milestones']);
+    expect(pctLayers.has('regression')).toBe(false);
+    expect(pctLayersPref.read()).toBeNull();
     expect(simRatePref.read()).toBe(0.1);
     expect(hiccupRules()).toEqual(DEFAULT_RULES);
   });
 
   it('fall back on lists with unknown or repeated values', () => {
     save('pct.blocks', ['kpis', 'nope']);
-    expect(pctBlocksPref.read()).toHaveLength(4);
+    expect(pctBlocksPref.read()).toBeNull();
+    expect(pctBlocks.has('weekly')).toBe(true);
     save('pct.blocks', ['kpis', 'kpis']);
-    expect(pctBlocksPref.read()).toHaveLength(4);
+    expect(pctBlocksPref.read()).toBeNull();
     save('pct.blocks', []);
     expect(pctBlocksPref.read()).toEqual([]);
+    expect(pctBlocks.has('kpis')).toBe(false);
   });
 
   it('keep only weights in the simulator', () => {
@@ -193,5 +208,101 @@ describe('the main chart’s views', () => {
   it('fall back to the width’s default on a saved value that makes no sense', () => {
     save('chart.preset', 'everything');
     expect(chartLayers.preset()).toBe('essential');
+  });
+});
+
+describe('the analysis cards’ views', () => {
+  const saved = (key: string): unknown => JSON.parse(storage.getItem(PREFS_PREFIX + key) ?? 'null');
+  const blocks = () => PCT_BLOCKS.filter((b) => pctBlocks.has(b));
+  const layers = () => PCT_LAYERS.filter((l) => pctLayers.has(l));
+  let wide = false;
+  beforeEach(() => {
+    wide = false;
+    pctView.useWidth(() => wide);
+    rateView.useWidth(() => wide);
+    calendarSpan.useWidth(() => wide);
+  });
+  afterEach(() => {
+    pctView.useWidth(() => true);
+    rateView.useWidth(() => true);
+    calendarSpan.useWidth(() => true);
+  });
+
+  it('start on Essential on a phone and Detailed on the one page, with nothing saved', () => {
+    expect(pctView.preset()).toBe('essential');
+    expect(blocks()).toEqual([...PCT_ESSENTIAL_BLOCKS]);
+    expect(layers()).toEqual([...PCT_ESSENTIAL_LAYERS]);
+    expect(RATE_BLOCKS.filter((b) => rateBlocks.has(b))).toEqual(['kpis', 'days']);
+    expect(saved('pct.preset')).toBeNull();
+    wide = true;
+    resetView();
+    expect([pctView.preset(), rateView.preset()]).toEqual(['detailed', 'detailed']);
+    expect(blocks()).toEqual([...PCT_BLOCKS]);
+    expect(layers()).not.toContain('regression');
+  });
+
+  it('turn into Custom when a block or layer is toggled, and bring the reader’s own back', () => {
+    pctView.choose('detailed');
+    pctLayers.toggle('regression');
+    expect(pctView.preset()).toBe('custom');
+    pctView.choose('essential');
+    expect([pctBlocks.has('weekly'), pctLayers.has('regression')]).toEqual([false, false]);
+    pctView.choose('custom');
+    expect([pctBlocks.has('weekly'), pctLayers.has('regression')]).toEqual([true, true]);
+    // Saved where Sprint 1 kept them, and with the view.
+    expect(saved('pct.preset')).toBe('custom');
+    expect(saved('pct.layers')).toContain('regression');
+    expect(saved('pct.custom')).toEqual([saved('pct.blocks'), saved('pct.layers')]);
+    // A choice made in one card leaves the other alone.
+    expect(rateView.preset()).toBe('essential');
+  });
+
+  it('keep the sets in force as the reader’s own when Custom is picked with none saved', () => {
+    pctView.choose('custom');
+    expect(blocks()).toEqual([...PCT_ESSENTIAL_BLOCKS]);
+    pctView.choose('detailed');
+    pctView.choose('custom');
+    expect(blocks()).toEqual([...PCT_ESSENTIAL_BLOCKS]);
+  });
+
+  it('read Sprint 1’s saved sets as the view they make, the others at Sprint 1’s defaults', () => {
+    save('rate.blocks', [...RATE_BLOCKS]);
+    expect(rateView.preset()).toBe('detailed');
+    expect(curveLayers.has('simulation')).toBe(false);
+    save('rate.blocks', ['kpis']);
+    expect(rateView.preset()).toBe('custom');
+    expect(CURVE_DETAILED_LAYERS.every((l) => curveLayers.has(l))).toBe(true);
+    // Read once: a wider screen later changes nothing.
+    wide = true;
+    expect(rateView.preset()).toBe('custom');
+  });
+
+  it('fall back on saved views and sets that make no sense', () => {
+    save('pct.preset', 'everything');
+    expect(pctView.preset()).toBe('essential');
+    // Custom, with its own sets unreadable: the sets in force, else Detailed's.
+    save('pct.custom', [['kpis', 'nope'], []]);
+    save('pct.preset', 'custom');
+    expect(pctView.preset()).toBe('custom');
+    expect(blocks()).toEqual([...PCT_BLOCKS]);
+    save('pct.blocks', ['chart']);
+    expect(blocks()).toEqual(['chart']);
+    // A custom of the wrong shape is none: Custom then keeps the sets in force as the reader's own.
+    save('pct.custom', [['kpis']]);
+    pctView.choose('essential');
+    pctView.choose('custom');
+    expect(blocks()).toEqual([...PCT_ESSENTIAL_BLOCKS]);
+  });
+
+  it('show the calendar’s last 3 months on a narrow screen until the reader picks', () => {
+    expect(calendarSpan.get()).toBe(3);
+    wide = true;
+    expect(calendarSpan.get()).toBe(12);
+    calendarSpan.set('all');
+    wide = false;
+    expect(calendarSpan.get()).toBe('all');
+    expect(saved('calendar.span')).toBe('all');
+    save('calendar.span', 12);
+    expect(calendarSpan.get()).toBe(12);
   });
 });

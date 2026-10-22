@@ -24,21 +24,25 @@ import {
 } from '../app/view';
 import { count, plural, settings, type Settings } from '../i18n';
 import { fromKg } from '../units';
-import { control, controlRow, oneChips } from './controls';
-import { h, rich, s as svg, tone } from './dom';
+import type { Disclosure } from './card';
+import { oneChips, optionsSection } from './controls';
+import { h, moreRows, rich, s as svg, slashBreaks, tone, type Chip } from './dom';
 import {
+  capHeight,
   createPlot,
   labelRow,
   dotsPath,
   leftFor,
   nearDay,
   plotGroups,
+  readoutDay,
   textWidth,
   timeAxis,
   yGrid,
   type TipRow,
 } from './plot';
-import { dayShort, kpiTiles, type Kpi } from './summary';
+import { optionsPanel, type Layout } from './sheet';
+import { dayShort, kpiTiles, sentenceDay, stackBelow, type Kpi } from './summary';
 
 /** Hiccups need a few weigh-ins: two make a change, not a climb. */
 export const HICCUP_MIN_WEIGHINS = 3;
@@ -196,15 +200,38 @@ export function hiccupRows(analysis: Analysis, hiccups: readonly Hiccup[], s: Se
 const BASIS_LINE: Record<Exclude<HiccupBasis, 'kg'>, string> = { avg7: 'avg7', trend: 'trend' };
 
 /**
+ * The card's line (design §5): how many climbs back up in the period, and the last one; or that
+ * there are none under the rules chosen, or what it needs before the third weigh-in. Its dates sit
+ * mid-sentence.
+ */
+export function hiccupsSummary(state: State, s: Settings, today = new Date()): string {
+  const m = s.messages;
+  const { analysis } = state;
+  if (!analysis || analysis.series.length < HICCUP_MIN_WEIGHINS) return m['card.needsThird'];
+  const list = detectHiccups(analysis, hiccupRules());
+  const last = list[list.length - 1];
+  if (!last) return m['hiccups.sumNone'];
+  return m['hiccups.sum']({
+    climbs: count(list.length, m['word.climb'], s),
+    single: list.length === 1,
+    days: count(analysis.summary.days, m['word.day'], s),
+    end: last.ongoing ? null : sentenceDay(last.peak.date, s, today),
+    lasted: last.ongoing ? null : count(last.days, m['word.day'], s),
+    since: last.ongoing ? sentenceDay(last.start.date, s, today) : null,
+  });
+}
+
+/**
  * Mounts the section. `onRules` is called when the reader changes the rules, so the main chart's
  * hiccups follow.
  */
 export function mountHiccups(
-  container: HTMLElement,
+  card: Pick<Disclosure, 'body' | 'tools'>,
   app: { state(): State },
+  layout: Layout,
   onRules: () => void,
 ): (state: State, s: Settings) => void {
-  // One chip row per rule, over the rules held once for this card and the main chart.
+  // One row of choices per rule, over the rules held once for this card and the main chart.
   const rule = <K extends keyof HiccupChoice>(key: K): One<HiccupChoice[K]> => ({
     get: () => hiccupChoice.get()[key],
     set: (value) => {
@@ -217,80 +244,76 @@ export function mountHiccups(
   const tolerance = rule('tolerance');
   const choice = () => hiccupChoice.get();
   const rules = hiccupRules;
+  const wide = () => layout.isWide();
 
-  const title = h('h2', { attrs: { id: 'hiccups-title' } });
-  const note = h('p', { class: 'note' });
-  const controls = h('div', { class: 'controls' });
+  const note = h('p', { class: 'note card-note' });
   const definition = h('p', { class: 'foot rules' });
   const kpis = h('div', { class: 'kpis kpis-in' });
+  stackBelow(kpis, 15);
   const redraw = () => {
     render(app.state(), settings());
-  };
-  const changed = () => {
-    redraw();
-    onRules();
   };
   const plot = createPlot(redraw);
   const legend = h('p', { class: 'legend' });
   const head = h('thead');
   const body = h('tbody');
-  container.replaceChildren(
-    h('div', { class: 'card-head' }, h('div', {}, title, note)),
-    controls,
+  // On a phone the last 5, then 20 more at a time; the one page shows them all, as before.
+  const more = moreRows(
+    body,
+    () => (wide() ? Infinity : 5),
+    () => 20,
+  );
+  const changed = () => {
+    more.reset();
+    redraw();
+    onRules();
+  };
+  const options = optionsPanel('hiccups-options', layout);
+  options.panel.classList.add('options-card');
+  card.tools.replaceChildren(options.button);
+  card.body.replaceChildren(
     definition,
-    kpis,
     plot.element,
     plot.live,
     legend,
+    kpis,
     h(
       'div',
-      { class: 'table-box', attrs: { tabindex: 0, role: 'region', id: 'hiccups-table-box' } },
+      { class: 'table-box table-short', attrs: { tabindex: 0, role: 'region', id: 'hiccups-table-box' } },
       h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'hiccups-title' } }, head, body),
     ),
+    more.element,
+    note,
+    options.panel,
+    card.tools,
   );
 
   const buildControls = (s: Settings) => {
     const m = s.messages;
-    controls.replaceChildren(
-      controlRow(
-        control(
-          m['hiccups.basis'],
-          oneChips(
-            m['hiccups.basis'],
-            HICCUP_BASES.map((b) => ({ value: b, label: m[`hiccups.basis.${b}`] })),
-            basis,
-            changed,
-          ),
-        ),
-        control(
-          m['hiccups.minDays'],
-          oneChips(
-            m['hiccups.minDays'],
-            HICCUP_DAYS.map((d) => ({ value: d, label: count(d, m['word.day'], s) })),
-            minDays,
-            changed,
-          ),
-        ),
+    options.words(m['hiccups.rulesTitle'], m['chart.done']);
+    options.label.textContent = m['card.rules'];
+    const row = <T>(label: string, items: readonly Chip<T>[], state: One<T>) =>
+      optionsSection(label, oneChips(label, items, state, changed, 'segmented'));
+    options.content.replaceChildren(
+      row(
+        m['hiccups.basis'],
+        HICCUP_BASES.map((b) => ({ value: b, label: m[`hiccups.basis.${b}`] })),
+        basis,
       ),
-      controlRow(
-        control(
-          m['hiccups.minGain'],
-          oneChips(
-            m['hiccups.minGain'],
-            HICCUP_GAINS.map((g) => ({ value: g, label: kgLabel(g, s) })),
-            minGain,
-            changed,
-          ),
-        ),
-        control(
-          m['hiccups.tolerance'],
-          oneChips(
-            m['hiccups.tolerance'],
-            HICCUP_TOLERANCES.map((t) => ({ value: t, label: toleranceLabel(t, s) })),
-            tolerance,
-            changed,
-          ),
-        ),
+      row(
+        m['hiccups.minDays'],
+        HICCUP_DAYS.map((d) => ({ value: d, label: count(d, m['word.day'], s) })),
+        minDays,
+      ),
+      row(
+        m['hiccups.minGain'],
+        HICCUP_GAINS.map((g) => ({ value: g, label: kgLabel(g, s) })),
+        minGain,
+      ),
+      row(
+        m['hiccups.tolerance'],
+        HICCUP_TOLERANCES.map((t) => ({ value: t, label: toleranceLabel(t, s) })),
+        tolerance,
       ),
     );
   };
@@ -303,7 +326,7 @@ export function mountHiccups(
     const b = basis.get();
     const { series, first, last } = analysis;
     const width = plot.width();
-    const height = width < 560 ? 280 : 340;
+    const height = capHeight(width < 560 ? 280 : 340, plot.strip());
     const top = 22;
     const bottom = height - 28;
     const ys = series.map((d) => u(d.kg));
@@ -431,6 +454,22 @@ export function mountHiccups(
           }
           return { heading: f.day(d.date, 'long'), rows };
         },
+        // The strip: the day, its weight (and the line measured), and the climb it is in.
+        readout: (i) => {
+          const d = at(i);
+          const rows: TipRow[] = [{ name: '', value: w(d.kg), swatch: 'sw-weight sw-dot' }];
+          const v = b === 'kg' ? null : d[b];
+          if (b !== 'kg' && v !== null)
+            rows.push({ name: m[`tip.${b}`], value: w(v), swatch: b === 'avg7' ? 'sw-avg7' : 'sw-trend' });
+          const x0 = containing(d.t);
+          if (x0)
+            rows.push({
+              name: '',
+              value: m['chart.inDays'](f.weightChange(x0.gain, unit), count(x0.days, m['word.day'], s)),
+              swatch: 'sw-up sw-area',
+            });
+          return { heading: readoutDay(d.date, f), rows };
+        },
         near: nearDay(
           x,
           series.map((d) => d.t),
@@ -444,9 +483,8 @@ export function mountHiccups(
   let built = '';
   const render = (state: State, s: Settings) => {
     const m = s.messages;
-    title.textContent = m['hiccups.title'];
     // The table's region has a name of its own: its section already has the heading's.
-    container
+    card.body
       .querySelector('#hiccups-table-box')
       ?.setAttribute('aria-label', m['table.label'](m['hiccups.title']));
     note.textContent = m['hiccups.note'];
@@ -461,7 +499,7 @@ export function mountHiccups(
       h(
         'span',
         {},
-        h('span', { class: 'swatch sw-up sw-faint', attrs: { 'aria-hidden': 'true' } }),
+        h('span', { class: 'swatch sw-up sw-area', attrs: { 'aria-hidden': 'true' } }),
         ' ',
         m['hiccups.legend.band'],
       ),
@@ -479,18 +517,23 @@ export function mountHiccups(
         {},
         h('th', { attrs: { scope: 'col' }, text: m['hiccups.col.start'] }),
         h('th', { class: 'col-wide', attrs: { scope: 'col' }, text: m['hiccups.col.peak'] }),
-        h('th', { class: 'num', attrs: { scope: 'col' }, text: m['hiccups.col.days'] }),
+        h('th', { class: 'num col-narrow', attrs: { scope: 'col' }, text: m['hiccups.col.days'] }),
         h('th', {
           class: 'num col-wide',
           attrs: { scope: 'col' },
           // The values are on the line measured: say which.
           text: basis.get() === 'kg' ? m['hiccups.col.weight'] : m[`hiccups.basis.${basis.get()}`],
         }),
-        h('th', { class: 'num', attrs: { scope: 'col' }, text: m['hiccups.col.gain'] }),
+        h('th', { class: 'num col-mid', attrs: { scope: 'col' }, text: m['hiccups.col.gain'] }),
         h('th', { class: 'num col-wide', attrs: { scope: 'col' }, text: m['hiccups.col.gainPct'] }),
-        h('th', { attrs: { scope: 'col' }, text: m['hiccups.col.back'] }),
+        h('th', { class: 'col-back', attrs: { scope: 'col' }, text: m['hiccups.col.back'] }),
       ),
     );
+    const moreWords = {
+      more: m['log.showMore'],
+      count: (shown: number, total: number) =>
+        m['table.count'](s.format.number(shown, 0), count(total, m['word.climb'], s)),
+    };
     const { analysis } = state;
     const height = plot.width() < 560 ? 280 : 340;
     if (!analysis || analysis.series.length < HICCUP_MIN_WEIGHINS) {
@@ -498,6 +541,7 @@ export function mountHiccups(
       kpis.replaceChildren(h('p', { class: 'empty', text }));
       plot.empty(text, height);
       body.replaceChildren(h('tr', {}, h('td', { attrs: { colspan: 7 }, class: 'empty', text })));
+      more.apply(moreWords);
       return;
     }
     const hiccups = detectHiccups(analysis, rules());
@@ -517,16 +561,21 @@ export function mountHiccups(
             h(
               'tr',
               { attrs: { 'data-key': r.key } },
-              h('th', { attrs: { scope: 'row' }, text: r.start }),
+              h('th', { attrs: { scope: 'row' } }, ...slashBreaks(r.start)),
               h('td', { class: 'col-wide', text: r.peak }),
               h('td', { class: 'num', text: r.days }),
               h('td', { class: 'num col-wide', text: r.weight }),
               h('td', { class: 'num' }, tone(r.gain.text, r.gain.change, FLAT_KG)),
               h('td', { class: 'num col-wide', text: r.gainPct }),
-              h('td', { class: r.back.good ? 'tone-down wrap' : 'wrap', text: r.back.text }),
+              h(
+                'td',
+                { class: r.back.good ? 'back tone-down wrap' : 'back wrap' },
+                ...slashBreaks(r.back.text),
+              ),
             ),
           )),
     );
+    more.apply(moreWords);
   };
   return render;
 }

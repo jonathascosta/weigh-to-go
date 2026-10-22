@@ -269,6 +269,146 @@ function chartView(): ChartView {
   return view;
 }
 
+// ---------- The analysis cards' views ----------
+
+/**
+ * One set a card's view holds (its blocks, or one chart's layers): every value it takes, the sets
+ * Essential and Detailed bring, and where it is saved (null when nothing is: the default then
+ * follows the screen).
+ */
+export interface ViewSet<T> {
+  readonly values: readonly T[];
+  readonly essential: readonly T[];
+  readonly detailed: readonly T[];
+  readonly pref: Pref<T[] | null>;
+}
+
+/** A card's view (docs/ux/design.md §5): Essential, Detailed or Custom over its sets. */
+export interface CardView {
+  /** The view in force. */
+  preset(): Preset;
+  /** Picks a view: Essential and Detailed bring their sets, Custom the reader's own. */
+  choose(preset: Preset): void;
+  /** As the main chart's (`ChartView.useWidth`): the first default only. */
+  useWidth(isWide: () => boolean): void;
+}
+
+/** The view the sets make: Essential or Detailed when each is exactly theirs, else Custom. */
+export function cardPresetOf(
+  sets: readonly (readonly unknown[])[],
+  specs: readonly ViewSet<unknown>[],
+): Preset {
+  for (const preset of ['essential', 'detailed'] as const) {
+    const match = specs.every((spec, i) => {
+      const own = new Set(spec[preset]);
+      const now = new Set(sets[i] ?? []);
+      return own.size === now.size && [...own].every((v) => now.has(v));
+    });
+    if (match) return preset;
+  }
+  return 'custom';
+}
+
+/**
+ * A card's view over its sets, saved as `<key>.preset` and `<key>.custom` beside each set's own
+ * preference (Sprint 1's, which keep the sets in force). Returns the view and a `Many` per set.
+ */
+function cardView(
+  key: string,
+  specs: readonly ViewSet<unknown>[],
+): { view: CardView; sets: Many<unknown>[] } {
+  const presetPref = pref<Preset | null>(`${key}.preset`, orNull(oneOf<Preset>(PRESETS)), null);
+  const customPref = pref<unknown[][] | null>(
+    `${key}.custom`,
+    orNull(
+      (v: unknown): v is unknown[][] =>
+        Array.isArray(v) && v.length === specs.length && specs.every((spec, i) => someOf(spec.values)(v[i])),
+    ),
+    null,
+  );
+  let isWide = () => true;
+  let held: { preset: Preset; sets: Set<unknown>[]; custom: unknown[][] | null } | null = null;
+  const of = (preset: Exclude<Preset, 'custom'>) => specs.map((spec) => new Set(spec[preset]));
+  const get = () => {
+    if (held) return held;
+    const saved = specs.map((spec) => spec.pref.read());
+    const chosen = presetPref.read();
+    const custom = customPref.read();
+    if (chosen === 'custom') {
+      held = {
+        preset: chosen,
+        sets: specs.map((spec, i) => new Set(saved[i] ?? custom?.[i] ?? spec.detailed)),
+        custom,
+      };
+    } else if (chosen) {
+      held = { preset: chosen, sets: of(chosen), custom };
+    } else if (saved.some((v) => v !== null)) {
+      // Sprint 1 saved the sets only (its defaults were today's Detailed): they read as the view
+      // they make.
+      const sets = specs.map((spec, i) => saved[i] ?? [...spec.detailed]);
+      const preset = cardPresetOf(sets, specs);
+      held = { preset, sets: sets.map((v) => new Set(v)), custom: preset === 'custom' ? sets : custom };
+    } else {
+      const preset = isWide() ? 'detailed' : 'essential';
+      held = { preset, sets: of(preset), custom };
+    }
+    return held;
+  };
+  const keep = (preset: Preset, sets: Set<unknown>[], custom?: unknown[][]) => {
+    const now = get();
+    now.preset = preset;
+    now.sets = sets;
+    if (custom) now.custom = custom;
+    presetPref.write(preset);
+    specs.forEach((spec, i) => spec.pref.write([...(sets[i] ?? [])]));
+    if (custom) customPref.write(custom);
+  };
+  const lists = (sets: readonly Set<unknown>[]) => sets.map((set) => [...set]);
+  const view: CardView & Holder = {
+    preset: () => get().preset,
+    choose: (preset) => {
+      const now = get();
+      if (preset === 'custom') {
+        const own = now.custom ?? lists(now.sets);
+        keep(
+          preset,
+          own.map((v) => new Set(v)),
+          own,
+        );
+      } else keep(preset, of(preset));
+    },
+    useWidth: (wide) => {
+      isWide = wide;
+    },
+    reset: () => {
+      held = null;
+    },
+  };
+  holders.add(view);
+  const sets = specs.map((_, i): Many<unknown> => {
+    const change = (next: Set<unknown>) => {
+      const all = get().sets.map((set, k) => (k === i ? next : new Set(set)));
+      keep('custom', all, lists(all));
+    };
+    return {
+      has: (value) => get().sets[i]?.has(value) ?? false,
+      toggle: (value) => {
+        const next = new Set(get().sets[i]);
+        if (next.has(value)) next.delete(value);
+        else next.add(value);
+        change(next);
+      },
+      set: (values) => {
+        change(new Set(values));
+      },
+    };
+  });
+  return { view, sets };
+}
+
+/** A typed set spec, for `cardView`. */
+const viewSet = <T>(spec: ViewSet<T>): ViewSet<unknown> => spec;
+
 // ---------- Percentage loss ----------
 
 export const PCT_BLOCKS = ['kpis', 'chart', 'weekly', 'milestones'] as const;
@@ -284,16 +424,42 @@ export const PCT_LAYERS = [
 ] as const;
 export type PctLayer = (typeof PCT_LAYERS)[number];
 
-export const pctBlocksPref = pref('pct.blocks', someOf<PctBlock>(PCT_BLOCKS), [...PCT_BLOCKS]);
-export const pctLayersPref = pref(
-  'pct.layers',
-  someOf<PctLayer>(PCT_LAYERS),
-  PCT_LAYERS.filter((layer) => layer !== 'regression'),
+/** Essential: the figures and the chart; Detailed adds the weekly pace and the milestones. */
+export const PCT_ESSENTIAL_BLOCKS: readonly PctBlock[] = ['kpis', 'chart'];
+/** Essential's % chart: the weigh-ins, the 7-day average, the projection and the goal, as the main chart. */
+export const PCT_ESSENTIAL_LAYERS: readonly PctLayer[] = ['points', 'avg7', 'projection', 'goal'];
+/** Sprint 1's defaults: Detailed. */
+export const PCT_DETAILED_LAYERS: readonly PctLayer[] = PCT_LAYERS.filter((layer) => layer !== 'regression');
+
+export const pctBlocksPref = pref<PctBlock[] | null>(
+  'pct.blocks',
+  orNull(someOf<PctBlock>(PCT_BLOCKS)),
+  null,
 );
+export const pctLayersPref = pref<PctLayer[] | null>(
+  'pct.layers',
+  orNull(someOf<PctLayer>(PCT_LAYERS)),
+  null,
+);
+const pctCard = cardView('pct', [
+  viewSet<PctBlock>({
+    values: PCT_BLOCKS,
+    essential: PCT_ESSENTIAL_BLOCKS,
+    detailed: PCT_BLOCKS,
+    pref: pctBlocksPref,
+  }),
+  viewSet<PctLayer>({
+    values: PCT_LAYERS,
+    essential: PCT_ESSENTIAL_LAYERS,
+    detailed: PCT_DETAILED_LAYERS,
+    pref: pctLayersPref,
+  }),
+]);
+export const pctView: CardView = pctCard.view;
+export const pctBlocks = pctCard.sets[0] as Many<PctBlock>;
+export const pctLayers = pctCard.sets[1] as Many<PctLayer>;
 export const pctMethodPref = pref('pct.method', oneOf<Method>(METHODS), 'linear');
 export const pctHorizonPref = pref('pct.horizon', oneOf<Horizon>(HORIZONS), 60);
-export const pctBlocks = many(pctBlocksPref);
-export const pctLayers = many(pctLayersPref);
 export const pctMethod = one(pctMethodPref);
 export const pctHorizon = one(pctHorizonPref);
 
@@ -312,12 +478,27 @@ export type RateWindow = (typeof RATE_WINDOWS)[number];
 export const CURVE_HORIZONS = [30, 90, 180, 365] as const;
 export type CurveHorizon = (typeof CURVE_HORIZONS)[number];
 
-export const rateBlocksPref = pref('rate.blocks', someOf<RateBlock>(RATE_BLOCKS), [...RATE_BLOCKS]);
-export const rateLayersPref = pref('rate.layers', someOf<RateLayer>(RATE_LAYERS), [...RATE_LAYERS]);
-export const curveLayersPref = pref(
+/** Essential: the four rate figures and each day's rate; Detailed adds the curve and the simulator. */
+export const RATE_ESSENTIAL_BLOCKS: readonly RateBlock[] = ['kpis', 'days'];
+/** The curve's layers at first in Sprint 1 (the simulation's line waits for the simulator). */
+export const CURVE_DETAILED_LAYERS: readonly CurveLayer[] = CURVE_LAYERS.filter(
+  (layer) => layer !== 'simulation',
+);
+
+export const rateBlocksPref = pref<RateBlock[] | null>(
+  'rate.blocks',
+  orNull(someOf<RateBlock>(RATE_BLOCKS)),
+  null,
+);
+export const rateLayersPref = pref<RateLayer[] | null>(
+  'rate.layers',
+  orNull(someOf<RateLayer>(RATE_LAYERS)),
+  null,
+);
+export const curveLayersPref = pref<CurveLayer[] | null>(
   'rate.curveLayers',
-  someOf<CurveLayer>(CURVE_LAYERS),
-  CURVE_LAYERS.filter((layer) => layer !== 'simulation'),
+  orNull(someOf<CurveLayer>(CURVE_LAYERS)),
+  null,
 );
 export const rateWindowPref = pref('rate.window', oneOf<RateWindow>(RATE_WINDOWS), 14);
 export const curveHorizonPref = pref('rate.curveHorizon', oneOf<CurveHorizon>(CURVE_HORIZONS), 180);
@@ -331,9 +512,30 @@ export const simRatePref = pref('sim.rate', isRate, 0.1);
 export const simStartPref = pref('sim.start', isKg, null);
 /** Its target weight in kg; null aims at the goal, if there is one. */
 export const simTargetPref = pref('sim.target', isKg, null);
-export const rateBlocks = many(rateBlocksPref);
-export const rateLayers = many(rateLayersPref);
-export const curveLayers = many(curveLayersPref);
+const rateCard = cardView('rate', [
+  viewSet<RateBlock>({
+    values: RATE_BLOCKS,
+    essential: RATE_ESSENTIAL_BLOCKS,
+    detailed: RATE_BLOCKS,
+    pref: rateBlocksPref,
+  }),
+  viewSet<RateLayer>({
+    values: RATE_LAYERS,
+    essential: RATE_LAYERS,
+    detailed: RATE_LAYERS,
+    pref: rateLayersPref,
+  }),
+  viewSet<CurveLayer>({
+    values: CURVE_LAYERS,
+    essential: CURVE_DETAILED_LAYERS,
+    detailed: CURVE_DETAILED_LAYERS,
+    pref: curveLayersPref,
+  }),
+]);
+export const rateView: CardView = rateCard.view;
+export const rateBlocks = rateCard.sets[0] as Many<RateBlock>;
+export const rateLayers = rateCard.sets[1] as Many<RateLayer>;
+export const curveLayers = rateCard.sets[2] as Many<CurveLayer>;
 export const rateWindow = one(rateWindowPref);
 export const curveHorizon = one(curveHorizonPref);
 export const simRate = one(simRatePref);
@@ -404,5 +606,27 @@ export const sections = many(sectionsPref);
 /** How many months the calendar shows: the last 3, the last 12, or all. */
 export const CALENDAR_SPANS = [3, 12, 'all'] as const;
 export type CalendarSpan = (typeof CALENDAR_SPANS)[number];
-export const calendarSpanPref = pref('calendar.span', oneOf<CalendarSpan>(CALENDAR_SPANS), 12);
-export const calendarSpan = one(calendarSpanPref);
+/** The months chosen; null when none was (the default then follows the screen). */
+export const calendarSpanPref = pref<CalendarSpan | null>(
+  'calendar.span',
+  orNull(oneOf<CalendarSpan>(CALENDAR_SPANS)),
+  null,
+);
+
+/**
+ * The calendar's months: what the reader picked, or until then the last 3 on a narrow screen and
+ * the last 12 on a wide one (design §5, O10). The width is read on each `get` until a pick.
+ */
+export const calendarSpan: One<CalendarSpan> & { useWidth(isWide: () => boolean): void } = (() => {
+  let isWide = () => true;
+  const held = one(calendarSpanPref);
+  return {
+    get: () => held.get() ?? (isWide() ? 12 : 3),
+    set: (value: CalendarSpan) => {
+      held.set(value);
+    },
+    useWidth: (wide: () => boolean) => {
+      isWide = wide;
+    },
+  };
+})();

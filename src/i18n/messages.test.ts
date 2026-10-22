@@ -48,6 +48,44 @@ describe('the dictionaries', () => {
         if (shown(key)) for (const text of texts(message)) expect(text, key).not.toMatch(words);
   });
 
+  it('speak of the iPhone app as an app: no browser, page, site or reload in anything it shows', () => {
+    // Keys the app never shows: the privacy policy (it covers the website too), the website's page
+    // descriptions (page.*), its 404 page (notFound.*) and the service worker's update notice
+    // (update.*), which the app doesn't have.
+    const shown = (key: string) => !/^(privacy|page|notFound|update)\./.test(key);
+    // Each function is called with representative values: text, nothing, yes and no, and each word
+    // a message's parts choose between; as plain arguments, and as an object of parts whose every
+    // field holds that value. A combination a message can't take (it throws) is passed over; every
+    // function must give some text.
+    const values: unknown[] = ['1', null, true, false, 'since', 'gained', 'goal', 'reached', 'losing'];
+    values.push('gaining', 'steady', 'lower', 'higher', 'same', 'fall', 'rise', 'flat');
+    const parts = (value: unknown): unknown =>
+      new Proxy({}, { get: (_target, key) => (key === Symbol.toPrimitive ? undefined : value) });
+    const texts = (message: unknown, key: string): string[] => {
+      if (typeof message === 'string') return [message];
+      if (typeof message === 'function') {
+        const call = message as (...args: unknown[]) => unknown;
+        const out: string[] = [];
+        for (const value of values)
+          for (const args of [[value, value, value, value], [parts(value)]])
+            try {
+              out.push(String(call(...args)));
+            } catch {
+              // Not a combination this message takes.
+            }
+        expect(out.length, key).toBeGreaterThan(0);
+        return out;
+      }
+      return Object.values(message as Record<string, unknown>).flatMap((m) => texts(m, key));
+    };
+    const words = /browser|navegador|\bpage\b|página|\bsite\b|website|recarreg|\breload\b/i;
+    const app = dictionaries(true);
+    for (const lang of ['en', 'pt'] as const)
+      for (const [key, message] of Object.entries(app[lang]))
+        if (shown(key))
+          for (const text of texts(message, key)) expect(text, `${lang} ${key}`).not.toMatch(words);
+  });
+
   it("cover every key the pages use, each page's text matching its language's dictionary", () => {
     expect(Object.keys(pages)).toHaveLength(5);
     for (const [page, html] of Object.entries(pages)) {
