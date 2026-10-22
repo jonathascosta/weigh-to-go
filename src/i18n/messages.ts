@@ -789,6 +789,7 @@ export const en = {
   'hiccups.col.start': 'Start',
   'hiccups.col.peak': 'Peak',
   'hiccups.col.days': 'Days climbing',
+  'hiccups.col.daysShort': 'Days',
   'hiccups.col.weight': 'Weight',
   'hiccups.col.gain': 'Gain',
   'hiccups.col.gainPct': 'Gain %',
@@ -945,7 +946,7 @@ export const en = {
 
   'weeks.title': 'Weekly averages',
   'weeks.note':
-    'Weeks from Monday to Sunday. The bar shows the range between the week’s lowest and highest, on the same scale for every week.',
+    'Weeks from Monday to Sunday. The bar shows the range between the week’s lowest and highest, on the same scale for every week. Change is against the week before.',
   'weeks.week': 'Week',
   'weeks.mean': (unit: string) => `Average (${unit})`,
   'weeks.bar': 'Range',
@@ -1629,7 +1630,7 @@ export const pt: Messages = {
   'sim.col.weight': 'Peso',
   'sim.col.lossDay': 'Perda no dia',
   'sim.col.lossTotal': 'Perda acumulada',
-  'sim.col.pct': '% total',
+  'sim.col.pct': '% perdido',
 
   'hiccups.title': 'Soluços',
   'hiccups.note':
@@ -1682,6 +1683,7 @@ export const pt: Messages = {
   'hiccups.col.start': 'Início',
   'hiccups.col.peak': 'Pico',
   'hiccups.col.days': 'Dias subindo',
+  'hiccups.col.daysShort': 'Dias',
   'hiccups.col.weight': 'Peso',
   'hiccups.col.gain': 'Ganho',
   'hiccups.col.gainPct': 'Ganho %',
@@ -1838,7 +1840,7 @@ export const pt: Messages = {
 
   'weeks.title': 'Médias semanais',
   'weeks.note':
-    'Semanas de segunda a domingo. A barra mostra a faixa entre a mínima e a máxima da semana, na mesma escala para todas.',
+    'Semanas de segunda a domingo. A barra mostra a faixa entre a mínima e a máxima da semana, na mesma escala para todas. A variação é em relação à semana anterior.',
   'weeks.week': 'Semana',
   'weeks.mean': (unit: string) => `Média (${unit})`,
   'weeks.bar': 'Faixa',

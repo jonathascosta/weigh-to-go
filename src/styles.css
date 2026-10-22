@@ -2583,7 +2583,8 @@ main {
   white-space: nowrap;
 }
 
-.sim-table .pct-short {
+.sim-table .pct-short,
+.head-short {
   display: none;
 }
 
@@ -3154,9 +3155,22 @@ span.cal-none {
     hyphens: manual;
   }
 
-  .week-bar-cell {
+  /* The bars take the room the other columns leave, and at least a 40 px track (the range is
+     their point); the cells beside them give the gutter. A share in % would widen the table. */
+  .table-fit td.week-bar-cell,
+  .table-fit th.col-bar {
     width: auto;
     min-width: 0;
+    padding-inline: 0;
+  }
+
+  .week-bar {
+    min-width: 40px;
+  }
+
+  /* The first column lines up with the card's text. */
+  .table-fit tr > :first-child {
+    padding-inline-start: 0;
   }
 
   .table-fit .col-narrow {
@@ -3171,14 +3185,25 @@ span.cal-none {
     width: 36%;
   }
 
-  /* The weekly bars' heading, for screen readers only (weeks.ts). */
-  .bar-head {
+  /* The weekly bars' heading, and a long heading with a short one shown (hiccups.ts), for screen
+     readers only. */
+  .bar-head,
+  .head-long {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+
+  .head-short {
+    display: inline;
+  }
+
+  /* The simulator's day reads from the left, apart from the weight beside it. */
+  .sim-table tr > :first-child {
+    text-align: left;
   }
 
   /* The simulator's % has one decimal ("30.6%"), so its four columns fit at 320 px with text at

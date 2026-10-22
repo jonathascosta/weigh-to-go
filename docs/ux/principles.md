@@ -15,10 +15,11 @@ wide; "desktop" means 1280 px with a mouse and a keyboard.
 ## How to review
 
 1. Build the branch and run `node scripts/ux-shots.mjs <scratch-folder>` (with `PW_CHROMIUM_PATH`
-   in cloud sessions; without a folder it writes to the ignored `ux-shots/`): it takes every review size, light and dark, English and Portuguese, text at 100% and
-   150%. `--measure` gives the numbers this checklist asks for (page and section heights, overflow,
-   where Save sits, target sizes, where charts start, chart text, the tooltip under a finger, where
-   the confirmation appears). Look at every changed screen in all of them.
+   in cloud sessions; without a folder it writes to the ignored `ux-shots/`): it takes every review
+   size, light and dark, English and Portuguese, text at 100% and 150%. `--measure` gives the
+   numbers this checklist asks for (page and section heights, overflow, where Save sits, target
+   sizes, where charts start, chart text, the tooltip under a finger, where the confirmation
+   appears). Look at every changed screen in all of them.
 2. Use it with touch (`hasTouch`, `isMobile`) and with the keyboard only.
 3. Go through the checklist. Every item that fails is a finding, at the priority given in brackets
    unless the case is worse.

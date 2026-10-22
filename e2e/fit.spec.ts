@@ -118,6 +118,8 @@ function brokenWords(): string[] {
   const found: string[] = [];
   const scope = document.querySelector('.sheet-layer:not([hidden]) .sheet') ?? document.body;
   const holders = scope.querySelectorAll('h1, h2, h3, h4, th, label, legend, button, a, summary');
+  // A text node inside two holders (a link in a label) is checked once.
+  const seen = new Set<Node>();
   for (const holder of holders) {
     if (holder.getClientRects().length === 0 || holder.closest('.visually-hidden, [hidden], svg')) continue;
     const walker = document.createTreeWalker(holder, NodeFilter.SHOW_TEXT);
@@ -125,6 +127,10 @@ function brokenWords(): string[] {
       const parent = node.parentElement;
       if (!parent || parent.closest('.visually-hidden, [hidden]') || parent.getClientRects().length === 0)
         continue;
+      if (seen.has(node)) continue;
+      seen.add(node);
+      // Hyphenated on purpose: the break is the browser's, with its hyphen.
+      if (getComputedStyle(parent).hyphens === 'auto') continue;
       const text = node.textContent ?? '';
       for (const match of text.matchAll(/\S+/g)) {
         const word = match[0];
@@ -210,11 +216,24 @@ const settle = (page: Page) =>
     for (let i = 0; i < 3; i++) await new Promise((done) => requestAnimationFrame(done));
   });
 
+/** Runs in the page: weekly range bars too narrow to show a range (each week's bar track). */
+function narrowBars(): string[] {
+  // The page behind a sheet was checked before it opened.
+  if (document.querySelector('.sheet-layer:not([hidden])')) return [];
+  return [...document.querySelectorAll('.week-bar')]
+    .filter((bar) => bar.getClientRects().length > 0 && bar.closest('[hidden]') === null)
+    .map((bar) => bar.getBoundingClientRect().width)
+    .filter((w) => w < 40)
+    .slice(0, 1)
+    .map((w) => `a weekly range bar is ${String(Math.round(w))} px wide, under 40`);
+}
+
 /** Everything the fit test checks on the screen as it is now. */
 async function measure(page: Page, width: number, targets: boolean): Promise<string[]> {
   return [
     ...(await page.evaluate(misfits, { width, allowed: WIDER_ON_PURPOSE })),
     ...(await page.evaluate(brokenWords)),
+    ...(await page.evaluate(narrowBars)),
     ...(targets ? await page.evaluate(smallTargets) : []),
   ];
 }
@@ -325,6 +344,7 @@ for (const language of LANGUAGES) {
       await show(page, 'progress');
       const more = page.locator('#view-progress .more-button');
       if (await more.isVisible()) await more.tap();
+      await expect(page.locator('#weeks-table-box .week-bar').first()).toBeVisible();
       await expectFits(page, 'Progress');
       await sheetFits(page, '#chart-options-button', 'the Layers sheet');
       await sheetFits(page, '#goal-change-button', 'the goal sheet');

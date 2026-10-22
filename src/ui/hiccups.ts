@@ -517,7 +517,17 @@ export function mountHiccups(
         {},
         h('th', { attrs: { scope: 'col' }, text: m['hiccups.col.start'] }),
         h('th', { class: 'col-wide', attrs: { scope: 'col' }, text: m['hiccups.col.peak'] }),
-        h('th', { class: 'num col-narrow', attrs: { scope: 'col' }, text: m['hiccups.col.days'] }),
+        // On a phone the heading shows "Days", so the last column has room; its name stays whole.
+        h(
+          'th',
+          { class: 'num col-narrow', attrs: { scope: 'col' } },
+          h('span', { class: 'head-long', text: m['hiccups.col.days'] }),
+          h('span', {
+            class: 'head-short',
+            attrs: { 'aria-hidden': 'true' },
+            text: m['hiccups.col.daysShort'],
+          }),
+        ),
         h('th', {
           class: 'num col-wide',
           attrs: { scope: 'col' },
