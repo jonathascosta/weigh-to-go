@@ -48,8 +48,8 @@ describe('the App Review notes', () => {
       ['Health: what is read and written', /Reads and writes body mass only/],
       ['ads: non-personalised', /non-personalised ads only/],
       ['ads: no tracking prompt', /no App Tracking Transparency prompt/],
-      ['ads: the first 7 days', /first 7 days after the first launch/],
-      ['ads: how to see one anyway', /turn off Set Automatically and set the date 8 days ahead/],
+      ['ads: the first 3 days', /first 3 days after the first launch/],
+      ['ads: how to see one anyway', /turn off Set Automatically and set the date 4 days ahead/],
       [
         'ads: the clock put back before the purchase',
         /Turn Set Automatically back on before trying Remove ads/,

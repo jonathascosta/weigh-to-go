@@ -68,7 +68,8 @@ data**.
   Restore purchases and, where the law asks for it, Privacy choices.
 
 - **In the iPhone app**, an ad banner sits at the top, away from the thumb. It is hidden while a
-  sheet is open or the keypad is up. It never shows while the diary is empty or in the first 7 days.
+  sheet is open or the keypad is up. It never shows while the diary is empty or in the first 3 days
+  (decision 177).
 - **The desktop** keeps one long page in the same order, with the tab names as links in the header.
   It keeps everything it has today, the Detailed view and every card open.
 
@@ -897,9 +898,10 @@ the reserved space, hatched.
     the status bar. That holds after Remove ads too, when `--ad-h` is 0.
 - **Why the top.** The bottom of the screen is where Save, the tab bar and the thumb are. A banner
   there invites accidental taps, which AdMob's policy forbids.
-- **When the banner shows.** Never while the diary is empty, and not in the first 7 days after the
-  app's first launch (kept in the app's preferences). While it doesn't show, `--ad-h` is 0 and the
-  band is only the status bar's, as the prototype shows with `?ad=1&empty=1`.
+- **When the banner shows.** Never while the diary is empty, and not in the first 3 days after the
+  app's first launch (kept in the app's preferences; 7 days before decision 177). While it doesn't
+  show, `--ad-h` is 0 and the band is only the status bar's, as the prototype shows with
+  `?ad=1&empty=1`.
 - **When it is hidden.** The app calls the plugin's hide and show; the band stays, empty, so nothing
   jumps. The banner is hidden:
   - while any sheet or dialog is open, so the scrim's top is never next to an ad;
@@ -910,7 +912,7 @@ the reserved space, hatched.
   - With a sheet open, the plugin's hide was called. On close, show was called.
   - With the weight field focused, the banner is hidden.
   - `.ad-space` contains no focusable element.
-  - No banner is requested while the diary is empty or in the first 7 days.
+  - No banner is requested while the diary is empty or in the first 3 days.
 
 ## 9 · Empty and partial states
 
@@ -1509,7 +1511,8 @@ to 43, and B1 to B19 are 44 to 62. All are open to the owner.
   _Alternative:_ above the tab bar.
 - **O14.** **When ads first show:** never while the diary is empty, and not in the first 7 days
   after
-  the first launch. _Alternative:_ from the first day with data, or after 14 days.
+  the first launch. _Alternative:_ from the first day with data, or after 14 days. Changed to the
+  first 3 days by decision 177 (22 October 2026).
 - **O15.** **The banner is hidden while a sheet or dialog is open**, while the keypad is up and
   during the purchase. _Alternative:_ keep it shown and rely on the empty band.
 - **O16.** **Remove ads appears only in Your data**, worded "One payment, for good; no
