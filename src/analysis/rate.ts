@@ -141,17 +141,21 @@ export function daysAtRate(rate: number, start: number, target: number): number 
 
 /**
  * The day a simulation reaches `target` (the first whole day at or below it, as `daysAtRate`
- * counts), when the target is below the start; null without one, or with one at or above it.
+ * counts, and day 1 at the earliest), when the target is below the start; null without one, or
+ * with one at or above it.
  */
 export function simulationGoalDay(rate: number, start: number, target: number | null): number | null {
   if (target === null || !canSimulate(rate, start) || !(target > 0 && target < start)) return null;
-  return daysAtRate(rate, start, target);
+  const days = daysAtRate(rate, start, target);
+  // A target a hair below the start is still a day's loss away (daysAtRate's tolerance says 0).
+  return days === null ? null : Math.max(1, days);
 }
 
 /**
  * Weight day by day at a constant `rate` % per day from `start` kg; empty if it can't simulate.
- * With a `target` below the start, it lists the days before the target is reached and ends on the
- * day it is (see `simulationGoalDay`), at the target's weight: nothing past the goal.
+ * With a `target` below the start, it lists the days before the target is reached, the day before
+ * it is (the lowest weight still above it), and ends on the day it is (see `simulationGoalDay`),
+ * at the target's weight: nothing past the goal.
  */
 export function simulate(rate: number, start: number, target: number | null = null): SimulationRow[] {
   if (!canSimulate(rate, start)) return [];
@@ -166,10 +170,11 @@ export function simulate(rate: number, start: number, target: number | null = nu
   });
   const goalDay = simulationGoalDay(rate, start, target);
   if (goalDay === null || target === null) return SIMULATION_DAYS.map((day) => row(day, at(day)));
-  return [
-    ...SIMULATION_DAYS.filter((day) => day < goalDay).map((day) => row(day, at(day))),
-    row(goalDay, target, true),
-  ];
+  // The listed days above the target, then the lowest weight still above it (the day before the
+  // goal day), then the goal day itself.
+  const days: number[] = SIMULATION_DAYS.filter((day) => day < goalDay);
+  if (goalDay > 1 && !days.includes(goalDay - 1)) days.push(goalDay - 1);
+  return [...days.map((day) => row(day, at(day))), row(goalDay, target, true)];
 }
 
 export interface SimulationSummary {

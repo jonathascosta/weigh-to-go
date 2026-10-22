@@ -758,7 +758,9 @@ export function mountRates(
     const linV = (i: number) => (linear ? project(linear, dOf(i)) : null);
     const rate = simRate.get();
     const start = simStart.get() ?? last.kg;
-    const sim = on('simulation') && rate !== null && canSimulate(rate, start);
+    // While a weight field holds something that isn't a weight, the simulator lists nothing, and
+    // the chart draws no simulation either.
+    const sim = on('simulation') && !startBad && !targetBad && rate !== null && canSimulate(rate, start);
     // The simulation stops on the day it reaches its target (the one typed, or else the goal), as
     // the simulator's table does: nothing projected past the goal.
     const simTargetKg = simTarget.get() ?? (isGoal(profile.goalKg) ? profile.goalKg : null);
@@ -996,6 +998,8 @@ export function mountRates(
             'th',
             { class: 'num', attrs: { scope: 'row' } },
             row.day,
+            // Read as "94, Goal": the comma for screen readers only, the name on a line of its own.
+            row.goal === null ? null : h('span', { class: 'visually-hidden', text: ', ' }),
             row.goal === null ? null : h('br'),
             row.goal === null ? null : h('span', { class: 'badge badge-goal', text: row.goal }),
           ),

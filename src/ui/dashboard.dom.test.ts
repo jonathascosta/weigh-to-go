@@ -502,7 +502,8 @@ describe('Dashboard II', () => {
     };
     if (chip('rate-title', 'Simulation').getAttribute('aria-pressed') !== 'true')
       chip('rate-title', 'Simulation').click();
-    const curve = () => section('rate-title').querySelector('svg[aria-labelledby="rate-curve-title"]')!;
+    const curve = () =>
+      section('rate-title').querySelector<SVGSVGElement>('svg[aria-labelledby="rate-curve-title"]')!;
     set('#sim-rate', '1');
     // No target: every day, to 365, and the line to the horizon's edge.
     expect(rows()).toHaveLength(14);
@@ -518,9 +519,10 @@ describe('Dashboard II', () => {
       '5',
       '6',
       '7',
-      '9Target',
+      '8',
+      '9, Target',
     ]);
-    const goal = rows()[7]!;
+    const goal = rows()[8]!;
     expect(goal.classList.contains('sim-goal')).toBe(true);
     expect(goal.querySelector('th .badge')!.textContent).toBe('Target');
     expect(goal.querySelectorAll('td')[1]!.textContent).toBe('90.00 kg');
@@ -528,6 +530,31 @@ describe('Dashboard II', () => {
     // Stopped before the horizon, the dotted line has no end to label at the edge.
     expect(curve().querySelector('path.sim-curve')).not.toBeNull();
     expect(curve().querySelector('.endlabel-week')).toBeNull();
+    // Past the goal day, the strip has no simulation; on the goal day it has, at the target.
+    const plot = () => curve().closest('.plot')!;
+    /** The strip's and the tooltip's words. */
+    const strip = () =>
+      `${plot().querySelector('.readout')!.textContent} ${plot().querySelector('.tip')?.textContent ?? ''}`;
+    curve().focus();
+    curve().dispatchEvent(new KeyboardEvent('keydown', { key: 'End' }));
+    expect(strip()).not.toContain('Simulation');
+    // 180 days to the horizon's end: 171 back is the goal day, 9 days after the last weigh-in.
+    for (let k = 0; k < 171; k++) curve().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+    expect(strip()).toContain('Simulation');
+    expect(strip()).toContain('90.0 kg');
+    curve().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+    expect(strip()).not.toContain('Simulation');
+    // A target the line reaches exactly on the horizon's last day keeps its end label: the target.
+    chip('rate-title', '30 days').click();
+    set('#sim-target', '73');
+    expect(rows().pop()!.querySelector('th')!.textContent).toBe('30, Target');
+    expect(curve().querySelector('.endlabel-week')!.textContent).toBe('73.0');
+    // While the target isn't a weight, the chart draws no simulation, as the table lists nothing.
+    set('#sim-target', '7x');
+    expect(curve().querySelector('path.sim-curve')).toBeNull();
+    expect(rows()).toHaveLength(0);
+    set('#sim-target', '90');
+    expect(curve().querySelector('path.sim-curve')).not.toBeNull();
     // A target at or above the start lists every day again.
     set('#sim-target', '120');
     expect(rows()).toHaveLength(14);
@@ -543,7 +570,41 @@ describe('Dashboard II', () => {
     rate.value = '1';
     rate.dispatchEvent(new Event('input'));
     const last = [...root.querySelector('#sim-title')!.parentElement!.querySelectorAll('tbody tr')].pop()!;
-    expect(last.querySelector('th')!.textContent).toBe('9Meta');
+    expect(last.querySelector('th')!.textContent).toBe('9, Meta');
+  });
+
+  it('ends the loss milestones on the goal, in the table and on the % chart', async () => {
+    await saveDays(climbs);
+    const names = () =>
+      [...root.querySelector('#pct-ms-title')!.closest('.block')!.querySelectorAll('tbody tr > th')].map(
+        (th) => th.textContent,
+      );
+    const lines = () =>
+      [...section('pct-title').querySelectorAll('svg[aria-labelledby="pct-title"] .reflabel')].map(
+        (t) => t.textContent,
+      );
+    const layer = chip('pct-title', 'Milestones 5%, 10%, 15%…');
+    if (layer.getAttribute('aria-pressed') !== 'true') layer.click();
+    // No goal: the round milestones, as before.
+    expect(names()).toEqual(['5%', '10%', '15%']);
+    // A goal of 88 kg (12% of the first 100 kg): the table ends on it, nothing past it.
+    await app.setProfile({ goalKg: 88, heightCm: null });
+    await settle();
+    expect(names()).toEqual(['5%', '10%', 'Goal (12.0%)']);
+    // The goal's line is drawn, and the scale reaches it, yet no milestone line past it.
+    expect(lines().some((t) => t.startsWith('Goal'))).toBe(true);
+    expect(lines().some((t) => t.startsWith('5% ·'))).toBe(true);
+    expect(lines().some((t) => /^(15|20)% ·/.test(t))).toBe(false);
+    // A goal already passed (99 kg, 1%; the diary is down to 97.5 kg): it alone, and no 5% line,
+    // which the old scale reached as "the next milestone".
+    await app.setProfile({ goalKg: 99, heightCm: null });
+    await settle();
+    expect(names()).toEqual(['Goal (1.0%)']);
+    expect(lines().some((t) => t.startsWith('5% ·'))).toBe(false);
+    await app.setProfile({ goalKg: 88, heightCm: null });
+    await settle();
+    choose({ lang: 'pt' });
+    expect(names()).toEqual(['5%', '10%', 'Meta (12,0%)']);
   });
 
   it('heads the weight column by the line measured, and explains the faded weeks', async () => {

@@ -59,8 +59,21 @@ const byMethod = (f: (method: Method) => number | null): Record<Method, number |
 });
 
 /**
+ * Whether the milestone `pct` % below the first weight lies past the goal and is not reached yet: a
+ * future milestone below the goal's weight, which nothing shows (decision 163). A milestone already
+ * reached stays, even past the goal; without a goal below the first weight, none is past it.
+ */
+export function pastGoal(analysis: Analysis, goalKg: number | null, pct: number): boolean {
+  const goal = goalPct(analysis, goalKg);
+  if (goal === null || pct <= goal + 1e-9) return false;
+  const kg = milestoneKg(analysis.first.kg, pct);
+  return !analysis.series.some((d) => d.kg <= kg + 1e-9);
+}
+
+/**
  * The milestones worth showing: every 5% up to 5 points past the current loss or the goal (at least
  * up to 15%), plus the goal itself when it is below the first weight and not a round milestone.
+ * Those past the goal and not reached are left out, so with a goal ahead the list ends on it.
  */
 export function milestones(analysis: Analysis, goalKg: number | null): Milestone[] {
   const first = analysis.first.kg;
@@ -80,17 +93,19 @@ export function milestones(analysis: Analysis, goalKg: number | null): Milestone
     items.push({ pct: goal, goal: true });
   }
   items.sort((a, b) => a.pct - b.pct);
-  return items.map(({ pct, goal: isGoal }) => {
-    const kg = milestoneKg(first, pct);
-    const reached = analysis.series.find((d) => d.kg <= kg + 1e-9) ?? null;
-    return {
-      pct,
-      kg,
-      goal: isGoal,
-      reached,
-      daysBy: byMethod((m) => (reached ? 0 : daysTo(analysis.models[m], analysis.last.kg, kg))),
-    };
-  });
+  return items
+    .filter((item) => item.goal || !pastGoal(analysis, goalKg, item.pct))
+    .map(({ pct, goal: isGoal }) => {
+      const kg = milestoneKg(first, pct);
+      const reached = analysis.series.find((d) => d.kg <= kg + 1e-9) ?? null;
+      return {
+        pct,
+        kg,
+        goal: isGoal,
+        reached,
+        daysBy: byMethod((m) => (reached ? 0 : daysTo(analysis.models[m], analysis.last.kg, kg))),
+      };
+    });
 }
 
 /** Days in an average month, for "% per month". */

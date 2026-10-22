@@ -917,23 +917,30 @@ decisions above.
      a second Apple Account, as another TestFlight tester, for the purchase checks at any time
      (STORE.md, step 5, says how).
 
-## 22 October 2026 · The simulator stops at the goal
+## 22 October 2026 · The simulator and the milestones stop at the goal
 
 The owner's feedback on the Constant rate simulator: with a goal of 77.7 kg its table went on past
-it (58.92 kg at day 180, 31.84 kg at day 365), weights that aren't healthy. Choices made while
-building the change, open to the owner under decision 9. Numbered 162 to stay clear of the
-decisions being added at the same time (146 to 161); it may be renumbered when merged.
+it (58.92 kg at day 180, 31.84 kg at day 365), weights that aren't healthy; then, on seeing it
+fixed, "the same applies to the loss milestones". Choices made while building the change, open to
+the owner under decision 9. Numbered 162 and 163 to stay clear of the decisions being added at the
+same time (146 to 161); they may be renumbered when merged.
 
 162. **Nothing is simulated past the goal.** With a target below the starting weight (the one
      typed, or else the profile's goal), the table lists the usual days (1 to 7, 14, 21, 30, 60,
-     90, 180, 365) only while the weight is still above the target, then one row on the goal day:
+     90, 180, 365) only while the weight is still above the target, then the day before the goal
+     day when it isn't one of them (the lowest weight still above the target, which the owner
+     asked the table to go down to), then one row on the goal day:
      the first whole day at or below it, as the summary counts it (`daysAtRate`), with its date,
      the target's own weight, what that day takes off to reach it and the totals, its Day cell
-     marked "Goal" (or "Target" when typed; "Meta", "Alvo"), the row in bold. A listed day that is
+     marked "Goal" (or "Target" when typed; "Meta", "Alvo") under the day, read as "94, Goal",
+     the row in bold. The goal day is day 1 at the earliest, even for a target a hair below the
+     start. A listed day that is
      the goal day is listed once, and a day just above the target that would show as its weight
      (two decimals) is left out, so the goal reads as reached once. A goal further than a year
      away keeps all 14 days and adds its row after 365. The curve chart's dotted simulation ends
-     on the goal day too, at the target; its end label at the edge goes when it stops before the
+     on the goal day too, at the target, and its readout and tooltip say nothing of the days after;
+     while a weight field holds something that isn't a weight, the chart draws no simulation, as
+     the table lists nothing. Its end label at the edge goes when it stops before the
      horizon, which stays the reader's choice (30 days to a year), so the constant-% and
      constant-kg lines are still compared over it, and the y axis no longer stretches to the
      weights past the goal. The summary follows the same rule: of "a week", "30 days" and "a
@@ -943,3 +950,13 @@ decisions being added at the same time (146 to 161); it may be renumbered when m
      the goal, which is what the owner asked not to show. No target, or one at or above the
      start, keeps everything as before. _Alternative:_ keep the summary's year figure as a
      property of the rate; left out because it reads as the weight a year on.
+163. **No milestone ahead past the goal.** With a goal below the first weight, the loss milestones
+     table leaves out the round milestones below the goal's weight that no weigh-in has reached:
+     with a goal ahead it ends on the goal's row (5% to 25%, then "Goal (29.6%)", where 30% and
+     35% followed). A milestone already reached stays, even past the goal, as the diary's history
+     of someone who went beyond it. The % chart's milestone lines follow the same rule, and its
+     scale no longer reaches for "the next milestone" when that lies past the goal. The card's
+     line and figures already speak of the goal rather than the next milestone when there is one,
+     so they don't change. No goal, or one at or above the first weight, keeps everything as before.
+     _Alternative:_ keep the next round milestone past the goal as a stretch target; left out, as
+     for the simulator, because it shows a weight past the goal as something to aim for.

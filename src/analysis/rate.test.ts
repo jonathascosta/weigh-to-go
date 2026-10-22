@@ -126,10 +126,14 @@ describe('simulate with a target', () => {
   const goal = 77.7;
   const goalDay = daysAtRate(rate, start, goal)!;
 
-  it('lists the days still above the target, then one row on the goal day at its weight', () => {
+  it('lists the days still above the target, the lowest above it, then the goal day at its weight', () => {
     const rows = simulate(rate, start, goal);
     expect(goalDay).toBe(94);
-    expect(rows.map((r) => r.day)).toEqual([1, 2, 3, 4, 5, 6, 7, 14, 21, 30, 60, 90, 94]);
+    expect(rows.map((r) => r.day)).toEqual([1, 2, 3, 4, 5, 6, 7, 14, 21, 30, 60, 90, 93, 94]);
+    // Day 93: the lowest weight still above the goal (about 77.80 kg).
+    expect(rows[12]!.kg).toBeCloseTo(start * (1 - rate / 100) ** 93, 10);
+    expect(rows[12]!.kg).toBeGreaterThan(goal);
+    expect(rows[12]!.kg).toBeLessThan(78);
     expect(rows.slice(0, -1).every((r) => r.kg > goal && !r.goal)).toBe(true);
     const last = rows[rows.length - 1]!;
     expect(last).toMatchObject({ day: goalDay, kg: goal, goal: true });
@@ -143,15 +147,39 @@ describe('simulate with a target', () => {
   it('lists the goal day once when it is one of the listed days', () => {
     // 30 days exactly, whatever the float noise (daysAtRate lands on whole days).
     const rows = simulate(1, 100, 100 * 0.99 ** 30);
-    expect(rows.map((r) => r.day)).toEqual([1, 2, 3, 4, 5, 6, 7, 14, 21, 30]);
+    expect(rows.map((r) => r.day)).toEqual([1, 2, 3, 4, 5, 6, 7, 14, 21, 29, 30]);
     expect(rows.filter((r) => r.day === 30)).toHaveLength(1);
+    // The day before the goal, already listed, is listed once.
+    expect(
+      simulate(1, 100, 100 * 0.99 ** 31)
+        .map((r) => r.day)
+        .slice(-3),
+    ).toEqual([21, 30, 31]);
+    // A goal on day 1 has no day before it to list.
+    expect(simulate(1, 100, 99).map((r) => r.day)).toEqual([1]);
     expect(rows[rows.length - 1]?.goal).toBe(true);
   });
 
   it('ends after day 365 when the goal is further away', () => {
     const rows = simulate(0.05, 100, 70);
-    expect(rows).toHaveLength(SIMULATION_DAYS.length + 1);
+    expect(rows).toHaveLength(SIMULATION_DAYS.length + 2);
     expect(rows[rows.length - 1]).toMatchObject({ day: daysAtRate(0.05, 100, 70), goal: true });
+  });
+
+  it('reaches a target a hair below the start on day 1, not day 0', () => {
+    const hair = 100 * (1 - 1e-12);
+    expect(daysAtRate(1, 100, hair)).toBe(0);
+    expect(simulationGoalDay(1, 100, hair)).toBe(1);
+    expect(simulate(1, 100, hair).map((r) => [r.day, r.goal])).toEqual([[1, true]]);
+    expect(simulationSummary(1, 100, hair)?.daysToGoal).toBe(1);
+  });
+
+  it('lists every day as before with a target that is not a number', () => {
+    const plain = simulate(rate, start);
+    for (const target of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(simulationGoalDay(rate, start, target)).toBeNull();
+      expect(simulate(rate, start, target)).toEqual(plain);
+    }
   });
 
   it('lists every day as before without a target, or with one at or above the start', () => {

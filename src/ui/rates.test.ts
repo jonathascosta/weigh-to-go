@@ -110,8 +110,11 @@ describe('simView', () => {
       '30',
       '60',
       '90',
+      '93',
       '94',
     ]);
+    // The lowest weight still above the goal, just before it.
+    expect(v.rows[12]).toMatchObject({ day: '93', weight: '77,80 kg', goal: null });
     expect(v.rows.filter((r) => r.goal !== null)).toHaveLength(1);
     expect(v.rows[v.rows.length - 1]).toMatchObject({
       day: '94',
@@ -142,10 +145,11 @@ describe('simView', () => {
     // Exactly day 30 at 1% a day: the listed day is the goal's row.
     const exact = simView({ rate: 1, start: 100, target: 100 * 0.99 ** 30 }, a, null, pt);
     expect(exact.rows.map((r) => [r.day, r.goal])).toEqual([
-      ...['1', '2', '3', '4', '5', '6', '7', '14', '21'].map((d) => [d, null]),
+      ...['1', '2', '3', '4', '5', '6', '7', '14', '21', '29'].map((d) => [d, null]),
       ['30', 'Alvo'],
     ]);
-    // Day 30 is 73.97003 kg, just above 73.966 but shown as 73,97 kg like it: the goal is day 31.
+    // Day 30 (the day before the goal, day 31) is 73.97003 kg, just above 73.966 but shown as
+    // 73,97 kg like it: left out.
     const near = simView({ rate: 1, start: 100, target: 73.966 }, a, null, pt);
     expect(near.rows.map((r) => r.day).slice(-2)).toEqual(['21', '31']);
     expect(near.rows[near.rows.length - 1]!.weight).toBe('73,97 kg');

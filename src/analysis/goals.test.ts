@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { analyze, type WeighIn } from './analyze';
 import { addDays, isoDay, parseDay } from './dates';
-import { bmi, bmiBand, bmiSummary, goalPlan, milestones, pctKpis, weeklyPct, weightForBmi } from './goals';
+import {
+  bmi,
+  bmiBand,
+  bmiSummary,
+  goalPlan,
+  milestones,
+  pastGoal,
+  pctKpis,
+  weeklyPct,
+  weightForBmi,
+} from './goals';
 
 function daily(weights: readonly number[]): WeighIn[] {
   return weights.map((kg, i) => ({ date: isoDay(addDays(parseDay('2026-09-01'), i)), kg }));
@@ -22,16 +32,37 @@ describe('milestones', () => {
     expect(list[1]?.daysBy.linear).toBe(21);
   });
 
-  it('adds the goal in order, and extends the list to 5 points past it', () => {
+  it('adds the goal in order, and ends the list on it while it is ahead', () => {
     const list = milestones(a, 82);
     expect(list.map((m) => [Math.round(m.pct * 10) / 10, m.goal])).toEqual([
       [5, false],
       [10, false],
       [15, false],
       [18, true],
-      [20, false],
-      [25, false],
     ]);
+    expect(pastGoal(a, 82, 20)).toBe(true);
+    expect(pastGoal(a, 82, 15)).toBe(false);
+  });
+
+  it('keeps the milestones reached past the goal, and hides those still ahead of it', () => {
+    // From 100 kg down to 79 kg, with a goal of 85 kg (15%): 20% is reached, 25% is not.
+    const passed = analyze(daily(Array.from({ length: 22 }, (_, i) => 100 - i)))!;
+    expect(milestones(passed, 85).map((m) => [m.pct, m.goal, m.reached !== null])).toEqual([
+      [5, false, true],
+      [10, false, true],
+      [15, true, true],
+      [20, false, true],
+    ]);
+    expect(pastGoal(passed, 85, 20)).toBe(false);
+    expect(pastGoal(passed, 85, 25)).toBe(true);
+  });
+
+  it('lists as before without a goal, or with one at or above the first weight', () => {
+    const plain = milestones(a, null);
+    expect(milestones(a, 105)).toEqual(plain);
+    expect(milestones(a, 100)).toEqual(plain);
+    expect(pastGoal(a, null, 50)).toBe(false);
+    expect(pastGoal(a, 105, 50)).toBe(false);
   });
 
   it('ignores a goal above the first weight', () => {
@@ -172,7 +203,9 @@ describe('milestones beyond the basics', () => {
     const list = milestones(a, 100);
     expect(list.filter((m) => Math.abs(m.pct - 50) < 1e-9)).toHaveLength(1);
     expect(list.find((m) => m.goal)?.pct).toBeCloseTo(50, 10);
-    expect(list.at(-1)?.pct).toBe(55);
+    // Up to the goal, past 40%, and no further.
+    expect(list.map((m) => Math.round(m.pct))).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50]);
+    expect(list.at(-1)?.goal).toBe(true);
   });
 });
 
