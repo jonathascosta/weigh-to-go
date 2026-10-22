@@ -20,6 +20,9 @@ public class AdSetupPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func build(_ call: CAPPluginCall) {
         let bannerId = Bundle.main.object(forInfoDictionaryKey: "WTGAdMobBannerID") as? String ?? ""
+        // Only a TestFlight run "for the App Store" writes YES (fastlane): the only build that
+        // carries the owner's ids, and the only one that may show the owner's ads.
+        let appStore = (Bundle.main.object(forInfoDictionaryKey: "WTGAppStoreBuild") as? String) == "YES"
         #if DEBUG
             let debug = true
         #else
@@ -29,6 +32,7 @@ public class AdSetupPlugin: CAPPlugin, CAPBridgedPlugin {
             "bannerId": bannerId,
             "sandbox": Self.sandboxReceipt,
             "debug": debug,
+            "appStore": appStore,
         ])
     }
 
@@ -43,11 +47,19 @@ public class AdSetupPlugin: CAPPlugin, CAPBridgedPlugin {
         #endif
     }
 
+    /// 1 or 0 as the TCF saves it (a number, or a string from some tools), -1 when not saved.
+    private static func gdprApplies(_ value: Any?) -> Int {
+        if let number = value as? NSNumber { return number.intValue == 1 ? 1 : 0 }
+        if let text = value as? String, let number = Int(text.trimmingCharacters(in: .whitespaces)) {
+            return number == 1 ? 1 : 0
+        }
+        return -1
+    }
+
     @objc func consentChoices(_ call: CAPPluginCall) {
         let defaults = UserDefaults.standard
-        let applies = defaults.object(forKey: "IABTCF_gdprApplies") as? NSNumber
         call.resolve([
-            "gdprApplies": applies?.intValue ?? -1,
+            "gdprApplies": Self.gdprApplies(defaults.object(forKey: "IABTCF_gdprApplies")),
             "purposeConsents": defaults.string(forKey: "IABTCF_PurposeConsents") ?? "",
             "vendorConsents": defaults.string(forKey: "IABTCF_VendorConsents") ?? "",
         ])

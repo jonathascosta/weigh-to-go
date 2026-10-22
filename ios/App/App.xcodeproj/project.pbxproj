@@ -333,6 +333,7 @@
 			buildSettings = {
 				ADMOB_APP_ID = "ca-app-pub-3940256099942544~1458002511";
 				ADMOB_BANNER_ID = "";
+				WTG_APP_STORE_BUILD = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -358,6 +359,7 @@
 			buildSettings = {
 				ADMOB_APP_ID = "ca-app-pub-3940256099942544~1458002511";
 				ADMOB_BANNER_ID = "";
+				WTG_APP_STORE_BUILD = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;

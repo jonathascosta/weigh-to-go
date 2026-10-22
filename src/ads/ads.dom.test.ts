@@ -46,28 +46,32 @@ class FakeDiary {
   }
 }
 
-const memoryPref = (value: number | null): Pref<number | null> & { value: number | null } => {
+const memory = <T>(value: T): Pref<T> & { value: T } => {
   const box = {
     value,
     read: () => box.value,
-    write: (next: number | null) => {
+    write: (next: T) => {
       box.value = next;
       return true;
     },
   };
   return box;
 };
+const memoryPref = (value: number | null) => memory<number | null>(value);
 
 const TESTFLIGHT: BuildAds = {
   bannerId: 'ca-app-pub-1234567890123456/1111111111',
   sandbox: true,
   debug: false,
+  appStore: false,
 };
 
 let api: FakeAdMob;
 let diary: FakeDiary;
 let ads: Ads | null;
+let band: Pref<boolean> & { value: boolean };
 beforeEach(() => {
+  band = memory(false);
   api = new FakeAdMob();
   diary = new FakeDiary();
   ads = null;
@@ -98,6 +102,7 @@ const start = (
     doc: document,
     now: () => now,
     firstLaunch: first,
+    band,
   });
   return {
     ads,
@@ -183,6 +188,7 @@ describe('the ads at launch', () => {
       doc: document,
       now: () => LAUNCHED + FIRST_DAYS * DAY,
       firstLaunch: memoryPref(LAUNCHED),
+      band,
     });
     await ads.settled();
     expect(api.calls).toEqual(['info']);
@@ -266,16 +272,26 @@ describe('the first days', () => {
 describe('the ad unit', () => {
   const owner = 'ca-app-pub-1234567890123456/1111111111';
   it('is Google’s test unit on TestFlight and in debug builds, the owner’s on the App Store', () => {
-    expect(bannerUnit({ bannerId: owner, sandbox: true, debug: false })).toBe(TEST_BANNER_UNIT);
-    expect(bannerUnit({ bannerId: owner, sandbox: false, debug: true })).toBe(TEST_BANNER_UNIT);
-    expect(bannerUnit({ bannerId: owner, sandbox: false, debug: false })).toBe(owner);
+    expect(bannerUnit({ bannerId: owner, sandbox: true, debug: false, appStore: false })).toBe(
+      TEST_BANNER_UNIT,
+    );
+    expect(bannerUnit({ bannerId: owner, sandbox: false, debug: true, appStore: false })).toBe(
+      TEST_BANNER_UNIT,
+    );
+    expect(bannerUnit({ bannerId: owner, sandbox: false, debug: false, appStore: true })).toBe(owner);
+    // Not from a run for the App Store: it carries no ids of the owner's, and shows nothing there.
+    expect(bannerUnit({ bannerId: owner, sandbox: false, debug: false, appStore: false })).toBeNull();
   });
 
   it('is none on the App Store without the owner’s, so test ads can’t ship', async () => {
-    expect(bannerUnit({ bannerId: '', sandbox: false, debug: false })).toBeNull();
-    expect(bannerUnit({ bannerId: '$(ADMOB_BANNER_ID)', sandbox: false, debug: false })).toBeNull();
-    expect(bannerUnit({ bannerId: TEST_BANNER_UNIT, sandbox: false, debug: false })).toBeNull();
-    const { ads } = start({ build: { bannerId: '', sandbox: false, debug: false } });
+    expect(bannerUnit({ bannerId: '', sandbox: false, debug: false, appStore: true })).toBeNull();
+    expect(
+      bannerUnit({ bannerId: '$(ADMOB_BANNER_ID)', sandbox: false, debug: false, appStore: true }),
+    ).toBeNull();
+    expect(
+      bannerUnit({ bannerId: TEST_BANNER_UNIT, sandbox: false, debug: false, appStore: true }),
+    ).toBeNull();
+    const { ads } = start({ build: { bannerId: '', sandbox: false, debug: false, appStore: true } });
     await ads.settled();
     // Not even Google's consent tool is started.
     expect(api.calls).toEqual([]);
@@ -306,5 +322,76 @@ describe('what reaches the ad SDK', () => {
     await ads.settled();
     for (const request of api.banners)
       expect(Object.keys(request).sort()).toEqual(['adId', 'adSize', 'margin', 'npa', 'position']);
+  });
+});
+
+describe('the band at launch', () => {
+  const height = () => html.style.getPropertyValue(AD_HEIGHT);
+
+  it('stays up from last time while the banner is asked for', async () => {
+    band.value = true;
+    html.style.setProperty(AD_HEIGHT, '50px');
+    const { ads } = start();
+    await ads.settled();
+    expect(height()).toBe('50px');
+    expect(band.value).toBe(true);
+  });
+
+  it('goes when this launch shows no banner: the purchase held, the first days, a refusal', async () => {
+    for (const setup of ['held', 'early', 'refused'] as const) {
+      api = new FakeAdMob();
+      band.value = true;
+      html.style.setProperty(AD_HEIGHT, '50px');
+      if (setup === 'refused') {
+        api.info = { ...api.info, status: 'OBTAINED', privacyOptionsRequirementStatus: 'REQUIRED' };
+      }
+      const { ads } = start({
+        ...(setup === 'held' ? { entitlement: { held: () => Promise.resolve(true) } } : {}),
+        ...(setup === 'early' ? { now: LAUNCHED + DAY } : {}),
+        ...(setup === 'refused' ? { choices: REFUSED } : {}),
+      });
+      await ads.settled();
+      expect(height(), setup).toBe('0px');
+      expect(band.value, setup).toBe(false);
+      await ads.stop();
+    }
+  });
+});
+
+describe('Erase everything during a session', () => {
+  it('starts the 7 days again at once', async () => {
+    const first = memoryPref(LAUNCHED);
+    const { ads } = start({ first });
+    await ads.settled();
+    api.load();
+    expect(api.calls).toEqual(['info', 'start', 'show']);
+    // The erase clears the preferences, and the diary empties, then fills again.
+    first.value = null;
+    diary.set(0);
+    diary.set(1);
+    expect(api.calls.at(-1)).toBe('remove');
+    expect(api.banners).toHaveLength(1);
+    expect(first.value).toBe(LAUNCHED + FIRST_DAYS * DAY);
+  });
+});
+
+describe('Privacy choices that can’t open', () => {
+  it('says so, and changes nothing', async () => {
+    api.info = { ...api.info, status: 'OBTAINED', privacyOptionsRequirementStatus: 'REQUIRED' };
+    api.failOptions = true;
+    const { ads } = start({ choices: CONSENTED });
+    await ads.settled();
+    expect(await ads.showPrivacyChoices()).toBe(false);
+    expect(api.calls.filter((c) => c === 'start')).toHaveLength(1);
+  });
+});
+
+describe('the SDK’s start', () => {
+  it('is asked for once, though consent and Privacy choices both allow ads', async () => {
+    api.info = { ...api.info, status: 'OBTAINED', privacyOptionsRequirementStatus: 'REQUIRED' };
+    const { ads } = start({ choices: CONSENTED });
+    await Promise.all([ads.settled(), ads.showPrivacyChoices()]);
+    await ads.settled();
+    expect(api.calls.filter((c) => c === 'start')).toHaveLength(1);
   });
 });

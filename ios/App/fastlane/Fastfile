@@ -61,11 +61,13 @@ platform :ios do
 
     # Every upload needs a higher build number than the last: run number × 100 + attempt.
     build_number = ENV.fetch("BUILD_NUMBER")
-    # The owner's AdMob app and banner unit, when the app-store environment has them: the app shows
-    # Google's test ads anyway when installed from TestFlight (a sandbox receipt, AdSetupPlugin.swift),
-    # and the owner's on the App Store. Without them it names Google's test app and shows no ads there.
-    admob_app_id = ENV["ADMOB_APP_ID"].to_s.empty? ? TEST_ADMOB_APP_ID : ENV["ADMOB_APP_ID"]
-    admob_banner_id = ENV["ADMOB_BANNER_ID"].to_s
+    # The owner's AdMob app and banner unit reach only a run "for the App Store" (the workflow passes
+    # them then, with WTG_APP_STORE_BUILD=YES). Installed from TestFlight the app shows Google's test
+    # ads anyway (a sandbox receipt, AdSetupPlugin.swift), and the owner's on the App Store. Any
+    # other build names Google's test app and shows no ads outside TestFlight.
+    app_store_build = ENV["WTG_APP_STORE_BUILD"] == "YES"
+    admob_app_id = app_store_build && !ENV["ADMOB_APP_ID"].to_s.empty? ? ENV["ADMOB_APP_ID"] : TEST_ADMOB_APP_ID
+    admob_banner_id = app_store_build ? ENV["ADMOB_BANNER_ID"].to_s : ""
     build_app(
       project: "App.xcodeproj",
       scheme: "App",
@@ -74,7 +76,7 @@ platform :ios do
       export_method: "app-store",
       export_options: { provisioningProfiles: { APP_ID => lane_context[SharedValues::SIGH_NAME] } },
       xcargs: "CURRENT_PROJECT_VERSION='#{build_number}' ADMOB_APP_ID='#{admob_app_id}' " \
-              "ADMOB_BANNER_ID='#{admob_banner_id}'",
+              "ADMOB_BANNER_ID='#{admob_banner_id}' WTG_APP_STORE_BUILD='#{app_store_build ? "YES" : "NO"}'",
       output_directory: "build",
       clean: true
     )

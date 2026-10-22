@@ -114,7 +114,10 @@ describe('About', () => {
     expect(box.querySelector('#about-policy')!.getAttribute('href')).toBe('/privacy.html');
     draw(choose({ lang: 'pt' }));
     expect(box.textContent).toContain('Os anúncios vêm do Google AdMob: não são personalizados');
-    expect(box.textContent).toContain('Remover os anúncios acaba com esses pedidos.');
+    expect(box.textContent).toContain('Ao remover os anúncios, esses pedidos param.');
+    // Their own paragraph, after Apple Health's.
+    const paragraphs = [...box.querySelectorAll('.about p')].map((p) => p.textContent);
+    expect(paragraphs[2]).toMatch(/^Os anúncios vêm do Google AdMob/);
   });
 });
 

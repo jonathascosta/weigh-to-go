@@ -12,10 +12,10 @@ name: TestFlight
 #
 # and, for the ads (docs/STORE.md, step 6), ADMOB_APP_ID and ADMOB_BANNER_ID. Installed from
 # TestFlight the app always shows Google's test ads (it knows TestFlight by its sandbox receipt), so
-# the owner's own use never counts as invalid traffic; on the App Store it shows the owner's. A run
-# "for the App Store" fails without both ids or without Google's SKAdNetwork list in Info.plist, so
-# test ads can't ship; a run without it is for TestFlight only, and such a build shows no ads at all
-# if it ever reaches the App Store.
+# the owner's own use never counts as invalid traffic; on the App Store it shows the owner's. Only a
+# run "for the App Store" carries the ids (and WTGAppStoreBuild), and it fails without both or
+# without Google's SKAdNetwork list in Info.plist, so test ads can't ship; a run without it is for
+# TestFlight only, carries no ids, and would show no ads at all on the App Store.
 #
 # It uploads only what is on main. The job runs in the app-store environment, so its secrets can be
 # kept there and limited to main (Settings, Environments) rather than to the whole repository.
@@ -146,6 +146,8 @@ jobs:
           APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
           IOS_DISTRIBUTION_CERTIFICATE_P12: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_P12 }}
           IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
-          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
-          ADMOB_BANNER_ID: ${{ secrets.ADMOB_BANNER_ID }}
+          # The owner's ids only in a run for the App Store: any other build carries none.
+          ADMOB_APP_ID: ${{ inputs.app_store && secrets.ADMOB_APP_ID || '' }}
+          ADMOB_BANNER_ID: ${{ inputs.app_store && secrets.ADMOB_BANNER_ID || '' }}
+          WTG_APP_STORE_BUILD: ${{ inputs.app_store && 'YES' || 'NO' }}
         run: bundle exec fastlane beta

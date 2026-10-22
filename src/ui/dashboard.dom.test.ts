@@ -1224,6 +1224,7 @@ describe('Privacy choices, in the iPhone app', () => {
     const listeners = new Set<(required: boolean) => void>();
     const shown: string[] = [];
     let required = false;
+    let opens = true;
     const ads: AdProvider = {
       privacyChoices: () => required,
       onPrivacyChoices: (listener) => {
@@ -1234,13 +1235,16 @@ describe('Privacy choices, in the iPhone app', () => {
       },
       showPrivacyChoices: () => {
         shown.push('form');
-        return Promise.resolve();
+        return Promise.resolve(opens);
       },
       stop: () => Promise.resolve(),
     };
     return {
       ads,
       shown,
+      failNext: () => {
+        opens = false;
+      },
       say: (now: boolean) => {
         required = now;
         for (const listener of listeners) listener(now);
@@ -1263,8 +1267,20 @@ describe('Privacy choices, in the iPhone app', () => {
     await settle();
     expect(fake.shown).toEqual(['form']);
     expect(document.activeElement).toBe(row);
+    const status = root.querySelector<HTMLElement>('#privacy-choices-status')!;
+    expect(status.getAttribute('role')).toBe('status');
+    expect(status.hidden).toBe(true);
+    // Google's form can't open (offline): a line says so, until the next try.
+    fake.failNext();
+    row.click();
+    await settle();
+    expect(status.hidden).toBe(false);
+    expect(status.textContent).toBe('Google’s privacy choices couldn’t open. Try again when you’re online.');
     choose({ lang: 'pt' });
     expect(row.textContent).toBe('Opções de privacidade');
+    expect(status.textContent).toBe(
+      'Não foi possível abrir as opções de privacidade do Google. Tente de novo quando estiver on-line.',
+    );
     fake.say(false);
     expect(row.hidden).toBe(true);
   });

@@ -313,7 +313,7 @@ export const en = {
   'privacy.description':
     'What Weigh to Go does with your data, on the website and in the iPhone app: your weigh-ins stay on your device, and we never receive them.',
   'privacy.heading': 'Privacy policy',
-  'privacy.updated': 'Last updated 21 October 2026',
+  'privacy.updated': 'Last updated 22 October 2026',
   'privacy.toc': 'On this page',
   'privacy.short.heading': 'In short',
   'privacy.short.1': 'Weigh to Go runs no server of its own: no accounts, no analytics.',
@@ -364,7 +364,7 @@ export const en = {
   'privacy.ads.consentTool':
     'The message comes from Google’s consent tool, which the app starts before any ad and which contacts Google to know whether a message is needed where you are.',
   'privacy.ads.choices':
-    'There, and in US states whose laws give you choices, you can change your choices in the app’s settings, under “Privacy choices”.',
+    'There, and in US states whose laws give you choices, you can change your choices in the app, under Your data › iPhone app › “Privacy choices”.',
   'privacy.ads.remove':
     'Buying “Remove ads” stops the ads, and the app no longer starts Google’s ad software or its consent tool, so it sends Google nothing.',
   'privacy.purchase.heading': 'The purchase and ratings',
@@ -1062,9 +1062,11 @@ export const en = {
   'about.web': 'No account, no server of ours, no tracking.',
   'about.app.storage':
     'Your weigh-ins stay in this app on your iPhone, and in your iPhone’s backup if you use iCloud Backup or back up to a computer. We keep nothing: no account, no server of ours, no analytics.',
-  'about.app.shared':
-    'If you turn on Apple Health, weights are shared with Health on this iPhone. Ads come from Google AdMob: they are not personalised and never receive your weigh-ins, but Google gets what any ad request carries, such as the iPhone’s model and network address. Removing the ads stops those requests.',
+  'about.app.shared': 'If you turn on Apple Health, weights are shared with Health on this iPhone.',
+  'about.app.ads':
+    'Ads come from Google AdMob: they are not personalised and never receive your weigh-ins, but Google gets what any ad request carries, such as the iPhone’s model and network address. Removing the ads stops those requests.',
   'ads.choices': 'Privacy choices',
+  'ads.choicesFailed': 'Google’s privacy choices couldn’t open. Try again when you’re online.',
   'about.privacy': 'Privacy policy',
   'about.version': (version: string) => `Weigh to Go ${version}`,
   'data.note':
@@ -1202,7 +1204,7 @@ export const pt: Messages = {
   'privacy.description':
     'O que o Weigh to Go faz com os seus dados, no site e no app para iPhone: suas pesagens ficam no seu aparelho, e nós nunca as recebemos.',
   'privacy.heading': 'Política de privacidade',
-  'privacy.updated': 'Última atualização: 21 de outubro de 2026',
+  'privacy.updated': 'Última atualização: 22 de outubro de 2026',
   'privacy.toc': 'Nesta página',
   'privacy.short.heading': 'Em resumo',
   'privacy.short.1': 'O Weigh to Go não tem servidor próprio: nem contas, nem análise de uso.',
@@ -1253,7 +1255,7 @@ export const pt: Messages = {
   'privacy.ads.consentTool':
     'A mensagem vem da ferramenta de consentimento do Google, que o app inicia antes de qualquer anúncio e que consulta o Google para saber se a mensagem é necessária onde você está.',
   'privacy.ads.choices':
-    'Lá, e nos estados dos EUA cujas leis dão escolhas a você, dá para mudar suas escolhas nas configurações do app, em “Opções de privacidade”.',
+    'Lá, e nos estados dos EUA cujas leis dão escolhas a você, dá para mudar suas escolhas no app, em Seus dados › App para iPhone › “Opções de privacidade”.',
   'privacy.ads.remove':
     'Ao comprar “Remover anúncios”, os anúncios param e o app deixa de iniciar o software de anúncios do Google e a ferramenta de consentimento dele, então não envia nada ao Google.',
   'privacy.purchase.heading': 'A compra e as avaliações',
@@ -1959,9 +1961,12 @@ export const pt: Messages = {
   'about.web': 'Sem conta, sem servidor nosso, sem rastreamento.',
   'about.app.storage':
     'Suas pesagens ficam neste app, no seu iPhone, e no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador. Nós não guardamos nada: sem conta, sem servidor nosso, sem análise de uso.',
-  'about.app.shared':
-    'Se você ligar o app Saúde, os pesos são compartilhados com o Saúde neste iPhone. Os anúncios vêm do Google AdMob: não são personalizados e nunca recebem suas pesagens, mas o Google recebe o que qualquer pedido de anúncio leva, como o modelo do iPhone e o endereço de rede. Remover os anúncios acaba com esses pedidos.',
+  'about.app.shared': 'Se você ligar o app Saúde, os pesos são compartilhados com o Saúde neste iPhone.',
+  'about.app.ads':
+    'Os anúncios vêm do Google AdMob: não são personalizados e nunca recebem suas pesagens, mas o Google recebe o que qualquer pedido de anúncio leva, como o modelo do iPhone e o endereço de rede. Ao remover os anúncios, esses pedidos param.',
   'ads.choices': 'Opções de privacidade',
+  'ads.choicesFailed':
+    'Não foi possível abrir as opções de privacidade do Google. Tente de novo quando estiver on-line.',
   'about.privacy': 'Política de privacidade',
   'about.version': (version: string) => `Weigh to Go ${version}`,
   'data.note':

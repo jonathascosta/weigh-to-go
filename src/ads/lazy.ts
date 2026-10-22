@@ -30,9 +30,7 @@ export function lazyAds(load: () => Promise<AdProvider>): AdProvider {
         listeners.delete(listener);
       };
     },
-    showPrivacyChoices: async () => {
-      await (await loading)?.showPrivacyChoices();
-    },
+    showPrivacyChoices: async () => (await (await loading)?.showPrivacyChoices()) ?? false,
     stop: async () => {
       await (await loading)?.stop();
     },

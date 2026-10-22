@@ -1,17 +1,18 @@
 /**
  * The iPhone app's banner (docs/ux/design.md §8): a native AdMob view at the top, under the status
  * bar, over the web view. The page reserves its height in `--ad-h` (plus the safe area, in
- * `.ad-space`), from the plugin's size event. The banner hides, its band staying so nothing jumps,
- * while a sheet is open, while the keypad is up and during the purchase (classes on `<html>`), and
- * whenever the web view leaves the diary for one of the static pages. Every request is for a
- * non-personalised ad (`npa`), whatever the person consented to (decision 5).
+ * `.ad-space`; band.ts). The banner hides, its band staying so nothing jumps, while a sheet is
+ * open, while the keypad is up and during the purchase (classes on `<html>`), and whenever the web
+ * view leaves the diary for one of the static pages. Every request is for a non-personalised ad
+ * (`npa`), whatever the person consented to (decision 5).
  */
+import type { Pref } from '../data/prefs';
+import { BANNER_HEIGHT, bandPref, setBand } from './band';
+
+export { AD_HEIGHT } from './band';
 
 /** The `<html>` classes during which the banner is hidden: a sheet, the keypad, the purchase. */
 export const HIDING_CLASSES = ['sheet-open', 'typing', 'buying'] as const;
-
-/** The custom property on `<html>` that holds the banner's height, 0 without a banner. */
-export const AD_HEIGHT = '--ad-h';
 
 /** What the banner asks of the plugin: always the same request but for its unit. */
 export interface BannerRequest {
@@ -32,6 +33,7 @@ export interface BannerApi {
   showBanner(request: BannerRequest): Promise<void>;
   hideBanner(): Promise<void>;
   resumeBanner(): Promise<void>;
+  /** Takes the banner's view away; a banner still loading has no view yet, and arrives anyway. */
   removeBanner(): Promise<void>;
   /** The banner's size: its height on a load or a resume, 0 when hidden or gone. */
   onSize(listener: (height: number) => void): Promise<Handle>;
@@ -42,8 +44,17 @@ export interface BannerApi {
 export interface Banner {
   /** Whether the banner is wanted now; follows the first days, the diary and the consent. */
   want(wanted: boolean): void;
-  /** Lets go of the plugin's listeners and the page's, and takes the banner away. */
+  /**
+   * Takes the banner away and lets go of the page's listeners, and of the plugin's once no load
+   * can still arrive (one that does is taken away too).
+   */
   dispose(): Promise<void>;
+}
+
+export interface BannerOptions {
+  readonly onError?: (error: unknown) => void;
+  /** Whether the band was up last time (band.ts). */
+  readonly band?: Pref<boolean>;
 }
 
 type Phase = 'off' | 'loading' | 'loaded' | 'failed';
@@ -56,8 +67,10 @@ export function mountBanner(
   api: BannerApi,
   unit: string,
   doc: Document,
-  onError: (error: unknown) => void = () => undefined,
+  options: BannerOptions = {},
 ): Banner {
+  const onError = options.onError ?? (() => undefined);
+  const band = options.band ?? bandPref;
   const html = doc.documentElement;
   const win = doc.defaultView;
   let wanted = false;
@@ -67,12 +80,11 @@ export function mountBanner(
   /** The web view is on its way to another page (the privacy policy, the 404 page). */
   let leaving = false;
   let disposed = false;
+  /** Loads asked for and not yet arrived or failed: one may arrive after it was taken away. */
+  let pending = 0;
 
   const call = (work: () => Promise<void>) => {
     work().catch(onError);
-  };
-  const setHeight = (px: number) => {
-    html.style.setProperty(AD_HEIGHT, `${String(Math.max(0, Math.ceil(px)))}px`);
   };
   const blocked = () => leaving || HIDING_CLASSES.some((name) => html.classList.contains(name));
 
@@ -82,9 +94,11 @@ export function mountBanner(
       if (phase !== 'off') {
         phase = 'off';
         hidden = false;
-        setHeight(0);
         call(() => api.removeBanner());
       }
+      // No banner wanted: no band, now or at the next launch.
+      setBand(doc, 0);
+      band.write(false);
       return;
     }
     if (phase === 'off') {
@@ -92,6 +106,10 @@ export function mountBanner(
       if (blocked()) return;
       phase = 'loading';
       hidden = false;
+      pending++;
+      // The band first, at the banner's fixed height: the page doesn't move when it arrives.
+      setBand(doc, BANNER_HEIGHT);
+      band.write(true);
       call(() =>
         api.showBanner({ adId: unit, adSize: 'BANNER', position: 'TOP_CENTER', margin: 0, npa: true }),
       );
@@ -107,29 +125,55 @@ export function mountBanner(
     }
   };
 
-  const handles = [
+  const handles: Promise<Handle>[] = [];
+  const pageHandles: Promise<Handle>[] = [];
+  const release = (list: Promise<Handle>[]) =>
+    Promise.all(
+      list.splice(0).map(async (handle) => {
+        try {
+          await (await handle).remove();
+        } catch (error) {
+          onError(error);
+        }
+      }),
+    );
+  /** After a dispose, once nothing more can arrive: the last listeners go. */
+  const settleLate = () => {
+    if (disposed && pending === 0) void release(handles);
+  };
+
+  pageHandles.push(
     api.onSize((height) => {
-      // A hide of ours reports 0 too: the band stays, so nothing jumps. A banner gone says so by
-      // failing, or by being removed here.
-      if (height > 0 && phase !== 'off') setHeight(height);
+      // The band is set when the banner is asked for; a size of 0 (our hide, or a failure) leaves
+      // it, so nothing jumps.
+      if (height > 0 && phase !== 'off' && !disposed) setBand(doc, height);
     }),
+  );
+  handles.push(
     api.onLoaded(() => {
-      if (phase === 'off') return;
+      pending = Math.max(0, pending - 1);
+      if (phase === 'off' || disposed) {
+        // Taken away while it was loading: the plugin had no view to remove then, and adds it now.
+        call(() => api.removeBanner());
+        settleLate();
+        return;
+      }
       phase = 'loaded';
-      // The plugin adds its view, shown, on every load and refresh: hidden again if it must be.
+      // The plugin adds its view, shown, on a new banner's load: hidden again if it must be.
       if (blocked()) {
         hidden = true;
         call(() => api.hideBanner());
       } else hidden = false;
     }),
     api.onFailed(() => {
-      if (phase === 'off') return;
-      // The plugin takes its view away: no band for a banner that isn't there.
+      pending = Math.max(0, pending - 1);
+      settleLate();
+      if (phase === 'off' || disposed) return;
+      // The plugin takes its view away. The band stays, empty, for the rest of the session.
       phase = 'failed';
       hidden = false;
-      setHeight(0);
     }),
-  ];
+  );
 
   const observer =
     typeof MutationObserver === 'function'
@@ -142,19 +186,26 @@ export function mountBanner(
     leaving = true;
     sync();
   };
-  const onPageShow = () => {
+  const onPageShow = (event: Event) => {
     leaving = false;
+    // Back from the back-forward cache: the static page may have hidden the banner; ask anew.
+    if ((event as PageTransitionEvent).persisted && phase !== 'off') phase = 'off';
     sync();
   };
-  const onVisible = () => {
-    // Back in the app: a banner that failed (no network, no fill) is asked for again.
-    if (doc.visibilityState !== 'visible') return;
-    if (phase === 'failed') phase = 'off';
+  const onVisibility = () => {
+    if (phase !== 'failed') return;
+    if (doc.visibilityState === 'hidden') {
+      // Out of sight, the empty band of a banner that failed can go.
+      setBand(doc, 0);
+      return;
+    }
+    // Back in the app: asked for again.
+    phase = 'off';
     sync();
   };
   win?.addEventListener('pagehide', onPageHide);
   win?.addEventListener('pageshow', onPageShow);
-  doc.addEventListener('visibilitychange', onVisible);
+  doc.addEventListener('visibilitychange', onVisibility);
 
   return {
     want: (next) => {
@@ -168,16 +219,9 @@ export function mountBanner(
       observer?.disconnect();
       win?.removeEventListener('pagehide', onPageHide);
       win?.removeEventListener('pageshow', onPageShow);
-      doc.removeEventListener('visibilitychange', onVisible);
-      await Promise.all(
-        handles.map(async (handle) => {
-          try {
-            await (await handle).remove();
-          } catch (error) {
-            onError(error);
-          }
-        }),
-      );
+      doc.removeEventListener('visibilitychange', onVisibility);
+      await release(pageHandles);
+      if (pending === 0) await release(handles);
     },
   };
 }

@@ -40,6 +40,14 @@
 	     AdSetupPlugin.swift. -->
 	<key>WTGAdMobBannerID</key>
 	<string>$(ADMOB_BANNER_ID)</string>
+	<!-- YES only in a TestFlight run "for the App Store" (WTG_APP_STORE_BUILD, fastlane): any other
+	     build shows no ads outside TestFlight. -->
+	<key>WTGAppStoreBuild</key>
+	<string>$(WTG_APP_STORE_BUILD)</string>
+	<!-- A safeguard: Google's measurement doesn't start with the app, only with the SDK, which the
+	     app starts only once ads are due and allowed (docs/sprint-4.md, story 1). -->
+	<key>GADDelayAppMeasurementInit</key>
+	<true/>
 	<!-- GOOGLE'S SKADNETWORK LIST GOES HERE (docs/STORE.md, step 6): one <dict> with
 	     SKAdNetworkIdentifier per id, pasted by the owner from
 	     https://developers.google.com/admob/ios/3p-skadnetworks, never typed from memory.

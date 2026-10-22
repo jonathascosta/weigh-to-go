@@ -19,6 +19,7 @@
  */
 import type { App } from '../app/app';
 import { pref, type Pref } from '../data/prefs';
+import { bandPref, setBand } from './band';
 import { mountBanner, type Banner, type BannerApi } from './banner';
 import { AdConsent, type ConsentApi, type ConsentChoices } from './consent';
 
@@ -28,8 +29,8 @@ export interface AdProvider {
   privacyChoices(): boolean;
   /** Calls `listener` whenever that changes; returns the unsubscribe. */
   onPrivacyChoices(listener: (required: boolean) => void): () => void;
-  /** Google's form to change the choices; resolves once it has closed. */
-  showPrivacyChoices(): Promise<void>;
+  /** Google's form to change the choices; resolves once it has closed, false if it couldn't open. */
+  showPrivacyChoices(): Promise<boolean>;
   /** No more ads, for this session (Remove ads, bought now: story 2). */
   stop(): Promise<void>;
 }
@@ -38,7 +39,7 @@ export interface AdProvider {
 export const NO_ADS: AdProvider = {
   privacyChoices: () => false,
   onPrivacyChoices: () => () => undefined,
-  showPrivacyChoices: () => Promise.resolve(),
+  showPrivacyChoices: () => Promise.resolve(true),
   stop: () => Promise.resolve(),
 };
 
@@ -80,6 +81,8 @@ export interface BuildAds {
   readonly sandbox: boolean;
   /** A debug build. */
   readonly debug: boolean;
+  /** Built by a TestFlight run "for the App Store" (`WTGAppStoreBuild`), the only one with the owner's ids. */
+  readonly appStore: boolean;
 }
 
 /**
@@ -89,6 +92,7 @@ export interface BuildAds {
  */
 export function bannerUnit(build: BuildAds): string | null {
   if (build.sandbox || build.debug) return TEST_BANNER_UNIT;
+  if (!build.appStore) return null;
   const id = build.bannerId.trim();
   return /^ca-app-pub-\d+\/\d+$/.test(id) && !id.startsWith(GOOGLE_SAMPLE_PUBLISHER) ? id : null;
 }
@@ -107,6 +111,8 @@ export interface AdsOptions {
   readonly doc: Document;
   readonly now?: () => number;
   readonly firstLaunch?: Pref<number | null>;
+  /** Whether the band was up last time (band.ts). */
+  readonly band?: Pref<boolean>;
   readonly onError?: (error: unknown) => void;
 }
 
@@ -123,14 +129,19 @@ export function startAds(options: AdsOptions): Ads {
   const { api, doc, app } = options;
   const now = options.now ?? (() => Date.now());
   const firstLaunchStore = options.firstLaunch ?? firstLaunchPref;
+  const band = options.band ?? bandPref;
   const onError = options.onError ?? (() => undefined);
   const html = doc.documentElement;
 
-  let first = firstLaunchStore.read();
-  if (first === null || first > now()) {
-    first = now();
-    firstLaunchStore.write(first);
-  }
+  /** The first launch, read each time: Erase everything clears it, and the 7 days start again. */
+  const firstLaunch = () => {
+    const first = firstLaunchStore.read();
+    if (first !== null && first <= now()) return first;
+    const at = now();
+    firstLaunchStore.write(at);
+    return at;
+  };
+  firstLaunch();
 
   let stopped = false;
   /** Read after an await: `stop` may have come meanwhile. */
@@ -140,6 +151,8 @@ export function startAds(options: AdsOptions): Ads {
   /** Consent may be asked for now: at launch, and on coming back to the app. */
   let mayAsk = true;
   let asking: Promise<void> | null = null;
+  /** The SDK's start, asked for once and shared (a failed one is asked again). */
+  let starting: Promise<void> | null = null;
   let started = false;
   let allowed = false;
   let banner: Banner | null = null;
@@ -148,23 +161,42 @@ export function startAds(options: AdsOptions): Ads {
   const consent = new AdConsent(api, options.choices, onError);
   const cleanups: (() => void)[] = [];
 
-  const due = () => ready && adsDue(first, now(), weighIns);
+  const due = () => ready && adsDue(firstLaunch(), now(), weighIns);
   const busy = () => BUSY_CLASSES.some((name) => html.classList.contains(name));
   const tellChoices = () => {
     for (const listener of choiceListeners) listener(!stopped && consent.privacyOptionsRequired);
   };
+  /** No banner this launch: the band kept from last time goes, and isn't kept for the next. */
+  const noBand = () => {
+    if (banner) return;
+    setBand(doc, 0);
+    band.write(false);
+  };
+  const start = () =>
+    (starting ??= api.initialize().then(
+      () => {
+        started = true;
+      },
+      (error: unknown) => {
+        starting = null;
+        throw error;
+      },
+    ));
 
   const apply = () => {
     if (stopped || unit === null) return;
     if (started && allowed) {
-      banner ??= mountBanner(api, unit, doc, onError);
+      banner ??= mountBanner(api, unit, doc, { onError, band });
       banner.want(due());
       return;
     }
     banner?.want(false);
     // Launch, or the return to the app, has passed with nothing due: the next chance is the next
     // return, so Google's message never comes in the middle of logging.
-    if (ready && !due()) mayAsk = false;
+    if (ready && !due()) {
+      mayAsk = false;
+      noBand();
+    }
     if (asking || !mayAsk || !due() || busy()) return;
     // Google is asked once per launch or return to the app; a refusal stands until then, or until
     // Privacy choices.
@@ -175,12 +207,11 @@ export function startAds(options: AdsOptions): Ads {
         tellChoices();
         if (isStopped()) return;
         allowed = decision === 'ads';
-        if (allowed && !started) {
-          await api.initialize();
-          started = true;
-        }
+        if (allowed) await start();
+        else noBand();
       } catch (error) {
-        // Google couldn't be asked (offline): no ads until the next try.
+        // Google couldn't be asked (offline): no ads until the next try; the band, if any, stays
+        // until the app goes out of sight.
         onError(error);
       } finally {
         asking = null;
@@ -200,6 +231,7 @@ export function startAds(options: AdsOptions): Ads {
     }
     if (held || isStopped()) {
       stopped = true;
+      noBand();
       return;
     }
     try {
@@ -208,7 +240,10 @@ export function startAds(options: AdsOptions): Ads {
       onError(error);
       unit = null;
     }
-    if (unit === null) return;
+    if (unit === null || isStopped()) {
+      noBand();
+      return;
+    }
     cleanups.push(
       app.subscribe((state) => {
         ready = state.status === 'ready';
@@ -224,15 +259,19 @@ export function startAds(options: AdsOptions): Ads {
           })
         : null;
     observer?.observe(html, { attributes: true, attributeFilter: ['class'] });
-    const onVisible = () => {
-      if (doc.visibilityState !== 'visible') return;
+    const onVisibility = () => {
+      if (doc.visibilityState !== 'visible') {
+        // Out of sight with no banner (Google couldn't be asked): the empty band can go.
+        if (!banner) setBand(doc, 0);
+        return;
+      }
       mayAsk = true;
       apply();
     };
-    doc.addEventListener('visibilitychange', onVisible);
+    doc.addEventListener('visibilitychange', onVisibility);
     cleanups.push(() => {
       observer?.disconnect();
-      doc.removeEventListener('visibilitychange', onVisible);
+      doc.removeEventListener('visibilitychange', onVisibility);
     });
   })();
 
@@ -245,20 +284,20 @@ export function startAds(options: AdsOptions): Ads {
       };
     },
     showPrivacyChoices: async () => {
-      if (stopped) return;
-      const decision = await consent.changeChoices();
+      if (stopped) return true;
+      const { decision, opened } = await consent.changeChoices();
       tellChoices();
-      if (isStopped()) return;
+      if (isStopped()) return opened;
       allowed = decision === 'ads';
-      if (allowed && !started) {
+      if (allowed) {
         try {
-          await api.initialize();
-          started = true;
+          await start();
         } catch (error) {
           onError(error);
         }
       }
       apply();
+      return opened;
     },
     stop: async () => {
       stopped = true;
@@ -266,7 +305,8 @@ export function startAds(options: AdsOptions): Ads {
       const was = banner;
       banner = null;
       tellChoices();
-      await was?.dispose();
+      if (was) await was.dispose();
+      else noBand();
     },
     settled: async () => {
       await launch;

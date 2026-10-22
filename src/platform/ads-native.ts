@@ -16,9 +16,15 @@ import type { App } from '../app/app';
 import { NO_ADS, NOTHING_HELD, startAds, type AdProvider, type AdsApi, type BuildAds } from '../ads/ads';
 import type { ConsentChoices, ConsentInfo } from '../ads/consent';
 
+interface SavedChoices {
+  readonly gdprApplies: number;
+  readonly purposeConsents: string;
+  readonly vendorConsents: string;
+}
+
 interface AdSetupPlugin {
   build(): Promise<BuildAds>;
-  consentChoices(): Promise<{ gdprApplies: number; purposeConsents: string; vendorConsents: string }>;
+  consentChoices(): Promise<SavedChoices>;
 }
 
 const AdSetup = registerPlugin<AdSetupPlugin>('AdSetup');
@@ -66,14 +72,14 @@ export const admob: AdsApi = {
     }),
 };
 
-const choices = async (): Promise<ConsentChoices> => {
-  const saved = await AdSetup.consentChoices();
-  return {
-    gdprApplies: saved.gdprApplies === 1 ? true : saved.gdprApplies === 0 ? false : null,
-    purposeConsents: saved.purposeConsents,
-    vendorConsents: saved.vendorConsents,
-  };
-};
+/** The plugin's answer as the consent reads it: `gdprApplies` 1, 0, or -1 when not saved. */
+export const toChoices = (saved: SavedChoices): ConsentChoices => ({
+  gdprApplies: saved.gdprApplies === 1 ? true : saved.gdprApplies === 0 ? false : null,
+  purposeConsents: typeof saved.purposeConsents === 'string' ? saved.purposeConsents : '',
+  vendorConsents: typeof saved.vendorConsents === 'string' ? saved.vendorConsents : '',
+});
+
+const choices = async (): Promise<ConsentChoices> => toChoices(await AdSetup.consentChoices());
 
 /** Whether the app's own plugin is registered: logged as an error if not, so the simulator check fails. */
 function registered(): boolean {

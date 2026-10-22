@@ -177,6 +177,19 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
         chevron(),
       )
     : null;
+  // When Google's form can't open (offline), a line under the row says so; empty, it says nothing.
+  const choicesStatus = h('p', {
+    class: 'status group-pad choices-status',
+    attrs: { role: 'status', id: 'privacy-choices-status' },
+  });
+  let choicesFailed = false;
+  const drawChoicesStatus = () => {
+    const text =
+      choicesFailed && choicesRow && !choicesRow.hidden ? settings().messages['ads.choicesFailed'] : '';
+    if (choicesStatus.textContent !== text) choicesStatus.textContent = text;
+    choicesStatus.hidden = text === '';
+  };
+  drawChoicesStatus();
   const appTitle = h('h2', { attrs: { id: 'app-title' } });
   const appGroup =
     reminder || health || choicesRow
@@ -189,7 +202,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
             { class: 'group' },
             ...(reminder ? [reminder] : []),
             ...(health ? [health] : []),
-            ...(choicesRow ? [choicesRow] : []),
+            ...(choicesRow ? [choicesRow, choicesStatus] : []),
           ),
         )
       : null;
@@ -547,6 +560,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     settingsTitle.textContent = m['settings.label'];
     appTitle.textContent = m['data.group.app'];
     choicesName.textContent = m['ads.choices'];
+    drawChoicesStatus();
     sectionsName.textContent = m['settings.sections'];
     sectionsOn.textContent = m['settings.sectionsOn'](
       SECTIONS.filter((k) => sections.has(k)).length,
@@ -598,18 +612,28 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
           choicesRow.addEventListener('click', () => {
             if (choicesRow.disabled) return;
             choicesRow.disabled = true;
+            choicesFailed = false;
+            drawChoicesStatus();
             ads
               .showPrivacyChoices()
-              .catch((error: unknown) => {
-                console.warn(error);
-              })
+              .then(
+                (opened) => {
+                  choicesFailed = !opened;
+                },
+                (error: unknown) => {
+                  choicesFailed = true;
+                  console.warn(error);
+                },
+              )
               .finally(() => {
+                drawChoicesStatus();
                 choicesRow.disabled = false;
                 if (!choicesRow.hidden) choicesRow.focus({ preventScroll: true });
               });
           });
           return ads.onPrivacyChoices((required) => {
             choicesRow.hidden = !required;
+            drawChoicesStatus();
           });
         })()
       : () => undefined;

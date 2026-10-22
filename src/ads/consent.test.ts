@@ -64,10 +64,10 @@ describe('Google’s consent message', () => {
     const consent = new AdConsent(api, () => Promise.resolve(choices));
     expect(await consent.decide()).toBe('none');
     choices = CONSENTED;
-    expect(await consent.changeChoices()).toBe('ads');
+    expect((await consent.changeChoices()).decision).toBe('ads');
     expect(api.calls).toEqual(['info', 'options', 'info']);
     choices = REFUSED;
-    expect(await consent.changeChoices()).toBe('none');
+    expect((await consent.changeChoices()).decision).toBe('none');
   });
 
   it('keeps its decision after Privacy choices offline, unless the saved choices refuse', async () => {
@@ -81,9 +81,9 @@ describe('Google’s consent message', () => {
     );
     expect(await consent.decide()).toBe('ads');
     api.failInfo = true;
-    expect(await consent.changeChoices()).toBe('ads');
+    expect((await consent.changeChoices()).decision).toBe('ads');
     choices = REFUSED;
-    expect(await consent.changeChoices()).toBe('none');
+    expect((await consent.changeChoices()).decision).toBe('none');
     expect(errors).toHaveLength(2);
   });
 });
@@ -97,5 +97,20 @@ describe('a refusal, in the choices saved on the phone', () => {
     expect(refused({ ...CONSENTED, vendorConsents: '' })).toBe(true);
     expect(refused({ ...REFUSED, gdprApplies: false })).toBe(false);
     expect(refused({ ...REFUSED, gdprApplies: null })).toBe(false);
+  });
+
+  it('counts unreadable choices as a refusal where Google said consent was needed', () => {
+    const unread = { gdprApplies: null, purposeConsents: '', vendorConsents: '' };
+    expect(refused(unread, 'REQUIRED')).toBe(true);
+    expect(refused(unread, 'OBTAINED')).toBe(true);
+    expect(refused(unread, 'NOT_REQUIRED')).toBe(false);
+    expect(refused(unread, 'UNKNOWN')).toBe(false);
+  });
+
+  it('says when Privacy choices’ form couldn’t open', async () => {
+    const api = new FakeAdMob();
+    api.failOptions = true;
+    const consent = consentWith(api, NO_GDPR);
+    expect(await consent.changeChoices()).toEqual({ decision: 'ads', opened: false });
   });
 });

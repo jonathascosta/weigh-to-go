@@ -34,6 +34,13 @@ export class FakeAdMob implements AdsApi {
   /** What the privacy options form leaves behind. */
   afterOptions: Partial<ConsentInfo> = {};
   failInfo = false;
+  /** Privacy choices' form can't open (offline). */
+  failOptions = false;
+  /**
+   * The native banner view, as the plugin keeps it: none; asked for and not yet arrived (no view,
+   * so a remove or a hide finds nothing); or there, shown or hidden.
+   */
+  view: 'none' | 'loading' | 'shown' | 'hidden' = 'none';
   private readonly size = new Set<(height: number) => void>();
   private readonly loaded = new Set<() => void>();
   private readonly failed = new Set<() => void>();
@@ -51,6 +58,7 @@ export class FakeAdMob implements AdsApi {
 
   showPrivacyOptionsForm(): Promise<void> {
     this.calls.push('options');
+    if (this.failOptions) return Promise.reject(new Error('Failed to show privacy options form'));
     this.info = { ...this.info, ...this.afterOptions };
     return Promise.resolve();
   }
@@ -63,21 +71,28 @@ export class FakeAdMob implements AdsApi {
   showBanner(request: BannerRequest): Promise<void> {
     this.calls.push('show');
     this.banners.push(request);
+    this.view = 'loading';
     return Promise.resolve();
   }
 
   hideBanner(): Promise<void> {
     this.calls.push('hide');
+    if (this.view === 'shown') this.view = 'hidden';
     return Promise.resolve();
   }
 
   resumeBanner(): Promise<void> {
     this.calls.push('resume');
+    if (this.view === 'none' || this.view === 'loading')
+      return Promise.reject(new Error('AdMob: not find subView for resumeBanner'));
+    this.view = 'shown';
     return Promise.resolve();
   }
 
   removeBanner(): Promise<void> {
     this.calls.push('remove');
+    // A banner still loading has no view yet: the remove finds nothing, and it arrives anyway.
+    if (this.view !== 'loading') this.view = 'none';
     return Promise.resolve();
   }
 
@@ -93,8 +108,12 @@ export class FakeAdMob implements AdsApi {
     return this.listen(this.failed, listener);
   }
 
-  /** The native side: a banner loaded, at this height. */
+  /**
+   * The native side: a banner loaded, at this height. A new one's view is added shown; a refresh
+   * keeps the view as it was.
+   */
   load(height = 50): void {
+    if (this.view === 'loading') this.view = 'shown';
     for (const listener of this.loaded) listener();
     for (const listener of this.size) listener(height);
   }
@@ -106,6 +125,7 @@ export class FakeAdMob implements AdsApi {
 
   /** The native side: no ad (no network, no fill); the plugin takes its view away. */
   fail(): void {
+    this.view = 'none';
     for (const listener of this.size) listener(0);
     for (const listener of this.failed) listener();
   }

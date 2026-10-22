@@ -50,8 +50,9 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    turn on automatic distribution, and add yourself. Then install Apple's TestFlight app on the
    iPhone, accept the invitation, install the build and use it. Every later build is the same: run
    the workflow, install it from TestFlight, report what feels wrong. Leave **For the App Store**
-   unticked for these: such a build shows Google's test ads from TestFlight and none at all if it
-   ever reached the App Store (step 11 needs a build with it ticked).
+   unticked for these: such a build carries none of your AdMob ids, shows Google's test ads from
+   TestFlight, and would show no ads at all on the App Store. Step 11 needs a build from a run with
+   it ticked.
 5. **The in-app purchase.** In the app's Monetization, In-App Purchases, create a **Non-Consumable**
    with the product id `net.jonathas.weightogo.removeads`, a reference name ("Remove ads"), the price
    you choose, the display name and description in English and Portuguese ("Remove ads" · "Pay once
@@ -64,13 +65,16 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
      unit id, `ca-app-pub-…/…`), both or neither. Installed from TestFlight the app shows Google's
      test ads anyway (it knows TestFlight by its sandbox receipt), so your own use never counts as
      invalid traffic; from the App Store it shows yours. A run of the TestFlight workflow with **For
-     the App Store** ticked fails without both. The ids reach only the workflow's check and its
-     signing step.
+     the App Store** ticked fails without both; only such a run puts them in the app. The ids reach
+     only the workflow's check and its signing step.
    - Add your iPhone as a test device (Settings, Test devices), as for Arrows.
    - In Privacy & messaging, add the app to a European regulations (GDPR) message and to a US
      state regulations message, and publish both: the privacy policy promises the choices in
      Privacy choices in the EEA, the UK, Switzerland and US states whose laws give them. No IDFA
-     explainer: the app never asks for tracking.
+     explainer: the app never asks for tracking. **A safeguard before the release:** on your own
+     install in Portugal, Google's GDPR message must show on the 8th day after the first launch
+     (at the first launch from then on, with a weigh-in in the diary). If it doesn't, stop the release
+     and tell a session: the app would be showing ads in the EEA without asking.
    - In Blocking controls, set the maximum ad content rating, and block sensitive categories that
      don't belong next to a weight diary (dieting and weight-loss products among them, where offered).
    - `app-ads.txt` is already on jonathas.net for the account. Once the app is live, link it to its
@@ -121,6 +125,22 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
       (Arrows 1.0 was approved with an older build and needed a 1.0.1 at once) and by a run with
       **For the App Store** ticked (the run's page in the Actions tab shows its inputs). Add the
       in-app purchase to the version.
+    - **Before the release, check that the app sends Google nothing when it mustn't.** On a TestFlight
+      build from a run **for the App Store**, with a network log (a proxy on the Mac of a friend,
+      such as Proxyman or Charles, or Instruments' Network template), see no request to Google
+      (`*.google.com`, `*.googleapis.com`, `*.doubleclick.net`, `*.googlesyndication.com`,
+      `app-measurement.com` and the like) in each of these states: a fresh install in its first 7
+      days, with weigh-ins; Remove ads held (bought in the sandbox, the app opened again); a refusal
+      in Google's message; and, within one session, after withdrawing consent in Privacy choices and
+      after buying Remove ads (no new requests from then on). If any shows one, stop the release and
+      tell a session.
+    - **The banner clip first, on the install you use.** The recording below starts from a fresh
+      install, and reinstalling starts the first 7 days again (a backup doesn't carry them), so the
+      banner shows on that install only after a week. Before deleting the app, on an install in use
+      for 7 days or more (or on another iPhone that has one), record a short clip of the diary with
+      the banner at the top (shown, never tapped: tapping one's own ads breaks AdMob's policy), and
+      of Your data, iPhone app, **Privacy choices**, with Google's form open: Google shows its
+      consent message once per install, so the form stands in for it.
     - **The first submission needs a screen recording and the full review notes**, or a new app
       gets "Guideline 2.1 - Information Needed" instead of a review (Arrows, 5 October 2026). The
       recording starts from a fresh install, which erases the diary on that phone: first export a
@@ -129,14 +149,13 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
       iPhone set to English with the latest iOS, start the screen recording from Control Center, and
       show, slowly: the first weigh-in, the summary and a chart, an analysis card, turning on Apple
       Health and its permission sheet, the reminder, buying Remove ads in the sandbox and Restore
-      Purchases, settings and the privacy policy. The banner and the consent message come only from
-      the 8th day after the first launch, once the diary has a weigh-in, so a fresh install shows
-      neither: record them afterwards on your own install (the banner shown, never tapped: tapping
-      one's own ads breaks AdMob's policy) and add that clip. Two to four minutes; trim the
+      Purchases, settings and the privacy policy. Two to four minutes, plus the banner clip; trim the
       ends in Photos. Paste the [review notes](#app-review-notes) in the App Review Information's
-      Notes and attach the recording.
+      Notes and attach both.
     - Trader status (Digital Services Act) is declared once for the account (done for Arrows on 4
       October 2026); nothing new is needed unless the declaration moves to a business address.
+    - The EEA safeguard of step 6: on your own install in Portugal, Google's GDPR message showed on
+      the 8th day. If it didn't, don't submit.
     - Submit. After the release, tell the session: the website then gets the App Store links.
 
 ## App Review notes
@@ -166,7 +185,7 @@ No setup or login. Type today's weight and tap Save. [Screens and settings to be
   stays on the device and in Health, and is never used for advertising.
 - Google AdMob (Google Mobile Ads SDK): a banner at the top, non-personalised ads only, no tracking
   prompt. It shows from the 8th day after the first launch, once the diary has a weigh-in, so a
-  fresh install shows none (the recording shows it on an install in use); never while logging.
+  fresh install shows none (an attached clip shows it on an install in use); never while logging.
 - Google User Messaging Platform: the consent message where the law requires it, when the ads first
   start; a refusal means no ads. Privacy choices in Your data where it applies.
 - StoreKit: the one-time "Remove ads" purchase, verified on the device; Restore Purchases in

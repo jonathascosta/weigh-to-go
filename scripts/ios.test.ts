@@ -88,6 +88,21 @@ describe('the iPhone app', () => {
     expect(setting('ADMOB_BANNER_ID')).toEqual(['', '']);
   });
 
+  it('marks only a run for the App Store as one, the only build with the owner’s ids', () => {
+    expect(infoPlist).toMatch(/<key>WTGAppStoreBuild<\/key>\s*<string>\$\(WTG_APP_STORE_BUILD\)<\/string>/);
+    expect(setting('WTG_APP_STORE_BUILD')).toEqual(['NO', 'NO']);
+    const fastfile = read('ios/App/fastlane/Fastfile');
+    expect(fastfile).toMatch(/WTG_APP_STORE_BUILD='#\{app_store_build \? "YES" : "NO"\}'/);
+    const workflow = read('.github/workflows/testflight.yml');
+    expect(workflow).toContain("ADMOB_APP_ID: ${{ inputs.app_store && secrets.ADMOB_APP_ID || '' }}");
+    expect(workflow).toContain("ADMOB_BANNER_ID: ${{ inputs.app_store && secrets.ADMOB_BANNER_ID || '' }}");
+    expect(workflow).toContain("WTG_APP_STORE_BUILD: ${{ inputs.app_store && 'YES' || 'NO' }}");
+  });
+
+  it('delays Google’s measurement until the SDK starts, which waits for ads to be due and allowed', () => {
+    expect(infoPlist).toMatch(/<key>GADDelayAppMeasurementInit<\/key>\s*<true\/>/);
+  });
+
   it('never asks to track, and builds the AdMob plugin from its package', () => {
     expect(infoPlist).not.toContain('NSUserTrackingUsageDescription');
     expect(read('ios/App/CapApp-SPM/Package.swift')).toContain(

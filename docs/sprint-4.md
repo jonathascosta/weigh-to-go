@@ -42,6 +42,11 @@ both change together, in the same pull request.
          design wrote (design §7): ads from Google AdMob, not personalised, never given the
          weigh-ins, what any ad request carries, and that removing the ads stops those requests;
          left out until the ads ship (decision 109).
+   - [ ] Before the release, on a TestFlight build from a run for the App Store, a network log (a
+         proxy, or Instruments) shows no request to Google in the first 7 days, with Remove ads
+         held, after a refusal in Google's message, and from the moment consent is withdrawn in
+         Privacy choices or Remove ads is bought during a session (STORE.md, step 11). Info.plist's
+         `GADDelayAppMeasurementInit` is a safeguard, not the proof.
 
    _As built (22 October 2026)._ `@capacitor-community/admob` 8.2.1, unpatched (decision 120).
    `src/ads/` holds the seam (`AdProvider`, `NO_ADS`, the `Entitlement` stub that story 2 replaces),
@@ -55,7 +60,11 @@ both change together, in the same pull request.
    receipt; the TestFlight workflow's **For the App Store** run needs both AdMob ids and Google's
    SKAdNetwork list, still to be pasted (decisions 123 and 124). Privacy choices is a row of the
    iPhone app group (decision 127). The first checklist item, Google's data disclosure page, is the
-   owner's (STORE.md, step 9; decision 130). Not yet checked on a device: the consent message, the
+   owner's (STORE.md, step 9; decision 130). After the reviews (decisions 125 and 131 to 134): the
+   band is up from the moment the banner is asked for and from the first paint of a launch after
+   one with it, a banner taken away while loading is taken away again when it arrives, only App
+   Store runs carry the owner's ids, and the fit test checks the app with the band. Not yet checked
+   on a device: the consent message, the
    banner's place under the status bar, and its hiding; the simulator run starts with an empty
    diary, so it reaches none of Google's code.
 

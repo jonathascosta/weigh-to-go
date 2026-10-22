@@ -733,15 +733,24 @@ decisions above.
      it are well formed and unique, and the App Store run fails while it is empty. No id was typed
      or copied, not even Arrows', whose list this session can't check against Google's page.
      _Alternative:_ a JSON file the build turns into Info.plist entries.
-125. **The banner and its band.** One 320 × 50 banner (`BANNER`, as the design asks), at the top,
-     `margin` 0, below the safe area. `--ad-h` follows the plugin's size event; the 0 the plugin
-     reports for a hide of ours is ignored, so the band stays and nothing jumps; it goes back to 0
-     when no ad comes (the plugin removes its view) or the banner is taken away. A banner isn't
-     requested while it would have to hide at once; one that loads (or refreshes) while a sheet, the
-     keypad or the purchase is up is hidden again, since the plugin adds its view shown on every
-     load. A failed banner is asked for again on the next return to the app. The purchase's class
-     on `<html>` is `buying`, for story 2. _Alternative:_ the adaptive banner, which is taller on
-     wide phones.
+125. **The banner and its band** (revised after DaVinci's review, open to the owner). One 320 × 50
+     banner (`BANNER`, as the design asks), at the top, `margin` 0, below the safe area. The band
+     (`--ad-h`) is 50 px **from the moment the banner is asked for**, not from the size event a
+     second or more later, so the page doesn't move when it arrives; the size event only corrects
+     it. It stays while the banner hides (the plugin's 0 for a hide of ours is ignored), and **after
+     a failure** (no network, no fill, the plugin removing its view): the empty band stays for the
+     rest of the session and goes only when the app goes out of sight (`visibilitychange` to
+     hidden); back in sight the banner is asked for again, the band first. The app remembers in a
+     screen preference (`adBand`) whether the band was up, and `main.ts` puts it back before the
+     diary shows (the frame check reveals the page), so someone past the first days never sees it
+     arrive, and a return from the privacy policy doesn't move the page. It goes, and the preference
+     with it, when a launch shows no banner (the purchase held, the first days, an empty diary, a
+     refusal, no ad unit). A banner isn't requested while it would have to hide at once; one that
+     loads while a sheet, the keypad or the purchase is up is hidden again (a flash of the new view
+     before that hide is possible, since the plugin adds it shown: to check on a device). The
+     purchase's class on `<html>` is `buying`, for story 2. _Alternatives:_ the band from the size
+     event (the page moves by 50 px 1 to 3 seconds after opening, and on every failure); or the
+     adaptive banner, taller on wide phones.
 126. **Off the diary, no banner.** The diary hides it on `pagehide` (and shows it again on a
      `pageshow` from the back-forward cache), and every static page of the app's build (the privacy
      policy in both languages and the 404 page) hides it again as it opens, and once more if a
@@ -764,3 +773,30 @@ decisions above.
      no SDK and no ads on a refusal, Privacy choices where it applies, nothing started once Remove
      ads is held), except what only Google's data disclosure page can confirm: what the SDK
      collects (`privacy.ads.collects`). Checking it is the owner's (STORE.md, step 9).
+131. **A banner taken away while loading is taken away again when it arrives** (Spock's review). The
+     plugin's `removeBanner` finds no view until the ad arrives, then adds it shown: the banner
+     keeps listening for that arrival, after it was disposed too (story 2's `stop()` right after a
+     purchase), and removes it then.
+132. **Only a run for the App Store carries the owner's ids** (Atlas's and Spock's reviews). The
+     TestFlight workflow passes `ADMOB_APP_ID` and `ADMOB_BANNER_ID` to fastlane, and
+     `WTG_APP_STORE_BUILD=YES` (Info.plist's `WTGAppStoreBuild`), only when **For the App Store** is
+     ticked; any other build names Google's test app, and outside TestFlight it shows no ads at all
+     (`bannerUnit` is null without the flag). _Alternative:_ the ids in every build that has them.
+133. **The consent, read strictly** (Spock's review). Where the saved choices say nothing of the
+     GDPR but Google's status is REQUIRED or OBTAINED, they count as a refusal; `IABTCF_gdprApplies`
+     is read as a number or a string. In a US state, a person who used Privacy choices could then
+     see no ads if Google saved no TCF keys there (to check on a device). The SDK's start is one
+     shared call. Privacy choices that can't open say so under the row ("Google’s privacy choices
+     couldn’t open. Try again when you’re online." / "Não foi possível abrir as opções de privacidade
+     do Google. Tente de novo quando estiver on-line.", proposed wording). Info.plist's
+     `GADDelayAppMeasurementInit` keeps Google's measurement from starting with the app, a
+     safeguard; the proof is the owner's network log before the release (STORE.md, step 11).
+134. **Smaller choices from the reviews.** Erase everything starts the first 7 days again at once,
+     not at the next launch (the first launch is read each time). About's ads sentences are a key
+     and a paragraph of their own, `about.app.ads`, the Portuguese ending "Ao remover os anúncios,
+     esses pedidos param." (proposed). The policy says where Privacy choices is ("Your data › iPhone
+     app"), dated 22 October 2026. The Swift packages as Xcode resolves them are printed by the iOS
+     workflow and kept with its screenshot, since a session without a Mac can't write
+     `Package.resolved`: Google's Mobile Ads SDK is pinned exactly by the plugin, UMP only to the
+     next minor, until the file is committed from that artifact. A banner page restored from the
+     back-forward cache asks for its banner anew.

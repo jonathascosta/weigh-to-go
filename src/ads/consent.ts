@@ -43,10 +43,13 @@ export const GOOGLE_VENDOR_ID = 755;
 /**
  * Whether the person refused where the law asks for consent: UMP lets ads be requested after a
  * refusal too ("limited ads"), so the saved choices say it. Consent means purpose 1 (storing and
- * reading on the device, which any ad request needs) and Google as a vendor.
+ * reading on the device, which any ad request needs) and Google as a vendor. With no word on the
+ * GDPR from the saved choices but a consent Google says was needed (`status` REQUIRED or OBTAINED),
+ * the choices can't be read, and count as a refusal.
  */
-export function refused(choices: ConsentChoices): boolean {
-  if (choices.gdprApplies !== true) return false;
+export function refused(choices: ConsentChoices, status = 'NOT_REQUIRED'): boolean {
+  if (choices.gdprApplies === null) return status === 'REQUIRED' || status === 'OBTAINED';
+  if (!choices.gdprApplies) return false;
   return (
     choices.purposeConsents.charAt(0) !== '1' || choices.vendorConsents.charAt(GOOGLE_VENDOR_ID - 1) !== '1'
   );
@@ -65,6 +68,8 @@ export class AdConsent {
   private privacyOptions = false;
   /** The last decision, kept for a check of the choices made offline. */
   private last: Decision = 'none';
+  /** Google's last consent status. */
+  private status = 'UNKNOWN';
 
   constructor(
     api: ConsentApi,
@@ -100,15 +105,18 @@ export class AdConsent {
 
   /**
    * Google's form to change the choices, from Privacy choices in Your data; then the decision
-   * again, which may now allow ads or take them back.
+   * again, which may now allow ads or take them back. `opened` is false when the form couldn't
+   * show (offline, most often).
    */
-  async changeChoices(): Promise<Decision> {
+  async changeChoices(): Promise<{ decision: Decision; opened: boolean }> {
+    let opened = true;
     try {
       await this.api.showPrivacyOptionsForm();
     } catch (error) {
+      opened = false;
       this.onError(error);
     }
-    return this.decideQuietly();
+    return { decision: await this.decideQuietly(), opened };
   }
 
   /** The decision from what Google and the saved choices say now, with no message shown. */
@@ -118,14 +126,15 @@ export class AdConsent {
     } catch (error) {
       // Offline after the form: what it saved on the phone still says whether the person refused.
       this.onError(error);
-      this.last = this.last === 'ads' && !refused(await this.choices()) ? 'ads' : 'none';
+      this.last = this.last === 'ads' && !refused(await this.choices(), this.status) ? 'ads' : 'none';
       return this.last;
     }
   }
 
   private async conclude(info: ConsentInfo): Promise<Decision> {
     this.privacyOptions = info.privacyOptionsRequirementStatus === 'REQUIRED';
-    this.last = info.canRequestAds && !refused(await this.choices()) ? 'ads' : 'none';
+    this.status = info.status;
+    this.last = info.canRequestAds && !refused(await this.choices(), info.status) ? 'ads' : 'none';
     return this.last;
   }
 }

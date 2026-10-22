@@ -39,7 +39,7 @@ vi.mock('@capacitor-community/admob', () => ({
   },
 }));
 
-const { admob, hideBannerHere, nativeAds } = await import('./ads-native');
+const { admob, hideBannerHere, nativeAds, toChoices } = await import('./ads-native');
 const { NO_ADS } = await import('../ads/ads');
 
 beforeEach(() => {
@@ -76,5 +76,19 @@ describe('the plugin, as the ads call it', () => {
   it('gives no ads in a browser (the app’s pages in the end-to-end tests)', () => {
     native = false;
     expect(nativeAds({ subscribe: () => () => undefined })).toBe(NO_ADS);
+  });
+});
+
+describe('the choices saved on the phone, as the plugin gives them', () => {
+  it('read 1 as the GDPR applying, 0 as not, and -1 (not saved) as unknown', () => {
+    const saved = { purposeConsents: '11', vendorConsents: '01' };
+    expect(toChoices({ ...saved, gdprApplies: 1 })).toEqual({ ...saved, gdprApplies: true });
+    expect(toChoices({ ...saved, gdprApplies: 0 })).toEqual({ ...saved, gdprApplies: false });
+    expect(toChoices({ ...saved, gdprApplies: -1 })).toEqual({ ...saved, gdprApplies: null });
+    expect(
+      toChoices({ gdprApplies: 1, purposeConsents: null, vendorConsents: undefined } as unknown as Parameters<
+        typeof toChoices
+      >[0]),
+    ).toEqual({ gdprApplies: true, purposeConsents: '', vendorConsents: '' });
   });
 });

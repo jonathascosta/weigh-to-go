@@ -4,6 +4,7 @@ import { onSettingsChange, setPageLang, t, translatePage, watchSettings } from '
 import { isLang } from './i18n/locale';
 import { en } from './i18n/messages';
 import { createApp } from './app/app';
+import { restoreBand } from './ads/band';
 import { lazyAds } from './ads/lazy';
 import { lazyNotifier } from './reminders/keeper';
 import { mountSettings } from './settings-ui';
@@ -12,6 +13,10 @@ import { mountUpdateNotice } from './ui/update';
 import { registerWorker } from './worker';
 
 watchForProblems();
+
+// The iPhone app's band for its banner, as the app last left it, before the diary shows (the frame
+// check reveals it): someone past the first days never sees the band arrive (decision 125).
+if (import.meta.env.MODE === 'ios') restoreBand(document);
 
 // The page's text goes into the reader's language before the frame check reveals it; if that
 // fails, the page is revealed as written, never left hidden or skipping the frame check.
