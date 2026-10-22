@@ -8,6 +8,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { APP_STORE_ID, appStoreUrl } from './app-store.mjs';
 import { contentSecurityPolicy } from './csp.mjs';
 
 export const SITE = 'https://weightogo.jonathas.net/';
@@ -329,6 +330,34 @@ export function findPagesUnderTheBanner(files) {
   return problems;
 }
 
+/**
+ * The App Store's Smart App Banner and footer link (scripts/app-store.mjs): with an id, on every page
+ * of the website, pointing at the app; without one (and always in the app's build), on none, and no
+ * placeholder left over.
+ * @param {{ name: string, text: string }[]} files
+ * @param {string} id APP_STORE_ID, or '' for the app's build.
+ * @returns {string[]}
+ */
+export function findAppStoreProblems(files, id) {
+  const problems = [];
+  const url = appStoreUrl(id);
+  for (const { name, text } of files.filter((file) => file.name.endsWith('.html'))) {
+    if (text.includes('data-app-store')) problems.push(`${name}: the App Store link's placeholder is left`);
+    const banners = text.match(/<meta name="apple-itunes-app"[^>]*>/g) ?? [];
+    if (url === null) {
+      if (banners.length > 0) problems.push(`${name}: has a Smart App Banner, with no App Store id`);
+      if (text.includes('apps.apple.com'))
+        problems.push(`${name}: links the App Store, with no App Store id`);
+    } else {
+      if (banners.length !== 1 || banners[0] !== `<meta name="apple-itunes-app" content="app-id=${id}" />`)
+        problems.push(`${name}: lacks the Smart App Banner for app-id=${id}`);
+      if (!text.includes(`<a href="${url}" data-i18n="footer.appStore">`))
+        problems.push(`${name}: its footer doesn't link ${url}`);
+    }
+  }
+  return problems;
+}
+
 /** @param {string} dist */
 function readSite(dist) {
   return readdirSync(dist, { recursive: true, encoding: 'utf8' })
@@ -346,6 +375,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     ...findTooNewCss(files),
     ...findAdCode(files).map((name) => `${name}: carries ad code, which the website must not`),
     ...findPurchaseCode(files).map((name) => `${name}: carries purchase code, which the website must not`),
+    ...findAppStoreProblems(files, APP_STORE_ID),
   ];
   // The iPhone app's build, when it is there (npm run build:ios): the same check of its CSS.
   const app = fileURLToPath(new URL('../dist-ios', import.meta.url));
@@ -354,6 +384,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const appFiles = readSite(app);
     problems.push(...findTooNewCss(appFiles).map((problem) => `dist-ios/${problem}`));
     problems.push(...findPagesUnderTheBanner(appFiles).map((problem) => `dist-ios/${problem}`));
+    // The app is the app: no banner offering it, no link to it.
+    problems.push(...findAppStoreProblems(appFiles, '').map((problem) => `dist-ios/${problem}`));
     if (findAdCode(appFiles).length === 0)
       problems.push("dist-ios/: no ad code found, so the website's check for it looks for the wrong thing");
     if (findPurchaseCode(appFiles).length === 0)

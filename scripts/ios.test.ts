@@ -33,6 +33,41 @@ describe('the iPhone app', () => {
   it('has the version in package.json, the one the App Store shows', () => {
     const { version } = JSON.parse(read('package.json')) as { version: string };
     expect(setting('MARKETING_VERSION')).toEqual([version, version]);
+    // Three numbers, as App Store Connect takes them; 1.0.0 is the first release (story 5).
+    expect(version).toMatch(/^[1-9]\d*\.\d+\.\d+$/);
+    const lock = JSON.parse(read('package-lock.json')) as {
+      version: string;
+      packages: Record<string, { version?: string }>;
+    };
+    expect([lock.version, lock.packages[''].version]).toEqual([version, version]);
+    expect(infoPlist).toMatch(
+      /<key>CFBundleShortVersionString<\/key>\s*<string>\$\(MARKETING_VERSION\)<\/string>/,
+    );
+  });
+
+  it('takes its build number from the TestFlight run, a new one for every upload', () => {
+    expect(infoPlist).toMatch(
+      /<key>CFBundleVersion<\/key>\s*<string>\$\(CURRENT_PROJECT_VERSION\)<\/string>/,
+    );
+    // The project's own number is only Xcode's; the workflow numbers every upload (run × 100 + attempt).
+    const workflow = read('.github/workflows/testflight.yml');
+    expect(workflow).toContain(
+      'echo "BUILD_NUMBER=$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))" >> "$GITHUB_ENV"',
+    );
+    expect(read('ios/App/fastlane/Fastfile')).toContain(`xcargs: "CURRENT_PROJECT_VERSION='#{build_number}'`);
+  });
+
+  it('records, after the upload, the commit each build number was made from (decision 171)', () => {
+    const workflow = read('.github/workflows/testflight.yml');
+    const upload = workflow.indexOf('run: bundle exec fastlane beta');
+    const record = workflow.indexOf('- name: Record the build');
+    expect(upload).toBeGreaterThan(0);
+    expect(record).toBeGreaterThan(upload);
+    const step = workflow.slice(record);
+    expect(step).toContain('$GITHUB_SHA');
+    expect(step).toContain('$BUILD_NUMBER');
+    expect(step).toContain('>> "$GITHUB_STEP_SUMMARY"');
+    expect(step).toContain('/compare/$GITHUB_SHA...main');
   });
 
   it('is the App Store app net.jonathas.weightogo, built from dist-ios', () => {

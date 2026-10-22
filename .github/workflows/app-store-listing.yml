@@ -60,7 +60,7 @@ jobs:
 
       # The text's limits and the screenshots' size, checked again before anything is sent.
       - run: npm ci --ignore-scripts
-      - run: npx vitest run scripts/listing.test.ts
+      - run: npx vitest run scripts/listing.test.ts scripts/review.test.ts
 
       # fastlane and its dependencies at the versions in ios/App/Gemfile.lock.
       - name: Set up Ruby and fastlane

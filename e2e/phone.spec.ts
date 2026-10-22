@@ -8,6 +8,7 @@
  */
 import { existsSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
+import { pt } from '../src/i18n/messages';
 import { loadBackup, previewServer, watch } from './helpers';
 
 // The phone project's 390 × 844 with touch (playwright.config.ts).
@@ -469,6 +470,25 @@ test('sets the language, the units and the sections from Your data', async ({ pa
   // The footer's words are in About on a phone.
   await expect(page.locator('.site-footer')).toBeHidden();
   await expect(page.locator('#about-policy')).toHaveAttribute('href', '/pt/privacidade.html');
+  // About's links on a line of their own are a finger's 44 px: the policy's, and the App Store's,
+  // shown once APP_STORE_ID is set (scripts/app-store.mjs), here a stand-in with its classes.
+  const heights = await page.locator('#about-policy').evaluate(
+    (policy, { name, backup }) => {
+      const store = document.createElement('a');
+      store.className = 'about-link own-line';
+      store.href = 'https://apps.apple.com/app/id1234567890';
+      store.textContent = name;
+      const line = document.createElement('p');
+      line.append(store, '. ', backup);
+      policy.closest('p')?.after(line);
+      const measured = [policy, store].map((a) => a.getBoundingClientRect().height);
+      line.remove();
+      return measured;
+    },
+    { name: pt['about.appStore'], backup: pt['about.appStoreBackup'] },
+  );
+  // Half a pixel for the layout's rounding, as the fit test allows.
+  for (const height of heights) expect(height).toBeGreaterThanOrEqual(43.5);
   await check();
 });
 

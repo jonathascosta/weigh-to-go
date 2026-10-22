@@ -41,8 +41,8 @@ afterEach(() => {
 
 describe('the rating rule', () => {
   it('waits for a few days of use, once per minor version', () => {
-    expect(shouldAskForReview(null, '0.1.0', REVIEW_AFTER - 1)).toBe(false);
-    expect(shouldAskForReview(null, '0.1.0', REVIEW_AFTER)).toBe(true);
+    expect(shouldAskForReview(null, '1.0.0', REVIEW_AFTER - 1)).toBe(false);
+    expect(shouldAskForReview(null, '1.0.0', REVIEW_AFTER)).toBe(true);
     expect(minorOf('1.4.2')).toBe('1.4');
     expect(shouldAskForReview('1.4', '1.4.2', REVIEW_AFTER)).toBe(false);
     expect(shouldAskForReview('1.4', '1.5.0', REVIEW_AFTER)).toBe(true);
