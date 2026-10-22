@@ -5,7 +5,7 @@ import { isLang } from './i18n/locale';
 import { en } from './i18n/messages';
 import { createApp } from './app/app';
 import { restoreBand } from './ads/band';
-import { lazyAds } from './ads/lazy';
+import { lazyAds, lazyPurchase } from './ads/lazy';
 import { lazyNotifier } from './reminders/keeper';
 import { mountSettings } from './settings-ui';
 import { mountDashboard } from './ui/dashboard';
@@ -51,16 +51,23 @@ if (checkFrame(openLabel)) {
     watchSettings(window);
   }
   const app = appBox ? createApp(import.meta.env.MODE === 'ios' ? openNative : undefined) : null;
-  // Its banner and Google's consent message (src/ads, platform/ads-native.ts): never on the website.
-  const ads =
+  // Remove ads, one purchase checked with StoreKit on the phone (src/ads/purchase.ts,
+  // platform/purchase-native.ts), and the banner and Google's consent message, which wait for
+  // StoreKit's answer (src/ads, platform/ads-native.ts): never on the website.
+  const purchase =
     import.meta.env.MODE === 'ios' && app
-      ? lazyAds(async () => (await import('./platform/ads-native')).nativeAds(app))
+      ? lazyPurchase(async () => (await import('./platform/purchase-native')).nativePurchase())
+      : undefined;
+  const ads =
+    import.meta.env.MODE === 'ios' && app && purchase
+      ? lazyAds(async () => (await import('./platform/ads-native')).nativeAds(app, purchase))
       : undefined;
   const board =
     appBox && app
       ? mountDashboard(appBox, app, {
           notifier,
           ads,
+          purchase,
           nav: document.getElementById('tabs'),
           intro: document.querySelector<HTMLElement>('main .intro'),
         })

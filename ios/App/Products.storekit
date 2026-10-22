@@ -1,0 +1,50 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "5E1D0A7C",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : true,
+      "internalID" : "6754000001",
+      "localizations" : [
+        {
+          "description" : "Pay once and never see ads again",
+          "displayName" : "Remove ads",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Pague uma vez e nunca mais veja anúncios",
+          "displayName" : "Remover anúncios",
+          "locale" : "pt_BR"
+        }
+      ],
+      "productID" : "net.jonathas.weightogo.removeads",
+      "referenceName" : "Remove ads",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA"
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

@@ -82,6 +82,27 @@ both change together, in the same pull request.
    StoreKit's current-entitlements answer before starting UMP or the SDK, with a test that a held
    purchase found then starts neither.
 
+   _As built (22 October 2026)._ `@capgo/native-purchases` 8.9.5 (decision 135), loaded only in the
+   app's build: `src/ads/purchase.ts` decides from StoreKit's current entitlements (verified
+   transactions only), and a screen preference only paints the first view (decision 136);
+   `platform/purchase-native.ts` is the plugin's side, and the app's `AdSetup` plugin says whether
+   purchases are allowed. The ads wait for StoreKit's answer at launch, start nothing while it is
+   held (or when there is no answer), and `stop()` the moment it becomes held in a session, bought,
+   restored or approved (Ask to Buy), with unit tests of all three with a fake App Store. Your data ›
+   iPhone app has **Remove ads** (the price from StoreKit, asked for once Your data shows, decision
+   137; the App Store's sheet as the confirmation, decision 138; every state of design §7 and two
+   more, decision 139) and **Restore purchases**; `buying` is on `<html>` while Apple's sheet is up.
+   About says the ads are gone once held (decision 140); the policy is unchanged (decision 142).
+   `check:dist` fails when the website's scripts carry purchase code. STORE.md's step 5 has the
+   owner's sandbox round without buying, and step 11 ends with the one TestFlight purchase, recorded
+   and logged (decision 145), and the review notes the purchase;
+   `npm run store:screenshots` makes the purchase's review screenshot (decision 144).
+   `AppStoreKitTests`, hosted in the app, runs on the macOS runner with `ios/App/Products.storekit`
+   in an `SKTestSession`: the product and its price, a purchase held, a refund, Ask to Buy approved
+   and declined (decision 143). Launch's answer about the purchase never undoes a newer one
+   (decision 136). Not checked on a device yet: the purchase sheet, Restore and the banner going at
+   once, which are the owner's TestFlight round.
+
 3. **Privacy.** The privacy policy in both languages, in the app and on jonathas.net: what stays on
    the phone (everything typed), what Apple holds (Health, backups, purchases), what Google's ad SDK
    collects and why, that we keep nothing, how to delete everything. The website's own section

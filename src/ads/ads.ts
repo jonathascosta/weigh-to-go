@@ -6,6 +6,7 @@
  * At launch, in this order, each step only if the one before allows it:
  * 1. The Remove ads purchase (story 2) is asked about. Held: nothing more, ever, this session;
  *    neither Google's consent tool nor its ad SDK is started, so the app sends Google nothing.
+ *    Bought later in the session: `stop()`, the banner goes and nothing more is asked of Google.
  * 2. The banner's ad unit: Google's test unit on TestFlight (a sandbox receipt) and in a debug
  *    build; the owner's on the App Store. An App Store build without the owner's unit shows none.
  * 3. The first days (design §8, O14): no ads while the diary is empty or in the first 7 days after
@@ -44,13 +45,17 @@ export const NO_ADS: AdProvider = {
 };
 
 /**
- * The Remove ads purchase (story 2): whether it is held, from StoreKit's current entitlements.
- * Until that story, nothing can be bought.
+ * The Remove ads purchase (story 2, purchase.ts): whether it is held, from StoreKit's current
+ * entitlements, and when it becomes held during a session.
  */
 export interface Entitlement {
+  /** StoreKit's answer at launch; a rejection counts as held (nothing is started). */
   held(): Promise<boolean>;
+  /** Calls `listener` once the purchase becomes held during the session; returns the unsubscribe. */
+  onHeld?(listener: () => void): () => void;
 }
 
+/** Nothing can be bought (the tests' default). */
 export const NOTHING_HELD: Entitlement = { held: () => Promise.resolve(false) };
 
 /** Days after the app's first launch with no ads (design §8, O14). */
@@ -220,6 +225,11 @@ export function startAds(options: AdsOptions): Ads {
     })();
   };
 
+  const stopOnHeld = options.entitlement.onHeld?.(() => {
+    void provider.stop();
+  });
+  if (stopOnHeld) cleanups.push(stopOnHeld);
+
   const launch = (async () => {
     let held: boolean;
     try {
@@ -275,7 +285,7 @@ export function startAds(options: AdsOptions): Ads {
     });
   })();
 
-  return {
+  const provider: Ads = {
     privacyChoices: () => !stopped && consent.privacyOptionsRequired,
     onPrivacyChoices: (listener) => {
       choiceListeners.add(listener);
@@ -314,4 +324,5 @@ export function startAds(options: AdsOptions): Ads {
       while (asking) await asking;
     },
   };
+  return provider;
 }

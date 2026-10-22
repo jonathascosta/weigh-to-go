@@ -76,7 +76,9 @@ describe('the plugin, as the ads call it', () => {
 
   it('gives no ads in a browser (the app’s pages in the end-to-end tests)', () => {
     native = false;
-    expect(nativeAds({ subscribe: () => () => undefined })).toBe(NO_ADS);
+    expect(nativeAds({ subscribe: () => () => undefined }, { held: () => Promise.resolve(false) })).toBe(
+      NO_ADS,
+    );
   });
 });
 

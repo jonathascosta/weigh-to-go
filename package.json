@@ -16,6 +16,7 @@
     "check:dist": "node scripts/check-dist.mjs",
     "e2e": "npm run build && npm run build:ios && playwright test",
     "icons": "node scripts/icons.mjs",
+    "store:screenshots": "node scripts/store-screenshots.mjs",
     "lighthouse": "npm ci --prefix tools/lhci && npm run lighthouse:mobile && npm run lighthouse:desktop",
     "lighthouse:mobile": "tools/lhci/node_modules/.bin/lhci autorun --upload.outputDir=lighthouse-report/mobile",
     "lighthouse:desktop": "tools/lhci/node_modules/.bin/lhci autorun --collect.settings.preset=desktop --collect.numberOfRuns=1 --upload.outputDir=lighthouse-report/desktop"
@@ -51,6 +52,7 @@
     "@capacitor/ios": "^8.5.3",
     "@capacitor/local-notifications": "^8.3.1",
     "@capacitor/share": "^8.0.3",
+    "@capgo/native-purchases": "^8.9.5",
     "@fontsource/barlow": "^5.3.0",
     "@fontsource/barlow-condensed": "^5.3.0",
     "d3-array": "^3.2.4",

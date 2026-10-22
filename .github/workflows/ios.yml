@@ -172,3 +172,92 @@ jobs:
             first-screen.png
             resolved/Package.resolved
           if-no-files-found: ignore
+
+  # Remove ads against StoreKit's own test environment (docs/sprint-4.md, story 2; decision 143):
+  # AppStoreKitTests, hosted in the app, with ios/App/Products.storekit in an SKTestSession: the
+  # product and its price, a verified purchase held in the current entitlements, a refund, Ask to
+  # Buy approved and declined. Nothing reaches the App Store.
+  # A job of its own, with Xcode 26.2 and its iOS 26.2 simulator from the start: from Xcode 26.3
+  # (the runner's default is 26.6, with iOS 26.5), command-line runs get "SKTestSession: Error
+  # saving configuration file: SKInternalErrorDomain Code=3" on every call and no product (Apple's
+  # FB22237318, said fixed in 26.5 but still there here, unsigned and signed ad hoc). Switching
+  # Xcode in the job above, after its simulator had booted, left Xcode 26.2 with no simulator to
+  # run on. Try the default Xcode again when a release fixes it. Signed ad hoc ("Sign to Run
+  # Locally", no team, no profile), for this run only; TestFlight's archive is unchanged.
+  storekit:
+    name: Remove ads with StoreKit's test environment (simulator)
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: '26.2'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # The purchase plugin's Package.swift builds code for the newest StoreKit when the SDK of
+      # $DEVELOPER_DIR or of /Applications/Xcode.app has it; the latter is the runner's default
+      # Xcode (26.6), whose StoreKit Xcode 26.2 doesn't have. Here both are Xcode 26.2.
+      - name: Point /Applications/Xcode.app at Xcode 26.2
+        run: |
+          set -euo pipefail
+          test -L /Applications/Xcode.app
+          sudo ln -sfn /Applications/Xcode_26.2.app /Applications/Xcode.app
+          echo "DEVELOPER_DIR=/Applications/Xcode_26.2.app/Contents/Developer" >> "$GITHUB_ENV"
+          ls -l /Applications/Xcode.app
+
+      - run: npm ci --ignore-scripts
+
+      - run: npm run ios:sync
+
+      - name: Test Remove ads with StoreKit's test environment
+        working-directory: ios/App
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          # An iPhone on the iOS 26.2 runtime, made if the runner has none.
+          udid=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          phones = [d for r, ds in devices.items() if r.endswith("iOS-26-2") for d in ds if d["name"].startswith("iPhone")]
+          print(phones[0]["udid"] if phones else "")')
+          if [ -z "$udid" ]; then
+            type=$(xcrun simctl list devicetypes -j | python3 -c '
+          import json, sys
+          types = [t["identifier"] for t in json.load(sys.stdin)["devicetypes"] if t["name"].startswith("iPhone 17")]
+          print(types[0])')
+            udid=$(xcrun simctl create "StoreKit iPhone" "$type" com.apple.CoreSimulator.SimRuntime.iOS-26-2)
+          fi
+          xcrun simctl bootstatus "$udid" -b
+          xcodebuild test \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -destination "id=$udid" \
+            -derivedDataPath build \
+            -only-testing:AppStoreKitTests \
+            -resultBundlePath ../../storekit-tests.xcresult \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM= \
+            PROVISIONING_PROFILE_SPECIFIER=
+
+      - name: Keep the test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: storekit-tests
+          path: storekit-tests.xcresult
+          if-no-files-found: ignore

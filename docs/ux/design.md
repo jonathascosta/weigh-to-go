@@ -844,19 +844,40 @@ Groups, in this order. Every row is at least 52 px tall and is one button, one l
 **Remove ads, every state** (Sprint 4, story 2; new keys `iap.*`). Each state is a line under the
 row's title and at most one button:
 
-| State                             | English                                                            | Portuguese                                                                    | Button               |
-| --------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------- | -------------------- |
-| Ready                             | "One payment, for good; no subscription."                          | "Um pagamento, para sempre; sem assinatura."                                  | "Buy · {price}"      |
-| Price unavailable or offline      | "The App Store can't be reached. Try again when you're online."    | "Não foi possível acessar a App Store. Tente de novo quando estiver on-line." | "Try again"          |
-| Buying                            | "Opening the App Store…"                                           | "Abrindo a App Store…"                                                        | "Buying…", disabled  |
-| Pending (Ask to Buy, or the bank) | "Waiting for approval. The ads go away as soon as it is approved." | "Aguardando aprovação. Os anúncios somem assim que ela for aprovada."         | none                 |
-| Cancelled by the person           | back to Ready, no message                                          | back to Ready, no message                                                     | "Buy · {price}"      |
-| Failed                            | "The purchase didn't go through. Try again later."                 | "A compra não foi concluída. Tente de novo mais tarde."                       | "Try again"          |
-| Bought (or restored)              | "Ads removed. Thank you."                                          | "Anúncios removidos. Obrigado."                                               | none                 |
-| Restore found nothing             | "No purchase to restore for this Apple Account."                   | "Nenhuma compra para restaurar nesta Conta Apple."                            | (on the Restore row) |
-| Restore failed                    | "Couldn't reach the App Store. Try again."                         | "Não foi possível acessar a App Store. Tente de novo."                        | (on the Restore row) |
+| State                             | English                                                                      | Portuguese                                                                    | Button               |
+| --------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------- |
+| Ready                             | "One payment, for good; no subscription."                                    | "Um pagamento, para sempre; sem assinatura."                                  | "Buy · {price}"      |
+| Price unavailable or offline      | "The App Store can't be reached. Try again when you're online."              | "Não foi possível acessar a App Store. Tente de novo quando estiver on-line." | "Try again"          |
+| Buying                            | "Opening the App Store…"                                                     | "Abrindo a App Store…"                                                        | "Buying…", disabled  |
+| Pending (Ask to Buy, or the bank) | "Waiting for approval. The ads go away as soon as the purchase is approved." | "Aguardando aprovação. Os anúncios somem assim que a compra for aprovada."    | none                 |
+| Cancelled by the person           | back to Ready, no message                                                    | back to Ready, no message                                                     | "Buy · {price}"      |
+| Failed                            | "The purchase didn't go through. Try again later."                           | "A compra não foi concluída. Tente de novo mais tarde."                       | "Try again"          |
+| Bought (or restored)              | "Ads removed. Thank you."                                                    | "Anúncios removidos. Obrigado."                                               | none                 |
+| Restore found nothing             | "No purchase to restore for this Apple Account."                             | "Nenhuma compra para restaurar nesta Conta Apple."                            | (on the Restore row) |
+| Restore failed                    | "Couldn't reach the App Store. Try again."                                   | "Não foi possível acessar a App Store. Tente de novo."                        | (on the Restore row) |
 
 Each line is a live region, so a screen reader hears the change.
+
+_As built (Sprint 4, story 2; decisions 138 to 141, open to the owner)._ The row is a card of the
+group (a title, the line, a note and the button at its start, 44 px tall), and the App Store's own
+sheet is the confirmation. A note under the line while the price shows: "Pay once and the ads are
+gone straight away, on every iPhone with this Apple Account, offline too." ("Pague uma vez e os
+anúncios somem na hora, em todo iPhone com esta Conta Apple, mesmo off-line."), with ", and for your
+Family Sharing group" (", e para o seu grupo de Compartilhamento Familiar") when the owner turns
+Family Sharing on. Every line is plain, a failure's too. While the App Store is asked (at first, and
+after Try again) the line is "Asking the App Store…" ("Consultando a App Store…"), and a button that
+was there stays, unavailable, so the focus stays on it; the focus moves to the title only when the
+new state has no button. Restore purchases' note in Portuguese is "Comprou em outro iPhone? Recupere
+a compra aqui." States the table didn't have:
+
+| State                               | English                                                                                                                            | Portuguese                                                                                                                                  | Button            |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| Asking the App Store                | "Asking the App Store…"                                                                                                            | "Consultando a App Store…"                                                                                                                  | kept, unavailable |
+| Product not in the App Store        | "“Remove ads” isn’t available from the App Store just now. Try again later."                                                       | "A opção Remover anúncios não está disponível na App Store no momento. Tente de novo mais tarde."                                           | "Try again"       |
+| Purchases not allowed (Screen Time) | "Purchases are turned off on this iPhone, in Screen Time’s Content & Privacy Restrictions. Once they are allowed, come back here." | "As compras estão desativadas neste iPhone, nas Restrições de Conteúdo e Privacidade do Tempo de Uso. Quando forem permitidas, volte aqui." | none              |
+| Restoring                           | "Asking the App Store…"                                                                                                            | "Consultando a App Store…"                                                                                                                  | (Restore row)     |
+| Restored                            | "Purchase restored."                                                                                                               | "Compra restaurada."                                                                                                                        | (Restore row)     |
+| Restore failed, online              | "Nothing was restored. Try again."                                                                                                 | "Nada foi restaurado. Tente de novo."                                                                                                       | (Restore row)     |
 
 ## 8 · The iPhone app's banner (Sprint 4)
 

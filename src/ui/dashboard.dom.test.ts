@@ -6,6 +6,8 @@ import { fakeStorage } from '../data/fake-storage.test-helper';
 import { memoryStore, type Store } from '../data/store';
 import { choose, resetSettings } from '../i18n';
 import type { AdProvider } from '../ads/ads';
+import { FakeStore } from '../ads/fake-store.test-helper';
+import { startPurchase } from '../ads/purchase';
 import { mountDashboard, type Dashboard } from './dashboard';
 import { WIDE_QUERY } from './shell';
 
@@ -1289,5 +1291,44 @@ describe('Privacy choices, in the iPhone app', () => {
 
   it('isn’t there on the website', () => {
     expect(root.querySelector('#privacy-choices')).toBeNull();
+  });
+});
+
+describe('Remove ads, in the iPhone app', () => {
+  it('sits in the iPhone app group before Privacy choices, offers the price and says thank you', async () => {
+    board?.dispose();
+    const store = new FakeStore();
+    let held = false;
+    const hint = { read: () => held, write: (v: boolean) => ((held = v), true) };
+    const purchase = startPurchase({ api: store, doc: document, online: () => true, hint });
+    const ads: AdProvider = {
+      privacyChoices: () => true,
+      onPrivacyChoices: () => () => undefined,
+      showPrivacyChoices: () => Promise.resolve(true),
+      stop: () => Promise.resolve(),
+    };
+    board = mountDashboard(root, app, { ads, purchase });
+    await settle();
+    const group = root.querySelector<HTMLElement>('#remove-ads')!.closest('section.data-group')!;
+    expect(group.querySelector('h2')!.textContent).toBe('iPhone app');
+    const ids = [...group.querySelectorAll('[id]')].map((el) => el.id);
+    expect(ids.indexOf('remove-ads')).toBeLessThan(ids.indexOf('restore-purchases'));
+    expect(ids.indexOf('restore-purchases')).toBeLessThan(ids.indexOf('privacy-choices'));
+    // Your data is drawn (the one page here): the price is asked for.
+    await purchase.settled();
+    await settle();
+    const buy = root.querySelector<HTMLButtonElement>('#remove-ads-buy')!;
+    expect(buy.textContent).toBe('Buy · €2.99');
+    buy.click();
+    await settle();
+    expect(root.querySelector('#remove-ads-status')!.textContent).toBe('Ads removed. Thank you.');
+    expect(buy.hidden).toBe(true);
+    expect(held).toBe(true);
+    purchase.dispose();
+  });
+
+  it('isn’t there on the website', () => {
+    expect(root.querySelector('#remove-ads')).toBeNull();
+    expect(root.querySelector('#restore-purchases')).toBeNull();
   });
 });

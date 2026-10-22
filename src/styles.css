@@ -3362,10 +3362,40 @@ span.cal-none {
   border-bottom: 0;
 }
 
-/* Privacy choices' line: always in the accessibility tree, so a change of its text is read; empty,
-   it takes no room. */
+/* Privacy choices' and Restore purchases' lines: always in the accessibility tree, so a change of
+   their text is read; empty, they take no room. */
 .choices-status {
   margin: 0;
+}
+
+/* Remove ads: its line holds no room when empty, and its button stands at the start, its own width
+   (at least 44 px tall), under the thumb. */
+.iap .status {
+  margin: 0;
+}
+
+.iap .note {
+  margin: 0;
+}
+
+.iap-buy {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.iap-buy[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* A line under a row belongs to it: it covers the row's bottom rule, with the group's own panel
+   (no :has(), for Safari 15.0). */
+.row + .choices-status:not(:empty) {
+  position: relative;
+  margin-top: -1px;
+  padding-top: 0;
+  background: var(--panel);
 }
 
 .choices-status:empty {

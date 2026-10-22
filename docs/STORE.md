@@ -57,8 +57,44 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    with the product id `net.jonathas.weightogo.removeads`, a reference name ("Remove ads"), the price
    you choose, the display name and description in English and Portuguese ("Remove ads" · "Pay once
    and never see ads again"; "Remover anúncios" · "Pague uma vez e nunca mais veja anúncios"), whether
-   it is shared with Family Sharing, and the review screenshot (the session makes it). The first
-   purchase is submitted together with the first version (step 11).
+   it is shared with Family Sharing, and the review screenshot:
+   `ios/App/fastlane/screenshots/review/remove-ads.png` in this repository (1290 × 2796, Your data ›
+   iPhone app with "Buy · $2.99"; `npm run build:ios && npm run store:screenshots` makes it again).
+   App Store Connect won't submit the purchase without it. The first purchase is submitted together
+   with the first version (step 11).
+   - **Family Sharing** is your choice, and can be turned on later but never off again. The app
+     reads it from the App Store: with it on, the line under the button adds "and for your Family
+     Sharing group". The review screenshot in this repository shows it on; if you leave it off,
+     set `isFamilyShareable` to `false` in `scripts/store-screenshots.mjs` and make the screenshot
+     again with the command above.
+   - **Try it on TestFlight, without buying,** once the purchase exists (it needs step 2's
+     agreement; it may take an hour to reach the sandbox). TestFlight purchases are free and use
+     your own Apple Account, and **they can't be cleared**: once bought, that Apple Account holds
+     Remove ads on TestFlight for good, and then nothing of Google's starts on your iPhone, so the
+     banner, Privacy choices, the EEA safeguard and most of the network log of step 11 can't be
+     checked any more. So **the purchase itself is the last thing you do before submitting** (step
+     11). Now, in Your data › iPhone app, in this order:
+     1. **Remove ads** shows the price from the App Store. With no price, the line says the App
+        Store can't be reached or that "Remove ads" isn't available: the purchase isn't in App Store
+        Connect yet, or its id differs.
+     2. Tap **Buy** and cancel Apple's sheet: back to the button, no message.
+     3. With the price showing, in Settings › Screen Time › Content & Privacy Restrictions, forbid
+        in-app purchases and come back to the app: the line says purchases are turned off, with no
+        button. Allow them again and come back: the price returns.
+     4. In Airplane Mode, tap **Buy**: the line says the App Store can't be reached. Back online,
+        **Try again** shows the price.
+     5. Tap **Restore purchases**: "No purchase to restore for this Apple Account."
+
+     If you'd rather buy before step 11, use a second Apple Account: add it as another TestFlight
+     tester (in App Store Connect, TestFlight, Internal Testing) and buy with it on another iPhone
+     signed in with that account; your own account stays unbought for step 11's checks.
+
+     Ask to Buy ("Waiting for approval") needs a real child account in a family on TestFlight, or
+     the StoreKit configuration file (`ios/App/Products.storekit`, already chosen in the App scheme)
+     with a build from Xcode; it is optional, and the iOS workflow's StoreKit test covers it.
+
+   - Nothing needs a server: the app checks the purchase on the iPhone with StoreKit, so there is no
+     shared secret or App Store Server Notifications URL to set.
 6. **AdMob.**
    - Add an iOS app, Weigh to Go, and a **banner** ad unit; put them in the `app-store`
      environment's secrets `ADMOB_APP_ID` (the app id, `ca-app-pub-…~…`) and `ADMOB_BANNER_ID` (the
@@ -132,12 +168,12 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
       build from a run **for the App Store**, with a network log, see no request to Google
       (`*.google.com`, `*.googleapis.com`, `*.doubleclick.net`, `*.googlesyndication.com`,
       `app-measurement.com` and the like) in each of these states: a fresh install in its first 7
-      days, with weigh-ins; Remove ads held (bought in the sandbox, the app opened again); a refusal
-      in Google's message; and, within one session, after withdrawing consent in Privacy choices and
-      after buying Remove ads (no new requests from then on). The first tool is the iPhone's own
-      **App Privacy Report** (Settings › Privacy & Security › App Privacy Report, turned on before
+      days, with weigh-ins; a refusal in Google's message; and, within one session, after
+      withdrawing consent in Privacy choices. The states with Remove ads (bought during a session,
+      then held at the next launch) come last, with the purchase itself (the last item below). The
+      first tool is the iPhone's own **App Privacy Report** (Settings › Privacy & Security › App Privacy Report, turned on before
       the test): it lists every domain each app contacted, so it covers the states that span a
-      launch (the first days, the purchase held, a refusal). For the states within one session, use
+      launch (the first days, a refusal, the purchase held). For the states within one session, use
       a proxy (on a friend's Mac, such as Proxyman or Charles) or Instruments' Network template,
       which show when each request was made. If any shows one, stop the release and tell a
       session.
@@ -155,15 +191,27 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
       TestFlight, record, and import the backup afterwards (or record on another iPhone). On an
       iPhone set to English with the latest iOS, start the screen recording from Control Center, and
       show, slowly: the first weigh-in, the summary and a chart, an analysis card, turning on Apple
-      Health and its permission sheet, the reminder, buying Remove ads in the sandbox and Restore
-      Purchases, settings and the privacy policy. Two to four minutes, plus the banner clip; trim the
-      ends in Photos. Paste the [review notes](#app-review-notes) in the App Review Information's
-      Notes and attach both.
+      Health and its permission sheet, the reminder, Remove ads with its price and Restore
+      Purchases ("No purchase to restore for this Apple Account."; nothing is bought yet), settings
+      and the privacy policy. Two to four minutes; trim the ends in Photos. With the banner clip and
+      the purchase clip (the last item below), it goes with the [review notes](#app-review-notes).
     - Trader status (Digital Services Act) is declared once for the account (done for Arrows on 4
       October 2026); nothing new is needed unless the declaration moves to a business address.
     - The EEA safeguard of step 6, on a TestFlight build from a run **for the App Store**, in
       Portugal: from the 8th day with a weigh-in, Google's GDPR message showed, or Privacy choices
       appeared in Your data › iPhone app and opened Google's form. If neither did, don't submit.
+    - **Last, the purchase, recorded and logged.** Everything above needs Remove ads not bought,
+      so this comes after it all. On an install past its first 7 days, with the banner at the top
+      (the recording above starts the 7 days again on the iPhone it deletes the app from, so make
+      it on another iPhone, or keep one install untouched for this), start the proxy or
+      Instruments' Network template and the screen recording, then in Your data › iPhone app tap
+      **Buy** and confirm: the banner goes at once, the line says "Ads
+      removed. Thank you.", and the log shows no new request to Google from then on. Close the app
+      and open it again: still no ad, and no request to Google (the App Privacy Report agrees). Then
+      delete the app and install it again: Your data says "Ads removed. Thank you." at launch, and
+      **Restore purchases** says "Purchase restored.". The recording is the purchase clip. Paste
+      the [review notes](#app-review-notes) in the App Review Information's Notes and attach the
+      recording, the banner clip and the purchase clip.
     - Submit. After the release, tell the session: the website then gets the App Store links.
 
 ## App Review notes
@@ -187,6 +235,11 @@ Projections are estimates, not medical advice.
 
 3. How to use it
 No setup or login. Type today's weight and tap Save. [Screens and settings to be filled in.]
+The in-app purchase: open Your data (the last tab), scroll to iPhone app, and tap Buy under Remove
+ads; the App Store's sheet confirms it. Restore Purchases is the row just below. Once bought, the
+banner goes at once, and the app no longer starts Google's SDK at all. A fresh install shows no ads
+in its first 7 days, so buying there changes no banner on screen: another attached clip shows
+the purchase on an install in use, with the banner going away as it completes.
 
 4. External services
 - Apple Health (HealthKit): reads and writes body mass, only after the person turns it on; the data
@@ -196,8 +249,10 @@ No setup or login. Type today's weight and tap Save. [Screens and settings to be
   fresh install shows none (an attached clip shows it on an install in use); never while logging.
 - Google User Messaging Platform: the consent message where the law requires it, when the ads first
   start; a refusal means no ads. Privacy choices in Your data where it applies.
-- StoreKit: the one-time "Remove ads" purchase, verified on the device; Restore Purchases in
-  settings.
+- StoreKit 2: the one-time "Remove ads" purchase (non-consumable,
+  net.jonathas.weightogo.removeads), checked on the device from StoreKit's verified current
+  entitlements, with no server of ours or anyone's; Restore Purchases in Your data, iPhone app.
+  It can be bought and restored in the sandbox like any other.
 The app has no backend, no accounts and no analytics: every weigh-in stays on the device.
 
 5. Regional differences

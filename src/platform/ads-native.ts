@@ -11,25 +11,11 @@ import {
   BannerAdSize,
   type AdmobConsentInfo,
 } from '@capacitor-community/admob';
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
 import type { App } from '../app/app';
-import { NO_ADS, NOTHING_HELD, startAds, type AdProvider, type AdsApi, type BuildAds } from '../ads/ads';
+import { NO_ADS, startAds, type AdProvider, type AdsApi, type Entitlement } from '../ads/ads';
 import type { ConsentChoices, ConsentInfo } from '../ads/consent';
-
-interface SavedChoices {
-  readonly gdprApplies: number;
-  readonly purposeConsents: string;
-  readonly vendorConsents: string;
-  /** Whether `IABTCF_TCString` or `IABTCF_PurposeConsents` is saved. */
-  readonly tcf: boolean;
-}
-
-interface AdSetupPlugin {
-  build(): Promise<BuildAds>;
-  consentChoices(): Promise<SavedChoices>;
-}
-
-const AdSetup = registerPlugin<AdSetupPlugin>('AdSetup');
+import { AdSetup, type SavedChoices } from './ad-setup';
 
 const report = (error: unknown): void => {
   console.warn('weigh-to-go: ads:', error);
@@ -93,17 +79,18 @@ function registered(): boolean {
 }
 
 /**
- * The ads of the iPhone app, for the diary `app`. None in a browser (the app's pages opened by the
- * end-to-end tests), where there is no native AdMob.
+ * The ads of the iPhone app, for the diary `app`, as far as Remove ads (`entitlement`, StoreKit's
+ * answer) allows. None in a browser (the app's pages opened by the end-to-end tests), where there is
+ * no native AdMob.
  */
-export function nativeAds(app: Pick<App, 'subscribe'>): AdProvider {
+export function nativeAds(app: Pick<App, 'subscribe'>, entitlement: Entitlement): AdProvider {
   if (!Capacitor.isNativePlatform() || !registered()) return NO_ADS;
   return startAds({
     api: admob,
     build: () => AdSetup.build(),
     choices,
-    // Story 2 answers from StoreKit; until then nothing can be bought.
-    entitlement: NOTHING_HELD,
+    // Held at launch: nothing of Google's starts; bought later: `stop()`.
+    entitlement,
     app,
     doc: document,
     onError: report,

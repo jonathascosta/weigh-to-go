@@ -9,11 +9,19 @@ import { markInApp } from './in-app.mjs';
 
 const read = (path: string): string => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const project = read('ios/App/App.xcodeproj/project.pbxproj');
+/** The project without the test bundle's build configurations. */
+const appProject = project.replace(
+  /\t\tA10E002[DE]2F00000000000001 \/\* (Debug|Release) \*\/ = \{[\s\S]*?\n\t\t\};\n/g,
+  '',
+);
 const infoPlist = read('ios/App/App/Info.plist');
 
-/** The values a build setting takes across the project's configurations (Debug and Release). */
+/**
+ * The values a build setting takes across the project's and the app's configurations (Debug and
+ * Release), leaving out the StoreKit test bundle's (decision 143).
+ */
 const setting = (name: string): string[] =>
-  [...project.matchAll(new RegExp(`\\b${name} = ([^;]+);`, 'g'))].map((m) => m[1].replace(/"/g, ''));
+  [...appProject.matchAll(new RegExp(`\\b${name} = ([^;]+);`, 'g'))].map((m) => m[1].replace(/"/g, ''));
 
 /** The <array> of strings that follows a key in Info.plist. */
 const plistArray = (key: string): string[] => {

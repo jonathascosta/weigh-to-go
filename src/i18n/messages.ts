@@ -1067,6 +1067,30 @@ export const en = {
     'Ads come from Google AdMob: they are not personalised and never receive your weigh-ins, but Google gets what any ad request carries, such as the iPhone’s model and network address. Removing the ads stops those requests.',
   'ads.choices': 'Privacy choices',
   'ads.choicesFailed': 'Google’s privacy choices couldn’t open. Try again when you’re online.',
+  'about.app.adsRemoved':
+    'The ads are removed: the app no longer starts Google’s ad software, and nothing more is sent to Google.',
+  'iap.title': 'Remove ads',
+  'iap.ready': 'One payment, for good; no subscription.',
+  'iap.note': (family: boolean): string =>
+    `Pay once and the ads are gone straight away, on every iPhone with this Apple Account${family ? ', and for your Family Sharing group' : ''}, offline too.`,
+  'iap.buy': (price: string) => `Buy · ${price}`,
+  'iap.buying': 'Opening the App Store…',
+  'iap.buyingButton': 'Buying…',
+  'iap.pending': 'Waiting for approval. The ads go away as soon as the purchase is approved.',
+  'iap.failed': 'The purchase didn’t go through. Try again later.',
+  'iap.offline': 'The App Store can’t be reached. Try again when you’re online.',
+  'iap.unavailable': '“Remove ads” isn’t available from the App Store just now. Try again later.',
+  'iap.notAllowed':
+    'Purchases are turned off on this iPhone, in Screen Time’s Content & Privacy Restrictions. Once they are allowed, come back here.',
+  'iap.tryAgain': 'Try again',
+  'iap.held': 'Ads removed. Thank you.',
+  'iap.restore': 'Restore purchases',
+  'iap.restoreNote': 'Bought on another iPhone? Get it back here.',
+  'iap.restoring': 'Asking the App Store…',
+  'iap.restored': 'Purchase restored.',
+  'iap.restoreNone': 'No purchase to restore for this Apple Account.',
+  'iap.restoreOffline': 'Couldn’t reach the App Store. Try again.',
+  'iap.restoreFailed': 'Nothing was restored. Try again.',
   'about.privacy': 'Privacy policy',
   'about.version': (version: string) => `Weigh to Go ${version}`,
   'data.note':
@@ -1967,6 +1991,31 @@ export const pt: Messages = {
   'ads.choices': 'Opções de privacidade',
   'ads.choicesFailed':
     'Não foi possível abrir as opções de privacidade do Google. Tente de novo quando estiver on-line.',
+  'about.app.adsRemoved':
+    'Os anúncios foram removidos: o app não inicia mais o software de anúncios do Google, e nada mais é enviado ao Google.',
+  'iap.title': 'Remover anúncios',
+  'iap.ready': 'Um pagamento, para sempre; sem assinatura.',
+  'iap.note': (family: boolean) =>
+    `Pague uma vez e os anúncios somem na hora, em todo iPhone com esta Conta Apple${family ? ', e para o seu grupo de Compartilhamento Familiar' : ''}, mesmo off-line.`,
+  'iap.buy': (price: string) => `Comprar · ${price}`,
+  'iap.buying': 'Abrindo a App Store…',
+  'iap.buyingButton': 'Comprando…',
+  'iap.pending': 'Aguardando aprovação. Os anúncios somem assim que a compra for aprovada.',
+  'iap.failed': 'A compra não foi concluída. Tente de novo mais tarde.',
+  'iap.offline': 'Não foi possível acessar a App Store. Tente de novo quando estiver on-line.',
+  'iap.unavailable':
+    'A opção Remover anúncios não está disponível na App Store no momento. Tente de novo mais tarde.',
+  'iap.notAllowed':
+    'As compras estão desativadas neste iPhone, nas Restrições de Conteúdo e Privacidade do Tempo de Uso. Quando forem permitidas, volte aqui.',
+  'iap.tryAgain': 'Tentar de novo',
+  'iap.held': 'Anúncios removidos. Obrigado.',
+  'iap.restore': 'Restaurar compras',
+  'iap.restoreNote': 'Comprou em outro iPhone? Recupere a compra aqui.',
+  'iap.restoring': 'Consultando a App Store…',
+  'iap.restored': 'Compra restaurada.',
+  'iap.restoreNone': 'Nenhuma compra para restaurar nesta Conta Apple.',
+  'iap.restoreOffline': 'Não foi possível acessar a App Store. Tente de novo.',
+  'iap.restoreFailed': 'Nada foi restaurado. Tente de novo.',
   'about.privacy': 'Política de privacidade',
   'about.version': (version: string) => `Weigh to Go ${version}`,
   'data.note':
