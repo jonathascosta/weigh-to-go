@@ -58,7 +58,7 @@ both change together, in the same pull request.
    loaded only in the app's build; `check:dist` fails when the website's scripts carry ad code, and
    when a static page of the app's build doesn't hide the banner. Test ads come from the sandbox
    receipt; the TestFlight workflow's **For the App Store** run needs both AdMob ids and Google's
-   SKAdNetwork list, still to be pasted (decisions 123 and 124). Privacy choices is a row of the
+   SKAdNetwork list, pasted by the owner on 22 October 2026 (decisions 123, 124 and 174). Privacy choices is a row of the
    iPhone app group (decision 127). The first checklist item, Google's data disclosure page, is the
    owner's (STORE.md, step 9; decision 130). After the reviews (decisions 125 and 131 to 134): the
    band is up from the moment the banner is asked for and from the first paint of a launch after
