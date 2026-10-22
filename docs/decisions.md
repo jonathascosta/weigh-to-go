@@ -889,9 +889,12 @@ decisions above.
      after the app's launch check (`xcodebuild test -only-testing:AppStoreKitTests`), so its first
      run is the pull request's. The test repeats the plugin's StoreKit calls in Swift rather than
      calling the plugin; `scripts/purchase.test.ts` covers the plugin itself, from its installed
-     source. The test run is signed ad hoc ("Sign to Run Locally", no team): its first run, unsigned,
-     failed in all five tests because StoreKit's test daemon refuses a session from an unsigned
-     app (SKInternalErrorDomain Code=3). _Alternative:_ a Swift package of its own under `ios/`,
+     source. It runs with Xcode 26.2 and its iOS 26.2 simulator, which the runner keeps beside the
+     default: from Xcode 26.3, command-line runs get "SKTestSession: Error saving configuration
+     file: SKInternalErrorDomain Code=3" on every call and no product (Apple's FB22237318, said
+     fixed in 26.5 but still there with the runner's 26.6 and iOS 26.5, unsigned and signed ad
+     hoc, both tried here; Flutter's StoreKit plugin pinned Xcode 26.2 for the same reason). The
+     run stays signed ad hoc; the default Xcode is to be tried again when a release fixes it. _Alternative:_ a Swift package of its own under `ios/`,
      whose tests would run without a host app, where `SKTestSession` isn't dependable.
 144. **The purchase's review screenshot is made here** (Atlas's review): App Store Connect won't
      submit the purchase without one. `npm run store:screenshots` (story 4 adds the listing's to

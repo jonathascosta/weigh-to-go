@@ -114,7 +114,10 @@ describe('the StoreKit test on the macOS runner', () => {
       expect(tests).toContain(`func ${name}()`);
     expect(tests).toContain('Transaction.currentEntitlements');
     const workflow = read('.github/workflows/ios.yml');
-    const step = /xcodebuild test[\s\S]*?\n\n/.exec(workflow)?.[0] ?? '';
+    const step = /Test Remove ads with StoreKit's test environment[\s\S]*?\n\n/.exec(workflow)?.[0] ?? '';
+    // Xcode 26.2 and its iOS 26.2 simulator: later ones refuse the session (FB22237318).
+    expect(step).toContain('DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer');
+    expect(step).toContain('iOS-26-2');
     expect(step).toContain('-only-testing:AppStoreKitTests');
     // Signed ad hoc: StoreKit's test daemon refuses a session from an unsigned app.
     expect(step).toContain('CODE_SIGN_IDENTITY=-');

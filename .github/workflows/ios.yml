@@ -168,27 +168,48 @@ jobs:
       # 143): AppStoreKitTests, hosted in the app, with ios/App/Products.storekit in an
       # SKTestSession: the product and its price, a verified purchase held in the current
       # entitlements, a refund, Ask to Buy approved and declined. After the launch above, so its log
-      # is the app's alone. Nothing reaches the App Store. Signed ad hoc ("Sign to Run Locally", no
-      # team, no profile): StoreKit's test daemon refuses an SKTestSession from an unsigned app
-      # (SKInternalErrorDomain Code=3 on every call, and no product), which the builds above are.
-      # This signing is for this simulator run only; TestFlight's archive is signed by fastlane.
+      # is the app's alone. Nothing reaches the App Store.
+      # With Xcode 26.2 and its iOS 26.2 simulator: from Xcode 26.3 (here 26.6, iOS 26.5),
+      # command-line runs get "SKTestSession: Error saving configuration file: SKInternalErrorDomain
+      # Code=3" on every call and no product (Apple's FB22237318, said fixed in 26.5 but not; seen
+      # here signed and unsigned). Try the default Xcode again when a release fixes it. Signed ad
+      # hoc ("Sign to Run Locally", no team, no profile), for this run only; the builds above and
+      # TestFlight's archive are unchanged.
       - name: Test Remove ads with StoreKit's test environment
         working-directory: ios/App
-        run: >-
-          xcodebuild test
-          -project App.xcodeproj
-          -scheme App
-          -configuration Debug
-          -destination "id=$SIM_UDID"
-          -derivedDataPath build
-          -only-testing:AppStoreKitTests
-          -resultBundlePath ../../storekit-tests.xcresult
-          CODE_SIGNING_ALLOWED=YES
-          CODE_SIGNING_REQUIRED=NO
-          CODE_SIGN_STYLE=Manual
-          CODE_SIGN_IDENTITY=-
-          DEVELOPMENT_TEAM=
-          PROVISIONING_PROFILE_SPECIFIER=
+        env:
+          DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          # An iPhone on the iOS 26.2 runtime, made if the runner has none.
+          udid=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          phones = [d for r, ds in devices.items() if r.endswith("iOS-26-2") for d in ds if d["name"].startswith("iPhone")]
+          print(phones[0]["udid"] if phones else "")')
+          if [ -z "$udid" ]; then
+            type=$(xcrun simctl list devicetypes -j | python3 -c '
+          import json, sys
+          types = [t["identifier"] for t in json.load(sys.stdin)["devicetypes"] if t["name"].startswith("iPhone 17")]
+          print(types[0])')
+            udid=$(xcrun simctl create "StoreKit iPhone" "$type" com.apple.CoreSimulator.SimRuntime.iOS-26-2)
+          fi
+          xcrun simctl bootstatus "$udid" -b
+          xcodebuild test \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -destination "id=$udid" \
+            -derivedDataPath build-storekit \
+            -only-testing:AppStoreKitTests \
+            -resultBundlePath ../../storekit-tests.xcresult \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM= \
+            PROVISIONING_PROFILE_SPECIFIER=
 
       - name: Keep the screenshot
         if: always()
