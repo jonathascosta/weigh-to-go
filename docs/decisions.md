@@ -670,7 +670,8 @@ Choices made while building story 7, open to the owner under decision 9.
 119. **The phone's tables keep words whole** (the fit test's broken-word check): on a phone they lay
      out by their content (`table-layout: auto`, as on the desktop) instead of fixed shares that
      broke headings mid-word ("climb / ing", "Weigh / t", "% acumu / lado"), with 3 px of padding
-     a side instead of 4 and none before the first column, which lines up with the card's text.
+     a side instead of 4 and none outside the first and last columns, which line up with the card's
+     text.
      For that to fit at 320 px with text at 150%: the simulator's % has one decimal on a phone
      ("30.6%", two on the one page), its Day reads from the left, apart from the weight, and its
      Portuguese heading is "% perdido", as the English "% lost" (was "% acumulado"); the weekly
@@ -679,7 +680,8 @@ Choices made while building story 7, open to the owner under decision 9.
      "vs. anterior"), the note adding "Change is against the week before." / "A variação é em
      relação à semana anterior."; on a phone the bars' column has no visible heading ("Range" /
      "Faixa" stays for screen readers) and takes the room the others leave, its track at least 40
-     px (the fit test checks it); the hiccups table's "Days climbing" / "Dias subindo" shows as
+     px and 4 px clear of its cell, 7 px from the average's last digit (the fit test checks both,
+     at least 40 and 6 px); the hiccups table's "Days climbing" / "Dias subindo" shows as
      "Days" / "Dias" on a phone (screen readers keep the full name), so the last column has more
-     room. Proposed wording. _Alternative:_ `hyphens: auto` with fixed columns, which Safari
+     room, with 6 px before its words. Proposed wording. _Alternative:_ `hyphens: auto` with fixed columns, which Safari
      hyphenates only where its dictionary allows and Chromium on Linux not at all.

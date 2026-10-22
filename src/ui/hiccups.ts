@@ -280,7 +280,12 @@ export function mountHiccups(
     h(
       'div',
       { class: 'table-box table-short', attrs: { tabindex: 0, role: 'region', id: 'hiccups-table-box' } },
-      h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'hiccups-title' } }, head, body),
+      h(
+        'table',
+        { class: 'table table-fit hiccups-table', attrs: { 'aria-labelledby': 'hiccups-title' } },
+        head,
+        body,
+      ),
     ),
     more.element,
     note,

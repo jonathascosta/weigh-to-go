@@ -3164,13 +3164,24 @@ span.cal-none {
     padding-inline: 0;
   }
 
+  /* Its own gutter, so the average's last digit doesn't run into the bar ("95.80▌"). */
   .week-bar {
     min-width: 40px;
+    margin-inline-start: 4px;
   }
 
-  /* The first column lines up with the card's text. */
+  /* The first and last columns line up with the card's text. */
   .table-fit tr > :first-child {
     padding-inline-start: 0;
+  }
+
+  .table-fit tr > :last-child {
+    padding-inline-end: 0;
+  }
+
+  /* The hiccups' last column, words after a figure: a gutter of its own. */
+  .hiccups-table tr > :last-child {
+    padding-inline-start: 6px;
   }
 
   .table-fit .col-narrow {

@@ -220,12 +220,21 @@ const settle = (page: Page) =>
 function narrowBars(): string[] {
   // The page behind a sheet was checked before it opened.
   if (document.querySelector('.sheet-layer:not([hidden])')) return [];
-  return [...document.querySelectorAll('.week-bar')]
-    .filter((bar) => bar.getClientRects().length > 0 && bar.closest('[hidden]') === null)
-    .map((bar) => bar.getBoundingClientRect().width)
-    .filter((w) => w < 40)
-    .slice(0, 1)
-    .map((w) => `a weekly range bar is ${String(Math.round(w))} px wide, under 40`);
+  const found = new Set<string>();
+  for (const bar of document.querySelectorAll('.week-bar')) {
+    if (bar.getClientRects().length === 0 || bar.closest('[hidden]') !== null) continue;
+    const r = bar.getBoundingClientRect();
+    if (r.width < 40) found.add(`a weekly range bar is ${String(Math.round(r.width))} px wide, under 40`);
+    // At least 6 px between the average's text and the bar, so the bar doesn't read as a digit.
+    const average = bar.closest('td')?.previousElementSibling;
+    if (average) {
+      const text = document.createRange();
+      text.selectNodeContents(average);
+      const gap = r.left - text.getBoundingClientRect().right;
+      if (gap < 6) found.add(`a weekly range bar is ${String(Math.round(gap))} px from the average`);
+    }
+  }
+  return [...found];
 }
 
 /** Everything the fit test checks on the screen as it is now. */
