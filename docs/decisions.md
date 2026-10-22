@@ -1290,3 +1290,14 @@ Choices made while preparing the first submission, open to the owner under decis
      used as its guidelines say; the owner may add it later as a file of the site. The link goes to
      `https://apps.apple.com/app/id…`, which App Store pages answer in every storefront. The
      jonathas.net card and article are in another repository, the owner's step 12.
+
+## 22 October 2026 · Google's SKAdNetwork list
+
+174. **Google's SKAdNetwork list, as the owner pasted it.** The owner pasted Google's page "Google
+     and select third-party buyer SKAdNetwork identifiers" (last updated January 30, 2026) into the
+     session: 50 ids, Google's own (`cstr6suwn9`) first, in the page's order. They fill the marked
+     `SKAdNetworkItems` of `ios/App/App/Info.plist` (decision 124), whose comment now gives the
+     list's date; a test pins the count, Google's id and the date, besides the form and uniqueness
+     it already checked. Nothing was typed from memory. STORE.md's "Before each release" already
+     says to check the page for a newer date. _Alternative:_ Google's id alone, which loses the
+     attribution of the other buyers Google's network sells to.

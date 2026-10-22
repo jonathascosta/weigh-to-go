@@ -165,6 +165,11 @@ describe('the iPhone app', () => {
     expect((block ?? '').match(/<dict>/g)?.length ?? 0).toBe(ids.length);
     for (const id of ids) expect(id).toMatch(/^[a-z0-9]+\.skadnetwork$/);
     expect(new Set(ids).size).toBe(ids.length);
+    // The owner's paste of 22 October 2026 (Google's list of January 30, 2026, decision 174):
+    // Google's own id first, and the date in the comment above the array.
+    expect(ids).toHaveLength(50);
+    expect(ids[0]).toBe('cstr6suwn9.skadnetwork');
+    expect(infoPlist).toContain('List date: January 30, 2026');
   });
 
   it('ships its privacy manifest', () => {
