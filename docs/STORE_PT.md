@@ -191,14 +191,30 @@ de consentimento.
    do Google (<https://developers.google.com/admob/ios/privacy/data-disclosure>): a sessão não
    consegue abri-la, então cole a página numa sessão (ou compare você mesmo). O "Anúncios no app" da
    política diz que o SDK coleta o endereço IP, o modelo e o sistema do aparelho, o IDFV, dados de
-   publicidade e interações com os anúncios, uma localização aproximada obtida do IP e dados de
-   falhas e de desempenho (`privacy.ads.collects`); onde a página disser outra coisa, a sessão muda a
-   política e a data dela. Depois responda pelo SDK de anúncios do Google, seguindo essa página, para
-   anúncios não personalizados sem rastreamento. O que a pessoa digita e o que o app lê do app Saúde ficam no
+   publicidade e interações com os anúncios, outros dados de uso do app (quando ele é aberto e onde
+   a pessoa toca), uma localização aproximada obtida do IP e dados de falhas e de desempenho
+   (`privacy.ads.collects`); onde a página disser outra coisa, a sessão muda a política e a data
+   dela. Depois responda pelo SDK de anúncios do Google, seguindo essa página, para anúncios não
+   personalizados sem rastreamento. A página do Google diz quais dados ficam ligados à pessoa: os
+   registros de falhas não, os dados de desempenho sim. Para cada tipo abaixo, Used for tracking:
+   No, e Linked to the user's identity como a tabela diz:
+
+   | Categoria › tipo                                         | Linked to the user | Propósitos                                            |
+   | -------------------------------------------------------- | ------------------ | ----------------------------------------------------- |
+   | Location › Coarse Location (do endereço IP)              | Não                | Third-Party Advertising, Analytics                    |
+   | Identifiers › Device ID                                  | Não                | Third-Party Advertising, Analytics                    |
+   | Usage Data › Product Interaction                         | Não                | Third-Party Advertising, Analytics                    |
+   | Usage Data › Advertising Data                            | Não                | Third-Party Advertising, Analytics                    |
+   | Diagnostics › Crash Data ("non-user related crash logs") | Não                | App Functionality, Third-Party Advertising, Analytics |
+   | Diagnostics › Performance Data ("user-associated")       | **Sim**            | Third-Party Advertising, Analytics                    |
+
+   Nada mais: nem Other Diagnostic Data (a página não o lista), Health & Fitness, Contact Info, User
+   Content, User ID ou Purchases. O que a pessoa digita e o que o app lê do app Saúde ficam no
    iPhone e não chegam a ninguém, o que as definições da Apple não contam como coletado; as compras
    passam pela Apple. As respostas têm de bater com a política de privacidade. A Privacy Policy URL
    (App Privacy) é `https://weightogo.jonathas.net/privacy.html`, e
    `https://weightogo.jonathas.net/pt/privacidade.html` na localização em português (Brasil).
+
 10. **Classificação etária.** No App Store Connect, App Information, Age Rating, Edit. O
     questionário como é feito hoje (as classificações de julho de 2025: 4+, 9+, 13+, 16+ e 18+),
     com as respostas para este app (decisão 170):
