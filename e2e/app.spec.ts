@@ -90,9 +90,11 @@ test('exports the weigh-ins as a CSV for a spreadsheet', async ({ page }, info) 
     .replace(/^\uFEFF/, '')
     .trimEnd()
     .split('\r\n');
-  expect(rows[0]).toBe('date,weight_kg,change_kg,average_7_days_kg,trend_kg,lost_pct,saved_at');
+  expect(rows[0]).toBe(
+    'date,weight_kg,change_kg,average_7_days_kg,trend_kg,lost_pct,body_fat_deurenberg_pct,lean_mass_boer_kg,body_water_watson_l,bmr_mifflin_kcal,saved_at',
+  );
   expect(rows.length).toBeGreaterThan(300);
-  expect(rows[1]).toMatch(/^\d{4}-\d{2}-\d{2},\d+\.\d,,,\d+\.\d{2},0\.00,\d{4}-/);
+  expect(rows[1]).toMatch(/^\d{4}-\d{2}-\d{2},\d+\.\d,,,\d+\.\d{2},0\.00,,,,,\d{4}-/);
   await check();
 });
 
@@ -180,10 +182,10 @@ for (const { from, link, url, heading, back, home } of [
     await page.locator('.site-footer').getByRole('link', { name: link, exact: true }).click();
     await expect(page).toHaveURL(url);
     await expect(page.locator('h1')).toHaveText(heading);
-    await expect(page.locator('h2')).toHaveCount(12);
+    await expect(page.locator('h2')).toHaveCount(13);
     // "On this page" leads to each section after "In short".
     const toc = page.locator('nav.toc a');
-    await expect(toc).toHaveCount(11);
+    await expect(toc).toHaveCount(12);
     await toc.last().click();
     await expect(page).toHaveURL(`${url}#contact`);
     // Back to the diary in the page's language from the end of the policy, as in the app, which has

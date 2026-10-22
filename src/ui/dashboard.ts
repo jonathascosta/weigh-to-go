@@ -33,12 +33,15 @@ import {
   weekdaysSummary,
 } from './days';
 import { chevron, h } from './dom';
-import { mountEntry, mountPaste } from './entry';
+import { failure, mountEntry, mountPaste } from './entry';
 import { factsSummary, mountFacts } from './facts';
 import { hiccupsSummary, mountHiccups } from './hiccups';
 import { mountLog } from './log';
 import { mountPercent, percentSummary } from './percent';
 import { bmiSummary, goalEditor, heightEditor, mountBmi, mountGoal } from './profile';
+import { ageThisYear, birthYearEditor, bodySummary, mountBody } from './body';
+import { selectRow } from '../settings-ui';
+import type { Sex } from '../data/records';
 import { mountHealth } from './health';
 import { mountRates, rateSummary } from './rates';
 import { mountReminder } from './reminder';
@@ -131,6 +134,8 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     percent: card('pct'),
     rate: card('rate'),
     hiccups: card('hiccups'),
+    // Wide on the one page, so the pairs after it (BMI with Facts) stay as they are.
+    body: card('body'),
     goal: card('goal', false),
     bmi: card('bmi', false),
     facts: card('facts', false),
@@ -156,11 +161,35 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     class: 'row',
     attrs: { type: 'button', id: 'settings-height', 'aria-haspopup': 'dialog' },
   });
+  // The body composition estimates' two inputs (docs/ux/body-composition.md §1): the year of birth
+  // in a sheet, the sex as a select over its row, like the language and the units.
+  const yearRow = h('button', {
+    class: 'row',
+    attrs: { type: 'button', id: 'settings-birth-year', 'aria-haspopup': 'dialog' },
+  });
+  const sexRow = selectRow('settings-sex');
+  // What a failed choice of sex says, under its row (empty, it takes no room).
+  const sexStatus = h('p', {
+    class: 'status group-pad choices-status',
+    attrs: { role: 'status', id: 'settings-sex-status' },
+  });
+  const profileNote = h('p', { class: 'note group-note' });
   const settingsCard = h(
     'section',
     { class: 'data-group settings-group', attrs: { 'aria-labelledby': 'settings-title' } },
     settingsTitle,
-    h('div', { class: 'group' }, settingsBox, sectionsBox, goalRow, heightRow),
+    h(
+      'div',
+      { class: 'group' },
+      settingsBox,
+      sectionsBox,
+      goalRow,
+      heightRow,
+      yearRow,
+      sexRow.row,
+      sexStatus,
+    ),
+    profileNote,
   );
   // The daily reminder is the app's: a website can't plan notifications on the phone.
   const reminder = notifier
@@ -283,6 +312,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     'percent',
     'rate',
     'hiccups',
+    'body',
     'bmi',
     'facts',
     'variation',
@@ -293,6 +323,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     percent: 'pct',
     rate: 'rate',
     hiccups: 'hiccups',
+    body: 'body',
     bmi: 'bmi',
     facts: 'facts',
     variation: 'variation',
@@ -319,6 +350,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     el.percent,
     el.rate,
     el.hiccups,
+    el.body,
     el.bmi,
     el.facts,
     el.variation,
@@ -459,6 +491,12 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
       ),
     ),
   );
+  line(
+    'body',
+    (m) => m['body.title'],
+    say('body', (state, s) => bodySummary(state, s)),
+  );
+  detail('body', mountBody(cards.body, app, shell));
   line('bmi', (m) => m['bmi.title'], say('bmi', bmiSummary));
   detail('bmi', mountBmi(cards.bmi, app, shell));
   line('facts', (m) => m['facts.title'], say('facts', factsSummary));
@@ -538,20 +576,59 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   const heightName = h('span');
   const heightValue = h('span', { class: 'val' });
   heightRow.append(h('span', { class: 'grow' }, heightName), heightValue, chevron());
+  // Its value under its name, as the selects' rows say theirs: "1983 · 43 anos este ano" beside
+  // "Ano de nascimento" left no room for the name at 320 px with large text.
+  const yearName = h('span');
+  const yearValue = h('span', { class: 'row-sub' });
+  yearRow.append(h('span', { class: 'grow' }, yearName, yearValue), chevron());
+  const SEX_VALUES = ['', 'female', 'male'] as const;
+  sexRow.select.append(...SEX_VALUES.map((value) => h('option', { attrs: { value } })));
+  /** The select and its row's text, from the sex saved. */
+  const drawSex = (sex: Sex | null, m: Settings['messages']) => {
+    sexRow.select.value = sex ?? '';
+    // The row states a fact: "Left out", not the choice's "Leave out".
+    sexRow.value.textContent = sex === null ? m['profile.sex.leftOut'] : m[`profile.sex.${sex}`];
+  };
+  const saySex = (text: string) => {
+    sexStatus.textContent = text;
+    sexStatus.classList.toggle('status-bad', text !== '');
+  };
+  sexRow.select.addEventListener('change', () => {
+    const value = sexRow.select.value;
+    const sex = value === 'female' || value === 'male' ? value : null;
+    saySex('');
+    // The choice applies at once, as the language's and the units' do. Refused, the row goes back
+    // to what is saved and says why.
+    app.updateProfile({ sex }).catch((error: unknown) => {
+      console.error(error);
+      const s = settings();
+      drawSex(app.state().profile.sex, s.messages);
+      // The weigh-in's general failure names a weigh-in: this one says it was the change.
+      const text = failure(error, app, s);
+      saySex(text === s.messages['entry.failed'] ? s.messages['profile.failed'] : text);
+    });
+  });
   const goalEdit = goalEditor(app, 'data-', 'sheet-title');
   const heightEdit = heightEditor(app, 'data-', 'sheet-title');
-  let profileSheet: { sheet: OpenSheet; which: 'goal' | 'height' } | null = null;
-  const openProfile = (which: 'goal' | 'height') => {
+  const yearEdit = birthYearEditor(app, 'data-', 'sheet-title');
+  type ProfileRow = 'goal' | 'height' | 'year';
+  const PROFILE_ROWS = {
+    goal: { editor: goalEdit, row: goalRow, title: 'goal.change' },
+    height: { editor: heightEdit, row: heightRow, title: 'bmi.change' },
+    year: { editor: yearEdit, row: yearRow, title: 'profile.birthYear.change' },
+  } as const;
+  let profileSheet: { sheet: OpenSheet; which: ProfileRow } | null = null;
+  const openProfile = (which: ProfileRow) => {
     const m = settings().messages;
-    const editor = which === 'goal' ? goalEdit : heightEdit;
+    const { editor, row, title } = PROFILE_ROWS[which];
     editor.draw(app.state(), settings());
     profileSheet = {
       which,
       sheet: openSheet({
-        title: which === 'goal' ? m['goal.change'] : m['bmi.change'],
+        title: m[title],
         done: m['chart.done'],
         content: editor.element,
-        opener: which === 'goal' ? goalRow : heightRow,
+        opener: row,
       }),
     };
   };
@@ -560,6 +637,9 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   });
   heightRow.addEventListener('click', () => {
     openProfile('height');
+  });
+  yearRow.addEventListener('click', () => {
+    openProfile('year');
   });
   const settingsPart = add('data', null, (state, s) => {
     const m = s.messages;
@@ -580,13 +660,24 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     heightName.textContent = m['settings.height'];
     const height = state.profile.heightCm;
     heightValue.textContent = height === null ? m['settings.notSet'] : f.height(height, s.heightUnit);
+    yearName.textContent = m['settings.birthYear'];
+    const year = state.profile.birthYear;
+    yearValue.textContent =
+      year === null
+        ? m['settings.birthYearNone']
+        : m['settings.birthYearValue'](String(year), String(ageThisYear(year)));
+    sexRow.label.textContent = m['settings.sex'];
+    const sexOptions = [...sexRow.select.options];
+    for (const o of sexOptions)
+      o.textContent =
+        o.value === 'female' || o.value === 'male' ? m[`profile.sex.${o.value}`] : m['profile.sex.leaveOut'];
+    drawSex(state.profile.sex, m);
+    profileNote.textContent = m['profile.note'];
     goalEdit.draw(state, s);
     heightEdit.draw(state, s);
+    yearEdit.draw(state, s);
     if (profileSheet?.sheet.isOpen())
-      profileSheet.sheet.words(
-        profileSheet.which === 'goal' ? m['goal.change'] : m['bmi.change'],
-        m['chart.done'],
-      );
+      profileSheet.sheet.words(m[PROFILE_ROWS[profileSheet.which].title], m['chart.done']);
   });
   const { purchase } = options;
   const drawAbout = mountAbout(about, inApp, () => purchase?.view().offer.kind === 'held');

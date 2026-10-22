@@ -10,6 +10,8 @@ import {
   byDate,
   EMPTY_PROFILE,
   isProfile,
+  mergeProfile,
+  profileFields,
   isStoredWeighIn,
   sameRecord,
   toProfile,
@@ -145,12 +147,6 @@ function announceChange(): void {
   channel.postMessage('changed');
   channel.close();
 }
-
-/** The merged profile: fields given replace the current ones. */
-const mergeProfile = (current: Profile, incoming: Profile | null): Profile => ({
-  goalKg: incoming?.goalKg ?? current.goalKg,
-  heightCm: incoming?.heightCm ?? current.heightCm,
-});
 
 /** Tells the other tabs (and other stores in this one) that the data changed, and listens. */
 function tabs(): {
@@ -438,7 +434,7 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
     for (const w of weighIns) store.put({ date: w.date, kg: w.kg, savedAt: w.savedAt });
   };
   const putProfile = (tx: IDBTransaction, profile: Profile) => {
-    tx.objectStore(PROFILE).put({ goalKg: profile.goalKg, heightCm: profile.heightCm }, PROFILE_KEY);
+    tx.objectStore(PROFILE).put(profileFields(profile), PROFILE_KEY);
   };
 
   return {

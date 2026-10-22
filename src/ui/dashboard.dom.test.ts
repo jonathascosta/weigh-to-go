@@ -570,7 +570,7 @@ describe('Dashboard II', () => {
   it('names the goal’s row from the profile in Portuguese', async () => {
     choose({ lang: 'pt' });
     await saveDays(climbs);
-    await app.setProfile({ goalKg: 90, heightCm: null });
+    await app.setProfile({ goalKg: 90, heightCm: null, birthYear: null, sex: null });
     await settle();
     const rate = root.querySelector<HTMLInputElement>('#sim-rate')!;
     rate.value = '1';
@@ -594,7 +594,7 @@ describe('Dashboard II', () => {
     // No goal: the round milestones, as before.
     expect(names()).toEqual(['5%', '10%', '15%']);
     // A goal of 88 kg (12% of the first 100 kg): the table ends on it, nothing past it.
-    await app.setProfile({ goalKg: 88, heightCm: null });
+    await app.setProfile({ goalKg: 88, heightCm: null, birthYear: null, sex: null });
     await settle();
     expect(names()).toEqual(['5%', '10%', 'Goal (12.0%)']);
     // The goal's line is drawn, and the scale reaches it, yet no milestone line past it.
@@ -603,11 +603,11 @@ describe('Dashboard II', () => {
     expect(lines().some((t) => /^(15|20)% ·/.test(t))).toBe(false);
     // A goal already passed (99 kg, 1%; the diary is down to 97.5 kg): it alone, and no 5% line,
     // which the old scale reached as "the next milestone".
-    await app.setProfile({ goalKg: 99, heightCm: null });
+    await app.setProfile({ goalKg: 99, heightCm: null, birthYear: null, sex: null });
     await settle();
     expect(names()).toEqual(['Goal (1.0%)']);
     expect(lines().some((t) => t.startsWith('5% ·'))).toBe(false);
-    await app.setProfile({ goalKg: 88, heightCm: null });
+    await app.setProfile({ goalKg: 88, heightCm: null, birthYear: null, sex: null });
     await settle();
     choose({ lang: 'pt' });
     expect(names()).toEqual(['5%', '10%', 'Meta (12,0%)']);
@@ -812,7 +812,7 @@ describe('Dashboard III', () => {
       expect(sectionChip(chip).getAttribute('aria-pressed')).toBe('false');
     }
     expect(JSON.parse(localStorage.getItem('weigh-to-go:sections')!)).not.toContain('calendar');
-    expect(root.querySelector('#sections-panel-button .row-sub')!.textContent).toBe('10 of 13 shown');
+    expect(root.querySelector('#sections-panel-button .row-sub')!.textContent).toBe('11 of 14 shown');
     // The log's rows go; its group stays, with Paste several days at once.
     sectionChip('Weigh-ins').click();
     expect(section('log-title').hidden).toBe(false);
@@ -835,7 +835,7 @@ describe('Dashboard III', () => {
     type('height-cm', '180');
     submit('height-cm');
     await settle();
-    expect(app.state().profile).toEqual({ goalKg: 90, heightCm: 180 });
+    expect(app.state().profile).toEqual({ goalKg: 90, heightCm: 180, birthYear: null, sex: null });
   });
 
   it('shows the goal and the height in Your data, and edits them in a sheet', async () => {
@@ -859,6 +859,225 @@ describe('Dashboard III', () => {
     await settle();
     expect(app.state().profile.heightCm).toBe(176);
     expect(heightRow.textContent).toBe('Height176 cm');
+  });
+
+  it('shows the year of birth and the sex in Your data, with the note, and edits them', async () => {
+    const thisYear = new Date().getFullYear();
+    const yearRow = root.querySelector<HTMLButtonElement>('#settings-birth-year')!;
+    const sex = root.querySelector<HTMLSelectElement>('#settings-sex')!;
+    const sexRow = sex.closest('.row')!.querySelector('.row-face')!;
+    expect(yearRow.textContent).toBe('Year of birthNot set');
+    expect(yearRow.getAttribute('aria-haspopup')).toBe('dialog');
+    expect(sexRow.textContent).toBe('Sex, for the formulasLeft out');
+    expect([...sex.options].map((o) => o.textContent)).toEqual(['Leave out', 'Female', 'Male']);
+    expect(root.querySelector('.settings-group > .group-note')!.textContent).toBe(
+      'Height, year of birth and sex are used only for BMI and the body composition estimates, and stay on this device. Each is optional.',
+    );
+    // The rows come after Height, in that order.
+    const rows = [...root.querySelectorAll('.settings-group .group > .row')].map(
+      (r) => r.id || r.querySelector('select')?.id,
+    );
+    expect(rows.slice(-4)).toEqual([
+      'settings-goal',
+      'settings-height',
+      'settings-birth-year',
+      'settings-sex',
+    ]);
+
+    yearRow.click();
+    expect(document.querySelector('#sheet-title')!.textContent).toBe('Change year of birth');
+    const field = document.querySelector<HTMLInputElement>('#data-birth-year')!;
+    expect(field.getAttribute('inputmode')).toBe('numeric');
+    expect(field.getAttribute('autocomplete')).toBe('bday-year');
+    // A child's year is refused, the field keeps it and says why.
+    type('data-birth-year', String(thisYear - 10));
+    submit('data-birth-year');
+    await settle();
+    expect(app.state().profile.birthYear).toBeNull();
+    expect(document.querySelector('#data-birth-year-status')!.textContent).toBe(
+      `Type the year you were born, from ${String(thisYear - 100)} to ${String(thisYear - 18)}, or leave it empty to remove it. The formulas are for adults.`,
+    );
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(field.getAttribute('aria-describedby')).toBe('data-birth-year-help data-birth-year-status');
+    expect(field.value).toBe(String(thisYear - 10));
+    type('data-birth-year', '1983');
+    submit('data-birth-year');
+    await settle();
+    expect(app.state().profile.birthYear).toBe(1983);
+    expect(field.hasAttribute('aria-invalid')).toBe(false);
+    expect(document.querySelector('#data-birth-year-status')!.textContent).toBe('Year of birth saved: 1983.');
+    expect(yearRow.textContent).toBe(`Year of birth1983 · ${String(thisYear - 1983)} this year`);
+    type('data-birth-year', '');
+    submit('data-birth-year');
+    await settle();
+    expect(app.state().profile.birthYear).toBeNull();
+    expect(document.querySelector('#data-birth-year-status')!.textContent).toBe('Year of birth removed.');
+
+    sex.value = 'female';
+    sex.dispatchEvent(new Event('change'));
+    await settle();
+    expect(app.state().profile.sex).toBe('female');
+    expect(sexRow.textContent).toBe('Sex, for the formulasFemale');
+    sex.value = '';
+    sex.dispatchEvent(new Event('change'));
+    await settle();
+    expect(app.state().profile.sex).toBeNull();
+  });
+
+  it('says when the sex chosen in Settings can’t be saved, and puts the row back', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const store = app.state().store!;
+    store.updateProfile = () => Promise.reject(new Error('refused'));
+    const sex = root.querySelector<HTMLSelectElement>('#settings-sex')!;
+    sex.value = 'male';
+    sex.dispatchEvent(new Event('change'));
+    await settle();
+    expect(app.state().profile.sex).toBeNull();
+    expect(sex.value).toBe('');
+    expect(sex.closest('.row')!.querySelector('.row-face')!.textContent).toBe(
+      'Sex, for the formulasLeft out',
+    );
+    const status = root.querySelector('#settings-sex-status')!;
+    expect(status.getAttribute('role')).toBe('status');
+    expect(status.textContent).toBe("Couldn't save the change. Try again.");
+    expect(errors).toHaveBeenCalled();
+    errors.mockRestore();
+  });
+
+  it('says a failed save of the profile was a change, not a weigh-in', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    choose({ heightUnit: 'cm' });
+    app.state().store!.updateProfile = () => Promise.reject(new Error('refused'));
+    const failed = "Couldn't save the change. Try again.";
+    // The goal, on its card.
+    type('goal-weight', '90');
+    submit('goal-weight');
+    await settle();
+    expect(section('goal-title').textContent).toContain(failed);
+    expect(section('goal-title').textContent).not.toContain('weigh-in. Try again');
+    // The year of birth, in its sheet.
+    root.querySelector<HTMLButtonElement>('#settings-birth-year')!.click();
+    type('data-birth-year', '1983');
+    submit('data-birth-year');
+    await settle();
+    expect(document.querySelector('#data-birth-year-status')!.textContent).toBe(failed);
+    // Change details.
+    root.querySelector<HTMLButtonElement>('#body-change-button')!.click();
+    type('details-cm', '172');
+    submit('details-cm');
+    await settle();
+    expect(document.querySelector('#details-status')!.textContent).toBe(failed);
+    expect(app.state().profile).toMatchObject({ goalKg: null, heightCm: null, birthYear: null });
+    errors.mockRestore();
+  });
+
+  it('says what the body composition card needs, then shows the estimates once the details are saved', async () => {
+    await saveDays([100, 99.6, 99.1]);
+    choose({ heightUnit: 'cm' });
+    const card = section('body-title');
+    expect(card.classList.contains('wide')).toBe(true);
+    expect(root.querySelector('#body-sum')!.textContent).toBe(
+      'Appears once your height, year of birth and sex are set.',
+    );
+    expect([...card.querySelectorAll('.body-needs li')].map((li) => li.textContent)).toEqual([
+      'HeightNot set',
+      'Year of birthNot set',
+      'Sex, for the formulasLeft out',
+    ]);
+    // Change details: in place on the one page, the three inputs and one Save.
+    const change = card.querySelector<HTMLButtonElement>('#body-change-button')!;
+    expect(change.textContent).toBe('Change details');
+    change.click();
+    expect(card.querySelector('fieldset legend')!.textContent).toBe('Sex, for the formulas');
+    // A refused year saves nothing, not even the good height, and takes focus to the year.
+    type('details-cm', '172');
+    type('details-birth-year', '1890');
+    document.querySelector<HTMLInputElement>('#details-sex-male')!.checked = true;
+    submit('details-cm');
+    await settle();
+    expect(app.state().profile).toMatchObject({ heightCm: null, birthYear: null, sex: null });
+    expect(document.activeElement).toBe(document.querySelector('#details-birth-year'));
+    // Said next to the year, which it describes, not under Save.
+    const yearError = document.querySelector<HTMLElement>('#details-birth-year-error')!;
+    expect(yearError.hidden).toBe(false);
+    expect(yearError.textContent).toContain('Type the year you were born');
+    expect(document.querySelector('#details-birth-year')!.getAttribute('aria-describedby')).toBe(
+      'details-birth-year-help details-birth-year-error',
+    );
+    expect(document.querySelector('#details-birth-year')!.getAttribute('aria-invalid')).toBe('true');
+    // And read out: a live region of its own takes it for screen readers on the next frame; the
+    // status line under Save says nothing.
+    const announcer = document.querySelector<HTMLElement>('#details-announce')!;
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(announcer.getAttribute('role')).toBe('status');
+    expect(announcer.classList.contains('visually-hidden')).toBe(true);
+    expect(announcer.textContent).toBe(yearError.textContent);
+    expect(document.querySelector('#details-status')!.textContent).toBe('');
+    // The same refusal again, Enter pressed in the field that has focus: emptied, then said again.
+    submit('details-cm');
+    expect(announcer.textContent).toBe('');
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(announcer.textContent).toBe(yearError.textContent);
+    // A height refused: said next to it, and described by it.
+    type('details-cm', '20');
+    submit('details-cm');
+    await settle();
+    expect(document.querySelector('#details-height-error')!.textContent).toContain('Type your height in cm');
+    expect(document.querySelector('#details-cm')!.getAttribute('aria-describedby')).toBe(
+      'details-cm-unit details-height-error',
+    );
+    expect(document.activeElement).toBe(document.querySelector('#details-cm'));
+    type('details-cm', '172');
+    type('details-birth-year', '1983');
+    submit('details-cm');
+    await settle();
+    expect(app.state().profile).toMatchObject({ heightCm: 172, birthYear: 1983, sex: 'male' });
+    expect(document.querySelector('#details-status')!.textContent).toBe('Details saved.');
+    // After the refusals, the save's word shows to the eye, and the announcer is empty.
+    const saved = document.querySelector<HTMLElement>('#details-status')!;
+    expect(saved.classList.contains('visually-hidden')).toBe(false);
+    expect(saved.hidden).toBe(false);
+    expect(saved.closest('[hidden], .visually-hidden')).toBeNull();
+    expect(announcer.textContent).toBe('');
+    expect(yearError.hidden).toBe(true);
+    expect(document.querySelector('#details-birth-year')!.hasAttribute('aria-invalid')).toBe(false);
+    // 99.1 kg, 172 cm, 43 in 2026: body fat 1.2 × 33.50 + 9.89 − 16.2 = 33.9%, BMR 1856 → 1,860
+    // (on its day: the made-up diary ends in September).
+    expect(root.querySelector('#body-sum')!.textContent).toContain(
+      'estimated 34% body fat and 1,860\u00a0kcal a day at rest, from formulas.',
+    );
+    expect([...card.querySelectorAll('.body-row dt')].map((d) => d.textContent)).toEqual([
+      'Body fat',
+      'Lean mass',
+      'Body water',
+      'Calories at rest (BMR)',
+    ]);
+    expect(card.querySelector('.body-caveat')!.textContent).toContain('not measurements');
+    const chips = [...card.querySelectorAll<HTMLButtonElement>('.body-chips button')];
+    expect(chips.map((c) => [c.textContent, c.getAttribute('aria-pressed')])).toEqual([
+      ['Body fat', 'true'],
+      ['Lean mass', 'false'],
+      ['Water', 'false'],
+      ['BMR', 'false'],
+    ]);
+    expect(card.querySelector('.body-chips [role="group"]')!.getAttribute('aria-label')).toBe(
+      'Estimate on the chart',
+    );
+    const svg = card.querySelector('svg.chart-svg')!;
+    expect(svg.getAttribute('aria-labelledby')).toBe('body-chart-name');
+    expect(root.querySelector('#body-chart-name')!.textContent).toBe(
+      'Body fat estimate over time (Deurenberg formula)',
+    );
+    expect(svg.querySelector('.est-band')).not.toBeNull();
+    chips[3]!.click();
+    expect(root.querySelector('#body-chart-name')!.textContent).toBe(
+      'Calories at rest estimate over time (Mifflin-St Jeor formula)',
+    );
+    // About the formulas: open on the one page.
+    expect(card.querySelector('#body-about-toggle')!.getAttribute('aria-expanded')).toBe('true');
+    // The Settings rows follow the details saved here.
+    expect(root.querySelector('#settings-birth-year')!.textContent).toContain('1983');
+    expect(root.querySelector('#settings-sex')!.closest('.row')!.textContent).toContain('Male');
   });
 
   it('moves focus to the first week shown by "Show more"', async () => {
@@ -1079,6 +1298,7 @@ describe('on a phone, the parts drawn only while they show', () => {
       'Percentage loss',
       'Compound daily rate',
       'Hiccups',
+      'Body composition (estimates)',
       'BMI',
       'Facts',
       'Day-to-day variation',
@@ -1133,17 +1353,17 @@ describe('on a phone, the parts drawn only while they show', () => {
     expect(root.querySelector('#rate-curve-title')!.closest<HTMLElement>('.block')!.hidden).toBe(true);
   });
 
-  it('opens Sections in a sheet of 13 switches, and says how many are on', () => {
+  it('opens Sections in a sheet of 14 switches, and says how many are on', () => {
     go('#data');
     const button = root.querySelector<HTMLButtonElement>('#sections-panel-button')!;
     expect(button.getAttribute('aria-haspopup')).toBe('dialog');
     button.click();
     const switches = document.querySelectorAll<HTMLButtonElement>('.sheet button.toggle');
-    expect(switches).toHaveLength(13);
+    expect(switches).toHaveLength(14);
     expect(document.querySelector('#sheet-title')!.textContent).toBe('Sections');
     sectionToggle('Calendar').click();
     expect(sectionToggle('Calendar').getAttribute('aria-pressed')).toBe('false');
-    expect(button.querySelector('.row-sub')!.textContent).toBe('12 of 13 shown');
+    expect(button.querySelector('.row-sub')!.textContent).toBe('13 of 14 shown');
     document.querySelector<HTMLButtonElement>('.sheet-head button')!.click();
     expect(document.activeElement).toBe(button);
   });
@@ -1188,7 +1408,14 @@ describe('on a phone, the parts drawn only while they show', () => {
 
   it('says where to show the cards when every one is hidden', () => {
     go('#analysis');
-    for (const name of ['Percentage loss', 'Compound daily rate', 'Hiccups', 'BMI', 'Facts'])
+    for (const name of [
+      'Percentage loss',
+      'Compound daily rate',
+      'Hiccups',
+      'Body composition',
+      'BMI',
+      'Facts',
+    ])
       sectionToggle(name).click();
     const message = root.querySelector<HTMLElement>('.all-hidden')!;
     expect(message.hidden).toBe(true);

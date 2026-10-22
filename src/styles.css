@@ -26,6 +26,9 @@
   --c-avg7: #cc7420;
   --c-trend: #8253ac;
   --c-week: #3b8686;
+  /* The body composition estimates: the weekly average's teal, and its band (the formula's error). */
+  --c-est: #3b8686;
+  --est-band: rgb(59 134 134 / 0.16);
   --c-reg: #6a7883;
   --c-proj: #be3a73;
   --grid: #e5eaec;
@@ -73,6 +76,8 @@
     --c-avg7: #efa15b;
     --c-trend: #b58bdc;
     --c-week: #6cc0be;
+    --c-est: #6cc0be;
+    --est-band: rgb(108 192 190 / 0.18);
     --c-reg: #98a6b0;
     --c-proj: #eb71a7;
     --grid: #222c32;
@@ -3896,4 +3901,298 @@ svg.go {
 .data-panel .status:focus,
 .erase-status .status:focus {
   outline: none;
+}
+
+/* ---------- Body composition, estimates (docs/ux/body-composition.md) ---------- */
+
+.sw-est {
+  background: var(--c-est);
+}
+
+.swatch.sw-est-band {
+  width: 16px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--est-band);
+  outline: 1px solid var(--c-est);
+  outline-offset: -1px;
+}
+
+.est-band {
+  fill: var(--est-band);
+}
+
+.est-line {
+  fill: none;
+  stroke: var(--c-est);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.est-dot {
+  fill: var(--c-est);
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+
+.est-bar {
+  stroke: var(--c-est);
+  stroke-width: 2;
+  stroke-opacity: 0.6;
+}
+
+.hoverdot.est-hoverdot {
+  fill: var(--c-est);
+}
+
+/* A readout's range is one unit: it wraps whole to the next line, never "1,670–" and "2,040 kcal". */
+.body-chart .readout-row {
+  white-space: nowrap;
+}
+
+.body-chips .chips {
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.body-chip {
+  flex: 1 1 auto;
+  justify-content: center;
+  min-height: 44px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  color: var(--fg);
+}
+
+/* Where four don't fit one row: two equal rows of two (body.ts measures it). */
+.body-chips .chips.chips-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chips-grid .body-chip {
+  white-space: normal;
+}
+
+.body-chip[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+/* The honesty line, read with the figures: a rule in the estimate's colour on its left. */
+.body-caveat {
+  margin: 16px 0 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--c-est);
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.body-rows {
+  margin: 12px 0 0;
+}
+
+/* Each estimate: its name and value on one line (the value wraps under it when they don't fit),
+   then its start, formula and error. */
+.body-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.body-row dt {
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+
+.body-row dd {
+  margin: 0;
+}
+
+.body-value {
+  margin-left: auto;
+  text-align: right;
+}
+
+.body-value b {
+  font-family: var(--f-num);
+  font-size: 1.375rem;
+  font-weight: 600;
+}
+
+.body-subs {
+  flex-basis: 100%;
+}
+
+.body-about {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.body-about-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: left;
+  cursor: pointer;
+}
+
+.body-about-toggle > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.about-chev {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 150ms ease-out;
+}
+
+.body-about-toggle[aria-expanded='true'] .about-chev {
+  transform: rotate(180deg);
+}
+
+.body-about-panel p {
+  margin: 0 0 10px;
+  max-width: 70ch;
+}
+
+/* What the estimates need: each input and its state. */
+.body-needs {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.body-needs li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.body-needs .unset {
+  color: var(--muted);
+}
+
+/* Change details: last, on the left, as the cards' tools. */
+.acard-tools.body-tools {
+  justify-content: flex-start;
+}
+
+/* Change details' fields: the height, the year of birth, and the sex as three radios. */
+.details-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.year-input {
+  width: 8.5em;
+  max-width: 100%;
+}
+
+.field-help {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+/* A refusal, next to the field it describes. */
+.field-error {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  color: var(--bad);
+}
+
+.radios {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.radios legend {
+  padding: 0;
+  margin-bottom: 4px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--ref);
+  border-radius: 999px;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.radio input {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* Under the Settings group: what the profile's fields are for. */
+.settings-group > .group-note {
+  margin: 0 4px;
+}
+
+@media (min-width: 960px) {
+  /* The one page: the chart and its chooser on the left, the honesty line and figures on the right. */
+  .body-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .body-side > .body-caveat {
+    margin-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about-chev {
+    transition: none;
+  }
 }

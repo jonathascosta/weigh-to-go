@@ -6,6 +6,7 @@
  * the reader can choose the other.
  */
 import { lostPct, type Day } from '../analysis/analyze';
+import { estimatesAt, type BodyInputs } from '../analysis/body';
 import { pref } from './prefs';
 import { fromKg, type WeightUnit } from '../units';
 
@@ -26,8 +27,17 @@ export interface CsvHeaders {
   readonly average7: string;
   readonly trend: string;
   readonly lostPct: string;
+  /** The body composition estimates' columns, each named after its formula. */
+  readonly bodyFat: string;
+  /** Lean mass, in the weight unit: the unit ends the name, as the weights'. */
+  readonly leanMass: string;
+  readonly bodyWater: string;
+  readonly bmr: string;
   readonly savedAt: string;
 }
+
+/** No profile for the estimates: their columns stay, empty. */
+const NO_BODY: BodyInputs = { heightCm: null, birthYear: null, sex: null };
 
 /** The separators a format writes; "auto" asks the locale. */
 export function csvSeparators(
@@ -44,8 +54,11 @@ export function csvSeparators(
 /**
  * The CSV text: a header row (`headers`, the weights' columns ending in the unit), then each day's
  * date (YYYY-MM-DD), weight, change from the previous weigh-in, 7-day average and smoothed trend in
- * `unit`, % lost since the first weigh-in, and when it was saved (ISO, empty when unknown). Starts with a byte order mark so spreadsheets read it as UTF-8,
- * and ends rows with CRLF, as RFC 4180 does.
+ * `unit`, % lost since the first weigh-in, the body composition estimates from `body`'s height, year
+ * of birth and sex (body fat in %, lean mass in `unit`, body water in litres, BMR in kcal; always
+ * there, empty on a day an estimate can't be worked out), and when it was saved (ISO, empty when
+ * unknown). Starts with a byte order mark so spreadsheets read it as UTF-8, and ends rows with
+ * CRLF, as RFC 4180 does.
  */
 export function createCsv(
   series: readonly Day[],
@@ -54,6 +67,7 @@ export function createCsv(
   localeTag: string,
   headers: CsvHeaders,
   format: CsvFormat = 'auto',
+  body: BodyInputs = NO_BODY,
 ): string {
   const { decimal, field } = csvSeparators(localeTag, format);
   const num = (value: number | null, digits: number): string => {
@@ -70,20 +84,29 @@ export function createCsv(
     `${headers.average7}_${unit}`,
     `${headers.trend}_${unit}`,
     headers.lostPct,
+    headers.bodyFat,
+    `${headers.leanMass}_${unit}`,
+    headers.bodyWater,
+    headers.bmr,
     headers.savedAt,
   ];
   const first = series[0]?.kg;
-  const rows = series.map((d) =>
-    [
+  const rows = series.map((d) => {
+    const e = estimatesAt(d.kg, d.date, body);
+    return [
       d.date,
       num(w(d.kg), 1),
       num(w(d.change), 1),
       num(w(d.avg7), 2),
       num(w(d.trend), 2),
       first === undefined ? '' : num(lostPct(d.kg, first), 2),
+      num(e.fat, 1),
+      num(w(e.lean), 1),
+      num(e.water, 1),
+      num(e.bmr, 0),
       savedAt.get(d.date) ?? '',
-    ].join(field),
-  );
+    ].join(field);
+  });
   return `\uFEFF${[head.join(field), ...rows].join('\r\n')}\r\n`;
 }
 
