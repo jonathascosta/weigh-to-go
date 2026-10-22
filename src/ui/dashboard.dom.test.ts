@@ -491,6 +491,61 @@ describe('Dashboard II', () => {
     expect(table.hidden).toBe(false);
   });
 
+  it('stops the simulator’s table and line on the goal day', async () => {
+    await saveDays(climbs);
+    const simBlock = root.querySelector('#sim-title')!.parentElement!;
+    const rows = () => [...simBlock.querySelectorAll('tbody tr')];
+    const set = (id: string, value: string) => {
+      const input = root.querySelector<HTMLInputElement>(id)!;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    };
+    if (chip('rate-title', 'Simulation').getAttribute('aria-pressed') !== 'true')
+      chip('rate-title', 'Simulation').click();
+    const curve = () => section('rate-title').querySelector('svg[aria-labelledby="rate-curve-title"]')!;
+    set('#sim-rate', '1');
+    // No target: every day, to 365, and the line to the horizon's edge.
+    expect(rows()).toHaveLength(14);
+    expect(simBlock.querySelector('.sim-goal')).toBeNull();
+    expect(curve().querySelector('.endlabel-week')).not.toBeNull();
+    // 98.4 kg to 90 kg at 1% a day: 9 days.
+    set('#sim-target', '90');
+    expect(rows().map((r) => r.querySelector('th')!.textContent)).toEqual([
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '9Target',
+    ]);
+    const goal = rows()[7]!;
+    expect(goal.classList.contains('sim-goal')).toBe(true);
+    expect(goal.querySelector('th .badge')!.textContent).toBe('Target');
+    expect(goal.querySelectorAll('td')[1]!.textContent).toBe('90.00 kg');
+    expect(simBlock.querySelector('.foot')!.textContent).not.toContain('in a year');
+    // Stopped before the horizon, the dotted line has no end to label at the edge.
+    expect(curve().querySelector('path.sim-curve')).not.toBeNull();
+    expect(curve().querySelector('.endlabel-week')).toBeNull();
+    // A target at or above the start lists every day again.
+    set('#sim-target', '120');
+    expect(rows()).toHaveLength(14);
+    expect(curve().querySelector('.endlabel-week')).not.toBeNull();
+  });
+
+  it('names the goal’s row from the profile in Portuguese', async () => {
+    choose({ lang: 'pt' });
+    await saveDays(climbs);
+    await app.setProfile({ goalKg: 90, heightCm: null });
+    await settle();
+    const rate = root.querySelector<HTMLInputElement>('#sim-rate')!;
+    rate.value = '1';
+    rate.dispatchEvent(new Event('input'));
+    const last = [...root.querySelector('#sim-title')!.parentElement!.querySelectorAll('tbody tr')].pop()!;
+    expect(last.querySelector('th')!.textContent).toBe('9Meta');
+  });
+
   it('heads the weight column by the line measured, and explains the faded weeks', async () => {
     await saveDays(climbs);
     const head = () => section('hiccups-title').querySelector('thead')!.textContent;

@@ -119,24 +119,16 @@ export interface SimulationRow {
   readonly lossTotal: number;
   /** Lost since the start, in %. */
   readonly lossPct: number;
+  /** The day the weight reaches the target: its weight is the target itself. */
+  readonly goal: boolean;
 }
 
-/** The days the simulator lists. */
+/** The days the simulator lists (those before the goal day only, when there is a target). */
 export const SIMULATION_DAYS = [1, 2, 3, 4, 5, 6, 7, 14, 21, 30, 60, 90, 180, 365] as const;
 
 /** Whether the simulator can run: a rate above 0 and below SIM_RATE_MAX, and a starting weight. */
 export function canSimulate(rate: number, start: number): boolean {
   return Number.isFinite(rate) && rate > 0 && rate < SIM_RATE_MAX && Number.isFinite(start) && start > 0;
-}
-
-/** Weight day by day at a constant `rate` % per day from `start` kg; empty if it can't simulate. */
-export function simulate(rate: number, start: number): SimulationRow[] {
-  if (!canSimulate(rate, start)) return [];
-  return SIMULATION_DAYS.map((day) => {
-    const kg = start * (1 - rate / 100) ** day;
-    const before = start * (1 - rate / 100) ** (day - 1);
-    return { day, kg, lossThatDay: before - kg, lossTotal: start - kg, lossPct: (1 - kg / start) * 100 };
-  });
 }
 
 /** Days until `target` at a constant `rate` % per day from `start`, or null if never. */
@@ -147,13 +139,47 @@ export function daysAtRate(rate: number, start: number, target: number): number 
   return ceilDays(Math.log(target / start) / Math.log(1 - rate / 100));
 }
 
+/**
+ * The day a simulation reaches `target` (the first whole day at or below it, as `daysAtRate`
+ * counts), when the target is below the start; null without one, or with one at or above it.
+ */
+export function simulationGoalDay(rate: number, start: number, target: number | null): number | null {
+  if (target === null || !canSimulate(rate, start) || !(target > 0 && target < start)) return null;
+  return daysAtRate(rate, start, target);
+}
+
+/**
+ * Weight day by day at a constant `rate` % per day from `start` kg; empty if it can't simulate.
+ * With a `target` below the start, it lists the days before the target is reached and ends on the
+ * day it is (see `simulationGoalDay`), at the target's weight: nothing past the goal.
+ */
+export function simulate(rate: number, start: number, target: number | null = null): SimulationRow[] {
+  if (!canSimulate(rate, start)) return [];
+  const at = (day: number) => start * (1 - rate / 100) ** day;
+  const row = (day: number, kg: number, goal = false): SimulationRow => ({
+    day,
+    kg,
+    lossThatDay: (day > 0 ? at(day - 1) : start) - kg,
+    lossTotal: start - kg,
+    lossPct: (1 - kg / start) * 100,
+    goal,
+  });
+  const goalDay = simulationGoalDay(rate, start, target);
+  if (goalDay === null || target === null) return SIMULATION_DAYS.map((day) => row(day, at(day)));
+  return [
+    ...SIMULATION_DAYS.filter((day) => day < goalDay).map((day) => row(day, at(day))),
+    row(goalDay, target, true),
+  ];
+}
+
 export interface SimulationSummary {
-  readonly week: number;
-  readonly month: number;
-  readonly year: number;
-  /** Kilograms lost on the first day, and on day 90. */
+  /** What the rate takes off in a week, 30 days and a year, in %; null when past the goal day. */
+  readonly week: number | null;
+  readonly month: number | null;
+  readonly year: number | null;
+  /** Kilograms lost on the first day, and on day 90 (null when day 90 is past the goal day). */
   readonly kgFirstDay: number;
-  readonly kgDay90: number;
+  readonly kgDay90: number | null;
   /** Days to the goal, when one is set below the starting weight. */
   readonly daysToGoal: number | null;
 }
@@ -164,13 +190,16 @@ export function simulationSummary(
   goalKg: number | null,
 ): SimulationSummary | null {
   if (!canSimulate(rate, start)) return null;
+  const daysToGoal = isGoal(goalKg) ? simulationGoalDay(rate, start, goalKg) : null;
+  // Nothing said of a day past the goal: by then the simulation has stopped (decision 162).
+  const by = (day: number) => daysToGoal === null || day <= daysToGoal;
   return {
-    week: compound(rate, 7),
-    month: compound(rate, 30),
-    year: compound(rate, 365),
+    week: by(7) ? compound(rate, 7) : null,
+    month: by(30) ? compound(rate, 30) : null,
+    year: by(365) ? compound(rate, 365) : null,
     kgFirstDay: (start * rate) / 100,
-    kgDay90: (start * (1 - rate / 100) ** 89 * rate) / 100,
-    daysToGoal: isGoal(goalKg) && goalKg < start ? daysAtRate(rate, start, goalKg) : null,
+    kgDay90: by(90) ? (start * (1 - rate / 100) ** 89 * rate) / 100 : null,
+    daysToGoal,
   };
 }
 

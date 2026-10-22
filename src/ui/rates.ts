@@ -22,6 +22,7 @@ import {
   rollingRates,
   SIM_RATE_MAX,
   simulate,
+  simulationGoalDay,
   simulationSummary,
   type DailyRate,
   type Rates,
@@ -197,6 +198,8 @@ export interface SimRowText {
   readonly pct: string;
   /** The same to one decimal, for a phone's narrow table ("30.6%"). */
   readonly pctShort: string;
+  /** On the row where the target is reached, its name ("Goal", or "Target" when typed); else null. */
+  readonly goal: string | null;
 }
 
 /** What the simulator says and lists: a summary with **bold** parts, and its rows. */
@@ -235,27 +238,37 @@ export function simView(
       days: count(sum.daysToGoal, m['word.day'], s),
       day: on(sum.daysToGoal),
     };
+  const pct = (v: number | null, digits: number) => (v === null ? null : f.percent(v / 100, digits));
   const summary = m['sim.summary']({
     rate: f.percent(rate / 100, 3),
-    week: f.percent(sum.week / 100, 2),
-    month: f.percent(sum.month / 100, 1),
-    year: f.percent(sum.year / 100, 1),
+    week: pct(sum.week, 2),
+    month: pct(sum.month, 1),
+    year: pct(sum.year, 1),
     firstDay: f.weight(sum.kgFirstDay, unit, 3),
-    day90: f.weight(sum.kgDay90, unit, 3),
+    day90: sum.kgDay90 === null ? null : f.weight(sum.kgDay90, unit, 3),
     reach,
     targetAbove: typed && target !== null && target >= start,
   });
+  // The rows stop at the goal day, when the summary reaches one (a target below the start).
+  const rows = simulate(rate, start, sum.daysToGoal === null ? null : target);
+  const goalWeight = rows.find((row) => row.goal)?.kg;
+  const shownGoal = goalWeight === undefined ? null : f.weight(goalWeight, unit, 2);
   return {
     summary,
-    rows: simulate(rate, start).map((row) => ({
-      day: f.number(row.day, 0),
-      date: base ? f.day(isoDay(addDays(base, row.day)), 'short') : null,
-      weight: f.weight(row.kg, unit, 2),
-      lossDay: f.weight(row.lossThatDay, unit, 3),
-      lossTotal: f.weight(row.lossTotal, unit, 2),
-      pct: f.percent(row.lossPct / 100, 2),
-      pctShort: f.percent(row.lossPct / 100, 1),
-    })),
+    rows: rows
+      .map((row) => ({
+        day: f.number(row.day, 0),
+        date: base ? f.day(isoDay(addDays(base, row.day)), 'short') : null,
+        weight: f.weight(row.kg, unit, 2),
+        lossDay: f.weight(row.lossThatDay, unit, 3),
+        lossTotal: f.weight(row.lossTotal, unit, 2),
+        pct: f.percent(row.lossPct / 100, 2),
+        pctShort: f.percent(row.lossPct / 100, 1),
+        goal: row.goal ? m[typed ? 'sim.row.target' : 'sim.row.goal'] : null,
+      }))
+      // A day just above the target that shows as the target's weight would read as reaching it
+      // twice: the goal's row says it once.
+      .filter((row) => row.goal !== null || row.weight !== shownGoal),
   };
 }
 
@@ -746,12 +759,20 @@ export function mountRates(
     const rate = simRate.get();
     const start = simStart.get() ?? last.kg;
     const sim = on('simulation') && rate !== null && canSimulate(rate, start);
-    const simV = (i: number) => start * (1 - (rate ?? 0) / 100) ** dOf(i);
+    // The simulation stops on the day it reaches its target (the one typed, or else the goal), as
+    // the simulator's table does: nothing projected past the goal.
+    const simTargetKg = simTarget.get() ?? (isGoal(profile.goalKg) ? profile.goalKg : null);
+    const simGoalDay = sim && isGoal(simTargetKg) ? simulationGoalDay(rate, start, simTargetKg) : null;
+    const simLast = simGoalDay === null ? Infinity : last.index + simGoalDay;
+    const simV = (i: number) =>
+      i === simLast && simTargetKg !== null ? simTargetKg : start * (1 - (rate ?? 0) / 100) ** dOf(i);
     const goal = on('goal') && isGoal(profile.goalKg) ? profile.goalKg : null;
     // About 160 samples a line, whatever the span.
     const step = Math.max(1, Math.round(total / 160));
     const samples = [...range(0, total + 1, step), total].filter((i, k, list) => list.indexOf(i) === k);
     const future = [last.index, ...samples.filter((i) => i > last.index)];
+    // The simulation's days: up to its goal day, which it ends on, when that comes by the horizon.
+    const simDays = simLast <= total ? [...future.filter((i) => i < simLast), simLast] : future;
 
     const ys = series.map((d) => u(d.kg));
     if (on('constantPct')) for (const i of samples) ys.push(u(expV(i)));
@@ -760,7 +781,7 @@ export function mountRates(
         const v = linV(i);
         if (v !== null) ys.push(u(v));
       }
-    if (sim) for (const i of future) ys.push(u(simV(i)));
+    if (sim) for (const i of simDays) ys.push(u(simV(i)));
     if (goal !== null) ys.push(u(goal));
     const [lo = 0, hi = 1] = extent(ys);
     const pad = Math.max(u(0.5), (hi - lo) * 0.05);
@@ -774,7 +795,8 @@ export function mountRates(
     if (on('constantPct')) ends.push({ v: u(expV(total)), cls: 'endlabel endlabel-proj' });
     const linEnd = linV(total);
     if (on('constantKg') && linEnd !== null) ends.push({ v: u(linEnd), cls: 'endlabel endlabel-reg' });
-    if (sim) ends.push({ v: u(simV(total)), cls: 'endlabel endlabel-week' });
+    // Stopped at its goal before the horizon, it has no end at the edge to label.
+    if (sim && simLast >= total) ends.push({ v: u(simV(total)), cls: 'endlabel endlabel-week' });
     const left = leftFor(yTicks.map(tick));
     const right =
       Math.ceil(Math.max(textWidth(f.number(u(last.kg))), ...ends.map((e) => textWidth(f.number(e.v))))) + 16;
@@ -819,7 +841,7 @@ export function mountRates(
     if (on('constantKg') && linear)
       g.append(svg('path', { class: 'regression-line', d: curve(linV, samples) }));
     if (on('constantPct')) g.append(svg('path', { class: 'exp-curve', d: curve(expV, samples) }));
-    if (sim) g.append(svg('path', { class: 'sim-curve', d: curve(simV, future) }));
+    if (sim) g.append(svg('path', { class: 'sim-curve', d: curve(simV, simDays) }));
     if (on('points')) {
       const spacing = (width - left - right) / Math.max(1, total);
       const r0 = Math.max(1, Math.min(width < 560 ? 2.2 : 2.8, spacing / 2 + 0.6));
@@ -868,7 +890,7 @@ export function mountRates(
           const lv = linV(i);
           if (on('constantKg') && lv !== null)
             rows.push({ name: m['rate.tip.constantKg'](m[`unit.${unit}`]), value: w(lv), swatch: 'sw-reg' });
-          if (sim && i >= last.index)
+          if (sim && i >= last.index && i <= simLast)
             rows.push({ name: m['rate.curve.simulation'], value: w(simV(i)), swatch: 'sw-week' });
           const iso = isoDay(addDays(first.t, i));
           return {
@@ -894,7 +916,7 @@ export function mountRates(
               value: w(lv),
               swatch: CURVE_SWATCH.constantKg,
             });
-          if (sim && i >= last.index)
+          if (sim && i >= last.index && i <= simLast)
             rows.push({
               name: m['rate.curve.simulation'],
               value: w(simV(i)),
@@ -968,8 +990,15 @@ export function mountRates(
       ...view.rows.map((row) =>
         h(
           'tr',
-          {},
-          h('th', { class: 'num', attrs: { scope: 'row' }, text: row.day }),
+          row.goal === null ? {} : { class: 'sim-goal' },
+          // The goal's row says so in words, under its day.
+          h(
+            'th',
+            { class: 'num', attrs: { scope: 'row' } },
+            row.day,
+            row.goal === null ? null : h('br'),
+            row.goal === null ? null : h('span', { class: 'badge badge-goal', text: row.goal }),
+          ),
           h('td', { class: 'col-wide', text: row.date ?? '—' }),
           h('td', { class: 'num', text: row.weight }),
           h('td', { class: 'num', text: row.lossDay }),

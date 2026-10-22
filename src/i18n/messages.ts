@@ -89,11 +89,12 @@ export interface CurveFootParts {
 /** The parts of the simulator's summary, formatted. */
 export interface SimParts {
   readonly rate: string;
-  readonly week: string;
-  readonly month: string;
-  readonly year: string;
+  /** Null when past the goal day, like day90: the summary says nothing of the days after it. */
+  readonly week: string | null;
+  readonly month: string | null;
+  readonly year: string | null;
   readonly firstDay: string;
-  readonly day90: string;
+  readonly day90: string | null;
   /** When it reaches the target (typed) or the goal; day is null without weigh-ins to count from. */
   readonly reach: {
     readonly typed: boolean;
@@ -200,8 +201,28 @@ const ptCalendarSum = (p: CalendarSumParts): string => {
   return `${head}: ${p.down} de queda, ${p.up} de subida${flat} e ${p.none} sem pesagem.`;
 };
 
+/** "a, b and c" (or "a, b e c"): the summary's horizons, those before the goal. */
+const listed = (items: readonly (string | null)[], and: string): string => {
+  const kept = items.filter((x): x is string => x !== null);
+  const lastItem = kept.pop();
+  if (lastItem === undefined) return '';
+  return kept.length ? `${kept.join(', ')} ${and} ${lastItem}` : lastItem;
+};
+
 const enSim = (p: SimParts): string => {
-  let text = `**${p.rate} a day** is ${p.week} a week, ${p.month} in 30 days and ${p.year} in a year. On the first day that is ${p.firstDay}; after 90 days the same rate means ${p.day90} a day.`;
+  const horizons = listed(
+    [
+      p.week === null ? null : `${p.week} a week`,
+      p.month === null ? null : `${p.month} in 30 days`,
+      p.year === null ? null : `${p.year} in a year`,
+    ],
+    'and',
+  );
+  const later = p.day90 !== null ? `; after 90 days the same rate means ${p.day90} a day.` : '.';
+  let text =
+    horizons !== ''
+      ? `**${p.rate} a day** is ${horizons}. On the first day that is ${p.firstDay}${later}`
+      : `On the first day, **${p.rate} a day** is ${p.firstDay}.`;
   if (p.reach) {
     const what = p.reach.typed ? 'the target' : 'your goal';
     text += p.reach.day
@@ -212,7 +233,19 @@ const enSim = (p: SimParts): string => {
 };
 
 const ptSim = (p: SimParts): string => {
-  let text = `**${p.rate} ao dia** equivale a ${p.week} por semana, ${p.month} em 30 dias e ${p.year} em um ano. No primeiro dia são ${p.firstDay}; depois de 90 dias, a mesma taxa representa ${p.day90} por dia.`;
+  const horizons = listed(
+    [
+      p.week === null ? null : `${p.week} por semana`,
+      p.month === null ? null : `${p.month} em 30 dias`,
+      p.year === null ? null : `${p.year} em um ano`,
+    ],
+    'e',
+  );
+  const later = p.day90 !== null ? `; depois de 90 dias, a mesma taxa representa ${p.day90} por dia.` : '.';
+  let text =
+    horizons !== ''
+      ? `**${p.rate} ao dia** equivale a ${horizons}. No primeiro dia são ${p.firstDay}${later}`
+      : `No primeiro dia, **${p.rate} ao dia** são ${p.firstDay}.`;
   if (p.reach) {
     const what = p.reach.typed ? 'ao peso-alvo' : 'à meta';
     text += p.reach.day
@@ -737,6 +770,8 @@ export const en = {
   'sim.col.lossDay': 'Lost that day',
   'sim.col.lossTotal': 'Lost in total',
   'sim.col.pct': '% lost',
+  'sim.row.goal': 'Goal',
+  'sim.row.target': 'Target',
 
   'hiccups.title': 'Hiccups',
   'hiccups.note':
@@ -1659,6 +1694,8 @@ export const pt: Messages = {
   'sim.col.lossDay': 'Perda no dia',
   'sim.col.lossTotal': 'Perda acumulada',
   'sim.col.pct': '% perdido',
+  'sim.row.goal': 'Meta',
+  'sim.row.target': 'Alvo',
 
   'hiccups.title': 'Soluços',
   'hiccups.note':

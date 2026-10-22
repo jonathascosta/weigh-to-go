@@ -8,7 +8,9 @@ import {
   rateKpis,
   rates,
   rollingRates,
+  SIMULATION_DAYS,
   simulate,
+  simulationGoalDay,
   simulationSummary,
 } from './rate';
 
@@ -90,16 +92,77 @@ describe('simulate and daysAtRate', () => {
   });
 
   it('summarises a simulation', () => {
-    const s = simulationSummary(1, 100, 98)!;
+    const s = simulationSummary(1, 100, 30)!;
     expect(s.week).toBeCloseTo(compound(1, 7), 12);
+    expect(s.year).toBeNull();
     expect(s.kgFirstDay).toBe(1);
     expect(s.kgDay90).toBeCloseTo(0.99 ** 89, 10);
-    expect(s.daysToGoal).toBe(3);
+    expect(s.daysToGoal).toBe(daysAtRate(1, 100, 30));
+    expect(simulationSummary(1, 100, null)?.year).toBeCloseTo(compound(1, 365), 12);
     expect(simulationSummary(1, 100, 120)?.daysToGoal).toBeNull();
     expect(simulationSummary(150, 100, 80)).toBeNull();
     expect(simulationSummary(5, 100, 80)).toBeNull();
     expect(simulationSummary(1, 100, 10)?.daysToGoal).toBeNull();
     expect(simulate(Number.NaN, 100)).toEqual([]);
+  });
+
+  it('says nothing in the summary of the days past the goal', () => {
+    // 3 days to 98 kg: no week, month, year or day 90.
+    const soon = simulationSummary(1, 100, 98)!;
+    expect(soon).toMatchObject({ week: null, month: null, year: null, kgDay90: null, daysToGoal: 3 });
+    expect(soon.kgFirstDay).toBe(1);
+    // 69 days to 50 kg: the week and the month, not day 90 or the year.
+    const mid = simulationSummary(1, 100, 50)!;
+    expect(mid.daysToGoal).toBe(69);
+    expect(mid.month).toBeCloseTo(compound(1, 30), 12);
+    expect([mid.year, mid.kgDay90]).toEqual([null, null]);
+  });
+});
+
+describe('simulate with a target', () => {
+  /** A made-up run: 106 kg at 0.332% a day, to a goal of 77.7 kg. */
+  const rate = 0.332;
+  const start = 106;
+  const goal = 77.7;
+  const goalDay = daysAtRate(rate, start, goal)!;
+
+  it('lists the days still above the target, then one row on the goal day at its weight', () => {
+    const rows = simulate(rate, start, goal);
+    expect(goalDay).toBe(94);
+    expect(rows.map((r) => r.day)).toEqual([1, 2, 3, 4, 5, 6, 7, 14, 21, 30, 60, 90, 94]);
+    expect(rows.slice(0, -1).every((r) => r.kg > goal && !r.goal)).toBe(true);
+    const last = rows[rows.length - 1]!;
+    expect(last).toMatchObject({ day: goalDay, kg: goal, goal: true });
+    expect(last.lossTotal).toBeCloseTo(start - goal, 10);
+    expect(last.lossPct).toBeCloseTo((1 - goal / start) * 100, 10);
+    expect(last.lossThatDay).toBeCloseTo(start * (1 - rate / 100) ** (goalDay - 1) - goal, 10);
+    expect(rows.filter((r) => r.goal)).toHaveLength(1);
+    expect(simulationGoalDay(rate, start, goal)).toBe(goalDay);
+  });
+
+  it('lists the goal day once when it is one of the listed days', () => {
+    // 30 days exactly, whatever the float noise (daysAtRate lands on whole days).
+    const rows = simulate(1, 100, 100 * 0.99 ** 30);
+    expect(rows.map((r) => r.day)).toEqual([1, 2, 3, 4, 5, 6, 7, 14, 21, 30]);
+    expect(rows.filter((r) => r.day === 30)).toHaveLength(1);
+    expect(rows[rows.length - 1]?.goal).toBe(true);
+  });
+
+  it('ends after day 365 when the goal is further away', () => {
+    const rows = simulate(0.05, 100, 70);
+    expect(rows).toHaveLength(SIMULATION_DAYS.length + 1);
+    expect(rows[rows.length - 1]).toMatchObject({ day: daysAtRate(0.05, 100, 70), goal: true });
+  });
+
+  it('lists every day as before without a target, or with one at or above the start', () => {
+    const plain = simulate(rate, start);
+    expect(plain.map((r) => r.day)).toEqual([...SIMULATION_DAYS]);
+    expect(plain.some((r) => r.goal)).toBe(false);
+    expect(simulate(rate, start, null)).toEqual(plain);
+    expect(simulate(rate, start, start)).toEqual(plain);
+    expect(simulate(rate, start, 120)).toEqual(plain);
+    expect(simulationGoalDay(rate, start, 120)).toBeNull();
+    expect(simulationGoalDay(rate, start, null)).toBeNull();
   });
 });
 

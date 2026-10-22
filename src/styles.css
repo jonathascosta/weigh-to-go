@@ -3572,6 +3572,18 @@ svg.go {
   white-space: nowrap;
 }
 
+/* The simulator's last row when it reaches the goal: its name under the day, the row in bold. */
+.badge-goal {
+  /* Under the day, on the cell's side (right on the one page, left on a phone). */
+  margin: 2px 0 0;
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.sim-goal > * {
+  font-weight: 600;
+}
+
 .button-wide {
   width: 100%;
 }

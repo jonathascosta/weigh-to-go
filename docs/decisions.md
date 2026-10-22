@@ -916,3 +916,30 @@ decisions above.
      clip and the "no new requests after buying" log, then the reinstall and Restore. _Alternative:_
      a second Apple Account, as another TestFlight tester, for the purchase checks at any time
      (STORE.md, step 5, says how).
+
+## 22 October 2026 · The simulator stops at the goal
+
+The owner's feedback on the Constant rate simulator: with a goal of 77.7 kg its table went on past
+it (58.92 kg at day 180, 31.84 kg at day 365), weights that aren't healthy. Choices made while
+building the change, open to the owner under decision 9. Numbered 162 to stay clear of the
+decisions being added at the same time (146 to 161); it may be renumbered when merged.
+
+162. **Nothing is simulated past the goal.** With a target below the starting weight (the one
+     typed, or else the profile's goal), the table lists the usual days (1 to 7, 14, 21, 30, 60,
+     90, 180, 365) only while the weight is still above the target, then one row on the goal day:
+     the first whole day at or below it, as the summary counts it (`daysAtRate`), with its date,
+     the target's own weight, what that day takes off to reach it and the totals, its Day cell
+     marked "Goal" (or "Target" when typed; "Meta", "Alvo"), the row in bold. A listed day that is
+     the goal day is listed once, and a day just above the target that would show as its weight
+     (two decimals) is left out, so the goal reads as reached once. A goal further than a year
+     away keeps all 14 days and adds its row after 365. The curve chart's dotted simulation ends
+     on the goal day too, at the target; its end label at the edge goes when it stops before the
+     horizon, which stays the reader's choice (30 days to a year), so the constant-% and
+     constant-kg lines are still compared over it, and the y axis no longer stretches to the
+     weights past the goal. The summary follows the same rule: of "a week", "30 days" and "a
+     year", only those that come by the goal day are said, and "after 90 days the same rate
+     means …" only when day 90 does; with the goal under a week away it says only the first day's
+     loss. These are what the rate means, not where the weight goes, but each implies a weight past
+     the goal, which is what the owner asked not to show. No target, or one at or above the
+     start, keeps everything as before. _Alternative:_ keep the summary's year figure as a
+     property of the rate; left out because it reads as the weight a year on.
