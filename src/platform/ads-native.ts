@@ -79,7 +79,8 @@ export const toChoices = (saved: SavedChoices): ConsentChoices => ({
   gdprApplies: saved.gdprApplies === 1 ? true : saved.gdprApplies === 0 ? false : null,
   purposeConsents: typeof saved.purposeConsents === 'string' ? saved.purposeConsents : '',
   vendorConsents: typeof saved.vendorConsents === 'string' ? saved.vendorConsents : '',
-  tcf: saved.tcf === true,
+  // An older plugin, or a bad answer, says nothing: no TCF.
+  tcf: (saved.tcf as unknown) === true,
 });
 
 const choices = async (): Promise<ConsentChoices> => toChoices(await AdSetup.consentChoices());
