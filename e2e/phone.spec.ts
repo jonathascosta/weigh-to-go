@@ -2,8 +2,9 @@
  * The diary on a phone (390 × 844, touch): the tabs, Back, the current tab chosen again, the
  * weigh-in's Undo, the bar stepping aside while typing, Today's three figures and sparkline, the
  * chart's Layers sheet, a finger dragged along the chart, the analysis cards (opened, their
- * options, their chart under a finger), and the app's band under the status bar, which only the
- * iPhone app's build shows.
+ * options, their chart under a finger), Your data (the log, a day changed and deleted with Undo,
+ * erasing, the settings and their fit at 320 px), and the app's band under the status bar, which
+ * only the iPhone app's build shows.
  */
 import { existsSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
@@ -268,13 +269,17 @@ test('opens an analysis card from its line, and its options in a sheet', async (
   // The head closes it again.
   await tapOn(page, '#pct-sum');
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  // Every choice in a sheet is a finger's target, 44 × 44 at least (the BMI's height unit).
+  // Every control in a sheet is a finger's target, 44 px tall at least (the height's fields; its
+  // unit is in Your data's settings now).
   await tapOn(page, '#bmi-sum');
   await page.locator('#bmi-change-button').tap();
   await expect(page.getByRole('dialog', { name: 'Change height' })).toBeVisible();
-  const sizes = await page
-    .locator('.sheet .chip, .sheet .segment, .sheet .toggle')
-    .evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => [r.width, r.height]));
+  const sizes = await page.locator('.sheet input, .sheet button').evaluateAll((els) =>
+    els
+      .map((el) => el.getBoundingClientRect())
+      .filter((r) => r.width > 0)
+      .map((r) => [r.width, r.height]),
+  );
   expect(sizes.length).toBeGreaterThan(2);
   for (const [w, h] of sizes) expect(Math.min(w ?? 0, h ?? 0)).toBeGreaterThanOrEqual(44);
   await page.keyboard.press('Escape');
@@ -314,22 +319,155 @@ test('scrubs a card’s chart under a dragged finger, its readout still', async 
   await check();
 });
 
-test('keeps Your data no wider than the screen, with a short log in its own box', async ({ page }) => {
+test('shows the latest weigh-ins in Your data, and Show all lists more, with no box of its own', async ({
+  page,
+}) => {
   const { check } = await watch(page);
   await page.goto('/');
   await loadBackup(page);
   await tab(page, 'data').tap();
-  for (const width of [390, 320]) {
-    await page.setViewportSize({ width, height: 844 });
-    await expect(page.locator('#log-table-box')).toBeVisible();
-    const m = await page.evaluate(() => ({
-      width: document.documentElement.scrollWidth,
-      log: document.querySelector('#log-table-box')?.getBoundingClientRect().height ?? 0,
-    }));
-    expect(m.width).toBe(width);
-    // Story 6 brings the log's own rows; until then it keeps Sprint 1's box (520 px at most).
-    expect(m.log).toBeLessThanOrEqual(520);
-  }
+  const log = page.locator('section[aria-labelledby="log-title"]');
+  await expect(log.locator('tbody tr')).toHaveCount(5);
+  await log.getByRole('button', { name: /^Show all/ }).tap();
+  await expect(log.locator('tbody tr')).toHaveCount(55);
+  // The rows are the page's: nothing scrolls inside it.
+  const box = await page.locator('#log-table-box').evaluate((el) => ({
+    overflow: getComputedStyle(el).overflowY,
+    fits: el.scrollHeight <= el.clientHeight + 1,
+  }));
+  expect(box).toEqual({ overflow: 'visible', fits: true });
+  // Rows, the settings and Erase are a finger's targets.
+  const small = await page.evaluate(() =>
+    [...document.querySelectorAll('#view-data button, #view-data a[href], #view-data select')]
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 1 && r.height > 1 && el.closest('.about') === null && !el.matches('.link');
+      })
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.height < 44 || r.width < 44;
+      })
+      .map((el) => `${el.tagName} ${el.textContent}`),
+  );
+  expect(small).toEqual([]);
+  await check();
+});
+
+test('changes and deletes a day in its sheet, each with Undo that puts it back', async ({ page }) => {
+  const { check } = await watch(page);
+  await page.goto('/');
+  await loadBackup(page);
+  await tab(page, 'data').tap();
+  const first = page.locator('tbody button[data-role="day"]').first();
+  const day = await first.getAttribute('data-day');
+  const weight = page.locator('tbody tr').first().locator('td').first();
+  const was = await weight.textContent();
+  // The whole row opens the sheet, at the weight cell too.
+  await weight.tap();
+  const sheet = page.getByRole('dialog');
+  await expect(sheet).toBeVisible();
+  await expect(page.locator('#sheet-title')).toBeFocused();
+  await expect(page.locator('#day-weight')).toHaveValue(was ?? '');
+  // Delete stands 28 px below Save.
+  const gap = await page.evaluate(() => {
+    const rectOf = (q: string) => (document.querySelector(q) ?? document.body).getBoundingClientRect();
+    const save = rectOf('.day-sheet button[type=submit]');
+    const del = rectOf('#day-delete');
+    return del.top - save.bottom;
+  });
+  expect(gap).toBeGreaterThanOrEqual(28);
+  await page.locator('#day-weight').fill('99.9');
+  await sheet.getByRole('button', { name: 'Save' }).tap();
+  await expect(sheet).toBeHidden();
+  const toast = page.locator('.toast');
+  await expect(toast).toContainText('Updated: 99.9 kg');
+  await expect(weight).toHaveText('99.9');
+  // Above the tab bar, on screen.
+  const above = await page.evaluate(() => {
+    const rectOf = (q: string) => (document.querySelector(q) ?? document.body).getBoundingClientRect();
+    const t = rectOf('.toast');
+    const bar = rectOf('nav.tabs');
+    return t.bottom <= bar.top && t.top >= 0;
+  });
+  expect(above).toBe(true);
+  await toast.getByRole('button', { name: 'Undo' }).tap();
+  await expect(toast).toContainText('Undone.');
+  await expect(weight).toHaveText(was ?? '');
+
+  await page.locator(`tbody button[data-day="${day ?? ''}"]`).tap();
+  await page.locator('#day-delete').tap();
+  await expect(toast).toContainText('Deleted the weigh-in of');
+  await expect(page.locator(`tbody button[data-day="${day ?? ''}"]`)).toHaveCount(0);
+  await expect(page.locator('.toast-text')).toBeFocused();
+  await toast.getByRole('button', { name: 'Undo' }).tap();
+  await expect(page.locator(`tbody button[data-day="${day ?? ''}"]`)).toHaveCount(1);
+  await check();
+});
+
+test('erases everything from a sheet whose Cancel comes first, Erase apart from it', async ({ page }) => {
+  const { check } = await watch(page);
+  await page.goto('/');
+  await loadBackup(page);
+  await tab(page, 'data').tap();
+  const erase = page.locator('#data-erase');
+  // Alone at the bottom: 20 px or more from anything else.
+  const room = await erase.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const before = (el.parentElement?.previousElementSibling ?? el).getBoundingClientRect();
+    return r.top - before.bottom;
+  });
+  expect(room).toBeGreaterThanOrEqual(20);
+  await erase.tap();
+  const sheet = page.getByRole('dialog', { name: 'Erase everything' });
+  await expect(sheet.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  const apart = await page.evaluate(() => {
+    const rectOf = (q: string) => (document.querySelector(q) ?? document.body).getBoundingClientRect();
+    const cancel = rectOf('#erase-cancel');
+    const confirm = rectOf('#erase-confirm');
+    return { gap: confirm.top - cancel.bottom, height: confirm.height };
+  });
+  expect(apart.gap).toBeGreaterThanOrEqual(16);
+  expect(apart.height).toBeGreaterThanOrEqual(44);
+  await sheet.getByRole('button', { name: 'Cancel' }).tap();
+  await expect(sheet).toBeHidden();
+  await expect(erase).toBeFocused();
+  await erase.tap();
+  await page.locator('#erase-confirm').tap();
+  await expect(page.locator('.erase-status')).toHaveText('Everything was erased.');
+  await expect(page.locator('section[aria-labelledby="log-title"]')).toContainText('No weigh-ins yet.');
+  await check();
+});
+
+test('sets the language, the units and the sections from Your data', async ({ page }) => {
+  const { check } = await watch(page);
+  await page.goto('/');
+  await loadBackup(page);
+  await tab(page, 'data').tap();
+  // The select lies over its row: the row is the target.
+  const row = await page.locator('#setting-height').evaluate((el) => {
+    const s = el.getBoundingClientRect();
+    const r = (el.closest('.row') ?? el).getBoundingClientRect();
+    return {
+      covers: s.top <= r.top + 1 && s.bottom >= r.bottom - 1 && s.width >= r.width - 1,
+      height: r.height,
+    };
+  });
+  expect(row.covers).toBe(true);
+  expect(row.height).toBeGreaterThanOrEqual(52);
+  await page.locator('#setting-height').selectOption('cm');
+  await expect(page.locator('#settings-height')).toContainText('176 cm');
+  await page.locator('#setting-weight').selectOption('lb');
+  await expect(page.locator('#settings-goal')).toContainText('lb');
+  await page.locator('#sections-panel-button').tap();
+  const sheet = page.getByRole('dialog', { name: 'Sections' });
+  await sheet.getByRole('button', { name: 'Calendar' }).tap();
+  await sheet.getByRole('button', { name: 'Done' }).first().tap();
+  await expect(page.locator('#sections-panel-button')).toContainText('12 of 13 shown');
+  await page.locator('#setting-lang').selectOption('pt');
+  await expect(page.locator('#view-data-title')).toHaveText('Seus dados');
+  // The footer's words are in About on a phone.
+  await expect(page.locator('.site-footer')).toBeHidden();
+  await expect(page.locator('#about-policy')).toHaveAttribute('href', '/pt/privacidade.html');
   await check();
 });
 
@@ -401,8 +539,88 @@ test('has the band under the status bar in the iPhone app’s build', async ({ p
   }
 });
 
+test.describe('held sideways in Portuguese', () => {
+  test.use({ locale: 'pt-BR' });
+  for (const size of [
+    { width: 568, height: 320 },
+    { width: 667, height: 375 },
+  ])
+    for (const text of [100, 150])
+      test(`keeps every day of the log inside its cell at ${String(size.width)} × ${String(size.height)}, text ${String(text)}%`, async ({
+        page,
+      }) => {
+        const { check } = await watch(page);
+        await page.setViewportSize(size);
+        await page.goto('/pt/');
+        await loadBackup(page);
+        await page.evaluate((t) => {
+          document.documentElement.style.fontSize = `${String(t)}%`;
+        }, text);
+        await tab(page, 'data').tap();
+        await page.locator('section[aria-labelledby="log-title"] .log-more button').tap();
+        const spills = await page.evaluate(() =>
+          [...document.querySelectorAll('#log-table-box tbody tr')].flatMap((row) => {
+            const cell = row.querySelector('th');
+            const weight = row.querySelector('td');
+            if (!cell || !weight) return [];
+            const box = cell.getBoundingClientRect();
+            // The text of the weight, not its cell's padding.
+            const range = document.createRange();
+            range.selectNodeContents(weight);
+            const digits = range.getBoundingClientRect();
+            return [...cell.querySelectorAll('span')]
+              .filter((span) => span.getClientRects().length > 0)
+              .filter((span) => {
+                const r = span.getBoundingClientRect();
+                return r.right > box.right + 0.5 || r.right > digits.left + 0.5;
+              })
+              .map((span) => span.textContent);
+          }),
+        );
+        expect(spills).toEqual([]);
+        await check();
+      });
+});
+
 test.describe('at 320 × 568 in Portuguese', () => {
   test.use({ viewport: { width: 320, height: 568 }, locale: 'pt-BR' });
+
+  test('keeps Your data, its sheets and its notice inside the screen, text 150%', async ({ page }) => {
+    const { check } = await watch(page);
+    await page.goto('/pt/');
+    await loadBackup(page);
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '150%';
+    });
+    await tab(page, 'data').tap();
+    /** Nothing sideways, and no element's content wider than its box (SVG and hidden text aside). */
+    const fits = () =>
+      page.evaluate(() => {
+        const wide = [...document.querySelectorAll('body *')]
+          .filter((el) => {
+            // The tab bar's icons are the shell's, checked by story 7's fit test.
+            if (el instanceof SVGElement || el.closest('.visually-hidden, [hidden], select, nav.tabs'))
+              return false;
+            const r = el.getBoundingClientRect();
+            if (r.width === 0 || r.height === 0) return false;
+            return r.right > 320.5 || el.scrollWidth > el.clientWidth + 1;
+          })
+          .map((el) => `${el.tagName}.${el.className}`);
+        return { width: document.documentElement.scrollWidth, wide: wide.slice(0, 5) };
+      });
+    expect(await fits()).toEqual({ width: 320, wide: [] });
+    await page.locator('tbody button[data-role="day"]').first().tap();
+    expect(await fits()).toEqual({ width: 320, wide: [] });
+    await page.locator('#day-delete').tap();
+    await expect(page.locator('.toast')).toBeVisible();
+    expect(await fits()).toEqual({ width: 320, wide: [] });
+    await page.locator('#sections-panel-button').tap();
+    expect(await fits()).toEqual({ width: 320, wide: [] });
+    await page.keyboard.press('Escape');
+    await page.locator('#data-erase').tap();
+    expect(await fits()).toEqual({ width: 320, wide: [] });
+    await check();
+  });
 
   for (const text of [100, 150]) {
     test(`keeps the readout one height over every day of the chart, text ${String(text)}%`, async ({

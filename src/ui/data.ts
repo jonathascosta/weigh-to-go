@@ -19,6 +19,7 @@ import { choose, count, settings, type Settings } from '../i18n';
 import { saveFile } from '../platform/save';
 import { isHealthStore } from '../health/layer';
 import { h } from './dom';
+import { openSheet } from './sheet';
 
 /** Days after the last backup before the reminder shows again. */
 export const BACKUP_REMINDER_DAYS = 30;
@@ -79,12 +80,27 @@ async function exportCsv(app: App, s: Settings): Promise<string | null> {
   return (await saveFile(file, text, 'text/csv')) ? file : null;
 }
 
-export function mountData(container: HTMLElement, app: App): (state: State, s: Settings) => void {
+/** Where Your data's parts of the backup and the erase go. */
+export interface DataBoxes {
+  /** The Backup group: its status, note, Export, Import, and the CSV with its format. */
+  readonly backup: HTMLElement;
+  /** Erase everything, alone at the bottom of Your data. */
+  readonly erase: HTMLElement;
+  /** A line at the top of Your data that says what erasing did. */
+  readonly status: HTMLElement;
+}
+
+export function mountData(boxes: DataBoxes, app: App): (state: State, s: Settings) => void {
   const title = h('h2', { attrs: { id: 'data-title' } });
   const note = h('p', { class: 'note' });
-  const last = h('p', { class: 'note' });
-  const exportButton = h('button', { class: 'button', attrs: { type: 'button', id: 'data-export' } });
-  const csvButton = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
+  const due = h('span', { class: 'badge' });
+  const lastText = h('span');
+  const last = h('p', { class: 'backup-status' }, due, lastText);
+  const exportButton = h('button', {
+    class: 'button button-wide',
+    attrs: { type: 'button', id: 'data-export' },
+  });
+  const csvButton = h('button', { class: 'button button-ghost', attrs: { type: 'button', id: 'data-csv' } });
   const csvLabel = h('label', { attrs: { for: 'data-csv-format' } });
   const csvFormat = h('select', { attrs: { id: 'data-csv-format' } });
   csvFormat.addEventListener('change', () => {
@@ -104,23 +120,29 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
     },
   });
   const importButton = h('button', {
-    class: 'button button-ghost',
+    class: 'button button-ghost button-wide',
     attrs: { type: 'button', id: 'data-import' },
   });
   importButton.addEventListener('click', () => {
     fileInput.click();
   });
   const eraseButton = h('button', {
-    class: 'button button-ghost button-danger-text',
-    attrs: { type: 'button' },
+    class: 'button button-ghost button-danger-text button-wide',
+    attrs: { type: 'button', id: 'data-erase', 'aria-haspopup': 'dialog' },
   });
   const panel = h('div', { class: 'data-panel', attrs: { role: 'status' } });
-  container.replaceChildren(
-    h('div', { class: 'card-head' }, h('div', {}, title, note, last)),
-    h('div', { class: 'actions' }, exportButton, csvButton, fileInput, importButton, eraseButton),
-    h('div', { class: 'field' }, csvLabel, csvFormat),
-    panel,
+  const statusLine = boxes.status;
+  statusLine.hidden = true;
+  boxes.backup.replaceChildren(
+    title,
+    h(
+      'div',
+      { class: 'group' },
+      h('div', { class: 'group-pad' }, last, note, exportButton, fileInput, importButton, panel),
+      h('div', { class: 'group-pad' }, csvButton, h('div', { class: 'field' }, csvLabel, csvFormat)),
+    ),
   );
+  boxes.erase.replaceChildren(eraseButton);
 
   /** Whether an export is under way: one at a time (the share sheet takes only one). */
   let exporting = false;
@@ -165,6 +187,7 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
       void exportBackup(app).then(
         (file) => {
           button.disabled = file !== null;
+          render(app.state(), settings());
         },
         (error: unknown) => {
           console.error(error);
@@ -191,15 +214,15 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
     return button;
   };
 
-  /** Says how an operation went, and moves focus there: the buttons it came from are gone. */
-  /** Says how it went: done (green), failed (red), or done in part (plain). */
-  const report = (text: string, ok: boolean | 'partly') => {
+  /** Says how it went, in `where`, and moves focus there: done (green), failed (red), or in part. */
+  const report = (where: HTMLElement, text: string, ok: boolean | 'partly') => {
     const line = h('p', {
       class: ok === 'partly' ? 'status' : ok ? 'status status-ok' : 'status status-bad',
       attrs: { tabindex: -1 },
       text,
     });
-    panel.replaceChildren(line);
+    where.replaceChildren(line);
+    where.hidden = false;
     line.focus();
   };
 
@@ -214,6 +237,7 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
   ) => {
     // Once is enough: a double click must not run it twice.
     for (const b of buttons) b.disabled = true;
+    statusLine.hidden = true;
     app
       .importBackup(parsed, mode)
       .then((result) => {
@@ -227,11 +251,11 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
               unchanged: n(result.unchanged),
             })
           : s.messages['data.replaced'](count(parsed.weighIns.length, s.messages['word.weighIn'], s));
-        report(text, true);
+        report(panel, text, true);
       })
       .catch((error: unknown) => {
         console.error(error);
-        report(failed(settings().messages['data.importFailed']), false);
+        report(panel, failed(settings().messages['data.importFailed']), false);
       });
   };
 
@@ -267,7 +291,9 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
             count(parsed.weighIns.length, now.messages['word.weighIn'], now),
           ),
         }),
-        h('div', { class: 'actions' }, backupFirst(), confirm, cancel),
+        h('div', { class: 'stack' }, backupFirst(), cancel),
+        // The destructive button apart from the others, under a thumb (principles §3).
+        h('div', { class: 'danger-zone' }, confirm),
       );
       // Not the destructive button: a second Enter must not replace everything.
       cancel.focus();
@@ -275,7 +301,7 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
     const skipped = parsed.skipped > 0 ? count(parsed.skipped, m['word.record'], s) : null;
     panel.replaceChildren(
       h('p', { text: m['data.read'](count(parsed.weighIns.length, m['word.weighIn'], s), skipped) }),
-      h('div', { class: 'actions' }, merge, replace, cancel),
+      h('div', { class: 'stack' }, merge, replace, cancel),
     );
     merge.focus();
   };
@@ -307,18 +333,57 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
       });
   });
 
+  /**
+   * Erase everything (design §7): a sheet with the warning, with Apple Health's choice when it was
+   * ever used, Export backup, Cancel (focused first) and, apart from them, Erase.
+   */
   eraseButton.addEventListener('click', () => {
     const m = settings().messages;
     const confirm = h('button', {
-      class: 'button button-danger',
-      attrs: { type: 'button' },
+      class: 'button button-danger button-wide',
+      attrs: { type: 'button', id: 'erase-confirm' },
       text: m['data.eraseConfirm'],
     });
-    const cancel = cancelButton();
+    const cancel = h('button', {
+      class: 'button button-wide',
+      attrs: { type: 'button', id: 'erase-cancel' },
+      text: m['data.cancel'],
+    });
     // Once the app has written to Apple Health, the person chooses whether its samples go too.
     const { store } = app.state();
     const withHealth = isHealthStore(store) && store.health.everOn() ? store : null;
-    const fromHealth = h('input', { attrs: { id: 'data-erase-health', type: 'checkbox' } });
+    const fromHealth = h('input', {
+      attrs: { id: 'data-erase-health', type: 'checkbox', 'aria-describedby': 'data-erase-health-note' },
+    });
+    const backup = backupFirst();
+    backup.classList.add('button-wide');
+    const content = h(
+      'div',
+      { class: 'erase-sheet' },
+      h('p', { text: m['data.eraseWarning'] }),
+      ...(withHealth
+        ? [
+            h('label', { class: 'check' }, fromHealth, h('span', { text: m['data.eraseHealth'] })),
+            h('p', {
+              class: 'note',
+              attrs: { id: 'data-erase-health-note' },
+              text: m['data.eraseHealthNote'],
+            }),
+          ]
+        : []),
+      h('div', { class: 'stack' }, backup, cancel),
+      h('div', { class: 'danger-zone' }, confirm),
+    );
+    const sheet = openSheet({
+      title: m['data.erase'],
+      done: null,
+      content,
+      opener: eraseButton,
+      focus: cancel,
+    });
+    cancel.addEventListener('click', () => {
+      sheet.close();
+    });
     confirm.addEventListener('click', () => {
       confirm.disabled = true;
       cancel.disabled = true;
@@ -340,27 +405,18 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
           // The saved choices went with everything else: back to automatic here too.
           choose({ lang: null, weightUnit: null, heightUnit: null });
           const after = settings().messages;
-          if (!gone) report(after['data.eraseFailed'], false);
-          else if (fromHealthToo) report(after['data.erased'], true);
-          else report(after['data.erasedNotHealth'], 'partly');
+          sheet.close(false);
+          panel.replaceChildren();
+          if (!gone) report(statusLine, after['data.eraseFailed'], false);
+          else if (fromHealthToo) report(statusLine, after['data.erased'], true);
+          else report(statusLine, after['data.erasedNotHealth'], 'partly');
         })
         .catch((error: unknown) => {
           console.error(error);
-          report(failed(settings().messages['data.eraseFailed']), false);
+          sheet.close(false);
+          report(statusLine, failed(settings().messages['data.eraseFailed']), false);
         });
     });
-    panel.replaceChildren(
-      h('p', { class: 'status status-bad', text: m['data.eraseWarning'] }),
-      ...(withHealth
-        ? [
-            h('label', { class: 'check' }, fromHealth, h('span', { text: m['data.eraseHealth'] })),
-            h('p', { class: 'note', text: m['data.eraseHealthNote'] }),
-          ]
-        : []),
-      h('div', { class: 'actions' }, backupFirst(), confirm, cancel),
-    );
-    // Not the destructive button: a second Enter must not erase everything.
-    cancel.focus();
   });
 
   const render = (state: State, s: Settings) => {
@@ -368,10 +424,12 @@ export function mountData(container: HTMLElement, app: App): (state: State, s: S
     title.textContent = m['data.group.backup'];
     note.textContent = m['data.note'];
     const when = lastBackupAt.read();
-    last.textContent =
+    lastText.textContent =
       when === null
         ? m['data.neverBackedUp']
         : m['data.lastBackup'](s.format.day(localToday(new Date(when)), 'medium'));
+    due.textContent = m['data.due'];
+    due.hidden = noticeFor(state, when, localToday())?.kind !== 'backup';
     exportButton.textContent = m['data.export'];
     exportButton.disabled = state.status === 'loading' || exporting;
     csvButton.textContent = m['data.exportCsv'];

@@ -17,14 +17,19 @@ const settle = async () => {
 let app: App;
 let card: HTMLElement;
 let data: HTMLElement;
+let statusLine: HTMLElement;
 const mount = async (health: ReturnType<typeof fakeHealth>) => {
   const files = fakeFiles();
   app = createApp(async () => withHealth(await deviceStore(files.backend), health.backend, files.backend));
   card = document.createElement('section');
   data = document.createElement('section');
-  document.body.replaceChildren(card, data);
+  statusLine = document.createElement('div');
+  document.body.replaceChildren(card, statusLine, data);
   const renderHealth = mountHealth(card);
-  const renderData = mountData(data, app);
+  const renderData = mountData(
+    { backup: data, erase: document.body.appendChild(document.createElement('div')), status: statusLine },
+    app,
+  );
   app.subscribe((state) => {
     renderHealth(state, settings());
     renderData(state, settings());
@@ -68,12 +73,18 @@ describe('the Apple Health card', () => {
     await settle();
     await app.save([{ date: '2026-10-21', kg: 97 }]);
     await settle();
-    [...data.querySelectorAll('button')].find((b) => b.textContent === 'Erase everything')!.click();
-    data.querySelector<HTMLInputElement>('#data-erase-health')!.checked = true;
-    [...data.querySelectorAll('button')].find((b) => b.textContent === 'Erase')!.click();
+    [...document.querySelectorAll('button')].find((b) => b.textContent === 'Erase everything')!.click();
+    // The erase sheet: its choice for Health, Cancel focused first, and Erase.
+    expect(document.activeElement?.textContent).toBe('Cancel');
+    document.querySelector<HTMLInputElement>('#data-erase-health')!.checked = true;
+    document.querySelector<HTMLButtonElement>('#erase-confirm')!.click();
     await settle();
     expect(app.state().weighIns).toEqual([]);
-    expect(data.textContent).toContain("the weights in Apple Health couldn't be deleted".replace("'", '’'));
+    // A plain line at the top of Your data, not the green of success.
+    expect(statusLine.querySelector('.status')!.className).toBe('status');
+    expect(statusLine.textContent).toContain(
+      "the weights in Apple Health couldn't be deleted".replace("'", '’'),
+    );
   });
 
   it('says where to allow it when iOS lets it save nothing', async () => {
@@ -99,12 +110,12 @@ describe('the Apple Health card', () => {
     await settle();
     await app.save([{ date: '2026-10-21', kg: 97 }]);
     await settle();
-    const erase = [...data.querySelectorAll('button')].find((b) => b.textContent === 'Erase everything')!;
+    const erase = [...document.querySelectorAll('button')].find((b) => b.textContent === 'Erase everything')!;
     erase.click();
-    const box = data.querySelector<HTMLInputElement>('#data-erase-health')!;
+    const box = document.querySelector<HTMLInputElement>('#data-erase-health')!;
     expect(box.checked).toBe(false);
     box.checked = true;
-    [...data.querySelectorAll('button')].find((b) => b.textContent === 'Erase')!.click();
+    document.querySelector<HTMLButtonElement>('#erase-confirm')!.click();
     await settle();
     expect(health.state.samples).toEqual([]);
     expect(app.state().weighIns).toEqual([]);

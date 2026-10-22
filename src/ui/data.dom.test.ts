@@ -28,7 +28,14 @@ beforeEach(async () => {
   root = document.createElement('div');
   document.body.replaceChildren(root);
   app = createApp(() => Promise.resolve(memoryStore()));
-  render = mountData(root, app);
+  render = mountData(
+    {
+      backup: root.appendChild(document.createElement('section')),
+      erase: root.appendChild(document.createElement('div')),
+      status: root.appendChild(document.createElement('div')),
+    },
+    app,
+  );
   app.subscribe((state) => {
     render(state, choose({}));
   });

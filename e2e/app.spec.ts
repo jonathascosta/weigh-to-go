@@ -27,7 +27,7 @@ test('logs a weigh-in, and shows it in the summary and the log', async ({ page }
 test('saves an ambiguous paste only after the reader says yes', async ({ page }) => {
   const { check } = await watch(page);
   await page.goto('/');
-  await page.locator('summary', { hasText: 'Paste several days at once' }).click();
+  await page.getByRole('button', { name: 'Paste several days at once' }).click();
   await page.locator('#paste-text').fill('03/04/2025 90\n03/05/2025 89.6');
   await page.getByRole('button', { name: 'Import lines' }).click();
   // Read as day/month (a British reader), and saved only on a yes.
@@ -54,10 +54,12 @@ test('exports a backup, erases everything, and brings it back by importing', asy
   const saved = JSON.parse(readFileSync(file, 'utf8')) as { app: string; weighIns: unknown[] };
   expect(saved.app).toBe('weigh-to-go');
 
-  await data.getByRole('button', { name: 'Erase everything' }).click();
-  // The confirmation starts on Cancel, never on the destructive button.
-  await expect(page.getByRole('button', { name: 'Cancel' })).toBeFocused();
-  await page.getByRole('button', { name: 'Erase', exact: true }).click();
+  await page.getByRole('button', { name: 'Erase everything' }).click();
+  // The confirmation, a sheet, starts on Cancel, never on the destructive button.
+  const sheet = page.getByRole('dialog', { name: 'Erase everything' });
+  await expect(sheet.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await sheet.getByRole('button', { name: 'Erase', exact: true }).click();
+  await expect(page.locator('.erase-status')).toHaveText('Everything was erased.');
   await expect(page.locator('section[aria-labelledby="log-title"]')).toContainText('No weigh-ins yet.');
 
   await page.locator('#data-file').setInputFiles(file);

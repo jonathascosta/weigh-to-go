@@ -96,6 +96,11 @@ describe.each(kinds)('%s store', (kind, open) => {
     expect(await store.restore('2026-10-19', null, first)).toBe(true);
     expect(await store.weighIns()).toEqual([]);
     expect(await store.restore('2026-10-19', null, first)).toBe(false);
+    // After a delete (nothing expected), the day comes back only while it still holds nothing.
+    expect(await store.restore('2026-10-19', first, null)).toBe(true);
+    expect(await store.weighIns()).toEqual([first]);
+    expect(await store.restore('2026-10-19', second, null)).toBe(false);
+    expect(await store.weighIns()).toEqual([first]);
   });
 
   it('removes one weigh-in', async () => {

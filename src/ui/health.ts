@@ -10,7 +10,7 @@ import { count, type Settings } from '../i18n';
 import { h } from './dom';
 
 export function mountHealth(container: HTMLElement): (state: State, s: Settings) => void {
-  const title = h('h2', { attrs: { id: 'health-title' } });
+  const title = h('h3', { attrs: { id: 'health-title' } });
   const note = h('p', { class: 'note', attrs: { id: 'health-note' } });
   const revoke = h('p', { class: 'note' });
   const toggle = h('input', {

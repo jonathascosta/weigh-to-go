@@ -32,7 +32,7 @@ export function mountReminder(
   now?: () => Date,
 ): (state: State, s: Settings) => void {
   const keeper = reminderKeeper(notifier, now);
-  const title = h('h2', { attrs: { id: 'reminder-title' } });
+  const title = h('h3', { attrs: { id: 'reminder-title' } });
   const note = h('p', { class: 'note', attrs: { id: 'reminder-note' } });
   const toggle = h('input', {
     attrs: { id: 'reminder-on', type: 'checkbox', role: 'switch', 'aria-describedby': 'reminder-note' },

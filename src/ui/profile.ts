@@ -17,10 +17,10 @@ import {
 import type { App, State } from '../app/app';
 import { parseNumber, toKg } from '../data/paste';
 import { isHeight } from '../data/records';
-import { automatic, choose, count, settings, type Settings } from '../i18n';
-import { fromFeetInches, HEIGHT_UNITS, toFeetInches, type HeightUnit } from '../units';
+import { count, settings, type Settings } from '../i18n';
+import { fromFeetInches, toFeetInches, type HeightUnit } from '../units';
 import type { Disclosure } from './card';
-import { chips, h, say } from './dom';
+import { h, say } from './dom';
 import { failure } from './entry';
 import { optionsPanel, type Layout } from './sheet';
 import { sentenceDay, staleTo } from './summary';
@@ -241,33 +241,26 @@ async function saveProfile(
   }
 }
 
-export function mountGoal(
-  container: HTMLElement,
-  app: App,
-  layout: Layout,
-): (state: State, s: Settings) => void {
-  const title = h('h2', { attrs: { id: 'goal-title' } });
-  const field = unitField('goal-weight');
+/** A profile field's editor: its form and status, drawn with the diary. */
+export interface ProfileEditor {
+  readonly element: HTMLElement;
+  readonly draw: (state: State, s: Settings) => void;
+}
+
+/**
+ * The goal's field and Save, behind Change goal on the Goal card and the Goal row of Your data's
+ * settings: `prefix` keeps each one's ids apart, `labelledBy` names its form.
+ */
+export function goalEditor(app: App, prefix: string, labelledBy: string): ProfileEditor {
+  const field = unitField(`${prefix}goal-weight`);
   const save = h('button', { class: 'button', attrs: { type: 'submit' } });
   const status = h('p', { class: 'status', attrs: { role: 'status' } });
   const form = h(
     'form',
-    { class: 'entry-row', attrs: { novalidate: true, 'aria-labelledby': 'goal-title' } },
+    { class: 'entry-row', attrs: { novalidate: true, 'aria-labelledby': labelledBy } },
     field.element,
     save,
   );
-  const body = h('div', { class: 'profile-body' });
-  // The goal's field is a change made now and then: behind Change, in a sheet on a phone, in
-  // place on the one page (design §13, story 5).
-  const change = optionsPanel('goal-change', layout);
-  change.panel.classList.add('options-card');
-  change.content.replaceChildren(form, status);
-  container.replaceChildren(
-    h('div', { class: 'card-head card-head-row' }, title, change.button),
-    change.panel,
-    body,
-  );
-
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const s = settings();
@@ -289,24 +282,52 @@ export function mountGoal(
       s.messages['goal.saved'](s.format.weight(kg, s.weightUnit)),
     );
   });
-
   let shown: { goal: number | null; unit: string } | null = null;
+  return {
+    element: h('div', { class: 'profile-editor' }, form, status),
+    draw: (state, s) => {
+      const m = s.messages;
+      const { format: f, weightUnit: unit } = s;
+      field.label.textContent = m['goal.label'];
+      field.tag.textContent = m[`unit.${unit}`];
+      field.input.placeholder = m['entry.example'](f.weightValue(90, unit));
+      save.textContent = m['goal.save'];
+      const goal = state.profile.goalKg;
+      // The field shows the saved goal, unless the reader is typing in it.
+      if (document.activeElement !== field.input && (shown?.goal !== goal || shown.unit !== unit)) {
+        field.input.value = goal === null ? '' : f.weightValue(goal, unit);
+        shown = { goal, unit };
+      }
+    },
+  };
+}
+
+export function mountGoal(
+  container: HTMLElement,
+  app: App,
+  layout: Layout,
+): (state: State, s: Settings) => void {
+  const title = h('h2', { attrs: { id: 'goal-title' } });
+  const editor = goalEditor(app, '', 'goal-title');
+  const body = h('div', { class: 'profile-body' });
+  // The goal's field is a change made now and then: behind Change, in a sheet on a phone, in
+  // place on the one page (design §13, story 5).
+  const change = optionsPanel('goal-change', layout);
+  change.panel.classList.add('options-card');
+  change.content.replaceChildren(editor.element);
+  container.replaceChildren(
+    h('div', { class: 'card-head card-head-row' }, title, change.button),
+    change.panel,
+    body,
+  );
+
   return (state, s) => {
     const m = s.messages;
-    const { format: f, weightUnit: unit } = s;
     title.textContent = m['goal.title'];
     change.words(m['goal.change'], m['chart.done']);
     change.label.textContent = m['goal.change'];
-    field.label.textContent = m['goal.label'];
-    field.tag.textContent = m[`unit.${unit}`];
-    field.input.placeholder = m['entry.example'](f.weightValue(90, unit));
-    save.textContent = m['goal.save'];
+    editor.draw(state, s);
     const goal = state.profile.goalKg;
-    // The field shows the saved goal, unless the reader is typing in it.
-    if (document.activeElement !== field.input && (shown?.goal !== goal || shown.unit !== unit)) {
-      field.input.value = goal === null ? '' : f.weightValue(goal, unit);
-      shown = { goal, unit };
-    }
     const view = goalView(state.analysis, goal, s);
     if (view.kind === 'none') {
       body.replaceChildren(h('p', { class: 'note', text: view.text }));
@@ -363,34 +384,23 @@ export function mountGoal(
   };
 }
 
-export function mountBmi(
-  card: Pick<Disclosure, 'body' | 'tools'>,
-  app: App,
-  layout: Layout,
-): (state: State, s: Settings) => void {
-  const unitRow = h('div', { class: 'control' });
-  const cm = unitField('height-cm');
-  const feet = unitField('height-ft');
-  const inches = unitField('height-in');
+/**
+ * The height's fields (cm, or feet and inches, as the height unit in Your data's settings says) and
+ * Save, behind Change height on the BMI card and the Height row of Your data's settings.
+ */
+export function heightEditor(app: App, prefix: string, labelledBy: string): ProfileEditor {
+  const cm = unitField(`${prefix}height-cm`);
+  const feet = unitField(`${prefix}height-ft`);
+  const inches = unitField(`${prefix}height-in`);
   const save = h('button', { class: 'button', attrs: { type: 'submit' } });
   const status = h('p', { class: 'status', attrs: { role: 'status' } });
   const fields = h('div', { class: 'entry-row height-fields' });
   const form = h(
     'form',
-    { class: 'entry-row', attrs: { novalidate: true, 'aria-labelledby': 'bmi-title' } },
+    { class: 'entry-row', attrs: { novalidate: true, 'aria-labelledby': labelledBy } },
     fields,
     save,
   );
-  const body = h('div', { class: 'profile-body' });
-  const caveat = h('p', { class: 'note card-note' });
-  // The height and its unit behind Change height: a sheet on a phone, in place on the one page.
-  // (The unit moves to Your data's settings in story 6.)
-  const change = optionsPanel('bmi-change', layout);
-  change.panel.classList.add('options-card');
-  change.content.replaceChildren(unitRow, form, status);
-  card.tools.replaceChildren(change.button);
-  card.body.replaceChildren(body, caveat, change.panel, card.tools);
-
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const s = settings();
@@ -412,58 +422,68 @@ export function mountBmi(
         : s.messages['bmi.saved'](s.format.height(height, s.heightUnit)),
     );
   });
-
   let shown: { height: number | null; unit: HeightUnit } | null = null;
   let builtFor = '';
+  return {
+    element: h('div', { class: 'profile-editor' }, form, status),
+    draw: (state, s) => {
+      const m = s.messages;
+      const { format: f, heightUnit } = s;
+      save.textContent = m['goal.save'];
+      if (builtFor !== `${s.locale.tag}|${heightUnit}`) {
+        builtFor = `${s.locale.tag}|${heightUnit}`;
+        cm.label.textContent = m['bmi.height'];
+        cm.tag.textContent = m['unit.cm'];
+        cm.input.placeholder = m['entry.example'](f.number(178, 0));
+        feet.label.textContent = m['bmi.feet'];
+        feet.tag.textContent = m['bmi.ftTag'];
+        feet.input.placeholder = m['entry.example']('5');
+        inches.label.textContent = m['bmi.inches'];
+        inches.tag.textContent = m['bmi.inTag'];
+        inches.input.placeholder = m['entry.example']('10');
+        fields.replaceChildren(...(heightUnit === 'cm' ? [cm.element] : [feet.element, inches.element]));
+        shown = null;
+      }
+      const height = state.profile.heightCm;
+      const typing = [cm.input, feet.input, inches.input].includes(
+        document.activeElement as HTMLInputElement,
+      );
+      if (!typing && (shown?.height !== height || shown.unit !== heightUnit)) {
+        const ftIn = height === null ? null : toFeetInches(height);
+        // Up to a tenth, as it may have been typed (or come from feet and inches).
+        const tenths = height === null ? 0 : Math.round(height * 10);
+        cm.input.value = height === null ? '' : f.number(tenths / 10, tenths % 10 === 0 ? 0 : 1);
+        feet.input.value = ftIn ? String(ftIn.feet) : '';
+        inches.input.value = ftIn ? f.number(ftIn.inches, ftIn.inches % 1 === 0 ? 0 : 1) : '';
+        shown = { height, unit: heightUnit };
+      }
+    },
+  };
+}
+
+export function mountBmi(
+  card: Pick<Disclosure, 'body' | 'tools'>,
+  app: App,
+  layout: Layout,
+): (state: State, s: Settings) => void {
+  const editor = heightEditor(app, '', 'bmi-title');
+  const body = h('div', { class: 'profile-body' });
+  const caveat = h('p', { class: 'note card-note' });
+  // The height behind Change height: a sheet on a phone, in place on the one page. Its unit is
+  // chosen in Your data's settings (story 6).
+  const change = optionsPanel('bmi-change', layout);
+  change.panel.classList.add('options-card');
+  change.content.replaceChildren(editor.element);
+  card.tools.replaceChildren(change.button);
+  card.body.replaceChildren(body, caveat, change.panel, card.tools);
+
   return (state, s) => {
     const m = s.messages;
     const { format: f, heightUnit } = s;
     change.words(m['bmi.change'], m['chart.done']);
     change.label.textContent = m['bmi.change'];
-    save.textContent = m['goal.save'];
-    const chosen = s.chosen.heightUnit;
-    if (builtFor !== `${s.locale.tag}|${heightUnit}|${String(chosen)}`) {
-      builtFor = `${s.locale.tag}|${heightUnit}|${String(chosen)}`;
-      // Automatic follows where the reader is; it says which unit that gives.
-      const row = chips<HeightUnit | null>(
-        m['settings.heightUnit'],
-        [
-          { value: null, label: m['bmi.autoUnit'](m[`unit.${automatic().heightUnit}`]) },
-          ...HEIGHT_UNITS.map((u) => ({ value: u, label: m[`unit.${u}`] })),
-        ],
-        (u) => u === chosen,
-        (u) => {
-          // The height unit lives here, with the height (as the weight unit lives in the header).
-          choose({ heightUnit: u });
-        },
-      );
-      unitRow.replaceChildren(
-        h('span', { class: 'control-label', text: m['settings.heightUnit'] }),
-        row.element,
-      );
-      cm.label.textContent = m['bmi.height'];
-      cm.tag.textContent = m['unit.cm'];
-      cm.input.placeholder = m['entry.example'](f.number(178, 0));
-      feet.label.textContent = m['bmi.feet'];
-      feet.tag.textContent = m['bmi.ftTag'];
-      feet.input.placeholder = m['entry.example']('5');
-      inches.label.textContent = m['bmi.inches'];
-      inches.tag.textContent = m['bmi.inTag'];
-      inches.input.placeholder = m['entry.example']('10');
-      fields.replaceChildren(...(heightUnit === 'cm' ? [cm.element] : [feet.element, inches.element]));
-      shown = null;
-    }
+    editor.draw(state, s);
     const height = state.profile.heightCm;
-    const typing = [cm.input, feet.input, inches.input].includes(document.activeElement as HTMLInputElement);
-    if (!typing && (shown?.height !== height || shown.unit !== heightUnit)) {
-      const ftIn = height === null ? null : toFeetInches(height);
-      // Up to a tenth, as it may have been typed (or come from feet and inches).
-      const tenths = height === null ? 0 : Math.round(height * 10);
-      cm.input.value = height === null ? '' : f.number(tenths / 10, tenths % 10 === 0 ? 0 : 1);
-      feet.input.value = ftIn ? String(ftIn.feet) : '';
-      inches.input.value = ftIn ? f.number(ftIn.inches, ftIn.inches % 1 === 0 ? 0 : 1) : '';
-      shown = { height, unit: heightUnit };
-    }
     caveat.textContent = m['bmi.caveat'];
     const { analysis } = state;
     if (height === null) {

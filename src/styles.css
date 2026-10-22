@@ -350,49 +350,6 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
-.settings {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin-top: 12px;
-}
-
-.setting {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  max-width: 100%;
-  font-size: 0.875rem;
-  color: var(--muted);
-}
-
-/* A long value ("Automático (Português)" at 150%) stays in its card. */
-.setting select {
-  min-width: 0;
-  max-width: 100%;
-}
-
-.setting select {
-  /* 16px at least: iOS Safari zooms the page into any smaller control that gets focus. */
-  font: inherit;
-  font-size: max(1rem, 16px);
-  color: var(--fg);
-  background: var(--panel);
-  /* Control edges need 3:1 against the page (WCAG 1.4.11); --line is for dividers. */
-  border: 1px solid var(--ref);
-  border-radius: 8px;
-  padding: 4px 6px;
-  min-height: 36px;
-}
-
-@media (pointer: coarse) {
-  .setting select {
-    min-height: 44px;
-  }
-}
-
 /* ---------- The shell: four views, tabs on a phone, one page on the desktop ---------- */
 
 /* Styled only once the script has filled it: with scripts off there is no empty bar. */
@@ -581,10 +538,6 @@ main {
   flex-direction: column;
   gap: 16px;
   min-width: 0;
-}
-
-.settings-card .sections {
-  margin-top: 16px;
 }
 
 /* The iPhone app's band under the status bar and the banner (Sprint 4): never on the website. */
@@ -1033,13 +986,6 @@ main {
   margin-top: 8px;
 }
 
-.paste summary {
-  cursor: pointer;
-  color: var(--accent);
-  font-size: 0.875rem;
-  padding: 6px 0;
-}
-
 .paste textarea {
   width: 100%;
   margin: 6px 0 8px;
@@ -1336,10 +1282,6 @@ main {
 
 .after-row .button {
   flex: 1 1 8rem;
-}
-
-.paste-card .paste {
-  margin-top: 0;
 }
 
 /* Key figures */
@@ -2638,14 +2580,7 @@ main {
   stroke-linejoin: round;
 }
 
-/* Dashboard III: sections bar, goal, BMI, facts, variation, weeks, weekdays, calendar */
-
-.sections {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-}
+/* Dashboard III: goal, BMI, facts, variation, weeks, weekdays, calendar */
 
 /* Two columns where there is room: the half cards side by side, the wide ones across. */
 .grid {
@@ -3305,4 +3240,515 @@ span.cal-none {
   .desk-only {
     display: none;
   }
+}
+
+/* ---------- Your data (design §7, story 6) ---------- */
+
+/* A group: its title, small and above, then its rows in one box. */
+.data-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.data-group > h2 {
+  margin: 8px 4px 0;
+  font-family: var(--f-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.group {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.group-pad {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+
+.group > :last-child,
+.group-pad:last-child {
+  border-bottom: 0;
+}
+
+.group-pad p,
+.group-pad h3 {
+  margin: 0;
+}
+
+.group-pad h3 {
+  font-family: var(--f-num);
+  font-weight: 500;
+  font-size: 1.25rem;
+}
+
+.group-pad .card-head {
+  margin: 0;
+}
+
+.group-pad .check {
+  margin-top: 0;
+}
+
+/* A row: one button, link or control, at least 52 px tall. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 14px 8px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  font: inherit;
+  font-size: 1rem;
+  text-align: left;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.row .grow {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.row-sub {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.row .val {
+  flex: none;
+  max-width: 50%;
+  text-align: right;
+  color: var(--muted);
+}
+
+svg.go {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.settings {
+  display: block;
+  margin: 0;
+}
+
+/* The native select lies over the whole row, transparent: a tap opens the phone's own picker, and
+   the value shows as text under the label, wrapping rather than cut. */
+.row-select {
+  position: relative;
+  padding: 0;
+  cursor: default;
+}
+
+.row-select select {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.row-face {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  padding: 8px 14px 8px 16px;
+}
+
+/* The ring for the keyboard, on the row (the select is invisible); no :has() on Safari 15.0. */
+.row-select select:focus-visible + .row-face {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Safari 15.0 to 15.3 have no :focus-visible: the ring on any focus there. */
+@supports not selector(:focus-visible) {
+  .row-select select:focus + .row-face,
+  .log-day:focus,
+  .row:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+}
+
+/* A row that opens in place on the one page: its chevron turns when it is open. */
+.row[aria-expanded] svg.go {
+  transition: transform 150ms;
+}
+
+.row[aria-expanded='true'] svg.go {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row[aria-expanded] svg.go {
+    transition: none;
+  }
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Sections: chips under the row on the one page (a sheet of switches on a phone). */
+.options-inline.options-plain {
+  display: block;
+  margin: 0;
+  padding: 4px 16px 14px;
+  border-top: 0;
+}
+
+.options-plain > .options-content {
+  display: block;
+}
+
+@media (max-width: 959.98px) {
+  .options-inline.options-plain {
+    display: none;
+  }
+}
+
+.badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 8px;
+  border: 1px solid var(--up);
+  border-radius: 999px;
+  /* Secondary text: 13 px at least (principles §5). */
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--up);
+  white-space: nowrap;
+}
+
+.button-wide {
+  width: 100%;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* A destructive button stands apart from the others: under a thumb, 20 px or more (principles
+   §3 ask 16). */
+.danger-zone {
+  margin-top: 20px;
+}
+
+.danger-zone .button {
+  width: 100%;
+}
+
+.day-sheet .danger-zone {
+  margin-top: 28px;
+}
+
+/* Erase everything, alone at the bottom: its group's gap and this, 24 px from anything. */
+.erase-zone {
+  margin-top: 8px;
+}
+
+.erase-status .status {
+  margin: 0 0 12px;
+}
+
+.erase-status:empty {
+  display: none;
+}
+
+.data-panel:empty {
+  display: none;
+}
+
+.data-panel .stack {
+  margin-top: 8px;
+}
+
+.backup-status {
+  color: var(--fg);
+}
+
+/* The log, as rows: a day opens its sheet; the whole row is the finger's target. */
+.log-body > .note {
+  margin: 0;
+  padding: 12px 16px 4px;
+}
+
+.log-table {
+  table-layout: auto;
+}
+
+.log-row {
+  cursor: pointer;
+}
+
+.log-table th,
+.log-table td {
+  padding: 4px 8px;
+  vertical-align: middle;
+}
+
+.log-table thead th {
+  padding-top: 8px;
+}
+
+.log-table tr > :first-child {
+  padding-left: 16px;
+}
+
+.log-table .col-go {
+  width: 28px;
+  padding-right: 10px;
+  text-align: right;
+}
+
+.log-day {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.log-day:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.log-weight {
+  font-family: var(--f-num);
+  font-size: 1.0625rem;
+}
+
+.log-more {
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.log-more:empty {
+  display: none;
+}
+
+.log-more .row {
+  margin: -8px -16px;
+  width: calc(100% + 32px);
+  border-bottom: 0;
+}
+
+.log-more .empty {
+  padding: 8px 0;
+}
+
+/* On a phone the log is a few rows and "Show all", not a box that scrolls inside the page. */
+@media (max-width: 959.98px) {
+  .table-box.log-box {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .log-table thead th {
+    position: static;
+  }
+
+  /* The columns share the width, and a long day or heading wraps (Portuguese, large text). */
+  .log-table {
+    table-layout: fixed;
+  }
+
+  .log-table thead th.num {
+    width: 20%;
+  }
+
+  /* The change, with its sign and unit, takes the most room of the figures. */
+  .log-table thead th.num + th.num {
+    width: 26%;
+  }
+
+  /* Held sideways the 7-day average shows too: the day keeps a third of the row. */
+  .log-table thead th.num + th.num.col-avg7 {
+    width: 18%;
+  }
+
+  .log-table thead th {
+    word-break: normal;
+    overflow-wrap: normal;
+    -webkit-hyphens: auto;
+    hyphens: auto;
+  }
+
+  .log-table th,
+  .log-table td {
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .log-table td.num {
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+}
+
+@media (max-width: 520px) {
+  .log-table th,
+  .log-table td {
+    padding: 4px 6px;
+  }
+
+  .log-table thead th.num {
+    width: 22%;
+  }
+
+  .log-table thead th.num + th.num {
+    width: 30%;
+  }
+
+  /* "Weight (lb)" at 150% needs the column's every pixel. */
+  .log-table thead th.num {
+    padding-left: 2px;
+  }
+
+  .log-table tr > :first-child {
+    padding-left: 16px;
+  }
+
+  .log-table .day-short {
+    display: inline;
+  }
+}
+
+.log-table .day-tiny {
+  display: none;
+}
+
+/* Below 360 px, the day in figures ("qua., 21/10"): "21 de out." doesn't fit its column at 150%. */
+@media (max-width: 359.98px) {
+  .log-table .day-short {
+    display: none;
+  }
+
+  .log-table .day-tiny {
+    display: inline;
+  }
+}
+
+/* About: the author's link is 28 px tall, inside its sentence (WCAG 2.5.8 asks 24); the policy's,
+   on a line of its own, a finger's 44 px. */
+.about-link {
+  display: inline-block;
+  padding-block: 4px;
+}
+
+#about-policy {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-block: 0;
+}
+
+/* The notice after a change in the day sheet: above the tab bar, with Undo. */
+.toast-layer {
+  position: fixed;
+  z-index: 45;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(var(--tab-h) + 12px);
+  pointer-events: none;
+}
+
+.toast {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 10px 10px 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+}
+
+.toast-text {
+  flex: 1 1 10rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.toast-text:focus {
+  outline: none;
+}
+
+.toast-text:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.toast .undo {
+  flex: none;
+  margin-left: auto;
+}
+
+@media (min-width: 960px) {
+  .toast-layer {
+    bottom: 16px;
+  }
+}
+
+/* On a phone the footer's words are in About (design §7, O21); with scripts off it stays. */
+@media (max-width: 959.98px) {
+  :root.has-tabs .site-footer {
+    display: none;
+  }
+}
+
+/* What an import or an erase did takes focus so it is read; it is text, with no ring to draw. */
+.data-panel .status:focus,
+.erase-status .status:focus {
+  outline: none;
 }

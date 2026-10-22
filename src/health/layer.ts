@@ -166,6 +166,22 @@ export async function withHealth(
     }
   >();
 
+  /**
+   * What each delete found on its day, so an undo can put the day back as it was: the diary's own
+   * record, this app's samples in Health and the day's tombstone. For the last `UNDO_KEPT` days.
+   */
+  let beforeDelete = new Map<
+    string,
+    { typed: StoredWeighIn | null; own: HealthSample[]; tombstone: Tombstone | undefined }
+  >();
+
+  /** Whether `w` is this app's own sample in Health for its day (another device's, say). */
+  const ownSample = (w: StoredWeighIn) =>
+    samples.some(
+      (x) =>
+        dayOfSyncId(x.syncId) === w.date && x.kg === w.kg && Date.parse(x.start) === Date.parse(w.savedAt),
+    );
+
   /** Whether `w` is a reading another app (a scale) put in Health, as the diary would show it. */
   const readingFromHealth = (w: StoredWeighIn) =>
     samples.some(
@@ -235,7 +251,15 @@ export async function withHealth(
       readFailed = true;
       return;
     }
-    const missing = toWrite(await inner.weighIns(), samples);
+    const typed = await inner.weighIns();
+    // A day typed here is the diary's: a tombstone left for it (a save that failed after an undo
+    // of a delete) would delete its sample on every read, and the next read write it again.
+    const typedDays = new Set(typed.map((w) => w.date));
+    if (tombstones.some((t) => typedDays.has(t.date))) {
+      tombstones = tombstones.filter((t) => !typedDays.has(t.date));
+      await quietly(save);
+    }
+    const missing = toWrite(typed, samples);
     if (writing && missing.length > 0) await quietly(() => backend.write(missing));
     // Days deleted while Health was off: this app's older samples for them go now (H5).
     const stale = samples.filter((s) => {
@@ -301,6 +325,49 @@ export async function withHealth(
   const isAvailable = async () => {
     available ??= await backend.available().catch(() => false);
     return available;
+  };
+
+  /**
+   * Undoes a delete of a day, if nothing was written to it since: the diary's own record as it was
+   * (savedAt included), the day's tombstone as it was (or none), and this app's samples in Health
+   * with their old sync versions. A day that came from Health alone comes back by its tombstone
+   * going; a reading from another app is never written into the diary's own file.
+   */
+  const undelete = async (date: string, previous: StoredWeighIn | null): Promise<boolean> => {
+    const known = beforeDelete.get(date);
+    // Without what the delete found, `previous` stands, unless it is a reading from Health or this
+    // app's own sample there (which Health gives back by itself once the tombstone goes).
+    const typed = known
+      ? known.typed
+      : previous && !readingFromHealth(previous) && !ownSample(previous)
+        ? previous
+        : null;
+    if (typed) {
+      if (!(await inner.restore(date, typed, null))) return false;
+    } else if ((await inner.weighIns()).some((w) => w.date === date)) return false;
+    beforeDelete.delete(date);
+    const was = known?.tombstone;
+    if (tombstones.find((t) => t.date === date) !== was) {
+      tombstones = [...tombstones.filter((t) => t.date !== date), ...(was ? [was] : [])];
+      await quietly(save);
+    }
+    const back: SampleToWrite[] = known
+      ? known.own.map((x) => ({
+          kg: x.kg,
+          start: x.start,
+          syncId: x.syncId ?? syncIdFor(date),
+          syncVersion: x.syncVersion ?? Date.parse(x.start),
+        }))
+      : typed
+        ? [sampleFor(typed)]
+        : [];
+    if (setting.on && writing && back.length > 0)
+      await quietly(async () => {
+        await backend.write(back);
+        remember(back);
+      });
+    await derive();
+    return true;
   };
 
   const health: HealthControls = {
@@ -404,6 +471,7 @@ export async function withHealth(
      */
     restore: (date, previous, expected) =>
       serial(async () => {
+        if (expected === null) return undelete(date, previous);
         const known = beforeSave.get(date);
         const before = known && sameRecord(known.written, expected) ? known : undefined;
         // Without what the save found, `previous` stands, unless it is a reading from Health.
@@ -461,9 +529,21 @@ export async function withHealth(
       }),
     remove: (date) =>
       serial(async () => {
-        if ((await inner.weighIns()).some((w) => w.date === date)) await inner.remove(date);
+        const typed = (await inner.weighIns()).find((w) => w.date === date) ?? null;
+        beforeDelete.delete(date);
+        beforeDelete.set(date, {
+          typed,
+          own: samples.filter((x) => dayOfSyncId(x.syncId) === date),
+          tombstone: tombstones.find((t) => t.date === date),
+        });
+        for (const day of [...beforeDelete.keys()].slice(0, Math.max(0, beforeDelete.size - UNDO_KEPT)))
+          beforeDelete.delete(day);
+        // What the diary showed: the typed record, or the reading from Health shown for the day.
+        const shown = typed ?? derived.find((w) => w.date === date) ?? null;
+        if (typed) await inner.remove(date);
         // A day from Health, or one written here: either way it stays deleted.
         await deleted([date]);
+        return shown;
       }),
     profile: () => inner.profile(),
     setProfile: (profile) => inner.setProfile(profile),
@@ -489,6 +569,7 @@ export async function withHealth(
         derived = [];
         fromOthers = 0;
         beforeSave = new Map();
+        beforeDelete = new Map();
         await save();
       }),
     onChange: (listener) => {

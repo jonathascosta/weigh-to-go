@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp, type App } from '../app/app';
+import { createApp, ReloadNeeded, type App } from '../app/app';
 import { chartLayers, resetView } from '../app/view';
 import { fakeStorage } from '../data/fake-storage.test-helper';
 import { memoryStore, type Store } from '../data/store';
@@ -39,6 +39,11 @@ afterEach(() => {
 const button = (text: string) =>
   [...root.querySelectorAll('button')].find((b) => b.textContent === text) as HTMLButtonElement;
 const days = () => app.state().weighIns.map((w) => `${w.date} ${String(w.kg)}`);
+/** A switch of Settings › Sections, by its name (in its panel, or in the open sheet). */
+const sectionToggle = (name: string) =>
+  [
+    ...document.querySelectorAll<HTMLButtonElement>('#sections-panel button.toggle, .sheet button.toggle'),
+  ].find((b) => b.querySelector('.toggle-label')?.textContent === name)!;
 
 describe('the weigh-in form', () => {
   it('gives the example in the unit shown: 108.4 kg is 239.0 lb', () => {
@@ -114,30 +119,206 @@ describe('bulk paste', () => {
 });
 
 describe('the log', () => {
-  it('deletes after a confirmation that starts on Keep', async () => {
+  const dayButton = (date: string) => root.querySelector<HTMLButtonElement>(`button[data-day="${date}"]`)!;
+  const toast = () => root.querySelector<HTMLElement>('.toast')!;
+  const undoButton = () => toast().querySelector<HTMLButtonElement>('button.undo')!;
+
+  it('opens a day in a sheet, and deletes it with Undo that puts it back exactly', async () => {
     await app.save([
       { date: '2026-09-20', kg: 100 },
       { date: '2026-09-21', kg: 99 },
     ]);
     await settle();
-    root.querySelector<HTMLButtonElement>('button[data-day="2026-09-21"][data-role="delete"]')!.click();
-    await settle();
-    expect((document.activeElement as HTMLElement).dataset.role).toBe('no');
-    root.querySelector<HTMLButtonElement>('button[data-day="2026-09-21"][data-role="yes"]')!.click();
+    const before = app.state().weighIns.find((w) => w.date === '2026-09-21')!;
+    dayButton('2026-09-21').click();
+    // The sheet: its title focused, the day's weight in the field, Delete named by the day.
+    expect(document.activeElement?.id).toBe('sheet-title');
+    expect(document.querySelector('#sheet-title')!.textContent).toBe('Mon, Sep 21, 2026');
+    expect(document.querySelector<HTMLInputElement>('#day-weight')!.value).toBe('99.0');
+    const del = document.querySelector<HTMLButtonElement>('#day-delete')!;
+    expect(del.getAttribute('aria-label')).toBe('Delete the weigh-in of Sep 21, 2026');
+    del.click();
     await settle();
     expect(days()).toEqual(['2026-09-20 100']);
+    expect(document.querySelector<HTMLElement>('.sheet-layer')!.hidden).toBe(true);
+    expect(toast().hidden).toBe(false);
+    expect(toast().textContent).toContain('Deleted the weigh-in of Sep 21, 2026.');
+    expect(document.activeElement).toBe(toast().querySelector('.toast-text'));
+    undoButton().click();
+    await settle();
+    // Back exactly as it was, savedAt included.
+    expect(app.state().weighIns.find((w) => w.date === '2026-09-21')).toEqual(before);
+    expect(toast().textContent).toContain('Undone.');
+  });
+
+  it('changes a day’s weight in its sheet, with Undo, and refuses a bad one', async () => {
+    await app.save([{ date: '2026-09-20', kg: 100 }]);
+    await settle();
+    const before = app.state().weighIns[0]!;
+    dayButton('2026-09-20').click();
+    const field = document.querySelector<HTMLInputElement>('#day-weight')!;
+    field.value = 'abc';
+    field.form!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    expect(document.querySelector('#day-hint')!.textContent).toBe(
+      'Type the weight in kg, for example 108.4.',
+    );
+    expect(days()).toEqual(['2026-09-20 100']);
+    field.value = '99,5';
+    field.form!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    expect(days()).toEqual(['2026-09-20 99.5']);
+    expect(toast().textContent).toContain('Updated: 99.5 kg on Sep 20, 2026.');
+    undoButton().click();
+    await settle();
+    expect(app.state().weighIns).toEqual([before]);
+  });
+
+  it('undoes nothing when the day was written since, and says so', async () => {
+    await app.save([{ date: '2026-09-20', kg: 100 }]);
+    await settle();
+    dayButton('2026-09-20').click();
+    document.querySelector<HTMLButtonElement>('#day-delete')!.click();
+    await settle();
+    await app.save([{ date: '2026-09-20', kg: 98 }]);
+    await settle();
+    undoButton().click();
+    await settle();
+    expect(days()).toEqual(['2026-09-20 98']);
+    expect(toast().textContent).toContain('This weigh-in changed since; nothing was undone.');
+  });
+
+  it('keeps Undo for 10 seconds, paused while it has focus, and ends it on leaving Your data', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    try {
+      await app.save([{ date: '2026-09-20', kg: 100 }]);
+      await vi.advanceTimersByTimeAsync(10);
+      dayButton('2026-09-20').click();
+      document.querySelector<HTMLButtonElement>('#day-delete')!.click();
+      await vi.advanceTimersByTimeAsync(10);
+      undoButton().focus();
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(toast().hidden).toBe(false);
+      undoButton().blur();
+      await vi.advanceTimersByTimeAsync(4_900);
+      expect(toast().hidden).toBe(false);
+      await vi.advanceTimersByTimeAsync(5_200);
+      expect(toast().hidden).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives focus to the nearest row when the notice of a delete ends, and to the day after an undo', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    try {
+      await app.save([
+        { date: '2026-09-19', kg: 100.2 },
+        { date: '2026-09-20', kg: 100 },
+        { date: '2026-09-21', kg: 99.8 },
+      ]);
+      await vi.advanceTimersByTimeAsync(10);
+      dayButton('2026-09-20').click();
+      document.querySelector<HTMLButtonElement>('#day-delete')!.click();
+      await vi.advanceTimersByTimeAsync(10);
+      expect(document.activeElement).toBe(toast().querySelector('.toast-text'));
+      await vi.advanceTimersByTimeAsync(10_100);
+      expect(toast().hidden).toBe(true);
+      // The next older day took its place.
+      expect(document.activeElement).toBe(dayButton('2026-09-19'));
+
+      dayButton('2026-09-21').click();
+      document.querySelector<HTMLButtonElement>('#day-delete')!.click();
+      await vi.advanceTimersByTimeAsync(10);
+      undoButton().click();
+      await vi.advanceTimersByTimeAsync(10);
+      expect(toast().textContent).toContain('Undone.');
+      await vi.advanceTimersByTimeAsync(5_100);
+      expect(toast().hidden).toBe(true);
+      expect(document.activeElement).toBe(dayButton('2026-09-21'));
+
+      // The last day deleted: the log's heading takes focus.
+      for (const date of ['2026-09-19', '2026-09-21']) {
+        dayButton(date).click();
+        document.querySelector<HTMLButtonElement>('#day-delete')!.click();
+        await vi.advanceTimersByTimeAsync(10);
+      }
+      await vi.advanceTimersByTimeAsync(10_100);
+      expect(document.activeElement).toBe(root.querySelector('#log-title'));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('says nothing of an undo that ends after the notice went, and the reload message when refused', async () => {
+    await app.save([{ date: '2026-09-20', kg: 100 }]);
+    await settle();
+    let finish: (value: boolean) => void = () => undefined;
+    const restore = vi.spyOn(app, 'restore').mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    dayButton('2026-09-20').click();
+    document.querySelector<HTMLButtonElement>('#day-delete')!.click();
+    await settle();
+    undoButton().click();
+    // The person leaves Your data before the undo is done.
+    board!.shell.goTo('analysis');
+    finish(true);
+    await settle();
+    expect(toast().hidden).toBe(true);
+    expect(toast().textContent).not.toContain('Undone.');
+
+    board!.shell.goTo('data');
+    await app.save([{ date: '2026-09-22', kg: 99 }]);
+    await settle();
+    restore.mockRejectedValueOnce(new ReloadNeeded());
+    dayButton('2026-09-22').click();
+    document.querySelector<HTMLButtonElement>('#day-delete')!.click();
+    await settle();
+    undoButton().click();
+    await settle();
+    expect(toast().textContent).toContain("The diary can't reach its data. Reload the page, then try again.");
+    restore.mockRestore();
+  });
+
+  it('shows the newest 100 on the one page, and 100 more at a time', async () => {
+    await app.save(
+      Array.from({ length: 130 }, (_, i) => ({
+        date: new Date(Date.UTC(2026, 0, 1) + i * 86_400_000).toISOString().slice(0, 10),
+        kg: 100 - i * 0.01,
+      })),
+    );
+    await settle();
+    const rows = () => root.querySelectorAll('section[aria-labelledby="log-title"] tbody tr');
+    expect(rows()).toHaveLength(100);
+    expect(root.querySelector('section[aria-labelledby="log-title"] .log-more')!.textContent).toContain(
+      'Showing the latest 100 of 130.',
+    );
+    root.querySelector<HTMLButtonElement>('section[aria-labelledby="log-title"] .log-more button')!.click();
+    expect(rows()).toHaveLength(130);
   });
 });
 
 describe('erasing', () => {
-  it('puts focus on Cancel, never on the destructive button', async () => {
+  it('asks in a sheet that starts on Cancel, never on the destructive button', async () => {
     await app.save([{ date: '2026-09-20', kg: 100 }]);
-    button('Erase everything').click();
+    root.querySelector<HTMLButtonElement>('#data-erase')!.click();
+    expect(document.querySelector('#sheet-title')!.textContent).toBe('Erase everything');
     expect(document.activeElement?.textContent).toBe('Cancel');
-    button('Erase').click();
+    // No Done in the head: its own Cancel is the only way out but Erase.
+    expect(document.querySelector<HTMLElement>('.sheet-head .button')!.hidden).toBe(true);
+    document.querySelector<HTMLButtonElement>('#erase-cancel')!.click();
+    expect(document.querySelector<HTMLElement>('.sheet-layer')!.hidden).toBe(true);
+    expect(document.activeElement).toBe(root.querySelector('#data-erase'));
+    expect(days()).toEqual(['2026-09-20 100']);
+    root.querySelector<HTMLButtonElement>('#data-erase')!.click();
+    document.querySelector<HTMLButtonElement>('#erase-confirm')!.click();
     await settle();
     expect(days()).toEqual([]);
     expect(document.activeElement?.textContent).toBe('Everything was erased.');
+    expect(root.querySelector('.erase-status')!.textContent).toBe('Everything was erased.');
   });
 });
 
@@ -423,18 +604,15 @@ describe('the installed app', () => {
 describe('Dashboard III', () => {
   const section = (id: string) => root.querySelector<HTMLElement>(`section[aria-labelledby="${id}"]`)!;
   const submit = (id: string) => {
-    root
+    document
       .querySelector(`#${id}`)!
       .closest('form')!
       .dispatchEvent(new Event('submit', { cancelable: true }));
   };
   const type = (id: string, value: string) => {
-    root.querySelector<HTMLInputElement>(`#${id}`)!.value = value;
+    document.querySelector<HTMLInputElement>(`#${id}`)!.value = value;
   };
-  const sectionChip = (text: string) =>
-    [...root.querySelectorAll<HTMLButtonElement>('nav.sections button.chip')].find(
-      (b) => b.textContent === text,
-    )!;
+  const sectionChip = sectionToggle;
   const saveDays = async (weights: readonly number[]) => {
     await app.save(weights.map((kg, i) => ({ date: `2026-09-${String(i + 1).padStart(2, '0')}`, kg })));
     await settle();
@@ -470,20 +648,16 @@ describe('Dashboard III', () => {
 
   it('saves a height in cm or in feet and inches, and shows the BMI', async () => {
     await saveDays([100, 99.6, 99.1]);
-    const unitChip = (text: string) =>
-      [...section('bmi-title').querySelectorAll<HTMLButtonElement>('button.chip')].find(
-        (b) => b.textContent === text,
-      )!;
-    // A reader in the US starts in feet and inches; the card's chips switch.
+    // A reader in the US starts in feet and inches; the unit is chosen in Your data's settings.
     expect(root.querySelector('#height-cm')).toBeNull();
-    unitChip('cm').click();
+    choose({ heightUnit: 'cm' });
     type('height-cm', '175');
     submit('height-cm');
     await settle();
     expect(app.state().profile.heightCm).toBe(175);
     expect(section('bmi-title').textContent).toContain('32.4');
     expect(section('bmi-title').textContent).toContain('BMI is a rough');
-    unitChip('ft and in').click();
+    choose({ heightUnit: 'ftin' });
     expect(root.querySelector('#height-cm')).toBeNull();
     // 175 cm is 5 ft 9 in (to the half inch).
     expect(root.querySelector<HTMLInputElement>('#height-ft')!.value).toBe('5');
@@ -506,7 +680,6 @@ describe('Dashboard III', () => {
       ['Key figures', null],
       ['Main chart', 'chart-title'],
       ['Calendar', 'calendar-title'],
-      ['Weigh-ins', 'log-title'],
     ] as const) {
       sectionChip(chip).click();
       const el = id ? section(id) : root.querySelector<HTMLElement>('section.kpis')!;
@@ -514,6 +687,12 @@ describe('Dashboard III', () => {
       expect(sectionChip(chip).getAttribute('aria-pressed')).toBe('false');
     }
     expect(JSON.parse(localStorage.getItem('weigh-to-go:sections')!)).not.toContain('calendar');
+    expect(root.querySelector('#sections-panel-button .row-sub')!.textContent).toBe('10 of 13 shown');
+    // The log's rows go; its group stays, with Paste several days at once.
+    sectionChip('Weigh-ins').click();
+    expect(section('log-title').hidden).toBe(false);
+    expect(section('log-title').querySelector<HTMLElement>('.log-body')!.hidden).toBe(true);
+    expect(root.querySelector('#paste-panel-button')!.closest('[hidden]')).toBeNull();
     // Shown again, and drawn with what changed meanwhile.
     await app.save([{ date: '2026-09-05', kg: 98.5 }]);
     await settle();
@@ -534,19 +713,27 @@ describe('Dashboard III', () => {
     expect(app.state().profile).toEqual({ goalKg: 90, heightCm: 180 });
   });
 
-  it('can put the height unit back to automatic', async () => {
+  it('shows the goal and the height in Your data, and edits them in a sheet', async () => {
     await saveDays([100, 99.6, 99.1]);
-    const chip = (text: string) =>
-      [...section('bmi-title').querySelectorAll<HTMLButtonElement>('button.chip')].find(
-        (b) => b.textContent === text,
-      )!;
-    // In the US, automatic is feet and inches.
-    expect(chip('Automatic (ft and in)').getAttribute('aria-pressed')).toBe('true');
-    chip('cm').click();
-    expect(chip('cm').getAttribute('aria-pressed')).toBe('true');
-    chip('Automatic (ft and in)').click();
-    expect(chip('Automatic (ft and in)').getAttribute('aria-pressed')).toBe('true');
-    expect(root.querySelector('#height-ft')).not.toBeNull();
+    choose({ heightUnit: 'cm' });
+    const goalRow = root.querySelector<HTMLButtonElement>('#settings-goal')!;
+    const heightRow = root.querySelector<HTMLButtonElement>('#settings-height')!;
+    expect(goalRow.textContent).toBe('GoalNot set');
+    expect(heightRow.textContent).toBe('HeightNot set');
+    goalRow.click();
+    expect(document.querySelector('#sheet-title')!.textContent).toBe('Change goal');
+    type('data-goal-weight', '90');
+    submit('data-goal-weight');
+    await settle();
+    expect(app.state().profile.goalKg).toBe(90);
+    expect(goalRow.textContent).toBe('Goal90.0 kg');
+    heightRow.click();
+    expect(document.querySelector('#sheet-title')!.textContent).toBe('Change height');
+    type('data-height-cm', '176');
+    submit('data-height-cm');
+    await settle();
+    expect(app.state().profile.heightCm).toBe(176);
+    expect(heightRow.textContent).toBe('Height176 cm');
   });
 
   it('moves focus to the first week shown by "Show more"', async () => {
@@ -736,8 +923,10 @@ describe('on a phone, the parts drawn only while they show', () => {
     expect(link.closest('[hidden]')).toBeNull();
     link.dispatchEvent(new MouseEvent('click', { cancelable: true }));
     go('#data');
-    expect(root.querySelector('details.paste')!.hasAttribute('open')).toBe(true);
-    expect(document.activeElement).toBe(root.querySelector('#paste-text'));
+    // On a phone the paste box opens in a sheet, its field focused.
+    expect(document.querySelector<HTMLElement>('.sheet-layer')!.hidden).toBe(false);
+    expect(document.querySelector('#sheet-title')!.textContent).toBe('Paste several days at once');
+    expect(document.activeElement).toBe(document.querySelector('#paste-text'));
   });
 
   it('lands the empty diary’s links on what they name, with no leftover for later visits', async () => {
@@ -749,11 +938,12 @@ describe('on a phone, the parts drawn only while they show', () => {
       a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
     click(link('Have a backup? Import it here'));
     expect(document.activeElement).toBe(root.querySelector('#data-import'));
-    expect(root.querySelector('details.paste')!.hasAttribute('open')).toBe(false);
+    const sheet = () => document.querySelector<HTMLElement>('.sheet-layer');
+    expect(sheet()?.hidden ?? true).toBe(true);
     go('#today');
     go('#data');
     // Nothing asked earlier opens the paste box now.
-    expect(root.querySelector('details.paste')!.hasAttribute('open')).toBe(false);
+    expect(sheet()?.hidden ?? true).toBe(true);
     expect(document.activeElement).toBe(root.querySelector('#view-data-title'));
   });
 
@@ -818,18 +1008,72 @@ describe('on a phone, the parts drawn only while they show', () => {
     expect(root.querySelector('#rate-curve-title')!.closest<HTMLElement>('.block')!.hidden).toBe(true);
   });
 
+  it('opens Sections in a sheet of 13 switches, and says how many are on', () => {
+    go('#data');
+    const button = root.querySelector<HTMLButtonElement>('#sections-panel-button')!;
+    expect(button.getAttribute('aria-haspopup')).toBe('dialog');
+    button.click();
+    const switches = document.querySelectorAll<HTMLButtonElement>('.sheet button.toggle');
+    expect(switches).toHaveLength(13);
+    expect(document.querySelector('#sheet-title')!.textContent).toBe('Sections');
+    sectionToggle('Calendar').click();
+    expect(sectionToggle('Calendar').getAttribute('aria-pressed')).toBe('false');
+    expect(button.querySelector('.row-sub')!.textContent).toBe('12 of 13 shown');
+    document.querySelector<HTMLButtonElement>('.sheet-head button')!.click();
+    expect(document.activeElement).toBe(button);
+  });
+
+  it('says the year on a phone for a day of another year, in its text and its name', async () => {
+    await app.save([{ date: '2025-12-30', kg: 101 }]);
+    await settle();
+    go('#data');
+    const log = root.querySelector<HTMLElement>('section[aria-labelledby="log-title"]')!;
+    log.querySelector<HTMLButtonElement>('.log-more button')!.click();
+    const thisYear = new Date().getFullYear() === 2026;
+    const old = log.querySelector<HTMLButtonElement>('button[data-day="2025-12-30"]')!;
+    expect(old.querySelector('.day-short')!.textContent).toBe('Tue, Dec 30, 2025');
+    expect(old.querySelector('.day-tiny')!.textContent).toBe('Tue, 12/30/2025');
+    expect(old.querySelector('.day-long')!.textContent).toBe('Dec 30, 2025');
+    const recent = log.querySelector<HTMLButtonElement>('button[data-day="2026-09-17"]')!;
+    if (thisYear) expect(recent.querySelector('.day-short')!.textContent).toBe('Thu, Sep 17');
+  });
+
+  it('shows the latest 5 weigh-ins, then Show all lists 50 more at a time', async () => {
+    await app.save(
+      Array.from({ length: 80 }, (_, i) => ({
+        date: new Date(Date.UTC(2026, 3, 1) + i * 86_400_000).toISOString().slice(0, 10),
+        kg: 100 - i * 0.01,
+      })),
+    );
+    await settle();
+    go('#data');
+    const log = root.querySelector<HTMLElement>('section[aria-labelledby="log-title"]')!;
+    const rows = () => log.querySelectorAll('tbody tr');
+    expect(rows()).toHaveLength(5);
+    const all = log.querySelector<HTMLButtonElement>('.log-more button')!;
+    expect(all.textContent).toBe('Show allShowing the latest 5 of 97.');
+    all.click();
+    expect(rows()).toHaveLength(55);
+    // Focus goes on from the first row that appeared.
+    expect(document.activeElement).toBe(rows()[5]!.querySelector('button'));
+    log.querySelector<HTMLButtonElement>('.log-more button')!.click();
+    expect(rows()).toHaveLength(97);
+    expect(log.querySelector('.log-more')!.textContent).toBe('');
+  });
+
   it('says where to show the cards when every one is hidden', () => {
     go('#analysis');
-    const bar = [...root.querySelectorAll<HTMLButtonElement>('nav.sections button.chip')];
     for (const name of ['Percentage loss', 'Compound daily rate', 'Hiccups', 'BMI', 'Facts'])
-      bar.find((b) => b.textContent === name)!.click();
+      sectionToggle(name).click();
     const message = root.querySelector<HTMLElement>('.all-hidden')!;
     expect(message.hidden).toBe(true);
-    for (const name of ['Daily variation', 'Weekdays', 'Calendar'])
-      bar.find((b) => b.textContent === name)!.click();
+    for (const name of ['Day-to-day variation', 'Weekdays', 'Calendar']) sectionToggle(name).click();
     expect(message.hidden).toBe(false);
     expect(message.textContent).toBe('Every analysis card is hidden. Show them in Your data › Settings');
     expect(message.querySelector('a')!.getAttribute('href')).toBe('#data');
+    // The link lands on Sections, where they come back.
+    message.querySelector('a')!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(root.querySelector('#sections-panel-button'));
   });
 
   it('shows the last 4 weeks on Progress, and 20 more at a time', async () => {
