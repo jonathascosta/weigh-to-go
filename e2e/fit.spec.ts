@@ -342,6 +342,13 @@ async function show(page: Page, view: string): Promise<void> {
   });
 }
 
+/**
+ * After a sheet closed: its history entry has gone too. Closing calls `history.back()`, whose
+ * `popstate` lands later; the next sheet's `pushState` must not interleave with it.
+ */
+const afterSheet = (page: Page) =>
+  page.waitForFunction(() => (history.state as { sheet?: boolean } | null)?.sheet !== true);
+
 /** Opens a sheet from its button, checks it, and closes it with Escape. */
 async function sheetFits(page: Page, opener: string, screen: string): Promise<void> {
   const button = page.locator(opener);
@@ -351,6 +358,7 @@ async function sheetFits(page: Page, opener: string, screen: string): Promise<vo
   await expectFits(page, screen);
   await page.keyboard.press('Escape');
   await expect(page.locator('.sheet-layer')).toBeHidden();
+  await afterSheet(page);
 }
 
 for (const language of LANGUAGES) {
@@ -412,6 +420,8 @@ for (const language of LANGUAGES) {
       await page.locator('#rate-options-button').tap();
       await page.getByRole('dialog').getByRole('button', { name: language.detailed, exact: true }).tap();
       await page.keyboard.press('Escape');
+      await expect(page.locator('.sheet-layer')).toBeHidden();
+      await afterSheet(page);
       await expect(page.locator('#sim-title')).toBeVisible();
       await expectFits(page, 'Analysis, every card open');
       const options = await page
