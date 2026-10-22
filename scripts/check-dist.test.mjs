@@ -5,6 +5,7 @@ import {
   findMissingPages,
   findPagesUnderTheBanner,
   findProblems,
+  findAppStoreProblems,
   findPurchaseCode,
   findTooNewCss,
   SITE,
@@ -393,5 +394,38 @@ describe('findPagesUnderTheBanner', () => {
     expect(findPagesUnderTheBanner(files)).toEqual([
       "pt/privacidade.html: its script doesn't hide the app's banner",
     ]);
+  });
+});
+
+describe('findAppStoreProblems', () => {
+  const id = '1234567890';
+  const banner = `<meta name="apple-itunes-app" content="app-id=${id}" />`;
+  const link = `<a href="https://apps.apple.com/app/id${id}" data-i18n="footer.appStore">On the App Store</a>`;
+  const page = (/** @type {string} */ body) => [{ name: 'index.html', text: `<head></head>${body}` }];
+
+  it('passes pages with neither, without an id', () => {
+    expect(findAppStoreProblems(page('<footer>Made by</footer>'), '')).toEqual([]);
+  });
+
+  it('finds a banner, a link or a placeholder left without an id', () => {
+    expect(findAppStoreProblems(page(banner + link + '<span data-app-store>'), '')).toEqual([
+      "index.html: the App Store link's placeholder is left",
+      'index.html: has a Smart App Banner, with no App Store id',
+      'index.html: links the App Store, with no App Store id',
+    ]);
+  });
+
+  it('passes pages with both, with the id', () => {
+    expect(findAppStoreProblems(page(banner + link), id)).toEqual([]);
+  });
+
+  it('finds a page missing either with the id, or with another id', () => {
+    expect(findAppStoreProblems(page(link), id)).toEqual([
+      'index.html: lacks the Smart App Banner for app-id=1234567890',
+    ]);
+    expect(findAppStoreProblems(page(banner), id)).toEqual([
+      "index.html: its footer doesn't link https://apps.apple.com/app/id1234567890",
+    ]);
+    expect(findAppStoreProblems(page(banner + link), '1234567891')).toHaveLength(2);
   });
 });

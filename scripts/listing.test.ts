@@ -69,7 +69,10 @@ describe('the App Store listing', () => {
     const folders = readdirSync(new URL(METADATA, root)).filter((name) =>
       statSync(new URL(`${METADATA}/${name}`, root)).isDirectory(),
     );
-    expect(folders.sort()).toEqual([...LANGUAGES]);
+    // review_information is no language: deliver reads the App Review notes from it
+    // (scripts/review.test.ts), and only notes.txt, so the contact stays as App Store Connect has it.
+    expect(folders.sort()).toEqual([...LANGUAGES, 'review_information']);
+    expect(readdirSync(new URL(`${METADATA}/review_information`, root))).toEqual(['notes.txt']);
   });
 
   it('is in Health & Fitness, with the copyright', () => {

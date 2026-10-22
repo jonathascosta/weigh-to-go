@@ -138,6 +138,39 @@ describe('About', () => {
       'Os anúncios foram removidos: o app não inicia mais o software de anúncios do Google, e nada mais é enviado ao Google.',
     );
   });
+
+  it('links the App Store on the website once the app is there, and never in the app', () => {
+    const url = 'https://apps.apple.com/app/id1234567890';
+    // By default, what the build was given (scripts/app-store.mjs): nothing until APP_STORE_ID is set.
+    const byDefault = mount(false).box.querySelector('#about-app-store');
+    if (__APP_STORE_URL__ === '') expect(byDefault).toBeNull();
+    else expect(byDefault?.getAttribute('href')).toBe(__APP_STORE_URL__);
+    const none = document.createElement('section');
+    mountAbout(none, false, () => false, '')(settings());
+    expect(none.querySelector('#about-app-store')).toBeNull();
+    const web = document.createElement('section');
+    const drawWeb = mountAbout(web, false, () => false, url);
+    drawWeb(settings());
+    const link = web.querySelector('#about-app-store')!;
+    expect(link.getAttribute('href')).toBe(url);
+    // The link is named by where it goes ("App Store" never split over two lines); the backup,
+    // how a web diary moves to the app, follows it as text in the same line (WCAG 2.4.4).
+    expect(link.textContent).toBe('Weigh to Go for iPhone, on the App\u00a0Store');
+    expect(link.parentElement!.textContent).toBe(
+      'Weigh to Go for iPhone, on the App\u00a0Store. A backup brings your diary with you.',
+    );
+    // A link on a line of its own, 44 px high like the policy's (styles.css, .about-link.own-line).
+    expect(link.classList.contains('own-line')).toBe(true);
+    expect(web.querySelector('#about-policy')!.classList.contains('own-line')).toBe(true);
+    drawWeb(choose({ lang: 'pt' }));
+    expect(link.textContent).toBe('O Weigh to Go para iPhone, na App\u00a0Store');
+    expect(link.parentElement!.textContent).toBe(
+      'O Weigh to Go para iPhone, na App\u00a0Store. Um backup leva seu diário junto.',
+    );
+    const app = document.createElement('section');
+    mountAbout(app, true, () => false, url)(settings());
+    expect(app.querySelector('#about-app-store')).toBeNull();
+  });
 });
 
 describe('a day in the log', () => {
