@@ -144,13 +144,17 @@ jobs:
           xcrun simctl install "$udid" ios/App/build/Build/Products/Debug-iphonesimulator/App.app
           xcrun simctl launch --console-pty "$udid" net.jonathas.weightogo > launch.log 2>&1 &
           pid=$!
-          # Waits for the diary to be drawn, up to two minutes: a slow runner (a first boot that
-          # migrates data for minutes) can take far longer than a fixed pause. Then a few seconds
-          # more, for anything the first moments log after it.
-          for _ in $(seq 120); do
-            grep -q 'weigh-to-go: ready' launch.log && break
+          # Waits for the diary to be drawn, up to five minutes: a slow runner (a first boot that
+          # migrates data for minutes) can take far longer than a fixed pause. On 22 October 2026
+          # two runs booted for about six minutes ("Waiting on System App") and then didn't draw
+          # the diary within two, on changes that touch no app code. Then a few seconds more, for
+          # anything the first moments log after it.
+          waited=0
+          until grep -q 'weigh-to-go: ready' launch.log || [ "$waited" -ge 300 ]; do
             sleep 1
+            waited=$((waited + 1))
           done
+          echo "Waited ${waited}s for the diary"
           sleep 5
           xcrun simctl io "$udid" screenshot first-screen.png
           xcrun simctl terminate "$udid" net.jonathas.weightogo || true
