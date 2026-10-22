@@ -894,8 +894,11 @@ decisions above.
      Xcode 26.2 found no simulator to run on): from Xcode 26.3, command-line runs get "SKTestSession: Error saving configuration
      file: SKInternalErrorDomain Code=3" on every call and no product (Apple's FB22237318, said
      fixed in 26.5 but still there with the runner's 26.6 and iOS 26.5, unsigned and signed ad
-     hoc, both tried here; Flutter's StoreKit plugin pinned Xcode 26.2 for the same reason). The
-     run stays signed ad hoc; the default Xcode is to be tried again when a release fixes it. _Alternative:_ a Swift package of its own under `ios/`,
+     hoc, both tried here; Flutter's StoreKit plugin pinned Xcode 26.2 for the same reason). That job
+     also points `/Applications/Xcode.app` at Xcode 26.2, since the purchase plugin's
+     `Package.swift` turns on code for the newest StoreKit when that Xcode's SDK has it. The run
+     stays signed ad hoc; the default Xcode is to be tried again when a release fixes it. First
+     green run: 22 October 2026, all five tests. _Alternative:_ a Swift package of its own under `ios/`,
      whose tests would run without a host app, where `SKTestSession` isn't dependable.
 144. **The purchase's review screenshot is made here** (Atlas's review): App Store Connect won't
      submit the purchase without one. `npm run store:screenshots` (story 4 adds the listing's to
