@@ -64,6 +64,8 @@ describe('the iPhone app', () => {
 
   it('registers its own Swift plugins in its own view controller', () => {
     expect(project).toContain('WeightHealthPlugin.swift in Sources');
+    expect(project).toContain('AdSetupPlugin.swift in Sources');
+    expect(read('ios/App/App/MainViewController.swift')).toContain('registerPluginInstance(AdSetupPlugin())');
     expect(project).toContain('MainViewController.swift in Sources');
     expect(read('ios/App/App/Base.lproj/Main.storyboard')).toContain('customClass="MainViewController"');
     expect(read('ios/App/App/MainViewController.swift')).toContain(
@@ -71,6 +73,55 @@ describe('the iPhone app', () => {
     );
     // The scene builds the window in code: its root must be the same view controller.
     expect(read('ios/App/App/SceneDelegate.swift')).toContain('rootViewController = MainViewController()');
+  });
+
+  it('always names an AdMob app, or the Mobile Ads SDK stops it at launch', () => {
+    expect(infoPlist).toMatch(/<key>GADApplicationIdentifier<\/key>\s*<string>\$\(ADMOB_APP_ID\)<\/string>/);
+    // Google's test app in every configuration; the signed build passes the owner's (fastlane).
+    expect(setting('ADMOB_APP_ID')).toEqual([
+      'ca-app-pub-3940256099942544~1458002511',
+      'ca-app-pub-3940256099942544~1458002511',
+    ]);
+    expect(read('ios/App/fastlane/Fastfile')).toMatch(/ADMOB_APP_ID='#\{admob_app_id\}'/);
+    // The owner's banner unit only in the signed build.
+    expect(infoPlist).toMatch(/<key>WTGAdMobBannerID<\/key>\s*<string>\$\(ADMOB_BANNER_ID\)<\/string>/);
+    expect(setting('ADMOB_BANNER_ID')).toEqual(['', '']);
+  });
+
+  it('marks only a run for the App Store as one, the only build with the owner’s ids', () => {
+    expect(infoPlist).toMatch(/<key>WTGAppStoreBuild<\/key>\s*<string>\$\(WTG_APP_STORE_BUILD\)<\/string>/);
+    expect(setting('WTG_APP_STORE_BUILD')).toEqual(['NO', 'NO']);
+    const fastfile = read('ios/App/fastlane/Fastfile');
+    expect(fastfile).toMatch(/WTG_APP_STORE_BUILD='#\{app_store_build \? "YES" : "NO"\}'/);
+    const workflow = read('.github/workflows/testflight.yml');
+    expect(workflow).toContain("ADMOB_APP_ID: ${{ inputs.app_store && secrets.ADMOB_APP_ID || '' }}");
+    expect(workflow).toContain("ADMOB_BANNER_ID: ${{ inputs.app_store && secrets.ADMOB_BANNER_ID || '' }}");
+    expect(workflow).toContain("WTG_APP_STORE_BUILD: ${{ inputs.app_store && 'YES' || 'NO' }}");
+  });
+
+  it('delays Google’s measurement until the SDK starts, which waits for ads to be due and allowed', () => {
+    expect(infoPlist).toMatch(/<key>GADDelayAppMeasurementInit<\/key>\s*<true\/>/);
+  });
+
+  it('never asks to track, and builds the AdMob plugin from its package', () => {
+    expect(infoPlist).not.toContain('NSUserTrackingUsageDescription');
+    expect(read('ios/App/CapApp-SPM/Package.swift')).toContain(
+      '.package(name: "CapacitorCommunityAdmob", path: "../../../node_modules/@capacitor-community/admob")',
+    );
+  });
+
+  it("keeps a place for Google's SKAdNetwork list, with only well-formed ids in it", () => {
+    // Pasted by the owner (docs/STORE.md, step 6), never typed from memory; the App Store build
+    // fails while it is empty (the TestFlight workflow).
+    expect(infoPlist).toContain("GOOGLE'S SKADNETWORK LIST GOES HERE");
+    const block = /<key>SKAdNetworkItems<\/key>\s*<array>([\s\S]*?)<\/array>/.exec(infoPlist)?.[1];
+    expect(block).toBeDefined();
+    const ids = [
+      ...(block ?? '').matchAll(/<key>SKAdNetworkIdentifier<\/key>\s*<string>([^<]*)<\/string>/g),
+    ].map((m) => m[1]);
+    expect((block ?? '').match(/<dict>/g)?.length ?? 0).toBe(ids.length);
+    for (const id of ids) expect(id).toMatch(/^[a-z0-9]+\.skadnetwork$/);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('ships its privacy manifest', () => {

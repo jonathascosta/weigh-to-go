@@ -3362,6 +3362,18 @@ span.cal-none {
   border-bottom: 0;
 }
 
+/* Privacy choices' line: always in the accessibility tree, so a change of its text is read; empty,
+   it takes no room. */
+.choices-status {
+  margin: 0;
+}
+
+.choices-status:empty {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
+
 .group-pad p,
 .group-pad h3 {
   margin: 0;

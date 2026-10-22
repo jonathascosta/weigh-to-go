@@ -15,6 +15,7 @@ export function mountAbout(container: HTMLElement, inApp: boolean): (s: Settings
   const title = h('h2', { attrs: { id: 'about-title' } });
   const first = h('p');
   const second = h('p', { attrs: { hidden: !inApp } });
+  const ads = h('p', { attrs: { hidden: !inApp } });
   const policy = h('a', { class: 'about-link', attrs: { href: '/privacy.html', id: 'about-policy' } });
   const version = h('span');
   const madeBy = h('span');
@@ -33,6 +34,7 @@ export function mountAbout(container: HTMLElement, inApp: boolean): (s: Settings
         { class: 'group-pad about' },
         first,
         second,
+        ads,
         h('p', {}, policy),
         h('p', { class: 'note' }, version, ' · ', madeBy, ' ', author),
       ),
@@ -44,6 +46,7 @@ export function mountAbout(container: HTMLElement, inApp: boolean): (s: Settings
     if (inApp) {
       first.textContent = m['about.app.storage'];
       second.textContent = m['about.app.shared'];
+      ads.textContent = m['about.app.ads'];
     } else first.textContent = `${m['home.privacy']} ${m['about.web']}`;
     policy.textContent = m['about.privacy'];
     policy.setAttribute('href', policyHref(s));

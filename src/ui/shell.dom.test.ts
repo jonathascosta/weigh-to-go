@@ -316,3 +316,21 @@ describe('a change of width', () => {
     expect(nav.querySelector('[aria-current]')!.getAttribute('aria-current')).toBe('page');
   });
 });
+
+describe("the iPhone app's band for the banner", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('is there in the app only, hidden from screen readers, with nothing to focus or tap', () => {
+    media(false);
+    mount().dispose();
+    expect(document.querySelector('.ad-space')).toBeNull();
+    vi.stubEnv('MODE', 'ios');
+    mount();
+    const band = document.querySelector('.ad-space')!;
+    expect(band.getAttribute('aria-hidden')).toBe('true');
+    expect(band.children).toHaveLength(0);
+    expect(band.textContent).toBe('');
+  });
+});

@@ -31,6 +31,30 @@
 	<string>Weigh to Go reads your weight from Apple Health, so readings from a smart scale or another app join your diary. What it reads stays on your iPhone.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Weigh to Go saves the weights you log to Apple Health, so your other apps and devices see them.</string>
+	<!-- Google AdMob (docs/sprint-4.md, story 1). Always set, or the Mobile Ads SDK stops the app at
+	     launch: Google's test app in the project's settings, the owner's from the app-store
+	     environment's ADMOB_APP_ID in the signed build (fastlane). -->
+	<key>GADApplicationIdentifier</key>
+	<string>$(ADMOB_APP_ID)</string>
+	<!-- The owner's banner unit (ADMOB_BANNER_ID), empty in every build but the signed one; read by
+	     AdSetupPlugin.swift. -->
+	<key>WTGAdMobBannerID</key>
+	<string>$(ADMOB_BANNER_ID)</string>
+	<!-- YES only in a TestFlight run "for the App Store" (WTG_APP_STORE_BUILD, fastlane): any other
+	     build shows no ads outside TestFlight. -->
+	<key>WTGAppStoreBuild</key>
+	<string>$(WTG_APP_STORE_BUILD)</string>
+	<!-- A safeguard: Google's measurement doesn't start with the app, only with the SDK, which the
+	     app starts only once ads are due and allowed (docs/sprint-4.md, story 1). -->
+	<key>GADDelayAppMeasurementInit</key>
+	<true/>
+	<!-- GOOGLE'S SKADNETWORK LIST GOES HERE (docs/STORE.md, step 6): one <dict> with
+	     SKAdNetworkIdentifier per id, pasted by the owner from
+	     https://developers.google.com/admob/ios/3p-skadnetworks, never typed from memory.
+	     List date: none yet. The App Store build fails while this array is empty. -->
+	<key>SKAdNetworkItems</key>
+	<array>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>

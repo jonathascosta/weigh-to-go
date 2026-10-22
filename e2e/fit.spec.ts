@@ -342,6 +342,13 @@ async function show(page: Page, view: string): Promise<void> {
   });
 }
 
+/**
+ * After a sheet closed: its history entry has gone too. Closing calls `history.back()`, whose
+ * `popstate` lands later; the next sheet's `pushState` must not interleave with it.
+ */
+const afterSheet = (page: Page) =>
+  page.waitForFunction(() => (history.state as { sheet?: boolean } | null)?.sheet !== true);
+
 /** Opens a sheet from its button, checks it, and closes it with Escape. */
 async function sheetFits(page: Page, opener: string, screen: string): Promise<void> {
   const button = page.locator(opener);
@@ -351,6 +358,7 @@ async function sheetFits(page: Page, opener: string, screen: string): Promise<vo
   await expectFits(page, screen);
   await page.keyboard.press('Escape');
   await expect(page.locator('.sheet-layer')).toBeHidden();
+  await afterSheet(page);
 }
 
 for (const language of LANGUAGES) {
@@ -412,6 +420,8 @@ for (const language of LANGUAGES) {
       await page.locator('#rate-options-button').tap();
       await page.getByRole('dialog').getByRole('button', { name: language.detailed, exact: true }).tap();
       await page.keyboard.press('Escape');
+      await expect(page.locator('.sheet-layer')).toBeHidden();
+      await afterSheet(page);
       await expect(page.locator('#sim-title')).toBeVisible();
       await expectFits(page, 'Analysis, every card open');
       const options = await page
@@ -608,3 +618,137 @@ for (const { lang, locale, home } of LANGUAGES)
         await check();
       });
   });
+
+// The iPhone app with its banner's band (design §8): `--ad-h` at the banner's 50 px under a
+// notched phone's status bar (safe area 47 px at the top, 34 at the bottom). Nothing of the page
+// starts under the band at the top of a view, every sheet stops 32 px below it, and every
+// focused control clears it (a box taller than the room below it, a table, can't: its top must).
+test.describe("the iPhone app with its banner's band", () => {
+  const SHEETS = [
+    ['progress', '#chart-options-button'],
+    ['data', '#sections-panel-button'],
+    ['data', '#settings-goal'],
+    ['data', 'tbody button[data-role="day"]'],
+    ['data', '#data-erase'],
+  ] as const;
+
+  // Held sideways too (DaVinci): the app is portrait only, but a band that fits there fits anywhere.
+  for (const size of [...SIZES, { width: 844, height: 390 }])
+    for (const text of TEXTS)
+      test(`keeps the page, its sheets and its focus clear of the band at ${String(size.width)} × ${String(size.height)}, text ${String(text)}%`, async ({
+        page,
+        context,
+      }) => {
+        test.skip(test.info().project.name !== 'ios', "The band is the iPhone app's only.");
+        const { check } = await watchHere(page);
+        await page.setViewportSize(size);
+        const cdp = await context.newCDPSession(page);
+        const sideways = size.width > size.height;
+        await cdp.send('Emulation.setSafeAreaInsetsOverride', {
+          insets: sideways
+            ? { top: 0, bottom: 21, left: 47, right: 47 }
+            : { top: 47, bottom: 34, left: 0, right: 0 },
+        });
+        await page.goto('/');
+        await loadBackup(page);
+        await page.evaluate((t) => {
+          document.documentElement.style.fontSize = t === 100 ? '' : `${String(t)}%`;
+          document.documentElement.style.setProperty('--ad-h', '50px');
+        }, text);
+        const bandBottom = await page
+          .locator('.ad-space')
+          .evaluate((el) => el.getBoundingClientRect().bottom);
+        // The safe area and the banner: the band is really there.
+        expect(bandBottom).toBeGreaterThanOrEqual(sideways ? 50 : 97);
+        const problems: string[] = [];
+
+        for (const view of ['today', 'progress', 'analysis', 'data']) {
+          await show(page, view);
+          await settle(page);
+          const under = await page.evaluate((band) => {
+            const found: string[] = [];
+            for (const el of document.querySelectorAll('header *, main *, nav *')) {
+              if (el.closest('[hidden], .visually-hidden, .ad-space')) continue;
+              const style = getComputedStyle(el);
+              if (style.visibility === 'hidden' || style.display === 'none') continue;
+              const r = el.getBoundingClientRect();
+              if (r.width === 0 || r.height === 0) continue;
+              if (r.top < band - 0.5 && r.bottom > 0)
+                found.push(
+                  `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''} at ${String(Math.round(r.top))}`,
+                );
+            }
+            return found.slice(0, 5);
+          }, bandBottom);
+          for (const u of under) problems.push(`${view}: ${u} starts under the band`);
+        }
+
+        for (const [view, opener] of SHEETS) {
+          await show(page, view);
+          const button = page.locator(opener).first();
+          await button.scrollIntoViewIfNeeded();
+          await button.tap();
+          await expect(page.locator('.sheet-layer .sheet')).toBeVisible();
+          await settle(page);
+          const top = await page
+            .locator('.sheet-layer .sheet')
+            .evaluate((el) => el.getBoundingClientRect().top);
+          if (top < bandBottom + 32 - 0.5)
+            problems.push(`the sheet of ${opener} starts at ${String(Math.round(top))}, under the band + 32`);
+          await page.keyboard.press('Escape');
+          await expect(page.locator('.sheet-layer')).toBeHidden();
+        }
+
+        let seen = 0;
+        for (const view of ['today', 'progress', 'analysis', 'data']) {
+          await show(page, view);
+          await page.locator(`#view-${view}-title`).focus();
+          for (let i = 0; i < 400; i++) {
+            await page.keyboard.press('Tab');
+            const state = await page.evaluate(
+              ({ v, band }) => {
+                const el = document.activeElement;
+                const bar = document.querySelector('nav.tabs');
+                if (!el || !bar || !el.closest(`#view-${v}`)) return null;
+                const r = el.getBoundingClientRect();
+                // A box taller than the room between the band and the bar can't clear the band.
+                const room = bar.getBoundingClientRect().top - band;
+                const under = r.height > 0 && r.top < band - 0.5 && r.bottom > band && r.height <= room;
+                return { under, what: `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}` };
+              },
+              { v: view, band: bandBottom },
+            );
+            if (!state) break;
+            seen++;
+            if (state.under) problems.push(`${view}: focused ${state.what} is under the band`);
+          }
+        }
+        expect(seen).toBeGreaterThan(40);
+        expect(problems).toEqual([]);
+        await check();
+      });
+});
+
+// A launch after one with the band up (decision 125): the band is there before the diary is, so
+// the page never moves when the banner comes.
+test('starts the iPhone app with the band up when it was up last time', async ({ page }) => {
+  test.skip(test.info().project.name !== 'ios', "The band is the iPhone app's only.");
+  const { check } = await watchHere(page);
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('weigh-to-go:adBand', 'true');
+    } catch {
+      // Without storage there is nothing to remember.
+    }
+    const seen = window as unknown as { bandAtField?: string };
+    new MutationObserver((_records, observer) => {
+      if (!document.getElementById('entry-weight')) return;
+      seen.bandAtField = getComputedStyle(document.documentElement).getPropertyValue('--ad-h').trim();
+      observer.disconnect();
+    }).observe(document, { childList: true, subtree: true });
+  });
+  await page.goto('/');
+  await expect(page.locator('#entry-weight')).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { bandAtField?: string }).bandAtField)).toBe('50px');
+  await check();
+});

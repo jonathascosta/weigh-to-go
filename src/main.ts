@@ -4,6 +4,8 @@ import { onSettingsChange, setPageLang, t, translatePage, watchSettings } from '
 import { isLang } from './i18n/locale';
 import { en } from './i18n/messages';
 import { createApp } from './app/app';
+import { restoreBand } from './ads/band';
+import { lazyAds } from './ads/lazy';
 import { lazyNotifier } from './reminders/keeper';
 import { mountSettings } from './settings-ui';
 import { mountDashboard } from './ui/dashboard';
@@ -11,6 +13,10 @@ import { mountUpdateNotice } from './ui/update';
 import { registerWorker } from './worker';
 
 watchForProblems();
+
+// The iPhone app's band for its banner, as the app last left it, before the diary shows (the frame
+// check reveals it): someone past the first days never sees the band arrive (decision 125).
+if (import.meta.env.MODE === 'ios') restoreBand(document);
 
 // The page's text goes into the reader's language before the frame check reveals it; if that
 // fails, the page is revealed as written, never left hidden or skipping the frame check.
@@ -44,13 +50,21 @@ if (checkFrame(openLabel)) {
     });
     watchSettings(window);
   }
-  const board = appBox
-    ? mountDashboard(appBox, createApp(import.meta.env.MODE === 'ios' ? openNative : undefined), {
-        notifier,
-        nav: document.getElementById('tabs'),
-        intro: document.querySelector<HTMLElement>('main .intro'),
-      })
-    : null;
+  const app = appBox ? createApp(import.meta.env.MODE === 'ios' ? openNative : undefined) : null;
+  // Its banner and Google's consent message (src/ads, platform/ads-native.ts): never on the website.
+  const ads =
+    import.meta.env.MODE === 'ios' && app
+      ? lazyAds(async () => (await import('./platform/ads-native')).nativeAds(app))
+      : undefined;
+  const board =
+    appBox && app
+      ? mountDashboard(appBox, app, {
+          notifier,
+          ads,
+          nav: document.getElementById('tabs'),
+          intro: document.querySelector<HTMLElement>('main .intro'),
+        })
+      : null;
   // Without working settings there is nothing to switch: the page stays as written.
   if (translated && board) mountSettings(board.settingsBox);
   ready();

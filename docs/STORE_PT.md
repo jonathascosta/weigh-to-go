@@ -50,7 +50,10 @@ de consentimento.
    App Store Connect (aba TestFlight do app, depois de alguns minutos de processamento), crie um grupo
    de **Internal Testing**, ligue a distribuição automática e adicione-se. Depois instale o app
    TestFlight da Apple no iPhone, aceite o convite, instale o build e use-o. Todo build seguinte é
-   igual: rodar o workflow, instalar pelo TestFlight, contar o que parece errado.
+   igual: rodar o workflow, instalar pelo TestFlight, contar o que parece errado. Deixe **For the App
+   Store** desmarcado nesses: um build assim não leva nenhum dos seus ids do AdMob, mostra os
+   anúncios de teste do Google pelo TestFlight e não mostraria anúncio nenhum na App Store. O passo
+   11 precisa de um build de uma execução com ele marcado.
 5. **A compra dentro do app.** Em Monetization, In-App Purchases do app, crie um **Non-Consumable**
    com o product id `net.jonathas.weightogo.removeads`, um nome de referência ("Remove ads"), o preço
    que escolher, o nome e a descrição em inglês e português ("Remove ads" · "Pay once and never see
@@ -59,22 +62,35 @@ de consentimento.
    vai junto com a primeira versão (passo 11).
 6. **AdMob.**
    - Adicione um app iOS, Weigh to Go, e um bloco de anúncio **banner**; ponha-os nos secrets
-     `ADMOB_APP_ID` e `ADMOB_BANNER_ID` do environment `app-store`. Os builds do TestFlight mostram
-     os anúncios de teste do Google de qualquer jeito; um build para a App Store precisa dos dois.
+     `ADMOB_APP_ID` (o id do app, `ca-app-pub-…~…`) e `ADMOB_BANNER_ID` (o id do bloco,
+     `ca-app-pub-…/…`) do environment `app-store`, os dois ou nenhum. Instalado pelo TestFlight, o
+     app mostra os anúncios de teste do Google de qualquer jeito (ele reconhece o TestFlight pelo
+     recibo de sandbox), então o seu uso nunca conta como tráfego inválido; pela App Store mostra os
+     seus. Uma execução do workflow TestFlight com **For the App Store** marcado falha sem os dois;
+     só uma execução assim põe os ids no app. Os ids só chegam à verificação do workflow e ao passo
+     de assinatura.
    - Adicione o seu iPhone como dispositivo de teste (Settings, Test devices), como no Arrows.
    - Em Privacy & messaging, inclua o app numa mensagem de regulamentos europeus (GDPR) e numa
      mensagem de regulamentos de estados dos EUA (US state regulations), e publique as duas: a
      política de privacidade promete as escolhas em Opções de privacidade no EEE, no Reino Unido, na
      Suíça e nos estados dos EUA cujas leis as dão. Sem a mensagem explicativa do IDFA: o app nunca
-     pede rastreamento.
+     pede rastreamento. **Uma salvaguarda antes do lançamento**, em Portugal, num build do TestFlight
+     de uma execução **For the App Store** (qualquer outro build usa o app de teste do Google, cuja
+     mensagem de exemplo não prova nada sobre as suas): a partir do 8º dia depois da primeira
+     abertura, com uma pesagem no diário, ou a mensagem de GDPR do Google aparece, ou Seus dados ›
+     App para iPhone mostra **Opções de privacidade** e ela abre o formulário do Google (essa linha
+     só aparece onde as suas mensagens valem). Se nenhum dos dois acontecer, pare o lançamento e
+     avise uma sessão: o app estaria mostrando anúncios no EEE sem perguntar.
    - Em Blocking controls, defina a classificação máxima dos anúncios e bloqueie as categorias
      sensíveis que não combinam com um diário de peso (produtos de dieta e emagrecimento, entre
      outras, onde existirem).
    - O `app-ads.txt` já está no jonathas.net para a conta. Quando o app estiver publicado, ligue-o à
      listagem nas configurações do app.
    - Cole numa sessão a lista atual de SKAdNetwork do Google
-     (<https://developers.google.com/admob/ios/3p-skadnetworks>): a sessão não consegue abrir essa
-     página e não deve digitar os ids de memória.
+     (<https://developers.google.com/admob/ios/3p-skadnetworks>), com a data que a página dá: a
+     sessão não consegue abrir essa página e não deve digitar os ids de memória. A sessão a põe no
+     `SKAdNetworkItems` marcado do `ios/App/App/Info.plist`, com a data; até lá, uma execução **For
+     the App Store** falha.
 7. **As páginas no jonathas.net.** A política de privacidade fica no site, em
    `https://weightogo.jonathas.net/privacy.html` e `/pt/privacidade.html` em português (e no app,
    pelo rodapé). O contato dela são as issues do projeto no GitHub até você decidir um contato
@@ -94,9 +110,14 @@ de consentimento.
    idiomas e não submete nada. Até você decidir um contato e as páginas de suporte (decisão 63 em
    [decisions.md](decisions.md)), a Support URL em App Information é a página de issues do projeto,
    <https://github.com/jonathascosta/weigh-to-go/issues>, nos dois idiomas.
-9. **App Privacy.** Responda pelo SDK de anúncios do Google, seguindo o guia do Google
-   (<https://developers.google.com/admob/ios/privacy/data-disclosure>), para anúncios não
-   personalizados sem rastreamento. O que a pessoa digita e o que o app lê do app Saúde ficam no
+9. **App Privacy.** Primeiro confira a política de privacidade com a página de divulgação de dados
+   do Google (<https://developers.google.com/admob/ios/privacy/data-disclosure>): a sessão não
+   consegue abri-la, então cole a página numa sessão (ou compare você mesmo). O "Anúncios no app" da
+   política diz que o SDK coleta o endereço IP, o modelo e o sistema do aparelho, o IDFV, dados de
+   publicidade e interações com os anúncios, uma localização aproximada obtida do IP e dados de
+   falhas e de desempenho (`privacy.ads.collects`); onde a página disser outra coisa, a sessão muda a
+   política e a data dela. Depois responda pelo SDK de anúncios do Google, seguindo essa página, para
+   anúncios não personalizados sem rastreamento. O que a pessoa digita e o que o app lê do app Saúde ficam no
    iPhone e não chegam a ninguém, o que as definições da Apple não contam como coletado; as compras
    passam pela Apple. As respostas têm de bater com a política de privacidade. A Privacy Policy URL
    (App Privacy) é `https://weightogo.jonathas.net/privacy.html`, e
@@ -109,8 +130,31 @@ de consentimento.
     - Preço: grátis. Países: todos menos a China continental, onde os apps precisam de um número de
       registro do governo (ICP).
     - Escolha o build do TestFlight para a versão, depois de conferir que foi feito do `main` atual
-      (o Arrows 1.0 foi aprovado com um build antigo e precisou de um 1.0.1 na hora). Junte a compra
-      dentro do app à versão.
+      (o Arrows 1.0 foi aprovado com um build antigo e precisou de um 1.0.1 na hora) e por uma
+      execução com **For the App Store** marcado (a página da execução na aba Actions mostra as
+      entradas dela). Junte a compra dentro do app à versão.
+    - **Antes do lançamento, confira que o app não envia nada ao Google quando não deve.** Num build
+      do TestFlight de uma execução **For the App Store**, com um registro de rede, veja que não há
+      nenhum pedido ao Google (`*.google.com`, `*.googleapis.com`, `*.doubleclick.net`,
+      `*.googlesyndication.com`, `app-measurement.com` e afins) em cada um destes estados: uma
+      instalação nova nos 7 primeiros dias, com pesagens; Remover anúncios comprado (no sandbox, com
+      o app aberto de novo); uma recusa na mensagem do Google; e, numa mesma sessão, depois de
+      retirar o consentimento em Opções de privacidade e depois de comprar Remover anúncios (nenhum
+      pedido novo a partir daí). A primeira ferramenta é o próprio **Relatório de Privacidade dos
+      Apps** do iPhone (Ajustes › Privacidade e Segurança › Relatório de Privacidade dos Apps, ligado
+      antes do teste): ele lista cada domínio que cada app contatou, então cobre os estados que
+      atravessam uma abertura (os primeiros dias, a compra feita, uma recusa). Para os estados numa
+      mesma sessão, use um proxy (no Mac de um amigo, como o Proxyman ou o Charles) ou o modelo
+      Network do Instruments, que mostram quando cada pedido foi feito. Se algum aparecer, pare o
+      lançamento e avise uma sessão.
+    - **Primeiro o trecho do banner, na instalação que você usa.** A gravação abaixo começa de uma
+      instalação nova, e reinstalar recomeça os 7 primeiros dias (um backup não os leva), então o
+      banner só aparece nessa instalação depois de uma semana. Antes de apagar o app, numa
+      instalação em uso há 7 dias ou mais (ou em outro iPhone que tenha uma), grave um trecho curto
+      do diário com o banner no topo (mostrado, nunca tocado: tocar nos próprios anúncios viola a
+      política do AdMob) e de Seus dados, App para iPhone, **Opções de privacidade**, com o
+      formulário do Google aberto: o Google mostra a mensagem de consentimento uma vez por
+      instalação, então o formulário faz as vezes dela.
     - **A primeira submissão precisa de uma gravação de tela e das notas de revisão completas**, ou
       um app novo recebe "Guideline 2.1 - Information Needed" em vez de uma revisão (Arrows, 5 de
       outubro de 2026). A gravação começa de uma instalação nova, o que apaga o diário naquele
@@ -118,15 +162,18 @@ de consentimento.
       apague o app, instale-o de novo pelo TestFlight, grave e importe o backup no fim (ou grave em
       outro iPhone). Num iPhone em inglês com o iOS mais recente, comece a gravação de tela pela
       Central de Controle e mostre, devagar: a primeira pesagem, o resumo e um gráfico, um cartão de
-      análise, ligar o app Saúde e a tela de permissão, o lembrete, a mensagem de consentimento se
-      aparecer, o banner (mostrado, nunca tocado: tocar nos próprios anúncios viola a política do
-      AdMob), comprar Remover anúncios no sandbox e Restaurar compras, as configurações e a política
-      de privacidade. Dois a quatro minutos; corte as pontas no app Fotos. Cole as
+      análise, ligar o app Saúde e a tela de permissão, o lembrete, comprar Remover anúncios no
+      sandbox e Restaurar compras, as configurações e a política de privacidade. Dois a quatro
+      minutos, mais o trecho do banner; corte as pontas no app Fotos. Cole as
       [notas de revisão](STORE.md#app-review-notes) (em inglês, como a Apple as lê) em Notes da App
-      Review Information e anexe a gravação.
+      Review Information e anexe os dois.
     - O status de comerciante (Digital Services Act) é declarado uma vez para a conta (feito para o
       Arrows em 4 de outubro de 2026); nada novo, a menos que a declaração passe para um endereço
       comercial.
+    - A salvaguarda do EEE do passo 6, num build do TestFlight de uma execução **For the App
+      Store**, em Portugal: a partir do 8º dia com uma pesagem, a mensagem de GDPR do Google
+      apareceu, ou Opções de privacidade apareceu em Seus dados › App para iPhone e abriu o
+      formulário do Google. Se nenhum dos dois aconteceu, não submeta.
     - Submeta. Depois do lançamento, avise a sessão: o site então ganha os links da App Store.
 
 ## Antes de cada versão

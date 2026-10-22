@@ -102,14 +102,22 @@ describe('About', () => {
     expect(box.textContent).toContain('Feito por Jonathas Costa');
   });
 
-  it('speaks of the app in the app, with Apple Health and no ads before they ship, and the bundled policy', () => {
-    const { box } = mount(true);
+  it('speaks of the app in the app, with Apple Health, the ads and the bundled policy', () => {
+    const { box, draw } = mount(true);
     expect(box.textContent).toContain('Your weigh-ins stay in this app on your iPhone');
     expect(box.textContent).toContain('If you turn on Apple Health, weights are shared with Health');
-    // The ads come with Sprint 4: until then About says nothing of them.
-    expect(box.textContent).not.toMatch(/AdMob|ads/i);
+    // The ads, as design §7 words them (decision 109: they come with the ads).
+    expect(box.textContent).toContain(
+      'Ads come from Google AdMob: they are not personalised and never receive your weigh-ins, but Google gets what any ad request carries, such as the iPhone’s model and network address. Removing the ads stops those requests.',
+    );
     expect(box.textContent).not.toMatch(/browser/);
     expect(box.querySelector('#about-policy')!.getAttribute('href')).toBe('/privacy.html');
+    draw(choose({ lang: 'pt' }));
+    expect(box.textContent).toContain('Os anúncios vêm do Google AdMob: não são personalizados');
+    expect(box.textContent).toContain('Ao remover os anúncios, esses pedidos param.');
+    // Their own paragraph, after Apple Health's.
+    const paragraphs = [...box.querySelectorAll('.about p')].map((p) => p.textContent);
+    expect(paragraphs[2]).toMatch(/^Os anúncios vêm do Google AdMob/);
   });
 });
 

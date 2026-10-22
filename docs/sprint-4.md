@@ -31,17 +31,42 @@ both change together, in the same pull request.
          data disclosure page (<https://developers.google.com/admob/ios/privacy/data-disclosure>),
          pasted by the owner if a session can't open it, and make the App Privacy answers (STORE.md,
          step 9) match it; change the policy and its date where they differ.
-   - [ ] Once the Remove ads purchase is held, neither the Mobile Ads SDK nor UMP is started, so
+   - [x] Once the Remove ads purchase is held, neither the Mobile Ads SDK nor UMP is started, so
          the app sends Google nothing, with a unit test.
-   - [ ] The native banner is hidden whenever the web view leaves the diary (the static pages:
+   - [x] The native banner is hidden whenever the web view leaves the diary (the static pages:
          the privacy policy and the 404 page), with a check.
-   - [ ] Where the law asks for consent, the SDK starts only once consent is given (or when it
+   - [x] Where the law asks for consent, the SDK starts only once consent is given (or when it
          isn't required); on a refusal the app shows no ads and never starts the SDK (no limited
          ads), with a unit test of the refusal (decision 64).
-   - [ ] The app's About in Your data (`about.app.shared`, EN and PT) gains the ads sentences the
+   - [x] The app's About in Your data (`about.app.shared`, EN and PT) gains the ads sentences the
          design wrote (design §7): ads from Google AdMob, not personalised, never given the
          weigh-ins, what any ad request carries, and that removing the ads stops those requests;
          left out until the ads ship (decision 109).
+   - [ ] Before the release, on a TestFlight build from a run for the App Store, a network log (the
+         iPhone's App Privacy Report, then a proxy or Instruments within a session) shows no request to Google in the first 7 days, with Remove ads
+         held, after a refusal in Google's message, and from the moment consent is withdrawn in
+         Privacy choices or Remove ads is bought during a session (STORE.md, step 11). Info.plist's
+         `GADDelayAppMeasurementInit` is a safeguard, not the proof.
+
+   _As built (22 October 2026)._ `@capacitor-community/admob` 8.2.1, unpatched (decision 120).
+   `src/ads/` holds the seam (`AdProvider`, `NO_ADS`, the `Entitlement` stub that story 2 replaces),
+   the order at launch (`ads.ts`: the purchase, the ad unit, the first days, consent, the SDK, the
+   banner; decision 121), the consent (`consent.ts`, a refusal read from the IAB TCF choices,
+   decision 122) and the banner (`banner.ts`: `npa` on every request, `--ad-h` from the size event,
+   hidden under a sheet, the keypad, the purchase's `buying` class and off the diary; decisions 125
+   and 126). `platform/ads-native.ts` and `ios/App/App/AdSetupPlugin.swift` are the native side,
+   loaded only in the app's build; `check:dist` fails when the website's scripts carry ad code, and
+   when a static page of the app's build doesn't hide the banner. Test ads come from the sandbox
+   receipt; the TestFlight workflow's **For the App Store** run needs both AdMob ids and Google's
+   SKAdNetwork list, still to be pasted (decisions 123 and 124). Privacy choices is a row of the
+   iPhone app group (decision 127). The first checklist item, Google's data disclosure page, is the
+   owner's (STORE.md, step 9; decision 130). After the reviews (decisions 125 and 131 to 134): the
+   band is up from the moment the banner is asked for and from the first paint of a launch after
+   one with it, a banner taken away while loading is taken away again when it arrives, only App
+   Store runs carry the owner's ids, and the fit test checks the app with the band. Not yet checked
+   on a device: the consent message, the
+   banner's place under the status bar, and its hiding; the simulator run starts with an empty
+   diary, so it reaches none of Google's code.
 
 2. **Remove ads, once and for good.** A non-consumable in-app purchase,
    `net.jonathas.weightogo.removeads`, at the price the owner sets in App Store Connect. Checked on

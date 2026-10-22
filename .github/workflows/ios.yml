@@ -100,6 +100,18 @@ jobs:
           -derivedDataPath build
           CODE_SIGNING_ALLOWED=NO
 
+      # The Swift packages as Xcode resolved them: Google's Mobile Ads SDK is pinned exactly by the
+      # AdMob plugin, its consent SDK (UMP) only up to the next minor. Printed, and kept with the
+      # screenshot, so a version that moves shows here; the file can be committed from the artifact
+      # to pin them (decision 134).
+      - name: The Swift packages as resolved
+        run: |
+          found=$(find ios/App -name Package.resolved -not -path '*/build/*' | head -1)
+          if [ -z "$found" ]; then echo '::warning::No Package.resolved found'; exit 0; fi
+          echo "$found"
+          cat "$found"
+          mkdir -p resolved && cp "$found" resolved/Package.resolved
+
       # Debug is the one launched below: only a debug build prints the web view's console.
       - name: Build the app for the simulator (Debug)
         working-directory: ios/App
@@ -156,5 +168,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ios-first-screen
-          path: first-screen.png
+          path: |
+            first-screen.png
+            resolved/Package.resolved
           if-no-files-found: ignore

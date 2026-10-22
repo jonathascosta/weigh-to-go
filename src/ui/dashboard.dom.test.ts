@@ -5,6 +5,7 @@ import { chartLayers, resetView } from '../app/view';
 import { fakeStorage } from '../data/fake-storage.test-helper';
 import { memoryStore, type Store } from '../data/store';
 import { choose, resetSettings } from '../i18n';
+import type { AdProvider } from '../ads/ads';
 import { mountDashboard, type Dashboard } from './dashboard';
 import { WIDE_QUERY } from './shell';
 
@@ -1214,5 +1215,79 @@ describe('the reload notice', () => {
       expect(box.textContent).toContain('Reload the page');
       expect(box.querySelector('button')!.textContent).toBe('Reload');
     }
+  });
+});
+
+describe('Privacy choices, in the iPhone app', () => {
+  /** The ads as Your data sees them, with Google's say on whether the row applies. */
+  const fakeAds = () => {
+    const listeners = new Set<(required: boolean) => void>();
+    const shown: string[] = [];
+    let required = false;
+    let opens = true;
+    const ads: AdProvider = {
+      privacyChoices: () => required,
+      onPrivacyChoices: (listener) => {
+        listeners.add(listener);
+        return () => {
+          listeners.delete(listener);
+        };
+      },
+      showPrivacyChoices: () => {
+        shown.push('form');
+        return Promise.resolve(opens);
+      },
+      stop: () => Promise.resolve(),
+    };
+    return {
+      ads,
+      shown,
+      failNext: () => {
+        opens = false;
+      },
+      say: (now: boolean) => {
+        required = now;
+        for (const listener of listeners) listener(now);
+      },
+    };
+  };
+
+  it('shows only where Google’s consent tool says it applies, and opens Google’s form', async () => {
+    board?.dispose();
+    const fake = fakeAds();
+    board = mountDashboard(root, app, { ads: fake.ads });
+    await settle();
+    const row = root.querySelector<HTMLButtonElement>('#privacy-choices')!;
+    expect(row.hidden).toBe(true);
+    fake.say(true);
+    expect(row.hidden).toBe(false);
+    expect(row.textContent).toBe('Privacy choices');
+    expect(row.closest('section')!.querySelector('h2')!.textContent).toBe('iPhone app');
+    row.click();
+    await settle();
+    expect(fake.shown).toEqual(['form']);
+    expect(document.activeElement).toBe(row);
+    const status = root.querySelector<HTMLElement>('#privacy-choices-status')!;
+    expect(status.getAttribute('role')).toBe('status');
+    // Empty, but never hidden: a live region has to stay in the accessibility tree to be read.
+    expect(status.hidden).toBe(false);
+    expect(status.textContent).toBe('');
+    // Google's form can't open (offline): a line says so, until the next try.
+    fake.failNext();
+    row.click();
+    await settle();
+    expect(status.hidden).toBe(false);
+    expect(status.textContent).toBe('Google’s privacy choices couldn’t open. Try again when you’re online.');
+    choose({ lang: 'pt' });
+    expect(row.textContent).toBe('Opções de privacidade');
+    expect(status.textContent).toBe(
+      'Não foi possível abrir as opções de privacidade do Google. Tente de novo quando estiver on-line.',
+    );
+    fake.say(false);
+    expect(row.hidden).toBe(true);
+  });
+
+  it('isn’t there on the website', () => {
+    expect(root.querySelector('#privacy-choices')).toBeNull();
   });
 });

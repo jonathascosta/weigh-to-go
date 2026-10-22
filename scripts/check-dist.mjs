@@ -272,6 +272,44 @@ export function findAppProblems(files, exists) {
   return problems;
 }
 
+/**
+ * Code of Google AdMob and of the app's ads (src/ads, platform/ads-native.ts): the plugin's events
+ * and calls, the app's own plugin, Google's ad unit ids. The policy's and About's words naming
+ * AdMob are text, not code, and don't count.
+ */
+const AD_CODE = /bannerAdSizeChanged|\bshowBanner\b|\brequestConsentInfo\b|["']AdSetup["']|ca-app-pub-/;
+
+/**
+ * The scripts that carry ad code. The website must have none (decision 5: no ads on it); the
+ * iPhone app's build must have some, or this check no longer looks for the right thing.
+ * @param {{ name: string, text: string }[]} files
+ * @returns {string[]} The names of the scripts with ad code.
+ */
+export function findAdCode(files) {
+  return files.filter((file) => /\.m?js$/.test(file.name) && AD_CODE.test(file.text)).map((f) => f.name);
+}
+
+/** The pages that aren't the diary, where the iPhone app's banner must not show. */
+const STATIC_PAGES = ['404.html', 'privacy.html', 'pt/privacidade.html'];
+
+/**
+ * In the iPhone app's build, each static page's script hides the banner the diary may have left
+ * over the web view (src/static-page.ts, platform/ads-native.ts).
+ * @param {{ name: string, text: string }[]} files The text files of dist-ios/.
+ * @returns {string[]}
+ */
+export function findPagesUnderTheBanner(files) {
+  const problems = [];
+  /** @param {string} name */
+  const text = (name) => files.find((file) => file.name === name)?.text;
+  for (const page of STATIC_PAGES) {
+    const scripts = [...(text(page) ?? '').matchAll(/<script\b[^>]*\bsrc="\/([^"]+)"/g)].map((m) => m[1]);
+    if (!scripts.some((script) => text(script)?.includes('hideBannerHere')))
+      problems.push(`${page}: its script doesn't hide the app's banner`);
+  }
+  return problems;
+}
+
 /** @param {string} dist */
 function readSite(dist) {
   return readdirSync(dist, { recursive: true, encoding: 'utf8' })
@@ -287,17 +325,27 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     ...findMissingPages(files),
     ...findAppProblems(files, (name) => existsSync(join(dist, name))),
     ...findTooNewCss(files),
+    ...findAdCode(files).map((name) => `${name}: carries ad code, which the website must not`),
   ];
   // The iPhone app's build, when it is there (npm run build:ios): the same check of its CSS.
   const app = fileURLToPath(new URL('../dist-ios', import.meta.url));
   const appBuilt = existsSync(app);
-  if (appBuilt) problems.push(...findTooNewCss(readSite(app)).map((problem) => `dist-ios/${problem}`));
+  if (appBuilt) {
+    const appFiles = readSite(app);
+    problems.push(...findTooNewCss(appFiles).map((problem) => `dist-ios/${problem}`));
+    problems.push(...findPagesUnderTheBanner(appFiles).map((problem) => `dist-ios/${problem}`));
+    if (findAdCode(appFiles).length === 0)
+      problems.push("dist-ios/: no ad code found, so the website's check for it looks for the wrong thing");
+  }
   if (problems.length > 0) {
     console.error(problems.join('\n'));
     process.exit(1);
   }
   console.log(
     `dist/ keeps its protections (${String(files.length)} files checked)` +
-      (appBuilt ? '; dist-ios/ has no CSS Safari 15 cannot read' : '; dist-ios/ not built, not checked'),
+      ', and no ad code' +
+      (appBuilt
+        ? '; dist-ios/ has no CSS Safari 15 cannot read, and its ads, kept off the static pages'
+        : '; dist-ios/ not built, not checked'),
   );
 }
