@@ -35,6 +35,8 @@ export interface OptionsPanel {
   close(): void;
   /** Lets go of the listeners (for tests). */
   dispose(): void;
+  /** Opens it: the panel in place on the one page, the sheet on a phone. */
+  show(): void;
 }
 
 interface Sheet {
@@ -217,11 +219,101 @@ const icon = (): SVGSVGElement => {
   return svg;
 };
 
+/** Closes whatever sheet is open, focus left where it is (a page taken down, a test's end). */
+export function closeOpenSheet(): void {
+  openNow?.close('other', false);
+}
+
+/** A sheet opened on its own (the day, Erase, Sections), not by an options panel. */
+export interface SheetSpec {
+  /** The sheet's title. */
+  readonly title: string;
+  /** The words of Done, or null for a sheet with no Done (its own Cancel closes it). */
+  readonly done: string | null;
+  /** What the sheet holds; given back to `onClose` to be put away, or simply dropped. */
+  readonly content: HTMLElement;
+  /** Where focus goes back to when the sheet closes, if it is still on the page. */
+  readonly opener: HTMLElement | null;
+  /** What takes focus first: the title by default. */
+  readonly focus?: HTMLElement;
+  /** Called once the sheet has closed (`how`: by Back, or any other way). */
+  readonly onClose?: (how: 'back' | 'other') => void;
+}
+
+export interface OpenSheet {
+  /** Closes the sheet if it is still open; `refocus` gives focus back to the opener. */
+  close(refocus?: boolean): void;
+  isOpen(): boolean;
+  /** New words for the title and Done (a change of language while open). */
+  words(title: string, done: string | null): void;
+}
+
+/** Opens a modal sheet (closing any other first), with the same contract as the options' sheet. */
+export function openSheet(spec: SheetSpec): OpenSheet {
+  wire();
+  openNow?.close('other', false);
+  const owner = {};
+  const layer = theSheet();
+  const setWords = (title: string, done: string | null) => {
+    layer.title.textContent = title;
+    layer.done.textContent = done ?? '';
+    layer.doneEnd.textContent = done ?? '';
+    layer.done.hidden = done === null;
+    layer.doneEnd.hidden = done === null;
+  };
+  setWords(spec.title, spec.done);
+  layer.body.replaceChildren(spec.content);
+  const shown = hideRest(layer.root);
+  const unlock = lockScroll();
+  let pushed = false;
+  const close = (how: 'back' | 'other', refocus: boolean) => {
+    if (openNow?.owner !== owner) return;
+    openNow = null;
+    spec.onClose?.(how);
+    if (spec.content.parentElement === layer.body) spec.content.remove();
+    layer.root.hidden = true;
+    document.documentElement.classList.remove('sheet-open');
+    shown();
+    unlock();
+    // Closed another way than Back: the entry it pushed goes, so Back then goes where it should.
+    if (pushed && how !== 'back') {
+      const state: unknown = history.state;
+      if (typeof state === 'object' && state !== null && (state as { sheet?: unknown }).sheet === true) {
+        ownBacks++;
+        history.back();
+      }
+    }
+    pushed = false;
+    if (refocus && spec.opener?.isConnected) spec.opener.focus({ preventScroll: true });
+  };
+  layer.root.hidden = false;
+  document.documentElement.classList.add('sheet-open');
+  openNow = { owner, close };
+  try {
+    history.pushState({ sheet: true }, '');
+    pushed = true;
+  } catch {
+    // Without history (a sandboxed frame), Back simply doesn't close it.
+    pushed = false;
+  }
+  (spec.focus ?? layer.title).focus({ preventScroll: true });
+  return {
+    close: (refocus = true) => {
+      close('other', refocus);
+    },
+    isOpen: () => openNow?.owner === owner,
+    words: (title, done) => {
+      if (openNow?.owner === owner) setWords(title, done);
+    },
+  };
+}
+
 /**
  * The options of one chart or card: `id` names its panel. The caller fills `content` (once, and
- * again on a change of language) and places `button` and `panel`.
+ * again on a change of language) and places `button` and `panel`. On the one page the panel starts
+ * open, unless `startOpen` is false (a box opened on request, such as the paste box).
  */
-export function optionsPanel(id: string, layout: Layout): OptionsPanel {
+export function optionsPanel(id: string, layout: Layout, startOpen = true): OptionsPanel {
   dropStaleEntry();
   const label = h('span', { class: 'options-label' });
   const button = h(
@@ -234,10 +326,8 @@ export function optionsPanel(id: string, layout: Layout): OptionsPanel {
   const panel = h('div', { class: 'options-inline', attrs: { id, role: 'region' } }, content);
   let words = { title: '', done: '' };
   /** On the desktop the panel is open at first, as today's chips were all on the page. */
-  let inlineOpen = true;
-  const owner = {};
-  let restore: (() => void) | null = null;
-  let pushed = false;
+  let inlineOpen = startOpen;
+  let open: OpenSheet | null = null;
 
   const sync = () => {
     if (layout.isWide()) {
@@ -253,66 +343,31 @@ export function optionsPanel(id: string, layout: Layout): OptionsPanel {
     }
   };
 
-  const close = (how: 'back' | 'other', refocus: boolean) => {
-    if (openNow?.owner !== owner || !sheet) return;
-    openNow = null;
-    panel.append(content);
-    sheet.root.hidden = true;
-    document.documentElement.classList.remove('sheet-open');
-    restore?.();
-    restore = null;
-    // Closed another way than Back: the entry it pushed goes, so Back then goes where it should.
-    if (pushed && how !== 'back') {
-      const state: unknown = history.state;
-      if (typeof state === 'object' && state !== null && (state as { sheet?: unknown }).sheet === true) {
-        ownBacks++;
-        history.back();
-      }
-    }
-    pushed = false;
-    if (refocus) button.focus({ preventScroll: true });
-  };
-
-  const open = () => {
-    wire();
-    openNow?.close('other', false);
-    const layer = theSheet();
-    layer.title.textContent = words.title;
-    layer.done.textContent = words.done;
-    layer.doneEnd.textContent = words.done;
-    layer.body.replaceChildren(content);
-    const shown = hideRest(layer.root);
-    const unlock = lockScroll();
-    restore = () => {
-      shown();
-      unlock();
-    };
-    layer.root.hidden = false;
-    document.documentElement.classList.add('sheet-open');
-    openNow = { owner, close };
-    try {
-      history.pushState({ sheet: true }, '');
-      pushed = true;
-    } catch {
-      // Without history (a sandboxed frame), Back simply doesn't close it.
-      pushed = false;
-    }
-    layer.title.focus({ preventScroll: true });
-  };
+  const isOpen = () => open?.isOpen() === true;
 
   button.addEventListener('click', () => {
     if (layout.isWide()) {
       inlineOpen = !inlineOpen;
       sync();
-    } else open();
+      return;
+    }
+    open = openSheet({
+      title: words.title,
+      done: words.done,
+      content,
+      opener: button,
+      onClose: () => {
+        panel.append(content);
+      },
+    });
   });
 
   const stop = layout.onWide((wide) => {
-    if (wide && openNow?.owner === owner) {
+    if (wide && isOpen()) {
       // The sheet becomes the panel, open in place, with focus on the same control.
       const active = document.activeElement;
       const focused = active instanceof HTMLElement && content.contains(active) ? active : null;
-      close('other', false);
+      open?.close(false);
       inlineOpen = true;
       sync();
       (focused ?? button).focus({ preventScroll: true });
@@ -331,19 +386,21 @@ export function optionsPanel(id: string, layout: Layout): OptionsPanel {
     words: (title, done) => {
       words = { title, done };
       panel.setAttribute('aria-label', title);
-      if (openNow?.owner === owner && sheet) {
-        sheet.title.textContent = title;
-        sheet.done.textContent = done;
-        sheet.doneEnd.textContent = done;
-      }
+      open?.words(title, done);
     },
-    isOpen: () => openNow?.owner === owner,
+    isOpen,
     close: () => {
-      close('other', true);
+      open?.close(true);
     },
     dispose: () => {
-      close('other', false);
+      open?.close(false);
       stop();
+    },
+    show: () => {
+      if (layout.isWide()) {
+        inlineOpen = true;
+        sync();
+      } else if (!isOpen()) button.click();
     },
   };
 }

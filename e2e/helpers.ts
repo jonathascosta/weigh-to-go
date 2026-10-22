@@ -45,9 +45,9 @@ export async function loadBackup(page: Page, buffer = yearBackup()): Promise<voi
     .locator('button')
     .filter({ hasText: /^(Add to what is here|Juntar ao que está aqui)$/ })
     .click();
-  // A weigh-in's row (with its Delete button), not the "No weigh-ins yet" one.
+  // A weigh-in's row (its day opens the day sheet), not "No weigh-ins yet".
   await expect(
-    page.locator('section[aria-labelledby="log-title"] tbody button[data-role="delete"]').first(),
+    page.locator('section[aria-labelledby="log-title"] tbody button[data-role="day"]').first(),
   ).toBeVisible();
   if (phone) await page.locator('nav.tabs a[href="#today"]').click();
   else await expect(page.locator('#pct-title')).toBeVisible();

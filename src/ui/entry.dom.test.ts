@@ -347,10 +347,13 @@ describe('the paste box', () => {
     await setup();
     const box = document.createElement('div');
     document.body.append(box);
-    const paste = mountPaste(box, app);
+    let shown = 0;
+    const paste = mountPaste(box, app, () => {
+      shown++;
+    });
     paste.draw(app.state(), settings());
-    expect(box.querySelector('summary')!.textContent).toBe('Paste several days at once');
+    expect(box.querySelector('label[for="paste-text"]')!.textContent).toBe('Weigh-ins to import');
     expect(paste.open()).toBe(box.querySelector('#paste-text'));
-    expect(box.querySelector('details')!.open).toBe(true);
+    expect(shown).toBe(1);
   });
 });

@@ -53,9 +53,10 @@ export interface App {
    * Puts a day back as it was before a save: `previous` written back as it was, `savedAt` included
    * (null: the day is removed), so backup reminders and Apple Health see the old record, not a new
    * save. Only if the day still holds `expected`, the record that save wrote: resolves false, and
-   * changes nothing, when something else (another tab, Apple Health) wrote the day since.
+   * changes nothing, when something else (another tab, Apple Health) wrote the day since. After a
+   * delete, `expected` is null: the day comes back only if nothing was written to it since.
    */
-  restore(date: string, previous: StoredWeighIn | null, expected: StoredWeighIn): Promise<boolean>;
+  restore(date: string, previous: StoredWeighIn | null, expected: StoredWeighIn | null): Promise<boolean>;
   remove(date: string): Promise<void>;
   setProfile(profile: Profile): Promise<void>;
   /** Changes only the profile fields given (null removes one): saves made close together all land. */
@@ -65,6 +66,14 @@ export interface App {
   erase(): Promise<boolean>;
   /** Calls `listener` whenever everything is erased, for what is kept outside the store. */
   onErase(listener: () => Promise<void>): void;
+}
+
+/** A write refused because the store can't keep it until a reload (`State.store.needsReload`). */
+export class ReloadNeeded extends Error {
+  constructor() {
+    super('The store needs a reload; nothing was written.');
+    this.name = 'ReloadNeeded';
+  }
 }
 
 export function createApp(open: () => Promise<Store> = () => openStore()): App {
@@ -140,11 +149,17 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
     void requestPersistence();
   };
 
-  /** Runs a write, then reads again; a failed write tells the listeners and rejects. */
-  const write = async <T>(work: (store: Store) => Promise<T>): Promise<T> => {
+  /**
+   * Runs a write, then reads again; a failed write tells the listeners and rejects. While the store
+   * needs a reload (another tab has a newer version; issue #47), a write would last only until
+   * then: it is refused, and the notice and the message say to reload.
+   */
+  const write = async <T>(work: (store: Store) => Promise<T>, always = false): Promise<T> => {
     let result: T;
     try {
-      result = await work(await store());
+      const s = await store();
+      if (!always && s.needsReload) throw new ReloadNeeded();
+      result = await work(s);
     } catch (error) {
       notify();
       throw error;
@@ -195,7 +210,7 @@ export function createApp(open: () => Promise<Store> = () => openStore()): App {
               console.error(error);
             });
         }
-      }),
+      }, true),
     onErase: (listener) => {
       eraseListeners.push(listener);
     },

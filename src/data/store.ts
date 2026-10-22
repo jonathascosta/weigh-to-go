@@ -85,10 +85,10 @@ export interface Store {
   remove(date: string): Promise<void>;
   /**
    * Puts a day back as it was before a write, `previous` exactly (null: no weigh-in), if the day
-   * still holds `expected`, the record that write saved: read, compared and written at once.
-   * Resolves whether it did.
+   * still holds `expected`, the record that write saved (null: the day was deleted, and still holds
+   * nothing): read, compared and written at once. Resolves whether it did.
    */
-  restore(date: string, previous: StoredWeighIn | null, expected: StoredWeighIn): Promise<boolean>;
+  restore(date: string, previous: StoredWeighIn | null, expected: StoredWeighIn | null): Promise<boolean>;
   profile(): Promise<Profile>;
   setProfile(profile: Profile): Promise<void>;
   /**
@@ -186,6 +186,10 @@ function tabs(): {
 }
 
 /** A store in memory: for when the browser keeps nothing, and for tests. */
+/** Whether a day holds what an undo expects: that record, or nothing at all (after a delete). */
+const holds = (now: StoredWeighIn | null, expected: StoredWeighIn | null): boolean =>
+  expected === null ? now === null : now !== null && sameRecord(now, expected);
+
 export function memoryStore(reason: MemoryReason = 'unsupported'): Store {
   const data = new Map<string, StoredWeighIn>();
   let profile = EMPTY_PROFILE;
@@ -215,8 +219,8 @@ export function memoryStore(reason: MemoryReason = 'unsupported'): Store {
     restore: (date, previous, expected) =>
       run(() => {
         if (previous) check([previous]);
-        const now = data.get(date);
-        if (now === undefined || !sameRecord(now, expected)) return false;
+        const now = data.get(date) ?? null;
+        if (!holds(now, expected)) return false;
         if (previous) data.set(date, previous);
         else data.delete(date);
         return true;
@@ -471,8 +475,7 @@ function indexedDbStore(first: IDBDatabase, factory: IDBFactory, timeoutMs: numb
         // The read, the comparison and the write in one transaction: nothing can land in between.
         const get = store.get(date);
         get.onsuccess = () => {
-          const now = toWeighIn(get.result, '');
-          if (now === null || !sameRecord(now, expected)) return;
+          if (!holds(toWeighIn(get.result, ''), expected)) return;
           result.done = true;
           if (previous) store.put({ date, kg: previous.kg, savedAt: previous.savedAt });
           else store.delete(date);

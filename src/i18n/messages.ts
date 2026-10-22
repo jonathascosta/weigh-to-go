@@ -413,6 +413,16 @@ export const en = {
   'settings.weightUnit': 'Weight unit',
   'settings.heightUnit': 'Height unit',
   'settings.auto': 'Automatic',
+  'settings.sections': 'Sections',
+  'settings.sectionsOn': (on: number, total: number) =>
+    on === total
+      ? `All ${String(total)} shown`
+      : on === 0
+        ? 'None shown'
+        : `${String(on)} of ${String(total)} shown`,
+  'settings.goal': 'Goal',
+  'settings.height': 'Height',
+  'settings.notSet': 'Not set',
   'unit.kg': 'kg',
   'unit.lb': 'lb',
   'unit.cm': 'cm',
@@ -799,8 +809,8 @@ export const en = {
   'sections.goal': 'Goal',
   'sections.bmi': 'BMI',
   'sections.facts': 'Facts',
-  'sections.variation': 'Daily variation',
-  'sections.weeks': 'Weeks',
+  'sections.variation': 'Day-to-day variation',
+  'sections.weeks': 'Weekly averages',
   'sections.weekdays': 'Weekdays',
   'sections.calendar': 'Calendar',
   'sections.log': 'Weigh-ins',
@@ -845,7 +855,6 @@ export const en = {
   'bmi.scaleAria': (bmi: string, band: string) => `BMI ${bmi} on the scale of bands: ${band}`,
   'bmi.start': 'BMI at the start',
   'bmi.reduced': (points: string) => `down ${points} since the start`,
-  'bmi.autoUnit': (unit: string) => `Automatic (${unit})`,
   'bmi.notReduced': 'not lower than at the start yet',
   'bmi.target': (bmi: string) => `Weight for a BMI below ${bmi}`,
   'bmi.toGo': (weight: string) => `${weight} to go`,
@@ -1029,7 +1038,7 @@ export const en = {
   'calendar.sum': enCalendarSum,
   'word.steady': { one: 'steady', other: 'steady' },
   'log.title': 'Weigh-ins',
-  'log.note': 'Every weigh-in saved, newest first. To correct one, log the same day again.',
+  'log.note': 'Every weigh-in saved, newest first. Choose a day to change or delete it.',
   'log.date': 'Date',
   'log.weight': (unit: string) => `Weight (${unit})`,
   'log.change': 'Change',
@@ -1044,8 +1053,21 @@ export const en = {
   'log.empty': 'No weigh-ins yet.',
   'log.more': (shown: string, total: string) => `Showing the latest ${shown} of ${total}.`,
   'log.showMore': 'Show more',
+  'log.showAll': 'Show all',
+  'log.editDay': (day: string) => `Change or delete the weigh-in of ${day}`,
+  'log.undoFailed': "Couldn't undo it. Try again from the day.",
 
   'data.group.backup': 'Backup',
+  'data.group.app': 'iPhone app',
+  'data.group.about': 'About',
+  'data.due': 'Due',
+  'about.web': 'No account, no server of ours, no tracking.',
+  'about.app.storage':
+    'Your weigh-ins stay in this app on your iPhone, and in your iPhone’s backup if you use iCloud Backup or back up to a computer. We keep nothing: no account, no server of ours, no analytics.',
+  'about.app.shared':
+    'If you turn on Apple Health, weights are shared with Health on this iPhone. Ads come from Google AdMob: they are not personalised and never receive your weigh-ins, but Google gets what any ad request carries, such as the iPhone’s model and network address. Removing the ads stops those requests.',
+  'about.privacy': 'Privacy policy',
+  'about.version': (version: string) => `Weigh to Go ${version}`,
   'data.note':
     'Everything stays in this browser. A backup file is the only copy outside it: export one now and then, and use it to move to another device.',
   'data.export': 'Export backup',
@@ -1281,6 +1303,16 @@ export const pt: Messages = {
   'settings.weightUnit': 'Unidade de peso',
   'settings.heightUnit': 'Unidade de altura',
   'settings.auto': 'Automático',
+  'settings.sections': 'Seções',
+  'settings.sectionsOn': (on: number, total: number) =>
+    on === total
+      ? `Todas as ${String(total)} visíveis`
+      : on === 0
+        ? 'Nenhuma visível'
+        : `${String(on)} de ${String(total)} visíveis`,
+  'settings.goal': 'Meta',
+  'settings.height': 'Altura',
+  'settings.notSet': 'Não definida',
   'unit.kg': 'kg',
   'unit.lb': 'lb',
   'unit.cm': 'cm',
@@ -1674,8 +1706,8 @@ export const pt: Messages = {
   'sections.goal': 'Meta',
   'sections.bmi': 'IMC',
   'sections.facts': 'Curiosidades',
-  'sections.variation': 'Variação diária',
-  'sections.weeks': 'Semanas',
+  'sections.variation': 'Variação de um dia para o outro',
+  'sections.weeks': 'Médias semanais',
   'sections.weekdays': 'Dias da semana',
   'sections.calendar': 'Calendário',
   'sections.log': 'Registros',
@@ -1721,7 +1753,6 @@ export const pt: Messages = {
   'bmi.scaleAria': (bmi: string, band: string) => `IMC ${bmi} na escala de faixas: ${band}`,
   'bmi.start': 'IMC no início',
   'bmi.reduced': (points: string) => `redução de ${points} desde o início`,
-  'bmi.autoUnit': (unit: string) => `Automático (${unit})`,
   'bmi.notReduced': 'ainda não está abaixo do inicial',
   'bmi.target': (bmi: string) => `Peso para IMC abaixo de ${bmi}`,
   'bmi.toGo': (weight: string) => `faltam ${weight}`,
@@ -1905,7 +1936,7 @@ export const pt: Messages = {
   'word.steady': { one: 'estável', other: 'estáveis' },
   'log.title': 'Registros',
   'log.note':
-    'Todas as pesagens salvas, da mais recente para a mais antiga. Para corrigir uma, registre o mesmo dia de novo.',
+    'Todas as pesagens salvas, da mais recente para a mais antiga. Escolha um dia para alterá-lo ou apagá-lo.',
   'log.date': 'Data',
   'log.weight': (unit: string) => `Peso (${unit})`,
   'log.change': 'Variação',
@@ -1920,8 +1951,21 @@ export const pt: Messages = {
   'log.empty': 'Nenhuma pesagem ainda.',
   'log.more': (shown: string, total: string) => `Mostrando as ${shown} mais recentes de ${total}.`,
   'log.showMore': 'Mostrar mais',
+  'log.showAll': 'Mostrar todas',
+  'log.editDay': (day: string) => `Alterar ou apagar a pesagem de ${day}`,
+  'log.undoFailed': 'Não foi possível desfazer. Tente de novo pelo dia.',
 
   'data.group.backup': 'Backup',
+  'data.group.app': 'App para iPhone',
+  'data.group.about': 'Sobre',
+  'data.due': 'Pendente',
+  'about.web': 'Sem conta, sem servidor nosso, sem rastreamento.',
+  'about.app.storage':
+    'Suas pesagens ficam neste app, no seu iPhone, e no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador. Nós não guardamos nada: sem conta, sem servidor nosso, sem análise de uso.',
+  'about.app.shared':
+    'Se você ligar o app Saúde, os pesos são compartilhados com o Saúde neste iPhone. Os anúncios vêm do Google AdMob: não são personalizados e nunca recebem suas pesagens, mas o Google recebe o que qualquer pedido de anúncio leva, como o modelo do iPhone e o endereço de rede. Remover os anúncios encerra esses pedidos.',
+  'about.privacy': 'Política de privacidade',
+  'about.version': (version: string) => `Weigh to Go ${version}`,
   'data.note':
     'Tudo fica neste navegador. Um arquivo de backup é a única cópia fora dele: exporte um de vez em quando e use-o para passar para outro aparelho.',
   'data.export': 'Exportar backup',

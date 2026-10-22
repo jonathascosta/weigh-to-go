@@ -95,7 +95,7 @@ async function settle(/** @type {Page} */ page) {
 /** Waits for the diary with a weigh-in in its log, as e2e/helpers.ts loadBackup does. */
 async function diaryReady(/** @type {Page} */ page) {
   await page
-    .locator('section[aria-labelledby="log-title"] tbody button[data-role="delete"]')
+    .locator('section[aria-labelledby="log-title"] tbody button[data-role="day"]')
     .first()
     .waitFor({ state: 'attached' });
   await settle(page);

@@ -184,3 +184,10 @@ export function moreRows(list: HTMLElement, first: () => number, step: () => num
     },
   };
 }
+
+/** The chevron that says a row opens something. */
+export const chevron = (): SVGSVGElement => {
+  const icon = s('svg', { class: 'go', viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' });
+  icon.append(s('path', { d: 'M9 6l6 6-6 6' }));
+  return icon;
+};

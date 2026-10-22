@@ -574,27 +574,21 @@ export interface PasteBox {
   readonly open: () => HTMLElement;
 }
 
-export function mountPaste(container: HTMLElement, app: App): PasteBox {
-  const pasteSummary = h('summary');
+/**
+ * Fills `box` (an options panel's content: a sheet on a phone, a panel opened in place on the one
+ * page) with the paste box; `show` opens it.
+ */
+export function mountPaste(box: HTMLElement, app: App, show: () => void): PasteBox {
   const pasteHelp = h('p', { class: 'note', attrs: { id: 'paste-help' } });
   const pasteLabel = h('label', { class: 'visually-hidden', attrs: { for: 'paste-text' } });
   const pasteText = h('textarea', {
     attrs: { id: 'paste-text', rows: 5, 'aria-describedby': 'paste-help', spellcheck: 'false' },
   });
-  const pasteButton = h('button', { class: 'button button-ghost', attrs: { type: 'button' } });
+  const pasteButton = h('button', { class: 'button button-wide', attrs: { type: 'button' } });
   const pasteStatus = h('div', { class: 'paste-result', attrs: { role: 'status' } });
-  const paste = h(
-    'details',
-    { class: 'paste' },
-    pasteSummary,
-    pasteHelp,
-    pasteLabel,
-    pasteText,
-    h('div', {}, pasteButton),
-    pasteStatus,
+  box.replaceChildren(
+    h('div', { class: 'paste' }, pasteHelp, pasteLabel, pasteText, h('div', {}, pasteButton), pasteStatus),
   );
-
-  container.replaceChildren(paste);
 
   /** Saves what a paste read (exactly what the reader was shown), and says how it went. */
   const savePaste = (result: PasteResult, buttons: HTMLButtonElement[]) => {
@@ -759,14 +753,13 @@ export function mountPaste(container: HTMLElement, app: App): PasteBox {
   return {
     draw: (_state, s) => {
       const m = s.messages;
-      pasteSummary.textContent = m['paste.open'];
       pasteHelp.textContent = m['paste.help'](sampleLine(s), m[`unit.${s.weightUnit}`]);
       pasteLabel.textContent = m['paste.label'];
       pasteText.placeholder = `${sampleLine(s)}\n${sampleLine(s, 20)}`;
       pasteButton.textContent = m['paste.button'];
     },
     open: () => {
-      paste.open = true;
+      show();
       return pasteText;
     },
   };

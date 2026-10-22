@@ -19,7 +19,8 @@ import {
 import { onSettingsChange, settings, type Settings } from '../i18n';
 import { disclosure, type Disclosure } from './card';
 import { mountChart, periodStart } from './chart';
-import { manyChips } from './controls';
+import { toggleList } from './controls';
+import { mountAbout } from './about';
 import { mountData, mountNotices } from './data';
 import {
   calendarSummary,
@@ -29,17 +30,19 @@ import {
   variationSummary,
   weekdaysSummary,
 } from './days';
-import { h } from './dom';
+import { chevron, h } from './dom';
 import { mountEntry, mountPaste } from './entry';
 import { factsSummary, mountFacts } from './facts';
 import { hiccupsSummary, mountHiccups } from './hiccups';
 import { mountLog } from './log';
 import { mountPercent, percentSummary } from './percent';
-import { bmiSummary, mountBmi, mountGoal } from './profile';
+import { bmiSummary, goalEditor, heightEditor, mountBmi, mountGoal } from './profile';
 import { mountHealth } from './health';
 import { mountRates, rateSummary } from './rates';
 import { mountReminder } from './reminder';
 import { mountShell, type Shell, type View } from './shell';
+import { closeOpenSheet, openSheet, optionsPanel, type OpenSheet } from './sheet';
+import { undoNotice } from './undo-notice';
 import { isStandalone } from './standalone';
 import { mountSpark } from './spark';
 import { renderProgress, renderToday, stackBelow } from './summary';
@@ -113,7 +116,6 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   const importLink = h('a', { attrs: { href: '#data' } });
   const pasteLink = h('a', { attrs: { href: '#data' } });
   const emptyLinks = h('div', { class: 'empty-links', attrs: { hidden: true } }, importLink, pasteLink);
-  const bar = h('nav', { class: 'sections' });
   const card = (id: string, wide = true) =>
     h('section', { class: wide ? 'card wide' : 'card', attrs: { 'aria-labelledby': `${id}-title` } });
   const el: Record<Section, HTMLElement> = {
@@ -129,25 +131,52 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     weeks: card('weeks', false),
     weekdays: card('weekdays', false),
     calendar: card('calendar'),
-    log: card('log'),
+    log: h('section', { class: 'data-group log-group', attrs: { 'aria-labelledby': 'log-title' } }),
   };
-  const data = h('section', { class: 'card', attrs: { 'aria-labelledby': 'data-title' } });
-  const pasteCard = h('div', { class: 'card paste-card' });
+  // Your data (design §7): Weigh-ins, Backup, Settings, the iPhone app, About, and Erase alone at
+  // the bottom.
+  const group = (id: string) =>
+    h('section', { class: 'data-group', attrs: { 'aria-labelledby': `${id}-title` } });
+  const data = group('data');
   const settingsTitle = h('h2', { attrs: { id: 'settings-title' } });
   const settingsBox = h('div', { class: 'settings' });
+  const sectionsBox = h('div', { class: 'sections-box' });
+  const goalRow = h('button', {
+    class: 'row',
+    attrs: { type: 'button', id: 'settings-goal', 'aria-haspopup': 'dialog' },
+  });
+  const heightRow = h('button', {
+    class: 'row',
+    attrs: { type: 'button', id: 'settings-height', 'aria-haspopup': 'dialog' },
+  });
   const settingsCard = h(
     'section',
-    { class: 'card settings-card', attrs: { 'aria-labelledby': 'settings-title' } },
+    { class: 'data-group settings-group', attrs: { 'aria-labelledby': 'settings-title' } },
     settingsTitle,
-    settingsBox,
-    bar,
+    h('div', { class: 'group' }, settingsBox, sectionsBox, goalRow, heightRow),
   );
   // The daily reminder is the app's: a website can't plan notifications on the phone.
   const reminder = notifier
-    ? h('section', { class: 'card', attrs: { 'aria-labelledby': 'reminder-title' } })
+    ? h('section', { class: 'group-pad', attrs: { 'aria-labelledby': 'reminder-title' } })
     : null;
   // So is Apple Health: the card shows once the app's store says the phone has it.
-  const health = inApp ? h('section', { class: 'card', attrs: { 'aria-labelledby': 'health-title' } }) : null;
+  const health = inApp
+    ? h('section', { class: 'group-pad', attrs: { 'aria-labelledby': 'health-title' } })
+    : null;
+  const appTitle = h('h2', { attrs: { id: 'app-title' } });
+  const appGroup =
+    reminder || health
+      ? h(
+          'section',
+          { class: 'data-group', attrs: { 'aria-labelledby': 'app-title' } },
+          appTitle,
+          h('div', { class: 'group' }, ...(reminder ? [reminder] : []), ...(health ? [health] : [])),
+        )
+      : null;
+  const about = group('about');
+  const eraseBox = h('div', { class: 'danger-zone erase-zone' });
+  const eraseStatus = h('div', { class: 'erase-status', attrs: { role: 'status' } });
+  const undo = undoNotice();
 
   const intro = options.intro ?? null;
   if (intro) {
@@ -259,19 +288,14 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   views.analysis.append(analysisLede, analysisEmpty.card, allHidden, analysisGrid);
   views.data.append(
     dataNotice,
+    eraseStatus,
     h(
       'div',
       { class: 'data-layout' },
-      h('div', { class: 'data-main' }, el.log, pasteCard),
-      h(
-        'div',
-        { class: 'data-side' },
-        data,
-        settingsCard,
-        ...(reminder ? [reminder] : []),
-        ...(health ? [health] : []),
-      ),
+      h('div', { class: 'data-main' }, el.log),
+      h('div', { class: 'data-side' }, data, settingsCard, ...(appGroup ? [appGroup] : []), about, eraseBox),
     ),
+    undo.element,
   );
 
   const safely = (draw: Draw, state: State, s: Settings) => {
@@ -432,10 +456,100 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     cards[k].onToggle((open) => {
       if (open) drawShown();
     });
-  add('data', 'log', mountLog(el.log, app));
-  add('data', null, mountData(data, app));
-  const paste = mountPaste(pasteCard, app);
+  // The log's group: its rows (hidden with the Weigh-ins section), then Paste several days at once,
+  // which stays when the rows are hidden.
+  const logBody = h('div', { class: 'log-body' });
+  const logTitle = h('h2', { attrs: { id: 'log-title' } });
+  const pastePanel = optionsPanel('paste-panel', shell, false);
+  pastePanel.panel.classList.add('options-plain');
+  pastePanel.button.className = 'row';
+  const pasteRowText = h('span', { class: 'grow' });
+  pastePanel.button.replaceChildren(pasteRowText, chevron());
+  el.log.replaceChildren(
+    logTitle,
+    h('div', { class: 'group' }, logBody, pastePanel.button, pastePanel.panel),
+  );
+  const drawLog = mountLog(logBody, app, { layout: shell, notice: undo });
+  add('data', null, (_state, s) => {
+    logTitle.textContent = s.messages['log.title'];
+    pasteRowText.textContent = s.messages['paste.open'];
+    pastePanel.words(s.messages['paste.open'], s.messages['chart.done']);
+    undo.draw(s);
+  });
+  add('data', 'log', drawLog);
+  add('data', null, mountData({ backup: data, erase: eraseBox, status: eraseStatus }, app));
+  const paste = mountPaste(pastePanel.content, app, () => {
+    pastePanel.show();
+  });
   add('data', null, paste.draw);
+  // Sections: how many are on, and their switches in a sheet on a phone, chips under the row on
+  // the one page.
+  const sectionsPanel = optionsPanel('sections-panel', shell);
+  sectionsPanel.panel.classList.add('options-plain');
+  sectionsPanel.button.className = 'row';
+  const sectionsName = h('span');
+  const sectionsOn = h('span', { class: 'row-sub' });
+  sectionsPanel.button.replaceChildren(h('span', { class: 'grow' }, sectionsName, sectionsOn), chevron());
+  sectionsBox.replaceChildren(sectionsPanel.button, sectionsPanel.panel);
+  // The goal and the height: their values, and their editors in a sheet.
+  const goalName = h('span');
+  const goalValue = h('span', { class: 'val' });
+  goalRow.append(h('span', { class: 'grow' }, goalName), goalValue, chevron());
+  const heightName = h('span');
+  const heightValue = h('span', { class: 'val' });
+  heightRow.append(h('span', { class: 'grow' }, heightName), heightValue, chevron());
+  const goalEdit = goalEditor(app, 'data-', 'sheet-title');
+  const heightEdit = heightEditor(app, 'data-', 'sheet-title');
+  let profileSheet: { sheet: OpenSheet; which: 'goal' | 'height' } | null = null;
+  const openProfile = (which: 'goal' | 'height') => {
+    const m = settings().messages;
+    const editor = which === 'goal' ? goalEdit : heightEdit;
+    editor.draw(app.state(), settings());
+    profileSheet = {
+      which,
+      sheet: openSheet({
+        title: which === 'goal' ? m['goal.change'] : m['bmi.change'],
+        done: m['chart.done'],
+        content: editor.element,
+        opener: which === 'goal' ? goalRow : heightRow,
+      }),
+    };
+  };
+  goalRow.addEventListener('click', () => {
+    openProfile('goal');
+  });
+  heightRow.addEventListener('click', () => {
+    openProfile('height');
+  });
+  const settingsPart = add('data', null, (state, s) => {
+    const m = s.messages;
+    const { format: f } = s;
+    settingsTitle.textContent = m['settings.label'];
+    appTitle.textContent = m['data.group.app'];
+    sectionsName.textContent = m['settings.sections'];
+    sectionsOn.textContent = m['settings.sectionsOn'](
+      SECTIONS.filter((k) => sections.has(k)).length,
+      SECTIONS.length,
+    );
+    sectionsPanel.words(m['settings.sections'], m['chart.done']);
+    goalName.textContent = m['settings.goal'];
+    const goal = state.profile.goalKg;
+    goalValue.textContent = goal === null ? m['settings.notSet'] : f.weight(goal, s.weightUnit);
+    heightName.textContent = m['settings.height'];
+    const height = state.profile.heightCm;
+    heightValue.textContent = height === null ? m['settings.notSet'] : f.height(height, s.heightUnit);
+    goalEdit.draw(state, s);
+    heightEdit.draw(state, s);
+    if (profileSheet?.sheet.isOpen())
+      profileSheet.sheet.words(
+        profileSheet.which === 'goal' ? m['goal.change'] : m['bmi.change'],
+        m['chart.done'],
+      );
+  });
+  const drawAbout = mountAbout(about, inApp);
+  add('data', null, (_state, s) => {
+    drawAbout(s);
+  });
   // The empty diary's links land on what they name in Your data: the paste box, opened, and
   // Import backup.
   pasteLink.addEventListener('click', (event) => {
@@ -445,6 +559,11 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   importLink.addEventListener('click', (event) => {
     event.preventDefault();
     shell.goTo('data', () => data.querySelector<HTMLElement>('#data-import'));
+  });
+  // Every card hidden: the link lands on Sections, where they come back.
+  showThem.addEventListener('click', (event) => {
+    event.preventDefault();
+    shell.goTo('data', () => sectionsPanel.button);
   });
   // The reminder plans the phone's notifications from the days logged, and Health's card follows
   // the store: both follow every change, wherever the person is.
@@ -459,7 +578,8 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     allHidden.hidden = !none;
     analysisLede.hidden = none;
     for (const k of SECTIONS) {
-      el[k].hidden = !sections.has(k);
+      // The log's rows go; its group stays, with Paste several days at once.
+      (k === 'log' ? logBody : el[k]).hidden = !sections.has(k);
       if (sections.has(k) === on.has(k)) continue;
       if (sections.has(k)) on.add(k);
       else on.delete(k);
@@ -468,6 +588,8 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     }
   };
   const toggled = () => {
+    // The Sections row says how many are on.
+    settingsPart.dirty = true;
     showSections();
     drawShown();
   };
@@ -478,16 +600,16 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     const key = `${s.locale.tag}|${String(viewGeneration())}`;
     if (built !== key) {
       built = key;
-      bar.setAttribute('aria-label', m['sections.label']);
-      bar.replaceChildren(
-        h('span', { class: 'control-label', text: m['sections.label'] }),
-        manyChips(
-          m['sections.label'],
-          SECTIONS.map((k) => ({ value: k, label: m[`sections.${k}`] })),
-          sections,
-          toggled,
-        ),
+      const list = toggleList(
+        m['settings.sections'],
+        SECTIONS.map((k) => ({ value: k, label: m[`sections.${k}`] })),
+        sections,
+        () => {
+          list.sync();
+          toggled();
+        },
       );
+      sectionsPanel.content.replaceChildren(list.element);
     }
     // Not while the store runs in memory: an import there would last only until the app closes.
     installHint.hidden = !(
@@ -545,6 +667,8 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
       render(app.state(), settings());
     }),
     shell.onView((view) => {
+      // Leaving Your data ends a delete's or a change's Undo there.
+      if (view !== 'data') undo.end();
       // Leaving Today ends the saved notice: back there, the card offers the field again.
       if (view !== 'today') weighIn.leave();
       drawShown();
@@ -577,6 +701,10 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     dispose: () => {
       for (const stop of stops) stop();
       weighIn.dispose();
+      undo.dispose();
+      closeOpenSheet();
+      sectionsPanel.dispose();
+      pastePanel.dispose();
       shell.dispose();
     },
   };
