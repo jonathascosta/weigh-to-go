@@ -11,16 +11,11 @@ const exists = (path: string): boolean => existsSync(new URL(path, root));
 const METADATA = 'ios/App/fastlane/metadata';
 const SCREENSHOTS = 'ios/App/fastlane/screenshots';
 const LANGUAGES = ['en-US', 'pt-BR'] as const;
-/** The app's name, the same in both languages (decision 147; the fallback is decision 164). */
-const NAME = 'Weigh to Go';
 /**
- * The fallback, if App Store Connect refuses the name, and the subtitle each language would then
- * take (null: the current one still fits), ready so the switch is two files (decision 164).
+ * The app's name, the same in both languages (decision 147): decision 164's fallback, the name the
+ * owner created the app with in App Store Connect (decision 175).
  */
-const FALLBACK = {
-  name: 'Weigh to Go: Weight Diary',
-  subtitle: { 'en-US': 'See the real trend', 'pt-BR': null } as Record<string, string | null>,
-};
+const NAME = 'Weigh to Go: Weight Diary';
 /** The words of a text worth counting as repeated: letters and digits, longer than two. */
 const words = (text: string, lang: string): string[] =>
   text
@@ -92,20 +87,9 @@ describe('the App Store listing', () => {
         expect(subtitle.length).toBeGreaterThan(0);
         expect(chars(subtitle)).toBeLessThanOrEqual(30);
         expect(subtitle.toLowerCase()).not.toContain(NAME.toLowerCase());
-      });
-
-      it('has a subtitle and keywords ready for the fallback name', () => {
-        const subtitle = FALLBACK.subtitle[lang] ?? field(lang, 'subtitle');
-        expect(chars(FALLBACK.name)).toBeLessThanOrEqual(30);
-        expect(chars(subtitle)).toBeLessThanOrEqual(30);
-        const taken = words(FALLBACK.name, lang);
+        const taken = words(NAME, lang);
         for (const word of words(subtitle, lang))
-          expect(taken, `${word} repeats the fallback`).not.toContain(word);
-        for (const word of words(field(lang, 'keywords'), lang))
-          expect(taken, `${word} repeats the fallback`).not.toContain(word);
-        // Where the current subtitle repeats the fallback, an alternative is ready.
-        if (words(field(lang, 'subtitle'), lang).some((w) => taken.includes(w)))
-          expect(FALLBACK.subtitle[lang]).not.toBeNull();
+          expect(taken, `${word} repeats the name`).not.toContain(word);
       });
 
       it('has keywords within 100 bytes, comma-separated, each once, none from the name or subtitle', () => {
@@ -119,7 +103,7 @@ describe('the App Store listing', () => {
         // either wastes the room.
         const taken = words(`${NAME} ${field(lang, 'subtitle')}`, lang);
         for (const keyword of lower)
-          for (const word of keyword.split(' '))
+          for (const word of words(keyword, lang))
             expect(taken, `${keyword} repeats the name or subtitle`).not.toContain(word);
       });
 

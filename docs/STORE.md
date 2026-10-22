@@ -27,6 +27,8 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
      characters, the same in both languages), and tell a session: it changes `name.txt` in
      `ios/App/fastlane/metadata/en-US` and `pt-BR`, the English subtitle to "See the real trend"
      (the current one would repeat "Weight Diary"), and the listing's test (decision 164).
+     **Done 22 October 2026:** the owner created the app as **Weigh to Go: Weight Diary**; the
+     listing carries that name and the English subtitle "See the real trend" (decision 175).
    - App Information: category Health & Fitness. In Pricing and Availability, turn off the app's
      availability on Mac computers with Apple silicon: Apple Health isn't there.
 2. **The agreement for paid apps.** In Business (Agreements, Tax and Banking), accept the Paid
@@ -120,8 +122,9 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
      If neither happens, stop the release and tell a session: the app would be showing ads in the
      EEA without asking.
    - In Blocking controls, set the maximum ad content rating to **PG** at most (G is stricter), to
-     suit the app's 13+ (step 10), and block sensitive categories that don't belong next to a weight
-     diary (dieting and weight-loss products among them, where offered).
+     suit the app's 13+ (step 10). Sensitive categories are the owner's call: on 22 October 2026 the
+     owner chose to block none for now, weight-loss products included, since someone using the app
+     may want that help (decision 176); each one blocked lowers revenue a little.
    - `app-ads.txt` is already on jonathas.net for the account. Once the app is live, link it to its
      listing in the app's settings (step 12).
    - Paste Google's current SKAdNetwork list into a session
