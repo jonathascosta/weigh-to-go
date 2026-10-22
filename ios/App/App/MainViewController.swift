@@ -5,5 +5,6 @@ import UIKit
 class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(WeightHealthPlugin())
+        bridge?.registerPluginInstance(AdSetupPlugin())
     }
 }

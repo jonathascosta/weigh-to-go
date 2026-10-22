@@ -5,6 +5,7 @@
  * tab switch draws only the dirty parts of the view that appears. The chips of the Sections row
  * show and hide each section; a hidden one isn't drawn until it shows again.
  */
+import type { AdProvider } from '../ads/ads';
 import type { App, State } from '../app/app';
 import type { Notifier } from '../reminders/keeper';
 import {
@@ -64,6 +65,8 @@ interface Part {
 export interface DashboardOptions {
   /** The phone's notifications, in the iPhone app only. */
   readonly notifier?: Notifier;
+  /** The ads, in the iPhone app only: here, Privacy choices where Google's consent tool asks. */
+  readonly ads?: AdProvider;
   /** The header's empty `nav` that the shell fills; made here when there is none. */
   readonly nav?: HTMLElement | null;
   /** The static page's intro, shown at the top of Today while the diary is empty. */
@@ -163,14 +166,31 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   const health = inApp
     ? h('section', { class: 'group-pad', attrs: { 'aria-labelledby': 'health-title' } })
     : null;
+  // Privacy choices opens Google's own form, only where its consent tool says the person must be
+  // able to change them (design §7).
+  const choicesName = h('span', { class: 'grow' });
+  const choicesRow = options.ads
+    ? h(
+        'button',
+        { class: 'row', attrs: { type: 'button', id: 'privacy-choices', hidden: true } },
+        choicesName,
+        chevron(),
+      )
+    : null;
   const appTitle = h('h2', { attrs: { id: 'app-title' } });
   const appGroup =
-    reminder || health
+    reminder || health || choicesRow
       ? h(
           'section',
           { class: 'data-group', attrs: { 'aria-labelledby': 'app-title' } },
           appTitle,
-          h('div', { class: 'group' }, ...(reminder ? [reminder] : []), ...(health ? [health] : [])),
+          h(
+            'div',
+            { class: 'group' },
+            ...(reminder ? [reminder] : []),
+            ...(health ? [health] : []),
+            ...(choicesRow ? [choicesRow] : []),
+          ),
         )
       : null;
   const about = group('about');
@@ -526,6 +546,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
     const { format: f } = s;
     settingsTitle.textContent = m['settings.label'];
     appTitle.textContent = m['data.group.app'];
+    choicesName.textContent = m['ads.choices'];
     sectionsName.textContent = m['settings.sections'];
     sectionsOn.textContent = m['settings.sectionsOn'](
       SECTIONS.filter((k) => sections.has(k)).length,
@@ -569,6 +590,29 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   // the store: both follow every change, wherever the person is.
   if (reminder && notifier) add(null, null, mountReminder(reminder, app, notifier));
   if (health) add(null, null, mountHealth(health));
+  const { ads } = options;
+  const stopChoices =
+    ads && choicesRow
+      ? (() => {
+          choicesRow.hidden = !ads.privacyChoices();
+          choicesRow.addEventListener('click', () => {
+            if (choicesRow.disabled) return;
+            choicesRow.disabled = true;
+            ads
+              .showPrivacyChoices()
+              .catch((error: unknown) => {
+                console.warn(error);
+              })
+              .finally(() => {
+                choicesRow.disabled = false;
+                if (!choicesRow.hidden) choicesRow.focus({ preventScroll: true });
+              });
+          });
+          return ads.onPrivacyChoices((required) => {
+            choicesRow.hidden = !required;
+          });
+        })()
+      : () => undefined;
 
   /** The sections on when last shown: one that just appeared is drawn, and nothing else. */
   const on = new Set<Section>(SECTIONS.filter((k) => sections.has(k)));
@@ -651,6 +695,7 @@ export function mountDashboard(root: HTMLElement, app: App, options: DashboardOp
   };
   let loaded = false;
   const stops = [
+    stopChoices,
     app.subscribe((state) => {
       render(state, settings());
       // Drawn with what the diary holds: an address naming a part below can be scrolled to now.

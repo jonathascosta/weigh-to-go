@@ -1062,7 +1062,9 @@ export const en = {
   'about.web': 'No account, no server of ours, no tracking.',
   'about.app.storage':
     'Your weigh-ins stay in this app on your iPhone, and in your iPhone’s backup if you use iCloud Backup or back up to a computer. We keep nothing: no account, no server of ours, no analytics.',
-  'about.app.shared': 'If you turn on Apple Health, weights are shared with Health on this iPhone.',
+  'about.app.shared':
+    'If you turn on Apple Health, weights are shared with Health on this iPhone. Ads come from Google AdMob: they are not personalised and never receive your weigh-ins, but Google gets what any ad request carries, such as the iPhone’s model and network address. Removing the ads stops those requests.',
+  'ads.choices': 'Privacy choices',
   'about.privacy': 'Privacy policy',
   'about.version': (version: string) => `Weigh to Go ${version}`,
   'data.note':
@@ -1957,7 +1959,9 @@ export const pt: Messages = {
   'about.web': 'Sem conta, sem servidor nosso, sem rastreamento.',
   'about.app.storage':
     'Suas pesagens ficam neste app, no seu iPhone, e no backup do seu iPhone, se você usa o Backup do iCloud ou faz backup no computador. Nós não guardamos nada: sem conta, sem servidor nosso, sem análise de uso.',
-  'about.app.shared': 'Se você ligar o app Saúde, os pesos são compartilhados com o Saúde neste iPhone.',
+  'about.app.shared':
+    'Se você ligar o app Saúde, os pesos são compartilhados com o Saúde neste iPhone. Os anúncios vêm do Google AdMob: não são personalizados e nunca recebem suas pesagens, mas o Google recebe o que qualquer pedido de anúncio leva, como o modelo do iPhone e o endereço de rede. Remover os anúncios acaba com esses pedidos.',
+  'ads.choices': 'Opções de privacidade',
   'about.privacy': 'Política de privacidade',
   'about.version': (version: string) => `Weigh to Go ${version}`,
   'data.note':

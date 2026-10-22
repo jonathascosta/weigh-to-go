@@ -9,6 +9,9 @@ require "tmpdir"
 default_platform(:ios)
 
 APP_ID = "net.jonathas.weightogo"
+# Google's test AdMob app, until the owner's is set (ADMOB_APP_ID, docs/STORE.md step 6). The
+# workflow refuses an App Store build without the owner's ids.
+TEST_ADMOB_APP_ID = "ca-app-pub-3940256099942544~1458002511"
 
 platform :ios do
   desc "Build, sign and upload a build to TestFlight"
@@ -58,6 +61,11 @@ platform :ios do
 
     # Every upload needs a higher build number than the last: run number × 100 + attempt.
     build_number = ENV.fetch("BUILD_NUMBER")
+    # The owner's AdMob app and banner unit, when the app-store environment has them: the app shows
+    # Google's test ads anyway when installed from TestFlight (a sandbox receipt, AdSetupPlugin.swift),
+    # and the owner's on the App Store. Without them it names Google's test app and shows no ads there.
+    admob_app_id = ENV["ADMOB_APP_ID"].to_s.empty? ? TEST_ADMOB_APP_ID : ENV["ADMOB_APP_ID"]
+    admob_banner_id = ENV["ADMOB_BANNER_ID"].to_s
     build_app(
       project: "App.xcodeproj",
       scheme: "App",
@@ -65,7 +73,8 @@ platform :ios do
       # fastlane's name for an App Store export (Xcode's own, app-store-connect, fails its check).
       export_method: "app-store",
       export_options: { provisioningProfiles: { APP_ID => lane_context[SharedValues::SIGH_NAME] } },
-      xcargs: "CURRENT_PROJECT_VERSION='#{build_number}'",
+      xcargs: "CURRENT_PROJECT_VERSION='#{build_number}' ADMOB_APP_ID='#{admob_app_id}' " \
+              "ADMOB_BANNER_ID='#{admob_banner_id}'",
       output_directory: "build",
       clean: true
     )

@@ -4,6 +4,7 @@ import { onSettingsChange, setPageLang, t, translatePage, watchSettings } from '
 import { isLang } from './i18n/locale';
 import { en } from './i18n/messages';
 import { createApp } from './app/app';
+import { lazyAds } from './ads/lazy';
 import { lazyNotifier } from './reminders/keeper';
 import { mountSettings } from './settings-ui';
 import { mountDashboard } from './ui/dashboard';
@@ -44,13 +45,21 @@ if (checkFrame(openLabel)) {
     });
     watchSettings(window);
   }
-  const board = appBox
-    ? mountDashboard(appBox, createApp(import.meta.env.MODE === 'ios' ? openNative : undefined), {
-        notifier,
-        nav: document.getElementById('tabs'),
-        intro: document.querySelector<HTMLElement>('main .intro'),
-      })
-    : null;
+  const app = appBox ? createApp(import.meta.env.MODE === 'ios' ? openNative : undefined) : null;
+  // Its banner and Google's consent message (src/ads, platform/ads-native.ts): never on the website.
+  const ads =
+    import.meta.env.MODE === 'ios' && app
+      ? lazyAds(async () => (await import('./platform/ads-native')).nativeAds(app))
+      : undefined;
+  const board =
+    appBox && app
+      ? mountDashboard(appBox, app, {
+          notifier,
+          ads,
+          nav: document.getElementById('tabs'),
+          intro: document.querySelector<HTMLElement>('main .intro'),
+        })
+      : null;
   // Without working settings there is nothing to switch: the page stays as written.
   if (translated && board) mountSettings(board.settingsBox);
   ready();

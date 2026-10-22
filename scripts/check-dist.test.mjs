@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { findAppProblems, findMissingPages, findProblems, findTooNewCss, SITE } from './check-dist.mjs';
+import {
+  findAdCode,
+  findAppProblems,
+  findMissingPages,
+  findPagesUnderTheBanner,
+  findProblems,
+  findTooNewCss,
+  SITE,
+} from './check-dist.mjs';
 import { contentSecurityPolicy, devPolicy, injectPolicy } from './csp.mjs';
 
 /** @typedef {{ name: string, text: string }} SiteFile */
@@ -336,5 +344,38 @@ describe('findTooNewCss', () => {
     // Only CSS, and only inside @media.
     expect(findTooNewCss([{ name: 'a.js', text: '@media (width<1px){' }])).toEqual([]);
     expect(findTooNewCss(sheet('.a{width:calc(1px<2px)}'))).toEqual([]);
+  });
+});
+
+describe('findAdCode', () => {
+  it("finds the ad plugin's calls and Google's unit ids in scripts, not the words naming AdMob", () => {
+    expect(
+      findAdCode([
+        { name: 'assets/i18n.js', text: '"about.app.shared":"Ads come from Google AdMob"' },
+        { name: 'privacy.html', text: '<p>a banner ad from Google AdMob</p>' },
+        { name: 'assets/ads.js', text: 'e.addListener("bannerAdSizeChanged",t)' },
+        { name: 'assets/plugin.js', text: 'registerPlugin("AdSetup")' },
+        { name: 'assets/unit.js', text: 'const u="ca-app-pub-3940256099942544/2934735716"' },
+        { name: 'assets/consent.js', text: 'await a.requestConsentInfo()' },
+      ]),
+    ).toEqual(['assets/ads.js', 'assets/plugin.js', 'assets/unit.js', 'assets/consent.js']);
+  });
+});
+
+describe('findPagesUnderTheBanner', () => {
+  /** @param {string} script */
+  const page = (script) =>
+    `<html><head><script type="module" src="/assets/${script}"></script></head></html>`;
+  it("asks every static page of the app's build to hide the banner", () => {
+    const files = [
+      { name: '404.html', text: page('static-page.js') },
+      { name: 'privacy.html', text: page('static-page.js') },
+      { name: 'pt/privacidade.html', text: page('other.js') },
+      { name: 'assets/static-page.js', text: 'import("./ads-native.js").then(({hideBannerHere:e})=>e())' },
+      { name: 'assets/other.js', text: 'console.log(1)' },
+    ];
+    expect(findPagesUnderTheBanner(files)).toEqual([
+      "pt/privacidade.html: its script doesn't hide the app's banner",
+    ]);
   });
 });

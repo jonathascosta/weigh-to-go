@@ -10,10 +10,22 @@ name: TestFlight
 #   IOS_DISTRIBUTION_CERTIFICATE_P12      an Apple Distribution certificate with its key, base64
 #   IOS_DISTRIBUTION_CERTIFICATE_PASSWORD the .p12's password
 #
+# and, for the ads (docs/STORE.md, step 6), ADMOB_APP_ID and ADMOB_BANNER_ID. Installed from
+# TestFlight the app always shows Google's test ads (it knows TestFlight by its sandbox receipt), so
+# the owner's own use never counts as invalid traffic; on the App Store it shows the owner's. A run
+# "for the App Store" fails without both ids or without Google's SKAdNetwork list in Info.plist, so
+# test ads can't ship; a run without it is for TestFlight only, and such a build shows no ads at all
+# if it ever reaches the App Store.
+#
 # It uploads only what is on main. The job runs in the app-store environment, so its secrets can be
 # kept there and limited to main (Settings, Environments) rather than to the whole repository.
 on:
   workflow_dispatch:
+    inputs:
+      app_store:
+        description: 'For the App Store: needs the AdMob ids and the SKAdNetwork list (STORE.md, step 6)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -39,6 +51,9 @@ jobs:
           APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
           IOS_DISTRIBUTION_CERTIFICATE_P12: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_P12 }}
           IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+          ADMOB_BANNER_ID: ${{ secrets.ADMOB_BANNER_ID }}
+          APP_STORE: ${{ inputs.app_store }}
         run: |
           missing=()
           for name in APPLE_TEAM_ID APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_API_ISSUER_ID \
@@ -49,6 +64,31 @@ jobs:
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::Missing secrets: ${missing[*]} (docs/STORE.md, step 3)"
             exit 1
+          fi
+          # The AdMob ids: both or neither, each in Google's form, and both for the App Store.
+          if [ -n "$ADMOB_APP_ID" ] && ! [[ "$ADMOB_APP_ID" =~ ^ca-app-pub-[0-9]+~[0-9]+$ ]]; then
+            echo "::error::ADMOB_APP_ID isn't an AdMob app id (ca-app-pub-…~…)"
+            exit 1
+          fi
+          if [ -n "$ADMOB_BANNER_ID" ] && ! [[ "$ADMOB_BANNER_ID" =~ ^ca-app-pub-[0-9]+/[0-9]+$ ]]; then
+            echo "::error::ADMOB_BANNER_ID isn't an AdMob ad unit id (ca-app-pub-…/…)"
+            exit 1
+          fi
+          if [ "${ADMOB_APP_ID:+set}" != "${ADMOB_BANNER_ID:+set}" ]; then
+            echo "::error::Set ADMOB_APP_ID and ADMOB_BANNER_ID together, or neither (docs/STORE.md, step 6)"
+            exit 1
+          fi
+          if [ "$APP_STORE" = 'true' ]; then
+            if [ -z "$ADMOB_APP_ID" ] || [ -z "$ADMOB_BANNER_ID" ]; then
+              echo "::error::A build for the App Store needs ADMOB_APP_ID and ADMOB_BANNER_ID (docs/STORE.md, step 6)"
+              exit 1
+            fi
+            case "$ADMOB_APP_ID $ADMOB_BANNER_ID" in
+              *ca-app-pub-3940256099942544*)
+                echo "::error::A build for the App Store can't use Google's test ids"
+                exit 1
+                ;;
+            esac
           fi
 
       # Every upload needs a higher build number than the last, a re-run included.
@@ -71,8 +111,19 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      # Google's list, pasted by the owner into Info.plist (docs/STORE.md, step 6).
+      - name: The App Store build carries Google's SKAdNetwork list
+        if: inputs.app_store
+        run: |
+          count=$(python3 -c 'import plistlib; print(len(plistlib.load(open("ios/App/App/Info.plist", "rb"))["SKAdNetworkItems"]))')
+          if [ "$count" -eq 0 ]; then
+            echo "::error::SKAdNetworkItems in ios/App/App/Info.plist is empty: paste Google's list first (docs/STORE.md, step 6)"
+            exit 1
+          fi
+          echo "SKAdNetworkItems: $count ids"
+
       - run: npm ci --ignore-scripts
-      - run: npx vitest run scripts/ios.test.ts
+      - run: npx vitest run scripts/ios.test.ts scripts/ads.test.ts
       - run: npm run ios:sync
 
       - name: The app ships no service worker
@@ -95,4 +146,6 @@ jobs:
           APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
           IOS_DISTRIBUTION_CERTIFICATE_P12: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_P12 }}
           IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+          ADMOB_BANNER_ID: ${{ secrets.ADMOB_BANNER_ID }}
         run: bundle exec fastlane beta

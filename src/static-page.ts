@@ -6,6 +6,11 @@ import { choose, isSafeHref, setPageLang, settings, t, translatePage } from './i
 import { isLang, type Lang } from './i18n/locale';
 import { en } from './i18n/messages';
 
+// In the iPhone app the diary's banner is a native view over the web view: it doesn't belong on
+// these pages, and goes the moment one opens (the diary hides it too, as it leaves).
+if (import.meta.env.MODE === 'ios')
+  void import('./platform/ads-native').then(({ hideBannerHere }) => hideBannerHere(), console.warn);
+
 let openLabel = en['frame.open'];
 try {
   const pageLang = document.documentElement.dataset.lang;

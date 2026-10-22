@@ -20,6 +20,7 @@
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		A10E00072F00000000000001 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10E00082F00000000000001 /* MainViewController.swift */; };
 		A10E00092F00000000000001 /* WeightHealthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10E000A2F00000000000001 /* WeightHealthPlugin.swift */; };
+		A10E000C2F00000000000001 /* AdSetupPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10E000D2F00000000000001 /* AdSetupPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +40,7 @@
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		A10E00082F00000000000001 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		A10E000A2F00000000000001 /* WeightHealthPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightHealthPlugin.swift; sourceTree = "<group>"; };
+		A10E000D2F00000000000001 /* AdSetupPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdSetupPlugin.swift; sourceTree = "<group>"; };
 		A10E000B2F00000000000001 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -77,6 +79,7 @@
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				A10E00082F00000000000001 /* MainViewController.swift */,
 				A10E000A2F00000000000001 /* WeightHealthPlugin.swift */,
+				A10E000D2F00000000000001 /* AdSetupPlugin.swift */,
 				A10E000B2F00000000000001 /* App.entitlements */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
@@ -180,6 +183,7 @@
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				A10E00072F00000000000001 /* MainViewController.swift in Sources */,
 				A10E00092F00000000000001 /* WeightHealthPlugin.swift in Sources */,
+				A10E000C2F00000000000001 /* AdSetupPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -327,6 +331,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
 			buildSettings = {
+				ADMOB_APP_ID = "ca-app-pub-3940256099942544~1458002511";
+				ADMOB_BANNER_ID = "";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -350,6 +356,8 @@
 		504EC3181FED79650016851F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ADMOB_APP_ID = "ca-app-pub-3940256099942544~1458002511";
+				ADMOB_BANNER_ID = "";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;

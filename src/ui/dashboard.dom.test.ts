@@ -5,6 +5,7 @@ import { chartLayers, resetView } from '../app/view';
 import { fakeStorage } from '../data/fake-storage.test-helper';
 import { memoryStore, type Store } from '../data/store';
 import { choose, resetSettings } from '../i18n';
+import type { AdProvider } from '../ads/ads';
 import { mountDashboard, type Dashboard } from './dashboard';
 import { WIDE_QUERY } from './shell';
 
@@ -1214,5 +1215,61 @@ describe('the reload notice', () => {
       expect(box.textContent).toContain('Reload the page');
       expect(box.querySelector('button')!.textContent).toBe('Reload');
     }
+  });
+});
+
+describe('Privacy choices, in the iPhone app', () => {
+  /** The ads as Your data sees them, with Google's say on whether the row applies. */
+  const fakeAds = () => {
+    const listeners = new Set<(required: boolean) => void>();
+    const shown: string[] = [];
+    let required = false;
+    const ads: AdProvider = {
+      privacyChoices: () => required,
+      onPrivacyChoices: (listener) => {
+        listeners.add(listener);
+        return () => {
+          listeners.delete(listener);
+        };
+      },
+      showPrivacyChoices: () => {
+        shown.push('form');
+        return Promise.resolve();
+      },
+      stop: () => Promise.resolve(),
+    };
+    return {
+      ads,
+      shown,
+      say: (now: boolean) => {
+        required = now;
+        for (const listener of listeners) listener(now);
+      },
+    };
+  };
+
+  it('shows only where Google’s consent tool says it applies, and opens Google’s form', async () => {
+    board?.dispose();
+    const fake = fakeAds();
+    board = mountDashboard(root, app, { ads: fake.ads });
+    await settle();
+    const row = root.querySelector<HTMLButtonElement>('#privacy-choices')!;
+    expect(row.hidden).toBe(true);
+    fake.say(true);
+    expect(row.hidden).toBe(false);
+    expect(row.textContent).toBe('Privacy choices');
+    expect(row.closest('section')!.querySelector('h2')!.textContent).toBe('iPhone app');
+    row.click();
+    await settle();
+    expect(fake.shown).toEqual(['form']);
+    expect(document.activeElement).toBe(row);
+    choose({ lang: 'pt' });
+    expect(row.textContent).toBe('Opções de privacidade');
+    fake.say(false);
+    expect(row.hidden).toBe(true);
+  });
+
+  it('isn’t there on the website', () => {
+    expect(root.querySelector('#privacy-choices')).toBeNull();
   });
 });
