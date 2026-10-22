@@ -187,24 +187,24 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    interactions, other app usage (when it is opened and where you tap), an approximate location from
    the IP address, and crash and performance data (`privacy.ads.collects`); where the page says
    otherwise, the session changes the policy and its date. Then answer for Google's ad SDK,
-   following that page, for non-personalised ads without tracking. For each type below, Linked to
-   the user's identity: No, and Used for tracking: No:
+   following that page, for non-personalised ads without tracking. Google's page says which data is
+   tied to the user: crash logs are not, performance data is. For each type below, Used for
+   tracking: No, and Linked to the user's identity as the table says:
 
-   | Category › type                                  | Purposes                           |
-   | ------------------------------------------------ | ---------------------------------- |
-   | Location › Coarse Location (from the IP address) | Third-Party Advertising, Analytics |
-   | Identifiers › Device ID                          | Third-Party Advertising, Analytics |
-   | Usage Data › Product Interaction                 | Third-Party Advertising, Analytics |
-   | Usage Data › Advertising Data                    | Third-Party Advertising, Analytics |
-   | Diagnostics › Crash Data                         | Analytics                          |
-   | Diagnostics › Performance Data                   | Third-Party Advertising, Analytics |
-   | Diagnostics › Other Diagnostic Data              | Analytics                          |
+   | Category › type                                          | Linked to the user | Purposes                                              |
+   | -------------------------------------------------------- | ------------------ | ----------------------------------------------------- |
+   | Location › Coarse Location (from the IP address)         | No                 | Third-Party Advertising, Analytics                    |
+   | Identifiers › Device ID                                  | No                 | Third-Party Advertising, Analytics                    |
+   | Usage Data › Product Interaction                         | No                 | Third-Party Advertising, Analytics                    |
+   | Usage Data › Advertising Data                            | No                 | Third-Party Advertising, Analytics                    |
+   | Diagnostics › Crash Data ("non-user related crash logs") | No                 | App Functionality, Third-Party Advertising, Analytics |
+   | Diagnostics › Performance Data ("user-associated")       | **Yes**            | Third-Party Advertising, Analytics                    |
 
-   Nothing else: not Health & Fitness, Contact Info, User Content, User ID or Purchases. What the
-   person types and what the app reads from Apple Health stay on the phone and reach no one, which
-   Apple's definitions don't count as collected; purchases go through Apple. The answers must agree
-   with the privacy policy. The Privacy Policy URL (App Privacy) is
-   `https://weightogo.jonathas.net/privacy.html`, and
+   Nothing else: not Other Diagnostic Data (the page doesn't list it), Health & Fitness, Contact
+   Info, User Content, User ID or Purchases. What the person types and what the app reads from Apple
+   Health stay on the phone and reach no one, which Apple's definitions don't count as collected;
+   purchases go through Apple. The answers must agree with the privacy policy. The Privacy Policy
+   URL (App Privacy) is `https://weightogo.jonathas.net/privacy.html`, and
    `https://weightogo.jonathas.net/pt/privacidade.html` for the Portuguese (Brazil) localisation.
 
 10. **Age rating.** In App Store Connect, App Information, Age Rating, Edit. The questionnaire as it

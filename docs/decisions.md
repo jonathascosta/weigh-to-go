@@ -1344,4 +1344,7 @@ Choices made while preparing the first submission, open to the owner under decis
      app usage data such as when it is opened and where you tap", and its lead-in says the data is
      about how the app and its ads are used. The policy's date stays 22 October 2026, the day of the
      change. Step 9 of STORE.md and STORE_PT.md names the new item and lists the App Privacy answers
-     that follow from Google's page.
+     that follow from Google's page: six types, none used for tracking, Performance Data linked to
+     the user (Google calls it "user-associated") and the rest not (it calls the crash logs
+     "non-user related"); the crash logs also serve App Functionality. Other Diagnostic Data isn't
+     on the page, so it isn't declared.
