@@ -1,0 +1,111 @@
+// @vitest-environment happy-dom
+/**
+ * Your data's settings rows (the value as text under the label, the select laid over the row) and
+ * About, in the website's words and the app's (design §7).
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeStorage } from '../data/fake-storage.test-helper';
+import { choose, resetSettings, settings } from '../i18n';
+import { mountSettings } from '../settings-ui';
+import { mountAbout } from './about';
+
+beforeEach(() => {
+  resetSettings();
+  vi.stubGlobal('localStorage', fakeStorage());
+  Object.defineProperty(navigator, 'languages', { value: ['en-US'], configurable: true });
+  choose({ lang: 'en' });
+  document.body.replaceChildren();
+});
+afterEach(() => {
+  resetSettings();
+  vi.unstubAllGlobals();
+});
+
+describe('the settings rows', () => {
+  const mount = () => {
+    const box = document.createElement('div');
+    document.body.append(box);
+    const stop = mountSettings(box);
+    const row = (id: string) => {
+      const select = box.querySelector<HTMLSelectElement>(`#${id}`)!;
+      const face = select.closest('.row')!;
+      return {
+        select,
+        label: face.querySelector('label')!.textContent,
+        value: face.querySelector('.row-sub')!.textContent,
+        hidden: face.querySelector('.row-sub')!.getAttribute('aria-hidden'),
+      };
+    };
+    return { box, row, stop };
+  };
+
+  it('show each value as text under its label, the select named by the label', () => {
+    const { row, box } = mount();
+    expect(row('setting-lang')).toMatchObject({ label: 'Language · Idioma', value: 'English' });
+    expect(row('setting-weight')).toMatchObject({ label: 'Weight unit', value: 'Automatic (lb)' });
+    expect(row('setting-height')).toMatchObject({ label: 'Height unit', value: 'Automatic (ft and in)' });
+    // The select says its value itself; the text is for the eye.
+    expect(row('setting-height').hidden).toBe('true');
+    expect(box.querySelectorAll('.row-select')).toHaveLength(3);
+    // The select comes first, so the row's face after it draws its focus ring.
+    for (const select of box.querySelectorAll('select'))
+      expect(select.nextElementSibling?.className).toBe('row-face');
+  });
+
+  it('change the language and the units, and go back to automatic', () => {
+    const { row } = mount();
+    const pick = (id: string, value: string) => {
+      const { select } = row(id);
+      select.value = value;
+      select.dispatchEvent(new Event('change'));
+    };
+    pick('setting-height', 'cm');
+    expect(settings().heightUnit).toBe('cm');
+    expect(row('setting-height').value).toBe('cm');
+    pick('setting-height', 'auto');
+    expect(settings().chosen.heightUnit).toBeNull();
+    expect(row('setting-height').value).toBe('Automatic (ft and in)');
+    pick('setting-lang', 'pt');
+    expect(settings().locale.lang).toBe('pt');
+    expect(row('setting-lang')).toMatchObject({ label: 'Idioma · Language', value: 'Português' });
+    pick('setting-weight', 'kg');
+    expect(row('setting-weight')).toMatchObject({ label: 'Unidade de peso', value: 'kg' });
+    expect(row('setting-height')).toMatchObject({
+      label: 'Unidade de altura',
+      value: 'Automático (pés e pol.)',
+    });
+  });
+});
+
+describe('About', () => {
+  const mount = (inApp: boolean) => {
+    const box = document.createElement('section');
+    document.body.append(box);
+    const draw = mountAbout(box, inApp);
+    draw(settings());
+    return { box, draw };
+  };
+
+  it('says on the website where the data is, and links the policy in the reader’s language', () => {
+    const { box, draw } = mount(false);
+    expect(box.querySelector('h2')!.textContent).toBe('About');
+    expect(box.textContent).toContain(
+      'Everything runs in your browser: your weigh-ins are stored on this device only. No account, no server of ours, no tracking.',
+    );
+    expect(box.textContent).not.toContain('Google AdMob');
+    expect(box.querySelector('#about-policy')!.getAttribute('href')).toBe('/privacy.html');
+    expect(box.textContent).toContain(`Weigh to Go ${__APP_VERSION__} · Made by Jonathas Costa`);
+    draw(choose({ lang: 'pt' }));
+    expect(box.querySelector('#about-policy')!.getAttribute('href')).toBe('/pt/privacidade.html');
+    expect(box.querySelector('#about-policy')!.textContent).toBe('Política de privacidade');
+    expect(box.textContent).toContain('Feito por Jonathas Costa');
+  });
+
+  it('speaks of the app in the app, with Apple Health and the ads, and the bundled policy', () => {
+    const { box } = mount(true);
+    expect(box.textContent).toContain('Your weigh-ins stay in this app on your iPhone');
+    expect(box.textContent).toContain('Ads come from Google AdMob');
+    expect(box.textContent).not.toMatch(/browser/);
+    expect(box.querySelector('#about-policy')!.getAttribute('href')).toBe('/privacy.html');
+  });
+});

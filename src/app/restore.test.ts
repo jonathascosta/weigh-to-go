@@ -12,7 +12,7 @@ import { memoryStore, type Store } from '../data/store';
 import { fakeHealth, local, reading } from '../health/fake-health.test-helper';
 import { HEALTH_FILE, withHealth } from '../health/layer';
 import { syncIdFor } from '../health/reconcile';
-import { createApp, type App } from './app';
+import { createApp, ReloadNeeded, type App } from './app';
 
 beforeEach(() => {
   vi.stubGlobal('localStorage', fakeStorage());
@@ -73,6 +73,34 @@ describe('save and restore', () => {
     // And a day removed since stays removed.
     await store.remove('2026-10-21');
     expect(await app.restore('2026-10-21', null, saved!.written)).toBe(false);
+    expect(await store.weighIns()).toEqual([]);
+  });
+});
+
+describe('undoing a delete', () => {
+  it('puts the day back exactly, savedAt included, only while nothing was written to it since', async () => {
+    const store = memoryStore();
+    await store.put([earlier]);
+    const app = await appOn(store);
+    await app.remove('2026-10-21');
+    expect(app.state().weighIns).toEqual([]);
+    expect(await app.restore('2026-10-21', earlier, null)).toBe(true);
+    expect(app.state().weighIns).toEqual([earlier]);
+    await app.remove('2026-10-21');
+    const since: StoredWeighIn = { date: '2026-10-21', kg: 95.6, savedAt: local('2026-10-21', 10) };
+    await store.put([since]);
+    expect(await app.restore('2026-10-21', earlier, null)).toBe(false);
+    expect(await store.weighIns()).toEqual([since]);
+  });
+});
+
+describe('a store that needs a reload (issue #47)', () => {
+  it('refuses every write but the erase, so nothing is said saved that a reload would lose', async () => {
+    const store = memoryStore('version');
+    const app = await appOn(store);
+    await expect(app.save([{ date: '2026-10-21', kg: 95.8 }])).rejects.toBeInstanceOf(ReloadNeeded);
+    await expect(app.updateProfile({ goalKg: 90 })).rejects.toBeInstanceOf(ReloadNeeded);
+    await expect(app.remove('2026-10-21')).rejects.toBeInstanceOf(ReloadNeeded);
     expect(await store.weighIns()).toEqual([]);
   });
 });
@@ -206,6 +234,41 @@ describe('restore with Apple Health (stubbed)', () => {
     expect(await app.restore('2026-10-21', scale, saved!.written)).toBe(true);
     expect((await store.health.typed()).some((w) => w.date === '2026-10-21')).toBe(false);
     expect((await store.weighIns()).find((w) => w.date === '2026-10-21')).toEqual(scale);
+  });
+
+  it('undoes a delete: the diary’s record, its sample with its old version, and no tombstone', async () => {
+    const health = fakeHealth();
+    const { store, app, files } = await open(health, true);
+    const tombstones = () =>
+      (JSON.parse(files.files.get(HEALTH_FILE) ?? '{}') as { tombstones?: { date: string }[] }).tombstones ??
+      [];
+    await store.put([earlier]);
+    await settle();
+    await app.remove('2026-10-21');
+    expect(ours(health, '2026-10-21')).toEqual([]);
+    expect(tombstones().map((t) => t.date)).toEqual(['2026-10-21']);
+    expect(await app.restore('2026-10-21', earlier, null)).toBe(true);
+    expect(await store.health.typed()).toEqual([earlier]);
+    expect(tombstones()).toEqual([]);
+    expect(ours(health, '2026-10-21')).toMatchObject([
+      { kg: 96.2, syncVersion: Date.parse(earlier.savedAt) },
+    ]);
+    await store.health.refresh();
+    expect(await store.weighIns()).toEqual([earlier]);
+  });
+
+  it("undoes the delete of a scale's reading by its tombstone alone, writing nothing of ours", async () => {
+    const health = fakeHealth([reading('2026-10-21', 6, 96.4)]);
+    const { store, app } = await open(health, true);
+    const scale = { date: '2026-10-21', kg: 96.4, savedAt: local('2026-10-21', 6) };
+    await app.remove('2026-10-21');
+    expect(app.state().weighIns).toEqual([]);
+    expect(await app.restore('2026-10-21', scale, null)).toBe(true);
+    expect(app.state().weighIns).toEqual([scale]);
+    expect(await store.health.typed()).toEqual([]);
+    expect(ours(health, '2026-10-21')).toEqual([]);
+    await store.health.refresh();
+    expect(await store.weighIns()).toEqual([scale]);
   });
 
   it('leaves Health alone when another device wrote the day there after this save', async () => {

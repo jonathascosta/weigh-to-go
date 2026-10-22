@@ -934,6 +934,44 @@ describe('on a phone, the parts drawn only while they show', () => {
     expect(root.querySelector('#rate-curve-title')!.closest<HTMLElement>('.block')!.hidden).toBe(true);
   });
 
+  it('opens Sections in a sheet of 13 switches, and says how many are on', () => {
+    go('#data');
+    const button = root.querySelector<HTMLButtonElement>('#sections-panel-button')!;
+    expect(button.getAttribute('aria-haspopup')).toBe('dialog');
+    button.click();
+    const switches = document.querySelectorAll<HTMLButtonElement>('.sheet button.toggle');
+    expect(switches).toHaveLength(13);
+    expect(document.querySelector('#sheet-title')!.textContent).toBe('Sections');
+    sectionToggle('Calendar').click();
+    expect(sectionToggle('Calendar').getAttribute('aria-pressed')).toBe('false');
+    expect(button.querySelector('.row-sub')!.textContent).toBe('12 of 13 shown');
+    document.querySelector<HTMLButtonElement>('.sheet-head button')!.click();
+    expect(document.activeElement).toBe(button);
+  });
+
+  it('shows the latest 5 weigh-ins, then Show all lists 50 more at a time', async () => {
+    await app.save(
+      Array.from({ length: 80 }, (_, i) => ({
+        date: new Date(Date.UTC(2026, 3, 1) + i * 86_400_000).toISOString().slice(0, 10),
+        kg: 100 - i * 0.01,
+      })),
+    );
+    await settle();
+    go('#data');
+    const log = root.querySelector<HTMLElement>('section[aria-labelledby="log-title"]')!;
+    const rows = () => log.querySelectorAll('tbody tr');
+    expect(rows()).toHaveLength(5);
+    const all = log.querySelector<HTMLButtonElement>('.log-more button')!;
+    expect(all.textContent).toBe('Show allShowing the latest 5 of 97.');
+    all.click();
+    expect(rows()).toHaveLength(55);
+    // Focus goes on from the first row that appeared.
+    expect(document.activeElement).toBe(rows()[5]!.querySelector('button'));
+    log.querySelector<HTMLButtonElement>('.log-more button')!.click();
+    expect(rows()).toHaveLength(97);
+    expect(log.querySelector('.log-more')!.textContent).toBe('');
+  });
+
   it('says where to show the cards when every one is hidden', () => {
     go('#analysis');
     for (const name of ['Percentage loss', 'Compound daily rate', 'Hiccups', 'BMI', 'Facts'])

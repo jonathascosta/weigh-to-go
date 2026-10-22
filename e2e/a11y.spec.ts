@@ -72,3 +72,41 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await context.close();
   });
 }
+
+// On a phone, Your data with its rows, then the day sheet and the erase sheet.
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`Your data, the day sheet and the erase sheet have no axe violations (${colorScheme}, phone)`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      colorScheme,
+      viewport: { width: 360, height: 780 },
+      hasTouch: true,
+      isMobile: true,
+      locale: 'en-US',
+    });
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.locator('body')).toHaveClass(/frame-checked/);
+    await loadBackup(page);
+    await page.locator('nav.tabs a[href="#data"]').click();
+    const scan = async () => {
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'])
+        .analyze();
+      return results.violations.map((v) => ({
+        rule: v.id,
+        where: v.nodes.slice(0, 5).map((n) => n.target.join(' ')),
+      }));
+    };
+    expect(await scan()).toEqual([]);
+    await page.locator('tbody button[data-role="day"]').first().click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    expect(await scan()).toEqual([]);
+    await page.keyboard.press('Escape');
+    await page.locator('#data-erase').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    expect(await scan()).toEqual([]);
+    await context.close();
+  });
+}
