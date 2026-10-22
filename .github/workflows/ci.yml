@@ -68,8 +68,9 @@ jobs:
         with:
           path: dist
 
-  # The built site in a real browser: end-to-end tests (offline included), axe on every page in light
-  # and dark, desktop and phone, and Lighthouse's scores.
+  # The built site in a real browser: end-to-end tests (offline included) on a desktop and a phone,
+  # the fit test on the phone for the website and the iPhone app's pages, axe on every view and sheet
+  # in light and dark, desktop and phone, and Lighthouse's scores, mobile and desktop.
   quality:
     name: End-to-end, axe and Lighthouse
     runs-on: ubuntu-latest
@@ -99,7 +100,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      # For the end-to-end test of the app's band under the status bar (e2e/phone.spec.ts).
+      # For the `ios` project (the fit test on the app's pages) and the app's band under the status
+      # bar (e2e/phone.spec.ts).
       - name: Build the iPhone app's pages
         run: npm run build:ios
 
@@ -107,7 +109,8 @@ jobs:
         run: npx playwright test
 
       # Lighthouse CI has its own lockfile in tools/lhci (installed by the script with npm ci), so its
-      # CLI's dependencies stay out of the app's. Scores are asserted in lighthouserc.json.
+      # CLI's dependencies stay out of the app's. Scores are asserted in lighthouserc.json, for its
+      # mobile run (Lighthouse's default form factor) and the desktop preset (package.json).
       - name: Lighthouse
         run: npm run lighthouse
 

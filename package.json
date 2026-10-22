@@ -16,7 +16,9 @@
     "check:dist": "node scripts/check-dist.mjs",
     "e2e": "npm run build && playwright test",
     "icons": "node scripts/icons.mjs",
-    "lighthouse": "npm ci --prefix tools/lhci && tools/lhci/node_modules/.bin/lhci autorun"
+    "lighthouse": "npm ci --prefix tools/lhci && npm run lighthouse:mobile && npm run lighthouse:desktop",
+    "lighthouse:mobile": "tools/lhci/node_modules/.bin/lhci autorun --upload.outputDir=lighthouse-report/mobile",
+    "lighthouse:desktop": "tools/lhci/node_modules/.bin/lhci autorun --collect.settings.preset=desktop --collect.numberOfRuns=1 --upload.outputDir=lighthouse-report/desktop"
   },
   "engines": {
     "node": "^22.19.0 || ^24.0.0 || >=26.0.0"
