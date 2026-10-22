@@ -477,6 +477,33 @@ for (const language of LANGUAGES) {
       await afterSheet(page);
       await expect(page.locator('#sim-title')).toBeVisible();
       await expectFits(page, 'Analysis, every card open');
+      // The simulator's table ends on the goal's row, named under its day: the profile's goal,
+      // then a typed target, both wholly inside its box (no column cut off, not even by a pixel)
+      // at the narrowest with text at 150%.
+      const simBox = page.locator('#sim-title ~ .table-box');
+      const simFits = async (name: string) => {
+        await expect(simBox.locator('tr.sim-goal .badge-goal')).toHaveText(name);
+        await page.setViewportSize({ width: 320, height: 568 });
+        await page.evaluate(() => {
+          document.documentElement.style.fontSize = '150%';
+        });
+        await settle(page);
+        const { scroll, client } = await simBox.evaluate((el) => ({
+          scroll: el.scrollWidth,
+          client: el.clientWidth,
+        }));
+        expect(scroll, `the simulator's table with ${name}`).toBeLessThanOrEqual(client);
+        await page.evaluate(() => {
+          document.documentElement.style.fontSize = '';
+        });
+        await page.setViewportSize({ width: 390, height: 844 });
+        await settle(page);
+      };
+      await simFits(lang === 'en' ? 'Goal' : 'Meta');
+      await page.locator('#sim-target').fill('90');
+      await simFits(lang === 'en' ? 'Target' : 'Alvo');
+      await expectFits(page, 'Analysis, with a target typed');
+      await page.locator('#sim-target').fill('');
       const options = await page
         .locator('#view-analysis .options-button')
         .evaluateAll((buttons) => buttons.filter((b) => b.getClientRects().length > 0).map((b) => b.id));

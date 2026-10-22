@@ -933,14 +933,18 @@ same time (146 to 161); they may be renumbered when merged.
      the first whole day at or below it, as the summary counts it (`daysAtRate`), with its date,
      the target's own weight, what that day takes off to reach it and the totals, its Day cell
      marked "Goal" (or "Target" when typed; "Meta", "Alvo") under the day, read as "94, Goal",
-     the row in bold. The goal day is day 1 at the earliest, even for a target a hair below the
+     the row in bold; on a phone the name is bold text in the goal's colour without the pill's
+     border and padding, so the four columns still fit at 320 px with text at 150%. Its "Lost that
+     day" shows "—", read as "part of a day": the target is reached partway through that day, and
+     the part lost by then (0.102 kg where the day before lost 0.259 kg) would read as a slowdown. The goal day is day 1 at the earliest, even for a target a hair below the
      start. A listed day that is
      the goal day is listed once, and a day just above the target that would show as its weight
      (two decimals) is left out, so the goal reads as reached once. A goal further than a year
      away keeps all 14 days and adds its row after 365. The curve chart's dotted simulation ends
      on the goal day too, at the target, and its readout and tooltip say nothing of the days after;
      while a weight field holds something that isn't a weight, the chart draws no simulation, as
-     the table lists nothing. Its end label at the edge goes when it stops before the
+     the table lists nothing. A dot in the goal's colour marks where it meets the target. Its end
+     label at the edge goes when it stops before the
      horizon, which stays the reader's choice (30 days to a year), so the constant-% and
      constant-kg lines are still compared over it, and the y axis no longer stretches to the
      weights past the goal. The summary follows the same rule: of "a week", "30 days" and "a
@@ -952,8 +956,8 @@ same time (146 to 161); they may be renumbered when merged.
      property of the rate; left out because it reads as the weight a year on.
 163. **No milestone ahead past the goal.** With a goal below the first weight, the loss milestones
      table leaves out the round milestones below the goal's weight that no weigh-in has reached:
-     with a goal ahead it ends on the goal's row (5% to 25%, then "Goal (29.6%)", where 30% and
-     35% followed). A milestone already reached stays, even past the goal, as the diary's history
+     with a goal ahead it ends on the goal's row (in the owner's diary, 5% to 25% and then "Meta
+     (29,6%)", where 30% and 35% followed; the screenshots' made-up diary gives 29.4%). A milestone already reached stays, even past the goal, as the diary's history
      of someone who went beyond it. The % chart's milestone lines follow the same rule, and its
      scale no longer reaches for "the next milestone" when that lies past the goal. The card's
      line and figures already speak of the goal rather than the next milestone when there is one,

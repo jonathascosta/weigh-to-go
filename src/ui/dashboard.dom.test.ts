@@ -526,6 +526,11 @@ describe('Dashboard II', () => {
     expect(goal.classList.contains('sim-goal')).toBe(true);
     expect(goal.querySelector('th .badge')!.textContent).toBe('Target');
     expect(goal.querySelectorAll('td')[1]!.textContent).toBe('90.00 kg');
+    // Its day's loss is a part of a day: a dash, read as such.
+    expect(goal.querySelectorAll('td')[2]!.textContent).toBe('—part of a day');
+    expect(goal.querySelector('td [aria-hidden="true"]')!.textContent).toBe('—');
+    // On the chart, a dot where the simulation meets the target.
+    expect(curve().querySelectorAll('.sim-goal-dot')).toHaveLength(1);
     expect(simBlock.querySelector('.foot')!.textContent).not.toContain('in a year');
     // Stopped before the horizon, the dotted line has no end to label at the edge.
     expect(curve().querySelector('path.sim-curve')).not.toBeNull();
@@ -558,6 +563,7 @@ describe('Dashboard II', () => {
     // A target at or above the start lists every day again.
     set('#sim-target', '120');
     expect(rows()).toHaveLength(14);
+    expect(curve().querySelector('.sim-goal-dot')).toBeNull();
     expect(curve().querySelector('.endlabel-week')).not.toBeNull();
   });
 

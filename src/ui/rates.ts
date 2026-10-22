@@ -260,7 +260,8 @@ export function simView(
         day: f.number(row.day, 0),
         date: base ? f.day(isoDay(addDays(base, row.day)), 'short') : null,
         weight: f.weight(row.kg, unit, 2),
-        lossDay: f.weight(row.lossThatDay, unit, 3),
+        // Reached partway through the goal day: what it loses by then isn't a day's loss.
+        lossDay: row.goal ? '—' : f.weight(row.lossThatDay, unit, 3),
         lossTotal: f.weight(row.lossTotal, unit, 2),
         pct: f.percent(row.lossPct / 100, 2),
         pctShort: f.percent(row.lossPct / 100, 1),
@@ -844,6 +845,9 @@ export function mountRates(
       g.append(svg('path', { class: 'regression-line', d: curve(linV, samples) }));
     if (on('constantPct')) g.append(svg('path', { class: 'exp-curve', d: curve(expV, samples) }));
     if (sim) g.append(svg('path', { class: 'sim-curve', d: curve(simV, simDays) }));
+    // Where the simulation meets its target, a dot in the goal's colour.
+    if (sim && simLast <= total && simTargetKg !== null)
+      g.append(svg('circle', { class: 'sim-goal-dot', cx: xi(simLast), cy: y(u(simTargetKg)), r: 4 }));
     if (on('points')) {
       const spacing = (width - left - right) / Math.max(1, total);
       const r0 = Math.max(1, Math.min(width < 560 ? 2.2 : 2.8, spacing / 2 + 0.6));
@@ -1005,7 +1009,14 @@ export function mountRates(
           ),
           h('td', { class: 'col-wide', text: row.date ?? '—' }),
           h('td', { class: 'num', text: row.weight }),
-          h('td', { class: 'num', text: row.lossDay }),
+          row.goal === null
+            ? h('td', { class: 'num', text: row.lossDay })
+            : h(
+                'td',
+                { class: 'num' },
+                h('span', { attrs: { 'aria-hidden': 'true' }, text: row.lossDay }),
+                h('span', { class: 'visually-hidden', text: m['sim.partialDay'] }),
+              ),
           h('td', { class: wide('col-wide'), text: row.lossTotal }),
           // Two decimals on the one page, one on a phone, where the column is narrow (CSS).
           h(

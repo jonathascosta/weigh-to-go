@@ -772,6 +772,7 @@ export const en = {
   'sim.col.pct': '% lost',
   'sim.row.goal': 'Goal',
   'sim.row.target': 'Target',
+  'sim.partialDay': 'part of a day',
 
   'hiccups.title': 'Hiccups',
   'hiccups.note':
@@ -1696,6 +1697,7 @@ export const pt: Messages = {
   'sim.col.pct': '% perdido',
   'sim.row.goal': 'Meta',
   'sim.row.target': 'Alvo',
+  'sim.partialDay': 'parte de um dia',
 
   'hiccups.title': 'Soluços',
   'hiccups.note':

@@ -120,6 +120,8 @@ describe('simView', () => {
       day: '94',
       date: '02/01/2027',
       weight: '77,70 kg',
+      // Reached partway through the day: no day's loss to give.
+      lossDay: '—',
       lossTotal: '28,30 kg',
       pct: '26,70%',
       goal: 'Meta',
