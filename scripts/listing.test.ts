@@ -103,7 +103,7 @@ describe('the App Store listing', () => {
         // either wastes the room.
         const taken = words(`${NAME} ${field(lang, 'subtitle')}`, lang);
         for (const keyword of lower)
-          for (const word of keyword.split(' '))
+          for (const word of words(keyword, lang))
             expect(taken, `${keyword} repeats the name or subtitle`).not.toContain(word);
       });
 

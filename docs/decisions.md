@@ -1123,7 +1123,8 @@ Choices made while building the App Store listing, open to the owner under decis
      characters), comma-separated without spaces, each once and none repeating a word of the name or
      subtitle (App Store search already reads both); promotional text at most 170 characters,
      description at most 4,000, plain text. The subtitle says what the app is for, "Weight diary:
-     the real trend" and "Diário de peso e tendência". The description, in both languages, names
+     the real trend" and "Diário de peso e tendência" (the English one became "See the real trend" with
+     the store name, decision 175). The description, in both languages, names
      Apple Health (in Portuguese "app Saúde (Apple Health)", as iOS calls it there), calls the
      projections and the body composition values estimates and not medical advice, says the data
      stays on the iPhone with no account and no server of ours, and says the ads (one banner, not
