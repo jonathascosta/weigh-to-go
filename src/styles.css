@@ -155,6 +155,11 @@ a {
   left: max(16px, env(safe-area-inset-left, 0px));
   top: max(8px, env(safe-area-inset-top, 0px));
   transform: translateY(-200%);
+  /* A finger's 44 px, when it shows, and wide enough to cover the brand beside it. */
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: min(12rem, calc(100% - 32px));
   padding: 8px 12px;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -204,6 +209,20 @@ main,
   white-space: nowrap;
 }
 
+/* Under a finger the brand's link reaches 44 px through a box laid over it, 6 px above and below,
+   so the header's layout doesn't change. */
+@media (pointer: coarse) {
+  .brand {
+    position: relative;
+  }
+
+  .brand::after {
+    content: '';
+    position: absolute;
+    inset: -6px 0;
+  }
+}
+
 main {
   flex: 1;
   display: flex;
@@ -227,6 +246,12 @@ main {
   margin: 10px 0 0;
   max-width: 62ch;
   font-size: 1.0625rem;
+}
+
+/* A link inside the intro's sentence (the missing page's): at least 24 px tall (WCAG 2.5.8). */
+.intro p a {
+  display: inline-block;
+  padding-block: 3px;
 }
 
 /* The privacy policy: a page of text, in short sections. */
@@ -342,6 +367,8 @@ main {
 .site-footer a {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 44px;
   min-height: 44px;
 }
 
@@ -2547,13 +2574,18 @@ main {
   .table-fit th,
   .table-fit td {
     white-space: normal;
-    padding-inline: 4px;
+    padding-inline: 3px;
   }
 }
 
 /* A weight or a change stays on one line, even where the other cells wrap. */
 .table-fit td.num {
   white-space: nowrap;
+}
+
+.sim-table .pct-short,
+.head-short {
+  display: none;
 }
 
 .sw-faded {
@@ -3108,20 +3140,11 @@ span.cal-none {
     position: static;
   }
 
-  .table-fit {
-    table-layout: fixed;
-  }
-
-  /* A word breaks only where it must, a date after its slashes (<wbr>), a heading's word too
-     ("% acumulado" in a narrow column); a figure in a cell only at its space ("−0.52 / kg").
-     (word-break: break-word, as overflow-wrap: anywhere needs Safari 15.4.) */
+  /* The columns take the room their words need: no heading breaks inside a word. A date breaks
+     after its slashes (<wbr>); a figure in a cell only at its space ("−0.52 / kg"). */
   .table-fit th,
   .table-fit td {
     white-space: normal;
-    overflow-wrap: break-word;
-    word-break: break-word;
-    -webkit-hyphens: auto;
-    hyphens: auto;
   }
 
   .table-fit td.num {
@@ -3132,9 +3155,33 @@ span.cal-none {
     hyphens: manual;
   }
 
-  .week-bar-cell {
+  /* The bars take the room the other columns leave, and at least a 40 px track (the range is
+     their point); the cells beside them give the gutter. A share in % would widen the table. */
+  .table-fit td.week-bar-cell,
+  .table-fit th.col-bar {
     width: auto;
     min-width: 0;
+    padding-inline: 0;
+  }
+
+  /* Its own gutter, so the average's last digit doesn't run into the bar ("95.80▌"). */
+  .week-bar {
+    min-width: 40px;
+    margin-inline-start: 4px;
+  }
+
+  /* The first and last columns line up with the card's text. */
+  .table-fit tr > :first-child {
+    padding-inline-start: 0;
+  }
+
+  .table-fit tr > :last-child {
+    padding-inline-end: 0;
+  }
+
+  /* The hiccups' last column, words after a figure: a gutter of its own. */
+  .hiccups-table tr > :last-child {
+    padding-inline-start: 6px;
   }
 
   .table-fit .col-narrow {
@@ -3147,6 +3194,37 @@ span.cal-none {
 
   .table-fit .col-back {
     width: 36%;
+  }
+
+  /* The weekly bars' heading, and a long heading with a short one shown (hiccups.ts), for screen
+     readers only. */
+  .bar-head,
+  .head-long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .head-short {
+    display: inline;
+  }
+
+  /* The simulator's day reads from the left, apart from the weight beside it. */
+  .sim-table tr > :first-child {
+    text-align: left;
+  }
+
+  /* The simulator's % has one decimal ("30.6%"), so its four columns fit at 320 px with text at
+     150%. */
+  .sim-table .pct-long {
+    display: none;
+  }
+
+  .sim-table .pct-short {
+    display: inline;
   }
 
   /* A figure's name and its value share the row evenly. */

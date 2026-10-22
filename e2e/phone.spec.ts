@@ -10,7 +10,8 @@ import { existsSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { loadBackup, previewServer, watch } from './helpers';
 
-test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, locale: 'en-GB' });
+// The phone project's 390 × 844 with touch (playwright.config.ts).
+test.use({ locale: 'en-GB' });
 
 const tab = (page: Page, view: string) => page.locator(`nav.tabs a[href="#${view}"]`);
 

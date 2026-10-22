@@ -51,7 +51,7 @@ npm run build        # type-check and build to dist/
 npm run preview      # serve dist/ as it will be deployed
 npm run check:dist   # check the built site keeps its protections
 npm run e2e          # build, then end-to-end and axe tests in Chromium (Playwright)
-npm run lighthouse   # Lighthouse CI against the build (needs Chrome; CHROME_PATH to pick one)
+npm run lighthouse   # Lighthouse CI against the build, mobile then desktop (needs Chrome; CHROME_PATH)
 npm run icons        # draw the app icons again from public/favicon.svg
 ```
 
@@ -60,9 +60,17 @@ already there). They use Playwright 1.63.0, pinned exactly (with `playwright-cor
 axe uses the same one), and need its Chromium (`npx playwright install chromium`, as CI does), or set
 `PW_CHROMIUM_PATH` to a Chromium already on the machine. Lighthouse CI has its own lockfile in
 `tools/lhci/`, installed by `npm run lighthouse`, so its CLI's dependencies stay out of the app's.
-They cover logging, pasting, backup and restore, language and units, the main chart's keys, offline
-use (a test stops its own server), and axe on every page in light and dark, desktop and phone, and
-every page is checked for console errors and policy violations.
+They run in three projects (`playwright.config.ts`): `desktop` (1280 × 900, a mouse) for the one
+page's flows (logging, pasting, backup and restore, language and units, the main chart's keys,
+offline use, where a test stops its own server, deploys and updates); `phone` (390 × 844, touch) for
+the tabs, the sheets and a finger on the charts (`e2e/phone.spec.ts`) and the fit test
+(`e2e/fit.spec.ts`: every view, card and sheet at 320 and 390 px wide, text at 100% and 150%, in
+English and Portuguese, with nothing sideways, nothing cut off and every target 44 px under a
+finger); and `ios`, the fit test again on the iPhone app's build when `dist-ios/` is built (always in
+CI). axe checks every view and sheet in light and dark in both `desktop` and `phone`, and every page
+is checked for console errors and policy violations. Lighthouse runs its mobile form factor (its
+default: a phone's screen, a slow network and CPU), three times a page, then the desktop preset once
+a page, with the same thresholds, into `lighthouse-report/mobile` and `lighthouse-report/desktop`.
 
 Requires Node 22 (22.19 or later), 24, or 26 and later; CI tests all three and deploys from Node 24,
 the `.nvmrc` line. The dev server applies the same Content Security Policy as the build, except that live

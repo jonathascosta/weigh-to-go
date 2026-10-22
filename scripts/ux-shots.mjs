@@ -5,8 +5,9 @@
 //
 //   npm run build && node scripts/ux-shots.mjs [out-dir] [--quick] [--measure] [--sizes=390x844,1280x900]
 //
-// Shots: PNGs named <width>x<height>-<theme>-<lang>-<text>-<view>.png in out-dir, by default a new
-// folder in the system's temporary directory (printed), as they are too big to commit. On a phone
+// Shots: PNGs named <width>x<height>-<theme>-<lang>-<text>-<view>.png in out-dir, by default
+// ux-shots/ at the repository's root, which Git ignores: they go to the pull requests, not the
+// repository. On a phone
 // each of the four views is a page of its own, shot whole, with Today also after a save
 // (today-saved) and with an empty diary (today-empty); the desktop is one page (all).
 // --quick takes only 390 × 844, light, English, 100%. --sizes takes only the sizes listed.
@@ -18,8 +19,7 @@
 // Uses PW_CHROMIUM_PATH when set. Serves dist/ with Vite's preview on a free port of its own.
 // Nothing here is shipped; the data is made up.
 /// <reference lib="dom" />
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -51,7 +51,7 @@ const only = args
   .split(',');
 /** @param {Size} size */
 const wanted = (size) => !only || only.includes(`${String(size.width)}x${String(size.height)}`);
-const out = named ? resolve(named) : mkdtempSync(join(tmpdir(), 'weigh-to-go-ux-'));
+const out = named ? resolve(named) : join(root, 'ux-shots');
 mkdirSync(out, { recursive: true });
 
 /**

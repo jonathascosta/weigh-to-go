@@ -89,6 +89,7 @@ describe('simView', () => {
       lossDay: '1,000 kg',
       lossTotal: '1,00 kg',
       pct: '1,00%',
+      pctShort: '1,0%',
     });
   });
 

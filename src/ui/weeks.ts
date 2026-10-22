@@ -87,7 +87,13 @@ export function mountWeeks(
         {},
         h('th', { class: 'col-week', attrs: { scope: 'col' }, text: m['weeks.week'] }),
         h('th', { class: 'num', attrs: { scope: 'col' }, text: m['weeks.mean'](m[`unit.${unit}`]) }),
-        h('th', { class: 'col-bar', attrs: { scope: 'col' }, text: m['weeks.bar'] }),
+        // On a phone the bars' column has no visible heading, so the others keep whole words: the
+        // card's note says what the bar shows, and screen readers still hear "Range".
+        h(
+          'th',
+          { class: 'col-bar', attrs: { scope: 'col' } },
+          h('span', { class: 'bar-head', text: m['weeks.bar'] }),
+        ),
         h('th', { class: 'num col-wide', attrs: { scope: 'col' }, text: m['weeks.min'] }),
         h('th', { class: 'num col-wide', attrs: { scope: 'col' }, text: m['weeks.max'] }),
         h('th', { class: 'num col-wide', attrs: { scope: 'col' }, text: m['weeks.n'] }),
