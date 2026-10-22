@@ -205,6 +205,17 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      # The purchase plugin's Package.swift builds code for the newest StoreKit when the SDK of
+      # $DEVELOPER_DIR or of /Applications/Xcode.app has it; the latter is the runner's default
+      # Xcode (26.6), whose StoreKit Xcode 26.2 doesn't have. Here both are Xcode 26.2.
+      - name: Point /Applications/Xcode.app at Xcode 26.2
+        run: |
+          set -euo pipefail
+          test -L /Applications/Xcode.app
+          sudo ln -sfn /Applications/Xcode_26.2.app /Applications/Xcode.app
+          echo "DEVELOPER_DIR=/Applications/Xcode_26.2.app/Contents/Developer" >> "$GITHUB_ENV"
+          ls -l /Applications/Xcode.app
+
       - run: npm ci --ignore-scripts
 
       - run: npm run ios:sync
