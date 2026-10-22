@@ -42,8 +42,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
   test.describe(colorScheme, () => {
     test.use({ colorScheme, locale: 'en-US' });
 
-    // English in both themes, Portuguese (its longer words) in dark only: its colours are English's.
-    for (const path of colorScheme === 'dark' ? ['/', '/pt/'] : ['/'])
+    for (const path of ['/', '/pt/'])
       test(`${path} has no axe violations, with a year of weigh-ins and every card open`, async ({
         page,
         isMobile,

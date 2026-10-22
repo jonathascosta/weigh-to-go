@@ -195,6 +195,8 @@ export interface SimRowText {
   readonly lossDay: string;
   readonly lossTotal: string;
   readonly pct: string;
+  /** The same to one decimal, for a phone's narrow table ("30.6%"). */
+  readonly pctShort: string;
 }
 
 /** What the simulator says and lists: a summary with **bold** parts, and its rows. */
@@ -252,6 +254,7 @@ export function simView(
       lossDay: f.weight(row.lossThatDay, unit, 3),
       lossTotal: f.weight(row.lossTotal, unit, 2),
       pct: f.percent(row.lossPct / 100, 2),
+      pctShort: f.percent(row.lossPct / 100, 1),
     })),
   };
 }
@@ -377,7 +380,12 @@ export function mountRates(
       class: 'table-box table-short',
       attrs: { tabindex: 0, role: 'region', 'aria-labelledby': 'sim-title' },
     },
-    h('table', { class: 'table table-fit', attrs: { 'aria-labelledby': 'sim-title' } }, simHead, simBody),
+    h(
+      'table',
+      { class: 'table table-fit sim-table', attrs: { 'aria-labelledby': 'sim-title' } },
+      simHead,
+      simBody,
+    ),
   );
   const simBlock = h(
     'div',
@@ -953,7 +961,7 @@ export function mountRates(
         h('th', { class: 'num', attrs: { scope: 'col' }, text: m['sim.col.weight'] }),
         h('th', { class: 'num', attrs: { scope: 'col' }, text: m['sim.col.lossDay'] }),
         h('th', { class: wide('col-wide'), attrs: { scope: 'col' }, text: m['sim.col.lossTotal'] }),
-        h('th', { class: 'num col-pct', attrs: { scope: 'col' }, text: m['sim.col.pct'] }),
+        h('th', { class: 'num', attrs: { scope: 'col' }, text: m['sim.col.pct'] }),
       ),
     );
     simBody.replaceChildren(
@@ -966,7 +974,13 @@ export function mountRates(
           h('td', { class: 'num', text: row.weight }),
           h('td', { class: 'num', text: row.lossDay }),
           h('td', { class: wide('col-wide'), text: row.lossTotal }),
-          h('td', { class: 'num', text: row.pct }),
+          // Two decimals on the one page, one on a phone, where the column is narrow (CSS).
+          h(
+            'td',
+            { class: 'num' },
+            h('span', { class: 'pct-long', text: row.pct }),
+            h('span', { class: 'pct-short', text: row.pctShort }),
+          ),
         ),
       ),
     );
