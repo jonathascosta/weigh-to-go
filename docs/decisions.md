@@ -884,22 +884,22 @@ decisions above.
      the one Xcode made did), chooses it for runs from Xcode. `AppStoreKitTests`, a unit test target
      of the app's project hosted in the app, opens it in an `SKTestSession` and makes the StoreKit 2
      calls the plugin makes (`Product.products`, `purchase`, `Transaction.currentEntitlements`,
-     verified only), deciding as the app does: the product found with its price, a purchase held,
-     a refund revoking it, Ask to Buy pending then approved, and declined. The iOS workflow runs it
-     (`xcodebuild test -only-testing:AppStoreKitTests`), so its first
-     run is the pull request's. The test repeats the plugin's StoreKit calls in Swift rather than
-     calling the plugin; `scripts/purchase.test.ts` covers the plugin itself, from its installed
-     source. It runs in a job of its own with Xcode 26.2 and its iOS 26.2 simulator, which the
-     runner keeps beside the default (switched to in the main job, after its simulator had booted,
-     Xcode 26.2 found no simulator to run on): from Xcode 26.3, command-line runs get "SKTestSession: Error saving configuration
-     file: SKInternalErrorDomain Code=3" on every call and no product (Apple's FB22237318, said
-     fixed in 26.5 but still there with the runner's 26.6 and iOS 26.5, unsigned and signed ad
-     hoc, both tried here; Flutter's StoreKit plugin pinned Xcode 26.2 for the same reason). That job
-     also points `/Applications/Xcode.app` at Xcode 26.2, since the purchase plugin's
-     `Package.swift` turns on code for the newest StoreKit when that Xcode's SDK has it. The run
-     stays signed ad hoc; the default Xcode is to be tried again when a release fixes it. First
-     green run: 22 October 2026, all five tests. _Alternative:_ a Swift package of its own under `ios/`,
-     whose tests would run without a host app, where `SKTestSession` isn't dependable.
+     verified only), deciding as the app does: the product found with its price, a purchase held, a
+     refund revoking it, Ask to Buy pending then approved, and declined. The iOS workflow runs it
+     (`xcodebuild test -only-testing:AppStoreKitTests`), so its first run is the pull request's. The
+     test repeats the plugin's StoreKit calls in Swift rather than calling the plugin;
+     `scripts/purchase.test.ts` covers the plugin itself, from its installed source. It runs in a
+     job of its own with Xcode 26.2 and its iOS 26.2 simulator, which the runner keeps beside the
+     default (switched to in the main job, after its simulator had booted, Xcode 26.2 found no
+     simulator to run on): from Xcode 26.3, command-line runs get "SKTestSession: Error saving
+     configuration file: SKInternalErrorDomain Code=3" on every call and no product (Apple's
+     FB22237318, said fixed in 26.5 but still there with the runner's 26.6 and iOS 26.5, unsigned
+     and signed ad hoc, both tried here; Flutter's StoreKit plugin pinned Xcode 26.2 for the same
+     reason). That job also points `/Applications/Xcode.app` at Xcode 26.2, since the purchase
+     plugin's `Package.swift` turns on code for the newest StoreKit when that Xcode's SDK has it.
+     The run stays signed ad hoc; the default Xcode is to be tried again when a release fixes it.
+     First green run: 22 October 2026, all five tests. _Alternative:_ a Swift package of its own
+     under `ios/`, whose tests would run without a host app, where `SKTestSession` isn't dependable.
 144. **The purchase's review screenshot is made here** (Atlas's review): App Store Connect won't
      submit the purchase without one. `npm run store:screenshots` (story 4 adds the listing's to
      it) runs the app's build in Chromium with a stand-in for Capacitor's native bridge whose
@@ -910,11 +910,9 @@ decisions above.
 145. **The one TestFlight purchase is the owner's last step before submitting** (Atlas's review).
      TestFlight purchases can't be cleared, and once Remove ads is held nothing of Google's starts,
      so the banner and Privacy choices clips, the EEA safeguard and the network log for a refusal
-     and
-     a withdrawn consent must come first. Step 5 checks what needs the purchase not bought (price,
-     cancel, Screen Time, offline, Restore finding nothing); step 11 ends with the purchase,
-     recorded
-     with the proxy or Instruments running, so the one purchase gives both App Review's clip and the
-     "no new requests after buying" log, then the reinstall and Restore. _Alternative:_ a second
-     Apple Account, as another TestFlight tester, for the purchase checks at any time (STORE.md,
-     step 5, says how).
+     and a withdrawn consent must come first. Step 5 checks what needs the purchase not bought
+     (price, cancel, Screen Time, offline, Restore finding nothing); step 11 ends with the purchase,
+     recorded with the proxy or Instruments running, so the one purchase gives both App Review's
+     clip and the "no new requests after buying" log, then the reinstall and Restore. _Alternative:_
+     a second Apple Account, as another TestFlight tester, for the purchase checks at any time
+     (STORE.md, step 5, says how).

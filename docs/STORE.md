@@ -64,7 +64,9 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    with the first version (step 11).
    - **Family Sharing** is your choice, and can be turned on later but never off again. The app
      reads it from the App Store: with it on, the line under the button adds "and for your Family
-     Sharing group".
+     Sharing group". The review screenshot in this repository shows it on; if you leave it off,
+     set `isFamilyShareable` to `false` in `scripts/store-screenshots.mjs` and make the screenshot
+     again with the command above.
    - **Try it on TestFlight, without buying,** once the purchase exists (it needs step 2's
      agreement; it may take an hour to reach the sandbox). TestFlight purchases are free and use
      your own Apple Account, and **they can't be cleared**: once bought, that Apple Account holds
@@ -84,9 +86,8 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
      5. Tap **Restore purchases**: "No purchase to restore for this Apple Account."
 
      If you'd rather buy before step 11, use a second Apple Account: add it as another TestFlight
-     tester (in App Store Connect, TestFlight, Internal Testing) and buy with it on another iPhone,
-     or after switching the account in Settings › your name › Media & Purchases; your own account
-     stays unbought for step 11's checks.
+     tester (in App Store Connect, TestFlight, Internal Testing) and buy with it on another iPhone
+     signed in with that account; your own account stays unbought for step 11's checks.
 
      Ask to Buy ("Waiting for approval") needs a real child account in a family on TestFlight, or
      the StoreKit configuration file (`ios/App/Products.storekit`, already chosen in the App scheme)

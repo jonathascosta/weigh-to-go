@@ -65,13 +65,14 @@ de consentimento.
    (passo 11).
    - O **Compartilhamento Familiar** é escolha sua, e pode ser ligado depois, mas nunca mais
      desligado. O app o lê da App Store: ligado, a linha sob o botão acrescenta "e para o seu grupo
-     de Compartilhamento Familiar".
+     de Compartilhamento Familiar". A captura de tela para a revisão neste repositório o mostra
+     ligado; se deixá-lo desligado, mude `isFamilyShareable` para `false` em
+     `scripts/store-screenshots.mjs` e refaça a captura com o comando acima.
    - **Teste no TestFlight, sem comprar,** assim que a compra existir (ela precisa do acordo do
      passo 2; pode levar uma hora para chegar ao sandbox). As compras no TestFlight são gratuitas,
      usam a sua própria Conta Apple e **não podem ser apagadas**: comprado uma vez, essa Conta Apple
      tem Remover anúncios no TestFlight para sempre, e então nada do Google é iniciado no seu
-     iPhone,
-     de modo que o banner, as Opções de privacidade, a salvaguarda do EEE e quase todo o registro de
+     iPhone, de modo que o banner, as Opções de privacidade, a salvaguarda do EEE e quase todo o registro de
      rede do passo 11 não podem mais ser conferidos. Por isso **a compra em si é a última coisa que
      você faz antes de submeter** (passo 11). Agora, em Seus dados › App para iPhone, nesta ordem:
      1. **Remover anúncios** mostra o preço vindo da App Store. Sem preço, a linha diz que não foi
@@ -82,14 +83,13 @@ de consentimento.
         proíba as compras dentro de apps e volte ao app: a linha diz que as compras estão
         desativadas, sem botão. Permita de novo e volte: o preço reaparece.
      4. No Modo Avião, toque em **Comprar**: a linha diz que não foi possível acessar a App Store.
-        De
-        volta on-line, **Tentar de novo** mostra o preço.
+        De volta on-line, **Tentar de novo** mostra o preço.
      5. Toque em **Restaurar compras**: "Nenhuma compra para restaurar nesta Conta Apple."
 
      Se preferir comprar antes do passo 11, use uma segunda Conta Apple: adicione-a como outra
      testadora do TestFlight (no App Store Connect, TestFlight, Internal Testing) e compre com ela
-     em outro iPhone, ou depois de trocar a conta em Ajustes › seu nome › Mídia e Compras; a sua
-     conta continua sem a compra para as conferências do passo 11.
+     em outro iPhone com essa conta; a sua conta continua sem a compra para as conferências do
+     passo 11.
 
      O Pedir para Comprar ("Aguardando aprovação") precisa de uma conta real de criança numa família
      no TestFlight, ou do arquivo de configuração do StoreKit (`ios/App/Products.storekit`, já
