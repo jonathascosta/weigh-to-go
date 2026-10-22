@@ -286,6 +286,24 @@ export function detailsEditor(app: App, prefix: string, labelledBy: string): Pro
     error.textContent = text ?? '';
     error.hidden = text === null;
   };
+  /**
+   * A refusal read out: focus is already on the field when Enter is pressed there, so moving it says
+   * nothing. A live region of its own, for screen readers only (the eye reads it next to the
+   * field), takes it: emptied first and filled on the next frame, so the same message twice is read
+   * twice. The status line under Save stays for what a save says.
+   */
+  const announcer = h('p', {
+    class: 'visually-hidden',
+    attrs: { role: 'status', id: `${prefix}details-announce` },
+  });
+  let announcing = 0;
+  const announce = (text: string) => {
+    announcer.textContent = '';
+    cancelAnimationFrame(announcing);
+    announcing = requestAnimationFrame(() => {
+      announcer.textContent = text;
+    });
+  };
   const heightInputs = [cm, feet, inches];
   const heightInvalid = (input: HTMLInputElement | null) => {
     for (const f of heightInputs) {
@@ -345,19 +363,27 @@ export function detailsEditor(app: App, prefix: string, labelledBy: string): Pro
     refuse(heightError, null);
     year.invalid(null);
     refuse(yearError, null);
+    cancelAnimationFrame(announcing);
+    announcer.textContent = '';
     say(status, '');
     if (height === undefined) {
-      refuse(heightError, s.heightUnit === 'cm' ? m['bmi.badCm'] : m['bmi.badFtIn']);
+      const text = s.heightUnit === 'cm' ? m['bmi.badCm'] : m['bmi.badFtIn'];
+      refuse(heightError, text);
+      announce(text);
       const first = s.heightUnit === 'cm' ? cm.input : feet.input;
       heightInvalid(first);
       first.focus();
+      heightError.scrollIntoView({ block: 'nearest' });
       return;
     }
     if (birthYear === undefined) {
       const [lo, hi] = birthYearRange(thisYear);
-      refuse(yearError, m['profile.birthYear.bad'](String(lo), String(hi)));
+      const text = m['profile.birthYear.bad'](String(lo), String(hi));
+      refuse(yearError, text);
+      announce(text);
       year.invalid(yearError);
       year.input.focus();
+      yearError.scrollIntoView({ block: 'nearest' });
       return;
     }
     const picked = radios.find((r) => r.input.checked)?.value ?? '';
@@ -371,7 +397,7 @@ export function detailsEditor(app: App, prefix: string, labelledBy: string): Pro
   let shown: { profile: Profile; unit: string } | null = null;
   let builtFor = '';
   return {
-    element: h('div', { class: 'profile-editor' }, form, status),
+    element: h('div', { class: 'profile-editor' }, form, status, announcer),
     draw: (state, s) => {
       const m = s.messages;
       const { format: f, heightUnit } = s;
@@ -700,7 +726,7 @@ export function mountBody(
     if (metric !== null && estimatesAt(analysis.last.kg, analysis.last.date, profile).lean === null) {
       // The last weigh-in is from before the person turned 18: the formulas are adults'.
       change.button.className = 'button button-ghost';
-      empty.textContent = m['body.adults'];
+      empty.textContent = `${m['body.adults']} ${m['body.adultsFrom']}`;
       card.body.replaceChildren(empty, change.panel, card.tools);
       return;
     }

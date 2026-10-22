@@ -1062,6 +1062,7 @@ export const en = {
   },
   'body.sumNeeds': 'Appears once your height, year of birth and sex are set.',
   'body.adults': 'These estimates are for adults: the formulas were made from adults’ data.',
+  'body.adultsFrom': 'They start from your weigh-ins in the year you turn 18.',
   'body.needs':
     'These estimates use your height, year of birth and sex. Each one is optional and stays on this device.',
   'body.caveat':
@@ -2073,6 +2074,7 @@ export const pt: Messages = {
   },
   'body.sumNeeds': 'Aparece quando altura, ano de nascimento e sexo estiverem definidos.',
   'body.adults': 'Estas estimativas são para adultos: as fórmulas foram feitas com dados de adultos.',
+  'body.adultsFrom': 'Elas começam nas pesagens do ano em que você faz 18 anos.',
   'body.needs':
     'Estas estimativas usam sua altura, ano de nascimento e sexo. Cada um é opcional e fica neste aparelho.',
   'body.caveat':

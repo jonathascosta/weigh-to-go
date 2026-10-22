@@ -822,6 +822,33 @@ describe('Dashboard III', () => {
     errors.mockRestore();
   });
 
+  it('says a failed save of the profile was a change, not a weigh-in', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    choose({ heightUnit: 'cm' });
+    app.state().store!.updateProfile = () => Promise.reject(new Error('refused'));
+    const failed = "Couldn't save the change. Try again.";
+    // The goal, on its card.
+    type('goal-weight', '90');
+    submit('goal-weight');
+    await settle();
+    expect(section('goal-title').textContent).toContain(failed);
+    expect(section('goal-title').textContent).not.toContain('weigh-in. Try again');
+    // The year of birth, in its sheet.
+    root.querySelector<HTMLButtonElement>('#settings-birth-year')!.click();
+    type('data-birth-year', '1983');
+    submit('data-birth-year');
+    await settle();
+    expect(document.querySelector('#data-birth-year-status')!.textContent).toBe(failed);
+    // Change details.
+    root.querySelector<HTMLButtonElement>('#body-change-button')!.click();
+    type('details-cm', '172');
+    submit('details-cm');
+    await settle();
+    expect(document.querySelector('#details-status')!.textContent).toBe(failed);
+    expect(app.state().profile).toMatchObject({ goalKg: null, heightCm: null, birthYear: null });
+    errors.mockRestore();
+  });
+
   it('says what the body composition card needs, then shows the estimates once the details are saved', async () => {
     await saveDays([100, 99.6, 99.1]);
     choose({ heightUnit: 'cm' });
@@ -856,7 +883,19 @@ describe('Dashboard III', () => {
       'details-birth-year-help details-birth-year-error',
     );
     expect(document.querySelector('#details-birth-year')!.getAttribute('aria-invalid')).toBe('true');
+    // And read out: a live region of its own takes it for screen readers on the next frame; the
+    // status line under Save says nothing.
+    const announcer = document.querySelector<HTMLElement>('#details-announce')!;
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(announcer.getAttribute('role')).toBe('status');
+    expect(announcer.classList.contains('visually-hidden')).toBe(true);
+    expect(announcer.textContent).toBe(yearError.textContent);
     expect(document.querySelector('#details-status')!.textContent).toBe('');
+    // The same refusal again, Enter pressed in the field that has focus: emptied, then said again.
+    submit('details-cm');
+    expect(announcer.textContent).toBe('');
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(announcer.textContent).toBe(yearError.textContent);
     // A height refused: said next to it, and described by it.
     type('details-cm', '20');
     submit('details-cm');
@@ -872,6 +911,12 @@ describe('Dashboard III', () => {
     await settle();
     expect(app.state().profile).toMatchObject({ heightCm: 172, birthYear: 1983, sex: 'male' });
     expect(document.querySelector('#details-status')!.textContent).toBe('Details saved.');
+    // After the refusals, the save's word shows to the eye, and the announcer is empty.
+    const saved = document.querySelector<HTMLElement>('#details-status')!;
+    expect(saved.classList.contains('visually-hidden')).toBe(false);
+    expect(saved.hidden).toBe(false);
+    expect(saved.closest('[hidden], .visually-hidden')).toBeNull();
+    expect(announcer.textContent).toBe('');
     expect(yearError.hidden).toBe(true);
     expect(document.querySelector('#details-birth-year')!.hasAttribute('aria-invalid')).toBe(false);
     // 99.1 kg, 172 cm, 43 in 2026: body fat 1.2 × 33.50 + 9.89 − 16.2 = 33.9%, BMR 1856 → 1,860

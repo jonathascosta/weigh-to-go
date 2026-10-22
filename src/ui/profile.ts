@@ -241,7 +241,10 @@ export async function saveProfile(
     return true;
   } catch (error) {
     console.error(error);
-    say(status, failure(error, app, settings()), 'bad');
+    // The weigh-in's general failure names a weigh-in: here it was a change of the profile.
+    const s = settings();
+    const text = failure(error, app, s);
+    say(status, text === s.messages['entry.failed'] ? s.messages['profile.failed'] : text, 'bad');
     return false;
   }
 }
