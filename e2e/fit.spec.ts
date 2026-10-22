@@ -237,12 +237,48 @@ function narrowBars(): string[] {
   return [...found];
 }
 
+/**
+ * Runs in the page: log days whose widest unbreakable part leaves under 8 px in its button. Fonts
+ * differ between machines by a few pixels; a day that fits by 2 px here can spill on another.
+ */
+function tightLogDays(): string[] {
+  if (document.querySelector('.sheet-layer:not([hidden])')) return [];
+  let tightest: { slack: number; text: string } | null = null;
+  for (const day of document.querySelectorAll<HTMLElement>('.log-day')) {
+    if (day.getClientRects().length === 0) continue;
+    // What can't break: each part kept whole, and each word outside them ("30/09").
+    const pieces: { width: number; text: string }[] = [];
+    for (const part of day.querySelectorAll('.nowrap'))
+      if (part.getClientRects().length > 0)
+        pieces.push({ width: part.getBoundingClientRect().width, text: part.textContent });
+    const walker = document.createTreeWalker(day, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest('.nowrap') || parent.getClientRects().length === 0) continue;
+      for (const match of (node.textContent ?? '').matchAll(/\S+/g)) {
+        const range = document.createRange();
+        range.setStart(node, match.index);
+        range.setEnd(node, match.index + match[0].length);
+        pieces.push({ width: range.getBoundingClientRect().width, text: match[0] });
+      }
+    }
+    for (const piece of pieces) {
+      const slack = day.clientWidth - piece.width;
+      if (!tightest || slack < tightest.slack) tightest = { slack, text: piece.text };
+    }
+  }
+  return tightest && tightest.slack < 8
+    ? [`the log day part “${tightest.text}” leaves ${tightest.slack.toFixed(1)} px in its button, under 8`]
+    : [];
+}
+
 /** Everything the fit test checks on the screen as it is now. */
 async function measure(page: Page, width: number, targets: boolean): Promise<string[]> {
   return [
     ...(await page.evaluate(misfits, { width, allowed: WIDER_ON_PURPOSE })),
     ...(await page.evaluate(brokenWords)),
     ...(await page.evaluate(narrowBars)),
+    ...(await page.evaluate(tightLogDays)),
     ...(targets ? await page.evaluate(smallTargets) : []),
   ];
 }

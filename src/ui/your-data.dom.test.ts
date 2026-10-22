@@ -125,5 +125,7 @@ describe('a day in the log', () => {
     expect(pieces('Wed, Oct 21, 2025')).toBe('[Wed,] [Oct 21,] [2025]');
     expect(pieces('21 Oct 2026')).toBe('[21 Oct] [2026]');
     expect(pieces('qua., 21 de out.')).toBe('[qua.,] [21 de out.]');
+    expect(pieces('Wed 30 Sept')).toBe('[Wed] [30 Sept]');
+    expect(pieces('Wed 30 Sept 2025')).toBe('[Wed] [30 Sept] [2025]');
   });
 });

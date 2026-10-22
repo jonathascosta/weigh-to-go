@@ -23,11 +23,19 @@ export const PHONE_STEP = 50;
 
 /**
  * A day as text that breaks only between its parts, never inside "21 de out." or "Oct 21": after a
- * comma and before the year ("21 de out. / de 2026", "Oct 21, / 2026"), each part kept whole.
+ * comma, after a weekday written without one ("Wed / 21 Oct": en-GB in newer ICU data, where older
+ * data wrote "Wed, 21 Oct") and before the year ("21 de out. / de 2026", "Oct 21, / 2026"), each
+ * part kept whole.
  */
 export function dayParts(text: string): (string | HTMLElement)[] {
   const parts: (string | HTMLElement)[] = [];
   let start = 0;
+  // A leading weekday with no comma, then the day's figure.
+  const weekday = /^([^\s\d,]+) (?=\d)/.exec(text);
+  if (weekday?.[1]) {
+    parts.push(h('span', { class: 'nowrap', text: weekday[1] }), ' ');
+    start = weekday[0].length;
+  }
   // No lookbehind (Safari 15): a comma's space, or a space before the year (" de 2026", " 2026").
   for (const match of text.matchAll(/, | (?=(?:de )?\d{4}\b)/g)) {
     const end = match.index + (match[0].startsWith(',') ? 1 : 0);

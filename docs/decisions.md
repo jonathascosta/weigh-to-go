@@ -624,8 +624,12 @@ Choices made while building story 7, open to the owner under decision 9.
      box taller than the room above it (a table's region), whose top must clear it. Today's first
      screen, in both languages: the field and Save on it at 375 × 667, 390 × 844 and 430 × 932, in
      view after focusing at 844 × 390, and Save at most one screen away at 320 × 568 with text at
-     150%. The targets are measured before any screenshot and the test takes none. _Alternative:_ a
-     CSS change that keeps the dot inside its icon's box; every pass in both themes.
+     150%. A log day's widest unbreakable piece leaves at least 8 px in its button, as fonts and the
+     browser's date data differ between machines (CI's Chromium writes "Wed 30 Sept", this
+     container's "Wed, 30 Sept"; the day now breaks after a weekday with or without its comma, as
+     decision 100 meant). The targets are measured before any screenshot and the test takes none.
+     _Alternative:_ a CSS change that keeps the dot inside its icon's box; every pass in both
+     themes.
 114. **The app's 34 px text cap is not in the fit test yet** (issue
      [#59](https://github.com/jonathascosta/weigh-to-go/issues/59)). Decision 54's Dynamic Type
      isn't built, so the app's text never reaches the cap today. A trial run of the `ios` project
