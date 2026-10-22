@@ -1217,7 +1217,7 @@ export const en = {
   'iap.restoreOffline': 'Couldn’t reach the App Store. Try again.',
   'iap.restoreFailed': 'Nothing was restored. Try again.',
   'about.privacy': 'Privacy policy',
-  'about.appStore': 'Weigh to Go for iPhone, on the App Store',
+  'about.appStore': 'Weigh to Go for iPhone, on the App\u00a0Store. A backup brings your diary with you.',
   'about.version': (version: string) => `Weigh to Go ${version}`,
   'data.note':
     'Everything stays in this browser. A backup file is the only copy outside it: export one now and then, and use it to move to another device.',
@@ -2237,7 +2237,7 @@ export const pt: Messages = {
   'iap.restoreOffline': 'Não foi possível acessar a App Store. Tente de novo.',
   'iap.restoreFailed': 'Nada foi restaurado. Tente de novo.',
   'about.privacy': 'Política de privacidade',
-  'about.appStore': 'O Weigh to Go para iPhone, na App Store',
+  'about.appStore': 'O Weigh to Go para iPhone, na App\u00a0Store. Um backup leva seu diário junto.',
   'about.version': (version: string) => `Weigh to Go ${version}`,
   'data.note':
     'Tudo fica neste navegador. Um arquivo de backup é a única cópia fora dele: exporte um de vez em quando e use-o para passar para outro aparelho.',

@@ -3825,14 +3825,14 @@ svg.go {
   }
 }
 
-/* About: the author's link is 28 px tall, inside its sentence (WCAG 2.5.8 asks 24); the policy's,
-   on a line of its own, a finger's 44 px. */
+/* About: the author's link is 28 px tall, inside its sentence (WCAG 2.5.8 asks 24); a link on a
+   line of its own (the policy's, the App Store's on the website), a finger's 44 px. */
 .about-link {
   display: inline-block;
   padding-block: 4px;
 }
 
-#about-policy {
+.about-link.own-line {
   display: inline-flex;
   align-items: center;
   min-height: 44px;

@@ -120,7 +120,7 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
      If neither happens, stop the release and tell a session: the app would be showing ads in the
      EEA without asking.
    - In Blocking controls, set the maximum ad content rating to **PG** at most (G is stricter), to
-     suit the app's 9+ (step 10), and block sensitive categories that don't belong next to a weight
+     suit the app's 13+ (step 10), and block sensitive categories that don't belong next to a weight
      diary (dieting and weight-loss products among them, where offered).
    - `app-ads.txt` is already on jonathas.net for the account. Once the app is live, link it to its
      listing in the app's settings (step 12).
@@ -158,7 +158,8 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
      the contact: your name, phone and e-mail): without it the listing fails with "No data". The
      notes come from this repository: the listing sends the [review notes](#app-review-notes) from
      `ios/App/fastlane/metadata/review_information/notes.txt` into its Notes field on every run,
-     and leaves the contact as you saved it (decision 169).
+     and leaves the contact as you saved it; it also sets "Sign-in required" to off
+     (`demo_account_required = false`), as there is no demo account (decision 169).
    - Run the **App Store listing** workflow from the Actions tab, on `main`. It needs only the App
      Store Connect API key of step 3, from the `app-store` environment. It checks the text again,
      then `fastlane listing` sends the text and screenshots of both languages (adding the
@@ -201,67 +202,88 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
       Content or Nudity; Graphic Sexual Content and Nudity; Cartoon or Fantasy Violence; Realistic
       Violence; Prolonged Graphic or Sadistic Realistic Violence; Guns or Other Weapons: all
       **None**.
-    - **Medical or wellness:** Medical or Treatment Information: **None** (no diagnosis, no
-      guidance on managing a condition, no medication or treatment: projections and body
-      composition are estimates with no categories or targets, and BMI shows only the WHO's
-      standard adult ranges beside the number). Health or Wellness Topics:
-      **Yes** (a weight diary with a goal is a wellness topic, as Apple's calorie tracking and
-      dieting examples are).
+    - **Medical or wellness:** Medical or Treatment Information: **Infrequent**. The app gives no
+      diagnosis, no medication or treatment and no advice, and projections and body composition
+      are estimates with no categories or targets; but the BMI card places the person's BMI in the
+      WHO's adult bands (Underweight to Obesity class III) and shows the weight at each band's
+      edge ("Weight for a BMI below 25", "… to go"), with a caveat that BMI is a rough population
+      measure. That is health information about the person, now and then. Health or Wellness
+      Topics: **Yes** (a weight diary with a goal is a wellness topic, as Apple's calorie tracking
+      and dieting examples are).
     - **Chance-based activities:** Simulated Gambling and Contests: **None**; Gambling and Loot
       Boxes: **No**.
     - **Age categories and override:** **Not Applicable** (not Made for Kids, no higher rating),
       and no Age Suitability URL.
 
-    **Expected result: 9+**, from Health or Wellness Topics (advertising alone gives 4+). If App
-    Store Connect shows anything else, stop and tell a session before submitting. The regional
+    **Expected result: 13+**, from Medical or Treatment Information, Infrequent (Health or Wellness
+    Topics alone gives 9+, advertising 4+). If App Store Connect shows anything else, stop and tell
+    a session before submitting. You may answer None instead, for 9+, if you don't count the BMI
+    bands as medical information (decision 170); then step 11's item 8 checks 9+. The regional
     ratings (Brazil's, Korea's and Australia's among them) follow from the same answers; check them
     on the same page.
 
 11. **Review and submit.** In this order: everything that needs Remove ads not bought comes before
-    the purchase, which comes last, just before submitting.
+    the purchase, which comes last, just before submitting. Two ways to be past the first 7 days
+    (no ads before them): **the install in use**, which keeps its days when each new build is
+    installed over it as a TestFlight update; or **the date ahead**: with a weigh-in in the diary,
+    in Settings › General › Date & Time turn off Set Automatically and set the date 8 days ahead,
+    swipe the app away in the app switcher and open it again. Put Set Automatically back on
+    afterwards, and before any purchase (the sandbox needs the right date): the banner then goes at
+    the next return to the app, as the days are counted again from the true date. Open a fresh
+    install for the first time with the date right: a first launch recorded with the date ahead is
+    later than today once the date is put back, and the app then starts the 7 days again from that
+    moment (`src/ads/ads.ts`).
     1. **Price and countries.** Price: free. Countries: every one but mainland China, where apps
        need a government filing number (ICP).
     2. **The build, from the current `main`.** Run the **TestFlight** workflow on `main` with **For
        the App Store** ticked (any other build carries none of your AdMob ids). Its run page in the
        Actions tab ends with a summary: the version (1.0.0), the build number, the commit it was
        built from and a link comparing that commit with `main`'s head (decision 171). App Store
-       Connect shows the same build as "1.0.0 (build number)". Use this build for every check and
-       recording below, and choose it in step 6. (Arrows 1.0 was approved with an older build and
-       needed a 1.0.1 at once.)
-    3. **Check that the app sends Google nothing when it mustn't.** On that build, with a network
-       log, see no request to Google (`*.google.com`, `*.googleapis.com`, `*.doubleclick.net`,
-       `*.googlesyndication.com`, `app-measurement.com` and the like) in each of these states: a
-       fresh install in its first 7 days, with weigh-ins; a refusal in Google's message; and, within
-       one session, after withdrawing consent in Privacy choices. The states with Remove ads (bought
-       during a session, then held at the next launch) come last, with the purchase itself (item
-       8). The first tool is the iPhone's own **App Privacy Report** (Settings › Privacy & Security
-       › App Privacy Report, turned on before the test): it lists every domain each app contacted,
-       so it covers the states that span a launch (the first days, a refusal, the purchase held).
-       For the states within one session, use a proxy (on a friend's Mac, such as Proxyman or
-       Charles) or Instruments' Network template, which show when each request was made. If any
-       shows one, stop the release and tell a session. Then **the EEA safeguard** of step 6, in
-       Portugal: from the 8th day with a weigh-in, Google's GDPR message showed, or Privacy choices
-       appeared in Your data › iPhone app and opened Google's form. If neither did, don't submit.
-    4. **The banner clip, on the install you use.** The recording below starts from a fresh
-       install, and reinstalling starts the first 7 days again (a backup doesn't carry them), so the
-       banner shows on that install only after a week. Before deleting the app, on an install in use
-       for 7 days or more (or on another iPhone that has one), record a short clip of the diary with
-       the banner at the top (shown, never tapped: tapping one's own ads breaks AdMob's policy), and
-       of Your data, iPhone app, **Privacy choices**, with Google's form open: Google shows its
-       consent message once per install, so the form stands in for it.
-    5. **The screen recording.** A new app's first submission needs one and the full review notes,
-       or it gets "Guideline 2.1 - Information Needed" instead of a review (Arrows, 5 October 2026).
-       The recording starts from a fresh install, which erases the diary on that phone: first
-       export a backup (Your data, Export backup, to Files), then delete the app, install it again
-       from TestFlight, record, and import the backup afterwards (or record on another iPhone). On
-       an iPhone set to English with the latest iOS, start the screen recording from Control
-       Center, and show, slowly, a second before each tap: the first weigh-in, the sample lines of
-       the notes pasted in Your data › Weigh-ins › Paste several days at once, the summary and a
-       chart, an analysis card, turning on Apple Health and its permission sheet, the reminder,
-       Remove ads with its price and Restore purchases ("No purchase to restore for this Apple
-       Account."; nothing is bought yet), settings and the privacy policy. Two to four minutes;
-       trim the ends in Photos.
-    6. **Choose the build.** In the version's page, Build, add the build of item 2. Before saving,
+       Connect shows the same build as "1.0.0 (build number)" once it has finished processing.
+       Install it from TestFlight as an update over the install you use, which keeps its diary and
+       its days. Use this build for every check and recording below, and choose it in item 7.
+       (Arrows 1.0 was approved with an older build and needed a 1.0.1 at once.)
+    3. **Check that the app sends Google nothing when it mustn't**, on the install in use. With a
+       network log, see no request to Google (`*.google.com`, `*.googleapis.com`,
+       `*.doubleclick.net`, `*.googlesyndication.com`, `app-measurement.com` and the like) after a
+       refusal in Google's message, and, within one session, after withdrawing consent in Privacy
+       choices. The first 7 days are checked on item 5's fresh install, and the states with Remove
+       ads (bought during a session, then held at the next launch) come last, with the purchase
+       itself (item 9). The first tool is the iPhone's own **App Privacy Report** (Settings ›
+       Privacy & Security › App Privacy Report, turned on before the test): it lists every domain
+       each app contacted, so it covers the states that span a launch (the first days, a refusal,
+       the purchase held). For the states within one session, use a proxy (on a friend's Mac, such
+       as Proxyman or Charles) or Instruments' Network template, which show when each request was
+       made. If any shows one, stop the release and tell a session. Then **the EEA safeguard** of
+       step 6, in Portugal, past the first 7 days (the install in use, or the date ahead): Google's
+       GDPR message showed, or Privacy choices appeared in Your data › iPhone app and opened
+       Google's form. If neither did, don't submit.
+    4. **The banner clip, on the install in use.** The recording below starts from a fresh
+       install, and reinstalling starts the first 7 days again (a backup doesn't carry them).
+       Before deleting the app, record a short clip of the diary with the banner at the top (shown,
+       never tapped: tapping one's own ads breaks AdMob's policy), and of Your data, iPhone app,
+       **Privacy choices**, with Google's form open: Google shows its consent message once per
+       install, so the form stands in for it.
+    5. **The screen recording, on a fresh install.** A new app's first submission needs one and the
+       full review notes, or it gets "Guideline 2.1 - Information Needed" instead of a review
+       (Arrows, 5 October 2026). A fresh install erases the diary on that phone: first export a
+       backup (Your data, Export backup, to Files), then delete the app, install it again from
+       TestFlight, and open it with the date right. On an iPhone set to English with the latest
+       iOS, start the screen recording from Control Center, and show, slowly, a second before each
+       tap: the sample lines of the notes pasted in Your data › Weigh-ins › Paste several days at
+       once, then today's weigh-in, the summary and a chart, an analysis card, turning on Apple
+       Health and its permission sheet, the reminder, Remove ads with its price and Restore
+       purchases ("No purchase to restore for this Apple Account."; nothing is bought yet),
+       settings and the privacy policy. Two to four minutes; trim the ends in Photos. Then, with
+       the App Privacy Report, use this install for a day or more within its first 7 days: it
+       contacts no Google domain.
+    6. **The reviewer's way to the banner.** On the same fresh install, with its weigh-ins, follow
+       the notes: the date 8 days ahead, the app swiped away and opened again: Google's test banner
+       shows at the top (in Portugal, Google's message first). Put Set Automatically back on. If no
+       banner shows, don't submit: tell a session. Then import your backup (Your data, Import
+       backup, Replace everything), or keep this install aside if you record item 9 on another
+       iPhone.
+    7. **Choose the build.** In the version's page, Build, add the build of item 2. Before saving,
        open the compare link in its run's summary: "There isn't anything to compare" means `main`
        hasn't moved since, and the build is the current `main`. If `main` has moved, the page lists
        the files changed since: a change only to `docs/` or to the listing
@@ -269,27 +291,28 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
        other file means a new build (item 2) and its checks again, so tell a session. Add the
        in-app purchase to the version. Leave the release as **Manually release this version** (the
        listing workflow sets it so anyway): once approved, you release it yourself (step 12).
-    7. **The age rating** of step 10 is saved and shows 9+.
-    8. **Last, the purchase, recorded and logged.** Everything above needs Remove ads not bought,
-       so this comes after it all. On an install past its first 7 days, with the banner at the top
-       (the recording above starts the 7 days again on the iPhone it deletes the app from, so make
-       it on another iPhone, or keep one install untouched for this), start the proxy or
-       Instruments' Network template and the screen recording, then in Your data › iPhone app tap
-       **Buy** and confirm: the banner goes at once, the line says "Ads removed. Thank you.", and
-       the log shows no new request to Google from then on. Close the app and open it again: still
-       no ad, and no request to Google (the App Privacy Report agrees). Then delete the app and
-       install it again: Your data says "Ads removed. Thank you." at launch, and **Restore
-       purchases** says "Purchase restored.". The recording is the purchase clip.
-    9. **The review notes and the attachments.** Run the **App Store listing** workflow once more
-       (step 8): it puts the [review notes](#app-review-notes) in the version's App Review
-       Information, Notes. Check they are there, whole, and attach the recording, the banner clip
-       and the purchase clip (Attachment). A recording too large to attach goes as a shared link
-       (iCloud Drive or Google Drive) at the end of the notes, typed in App Store Connect; it is
-       then overwritten by the next listing run, so add it last.
-    10. **Trader status** (Digital Services Act) is declared once for the account (done for Arrows
+    8. **The age rating** of step 10 is saved and shows 13+ (or 9+, if you answered None).
+    9. **Last, the purchase, recorded and logged.** Everything above needs Remove ads not bought,
+       so this comes after it all. It needs the banner on screen and the right date for the
+       sandbox, so make it on an install truly past its first 7 days (the one in use, if item 5's
+       fresh install was on another iPhone, or another iPhone that has one): with the date ahead,
+       the banner goes as soon as the date is put right, before the purchase can show it going.
+       Start the proxy or Instruments' Network template and the screen recording, then in Your data
+       › iPhone app tap **Buy** and confirm: the banner goes at once, the line says "Ads removed.
+       Thank you.", and the log shows no new request to Google from then on. Close the app and open
+       it again: still no ad, and no request to Google (the App Privacy Report agrees). Then delete
+       the app and install it again: Your data says "Ads removed. Thank you." at launch, and
+       **Restore purchases** says "Purchase restored.". The recording is the purchase clip.
+    10. **The review notes and the attachments.** Run the **App Store listing** workflow once more
+        (step 8): it puts the [review notes](#app-review-notes) in the version's App Review
+        Information, Notes. Check they are there, whole, and attach the recording, the banner clip
+        and the purchase clip (Attachment). A recording too large to attach goes as a shared link
+        (iCloud Drive or Google Drive) at the end of the notes, typed in App Store Connect; it is
+        then overwritten by the next listing run, so add it last.
+    11. **Trader status** (Digital Services Act) is declared once for the account (done for Arrows
         on 4 October 2026); nothing new is needed unless the declaration moves to a business
         address.
-    11. **Submit** (Add for Review, then Submit to App Review). If App Review answers
+    12. **Submit** (Add for Review, then Submit to App Review). If App Review answers
         "Guideline 2.1 - Information Needed" all the same, reply to its message (App Review in the
         app's sidebar) with the same notes and the recordings, then resubmit if the version shows
         Rejected.
@@ -315,46 +338,53 @@ Review reads them. They live in `ios/App/fastlane/metadata/review_information/no
 listing workflow sends as the version's App Review Information notes (step 8); a test keeps them
 under App Store Connect's 4,000 characters, checks that they name the app's controls as the English
 app does and that the sample lines paste, and that this copy is the same text (decision 169). Ask a
-session for any change; the two change together. The sample lines are made-up days in October 2026:
-they stay valid however late the review comes (Progress then shows them as past days).
+session for any change; the two change together. The sample lines are fifteen made-up days of
+October 2026 (two full weeks and a day, so the cards comparing two weeks have them): they stay valid
+however late the review comes (Progress then shows them as past days), and the reviewer pastes them
+before logging today's weight.
 
 ```text
 1. Screen recording
-Attached: a recording on an iPhone with the latest iOS, from a fresh install through typical use, and two clips from an install in use for over a week: the ad banner with Privacy choices, and the Remove ads purchase. No account, login or user-generated content, so no such flows to show.
+Attached: a recording on the latest iOS, from a fresh install through typical use, and two clips from an install past its first 7 days: the ad banner with Privacy choices, and the Remove ads purchase. No account, login or user-generated content to show.
 
 2. Purpose and audience
-Weigh to Go is a weight diary for adults who want to see where their weight is heading. They log one weigh-in a day, typed or read from Apple Health, and the app shows the trend under the daily noise, projections toward a goal, weekly averages, the days the weight climbs back up, a compound daily rate, BMI and body composition estimates, in English or Brazilian Portuguese. Its data stays on the iPhone; it reminds the person to weigh in and shares exports through the share sheet.
+Weigh to Go is a weight diary for adults who want to see where their weight is heading. They log one weigh-in a day, typed or read from Apple Health, and the app shows the trend under the daily noise, projections toward a goal, weekly averages, the days the weight climbs back up, BMI and body composition estimates, in English or Brazilian Portuguese. Its data stays on the iPhone.
 
 3. How to use it
 No setup, login or demo account. Tabs: Today, Progress, Analysis, Your data.
-- Today: type a weight and tap Save.
-- Sample data: in Your data, under Weigh-ins, tap "Paste several days at once", paste these made-up lines and tap "Import lines". Progress then shows the chart and figures, Analysis the cards.
-2026-10-12 86.0 kg
-2026-10-13 85.8 kg
-2026-10-14 86.1 kg
-2026-10-15 85.7 kg
-2026-10-16 85.5 kg
-2026-10-17 85.8 kg
-2026-10-18 85.3 kg
-2026-10-19 85.1 kg
-2026-10-20 85.2 kg
-2026-10-21 84.8 kg
-- Your data also has: iPhone app (Apple Health, the daily reminder, Remove ads, Restore purchases, Privacy choices where it applies), Backup (export, import, CSV), Settings (language, units, goal, height; year of birth and sex, optional, for the estimates) and About (the privacy policy).
+- Sample data, first: in Your data, under Weigh-ins, tap "Paste several days at once", paste these made-up lines and tap "Import lines". Progress then shows the chart and figures, Analysis the cards.
+2026-10-07 86.0 kg
+2026-10-08 85.8 kg
+2026-10-09 86.1 kg
+2026-10-10 85.7 kg
+2026-10-11 85.5 kg
+2026-10-12 85.8 kg
+2026-10-13 85.3 kg
+2026-10-14 85.1 kg
+2026-10-15 85.2 kg
+2026-10-16 84.8 kg
+2026-10-17 84.9 kg
+2026-10-18 85.1 kg
+2026-10-19 84.7 kg
+2026-10-20 84.5 kg
+2026-10-21 84.6 kg
+- Today: type today's weight and tap Save.
+- Your data, in order: Weigh-ins, Backup, Settings (units, goal, height, optional details for the estimates), iPhone app (the daily reminder, Apple Health, Remove ads, Restore purchases, Privacy choices where it applies) and About (the privacy policy).
 
 4. Apple Health (HealthKit)
 Reads and writes body mass only, once the person turns on "Use Apple Health" and allows it: weights from a smart scale or another app join the diary, and weights logged here are saved to Health. Nothing from Health leaves the iPhone or is used for advertising.
 
 5. Ads (Google AdMob) and consent
-One banner at the top, non-personalised ads only: no tracking, no App Tracking Transparency prompt, no advertising identifier, and no weigh-in data reaches the ad SDK. No ads, and no contact with Google, while the diary is empty or in the first 7 days after the first launch; never over the screen while logging. To see the banner on a fresh install: log a weigh-in, set the iPhone's date 8 days ahead (Settings, General, Date & Time), then close and reopen the app. With a sandbox receipt (TestFlight, App Review) the app shows Google's test ads. In the EEA, the UK and Switzerland, Google's User Messaging Platform asks for consent first; a refusal means no ads, and the SDK never starts. Privacy choices (Your data, iPhone app) changes the choice where the law gives one.
+One banner at the top, non-personalised ads only: no tracking, no App Tracking Transparency prompt, no advertising identifier, and no weigh-in data reaches the ad SDK. No ads, and no contact with Google, while the diary is empty or in the first 7 days after the first launch. To see the banner on a fresh install: log a weigh-in, turn off Set Automatically and set the date 8 days ahead (Settings, General, Date & Time), then swipe the app away in the app switcher and open it again. Turn Set Automatically back on before trying Remove ads. With a sandbox receipt (TestFlight, App Review) the app shows Google's test ads. In the EEA, the UK and Switzerland, Google's User Messaging Platform asks for consent first; a refusal means no ads, and the SDK never starts. Privacy choices changes the choice where the law gives one.
 
 6. In-app purchase
-"Remove ads", non-consumable (net.jonathas.weightogo.removeads): Your data, iPhone app, Buy, confirmed on Apple's sheet; a sandbox account works. Once held, the banner goes at once and Google's SDK and consent tool are no longer started. Restore purchases is just below. Checked on the device with StoreKit 2; no server.
+"Remove ads", non-consumable (net.jonathas.weightogo.removeads): Your data, iPhone app, Buy, confirmed on Apple's sheet; a sandbox account works. Once held, the banner goes at once and Google's SDK and consent tool are no longer started. Restore purchases is just below. StoreKit 2, checked on the device; no server.
 
 7. Regional differences
-The same in every region where it is offered (all but mainland China). Units follow the region (kg or lb, changeable in Settings). Only Google's consent message differs, shown where the law requires it.
+The same in every region where it is offered (all but mainland China). Units follow the region (kg or lb). Only Google's consent message differs, shown where the law requires it.
 
 8. Regulated content and medical claims
-Not a medical device or a regulated industry. The app records the person's own weights; projections and body composition are estimates from published formulas, labelled as such, with no categories or targets; BMI shows the WHO's adult ranges. No diagnosis or treatment: estimates, not medical advice. No gambling or protected third-party material; fonts and libraries under open licences (SIL OFL 1.1, ISC, MIT).
+Not a medical device or a regulated industry. Projections and body composition are estimates from published formulas, labelled as such, with no categories or targets. BMI shows the WHO's adult bands, where the person's BMI falls, and the weight at each band's edge, with a caveat that BMI is a rough population measure; no advice or treatment. Estimates, not medical advice. No gambling or protected third-party material; open-licence fonts and libraries.
 
 Privacy policy: https://weightogo.jonathas.net/privacy.html (Portuguese: https://weightogo.jonathas.net/pt/privacidade.html)
 Support: https://github.com/jonathascosta/weigh-to-go/issues
@@ -378,4 +408,4 @@ Support: https://github.com/jonathascosta/weigh-to-go/issues
 - If what the review notes describe changed (a screen's name, the ads, the purchase), ask a session
   to change `notes.txt` and the copy above together.
 - Run the listing workflow, then the TestFlight one, check the build against `main` (step 11, items
-  2 and 6), then submit.
+  2 and 7), then submit.

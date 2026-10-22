@@ -27,11 +27,14 @@ export function mountAbout(
   const first = h('p');
   const second = h('p', { attrs: { hidden: !inApp } });
   const ads = h('p', { attrs: { hidden: !inApp } });
-  const policy = h('a', { class: 'about-link', attrs: { href: '/privacy.html', id: 'about-policy' } });
+  const policy = h('a', {
+    class: 'about-link own-line',
+    attrs: { href: '/privacy.html', id: 'about-policy' },
+  });
   const store =
     inApp || appStoreUrl === ''
       ? null
-      : h('a', { class: 'about-link', attrs: { href: appStoreUrl, id: 'about-app-store' } });
+      : h('a', { class: 'about-link own-line', attrs: { href: appStoreUrl, id: 'about-app-store' } });
   const version = h('span');
   const madeBy = h('span');
   const author = h('a', {

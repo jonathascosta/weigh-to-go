@@ -173,6 +173,11 @@ jobs:
             echo "| For the App Store | $APP_STORE |"
             echo
             echo "Before choosing this build, open $SERVER/$REPOSITORY/compare/$GITHUB_SHA...main:" \
-              "it must say there isn't anything to compare (main hasn't moved since)."
+              "it must say there isn't anything to compare (main hasn't moved since), or list only" \
+              "files under docs/, ios/App/fastlane/metadata or ios/App/fastlane/screenshots" \
+              "(docs/STORE.md, step 11)."
+            echo
+            echo "The build still has to finish processing in App Store Connect (a few minutes to" \
+              "an hour) before TestFlight offers it and a version can choose it."
           } >> "$GITHUB_STEP_SUMMARY"
           echo "Build $version ($BUILD_NUMBER) from $GITHUB_SHA"

@@ -184,10 +184,11 @@ both change together, in the same pull request.
    `ios/App/fastlane/metadata/review_information/notes.txt`, which the listing lane already sends
    (deliver reads that folder), with STORE.md's copy and STORE_PT.md's summary in Portuguese;
    `scripts/review.test.ts`, run by the listing workflow too, keeps them under 4,000 characters and
-   checks what they must say (decision 169). A reviewer gets sample data from ten made-up lines to
-   paste in the paste the log already has, and sees the banner on a fresh install by moving the
+   checks what they must say (decision 169). A reviewer gets sample data from fifteen made-up lines
+   to paste in the paste the log already has, and sees the banner on a fresh install by moving the
    iPhone's date 8 days ahead: nothing new in the app. The age rating's answers are STORE.md's step
-   10, for an expected 9+ (decision 170). The version is 1.0.0 everywhere it lives, with a test, and
+   10, for an expected 13+, or 9+ if the owner doesn't count the BMI bands as medical information
+   (decision 170). The version is 1.0.0 everywhere it lives, with a test, and
    the build number stays the run's (decision 172); the TestFlight run's summary names the commit
    of each build and links its comparison with `main`, which step 11 has the owner open before
    choosing it (decision 171). `APP_STORE_ID` in `scripts/app-store.mjs`, empty until the app is

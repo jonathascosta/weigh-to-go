@@ -49,12 +49,17 @@ describe('the App Review notes', () => {
       ['ads: non-personalised', /non-personalised ads only/],
       ['ads: no tracking prompt', /no App Tracking Transparency prompt/],
       ['ads: the first 7 days', /first 7 days after the first launch/],
-      ['ads: how to see one anyway', /set the iPhone's date 8 days ahead/],
+      ['ads: how to see one anyway', /turn off Set Automatically and set the date 8 days ahead/],
+      [
+        'ads: the clock put back before the purchase',
+        /Turn Set Automatically back on before trying Remove ads/,
+      ],
+      ["the sample before today's weight", /Sample data, first:/],
       ['ads: test ads on a sandbox receipt', /sandbox receipt .*test ads/],
       ['ads: the consent message', /User Messaging Platform/],
       ['the purchase', /net\.jonathas\.weightogo\.removeads/],
       ['the purchase in the sandbox', /sandbox account/],
-      ['no medical claims', /estimates, not medical advice/],
+      ['no medical claims', /Estimates, not medical advice/],
       ['not offered in mainland China', /all but mainland China/],
     ] as const)
       expect(notes, label).toMatch(pattern);
@@ -85,7 +90,8 @@ describe('the App Review notes', () => {
   });
 
   it('give sample weigh-ins that the paste reads, every line, one per day', () => {
-    expect(sampleLines.length).toBeGreaterThanOrEqual(7);
+    // Two full weeks and a day: the cards that compare two weeks have what they need.
+    expect(sampleLines.length).toBe(15);
     const result = parsePaste(sampleLines.join('\n'), { order: 'mdy', unit: 'lb', today: '2026-10-22' });
     expect(result.bad).toEqual([]);
     expect(result.repeated).toBe(0);
@@ -93,6 +99,9 @@ describe('the App Review notes', () => {
     // Written in kg, so they read the same in a region that weighs in pounds.
     for (const line of sampleLines) expect(line).toMatch(/ kg$/);
     for (const row of result.rows) expect(row.kg).toBeGreaterThan(80);
+    // Consecutive days, none missing.
+    const days = result.rows.map((row) => Date.parse(row.date) / 86_400_000);
+    for (const [i, day] of days.entries()) if (i > 0) expect(day - (days[i - 1] ?? 0)).toBe(1);
   });
 
   it('link the privacy policy the listing links, in both languages, and the support page', () => {
@@ -111,6 +120,8 @@ describe('the App Review notes', () => {
     const fastfile = read('ios/App/fastlane/Fastfile');
     const lane = /lane :listing do([\s\S]*?)\n {2}end\n/.exec(fastfile)?.[1] ?? '';
     // deliver reads metadata/review_information/notes.txt unless the lane passes the notes itself.
+    // It sends the notes and, with no demo account in the folder, demo_account_required = false
+    // (deliver 2.241.0's review_information); the contact stays as saved in App Store Connect.
     expect(lane).toContain('metadata_path: "./fastlane/metadata"');
     expect(lane).not.toContain('app_review_information');
     // The listing workflow runs this test before it sends anything.
