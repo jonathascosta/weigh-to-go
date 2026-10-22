@@ -1341,5 +1341,7 @@ Choices made while preparing the first submission, open to the owner under decis
      address (coarse location), crash logs, performance data, a device ID, advertising data and
      "other user product interactions like app launch taps". The policy already named all but the
      last; `privacy.ads.collects` (EN and PT, in the app and on both policy pages) now adds "other
-     use of the app such as when it is opened and tapped". The policy's date stays 22 October 2026,
-     the day of the change. The App Privacy answers in step 9 follow the same list.
+     app usage data such as when it is opened and where you tap", and its lead-in says the data is
+     about how the app and its ads are used. The policy's date stays 22 October 2026, the day of the
+     change. Step 9 of STORE.md and STORE_PT.md names the new item and lists the App Privacy answers
+     that follow from Google's page.

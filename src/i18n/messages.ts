@@ -391,7 +391,7 @@ export const en = {
   'privacy.ads.banner':
     'The iPhone app shows a banner ad from Google AdMob; the website shows no ads. The app shows only non-personalised ads: it never asks to track you and doesn’t use your device’s advertising identifier (IDFA).',
   'privacy.ads.collects':
-    'To show ads, measure them and prevent fraud, Google’s ad software in the app (the Google Mobile Ads SDK) collects data about your device and how the ads are used: for example your IP address, the device’s model and operating system, an identifier the iPhone keeps for this app’s maker (IDFV, not the advertising identifier, IDFA), advertising data such as the ads shown and your interactions with them, other use of the app such as when it is opened and tapped, an approximate location worked out from the IP address, and crash and performance data. Google uses that data as its own policies describe:',
+    'To show ads, measure them and prevent fraud, Google’s ad software in the app (the Google Mobile Ads SDK) collects data about your device and how the app and its ads are used: for example your IP address, the device’s model and operating system, an identifier the iPhone keeps for this app’s maker (IDFV, not the advertising identifier, IDFA), advertising data such as the ads shown and your interactions with them, other app usage data such as when it is opened and where you tap, an approximate location worked out from the IP address, and crash and performance data. Google uses that data as its own policies describe:',
   'privacy.ads.googlePolicy': 'Google Privacy Policy',
   'privacy.ads.googlePartners': 'How Google uses information from sites or apps that use its services',
   'privacy.ads.retention':
@@ -1404,7 +1404,7 @@ export const pt: Messages = {
   'privacy.ads.banner':
     'O app para iPhone mostra um banner de anúncio do Google AdMob; o site não mostra anúncios. O app mostra só anúncios não personalizados: nunca pede para rastrear você e não usa o identificador de publicidade do seu aparelho (IDFA).',
   'privacy.ads.collects':
-    'Para mostrar os anúncios, medi-los e evitar fraudes, o software de anúncios do Google no app (o Google Mobile Ads SDK) coleta dados do seu aparelho e do uso dos anúncios: por exemplo o seu endereço IP, o modelo e o sistema operacional do aparelho, um identificador que o iPhone guarda para quem fez este app (IDFV, não o identificador de publicidade, IDFA), dados de publicidade, como os anúncios mostrados e suas interações com eles, outros usos do app, como quando ele é aberto e tocado, uma localização aproximada obtida do endereço IP e dados de falhas e de desempenho. O Google usa esses dados como descrevem as políticas dele:',
+    'Para mostrar os anúncios, medi-los e evitar fraudes, o software de anúncios do Google no app (o Google Mobile Ads SDK) coleta dados do seu aparelho e do uso do app e dos anúncios: por exemplo o seu endereço IP, o modelo e o sistema operacional do aparelho, um identificador que o iPhone guarda para quem fez este app (IDFV, não o identificador de publicidade, IDFA), dados de publicidade, como os anúncios mostrados e suas interações com eles, outros dados de uso do app, por exemplo quando ele é aberto e onde você toca, uma localização aproximada obtida do endereço IP e dados de falhas e de desempenho. O Google usa esses dados como descrevem as políticas dele:',
   'privacy.ads.googlePolicy': 'Política de Privacidade do Google',
   'privacy.ads.googlePartners': 'Como o Google usa as informações de sites ou apps que usam os serviços dele',
   'privacy.ads.retention':

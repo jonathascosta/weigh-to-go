@@ -184,14 +184,29 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    (<https://developers.google.com/admob/ios/privacy/data-disclosure>): a session can't open it, so
    paste the page into one (or compare it yourself). The policy's "Ads in the app" says the SDK
    collects the IP address, the device's model and system, the IDFV, advertising data and ad
-   interactions, an approximate location from the IP address, and crash and performance data
-   (`privacy.ads.collects`); where the page says otherwise, the session changes the policy and its
-   date. Then answer for Google's ad SDK, following that page, for non-personalised ads without
-   tracking. What the person types and what the app reads from Apple Health stay on the phone
-   and reach no one, which Apple's definitions don't count as collected; purchases go through Apple.
-   The answers must agree with the privacy policy. The Privacy Policy URL (App Privacy) is
-   `https://weightogo.jonathas.net/privacy.html`, and `https://weightogo.jonathas.net/pt/privacidade.html`
-   for the Portuguese (Brazil) localisation.
+   interactions, other app usage (when it is opened and where you tap), an approximate location from
+   the IP address, and crash and performance data (`privacy.ads.collects`); where the page says
+   otherwise, the session changes the policy and its date. Then answer for Google's ad SDK,
+   following that page, for non-personalised ads without tracking. For each type below, Linked to
+   the user's identity: No, and Used for tracking: No:
+
+   | Category › type                                  | Purposes                           |
+   | ------------------------------------------------ | ---------------------------------- |
+   | Location › Coarse Location (from the IP address) | Third-Party Advertising, Analytics |
+   | Identifiers › Device ID                          | Third-Party Advertising, Analytics |
+   | Usage Data › Product Interaction                 | Third-Party Advertising, Analytics |
+   | Usage Data › Advertising Data                    | Third-Party Advertising, Analytics |
+   | Diagnostics › Crash Data                         | Analytics                          |
+   | Diagnostics › Performance Data                   | Third-Party Advertising, Analytics |
+   | Diagnostics › Other Diagnostic Data              | Analytics                          |
+
+   Nothing else: not Health & Fitness, Contact Info, User Content, User ID or Purchases. What the
+   person types and what the app reads from Apple Health stay on the phone and reach no one, which
+   Apple's definitions don't count as collected; purchases go through Apple. The answers must agree
+   with the privacy policy. The Privacy Policy URL (App Privacy) is
+   `https://weightogo.jonathas.net/privacy.html`, and
+   `https://weightogo.jonathas.net/pt/privacidade.html` for the Portuguese (Brazil) localisation.
+
 10. **Age rating.** In App Store Connect, App Information, Age Rating, Edit. The questionnaire as it
     is asked now (the age ratings of July 2025: 4+, 9+, 13+, 16+ and 18+), with the answers for
     this app (decision 170):
