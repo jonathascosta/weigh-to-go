@@ -102,7 +102,9 @@ describe('a store that needs a reload (issue #47)', () => {
     await expect(app.updateProfile({ goalKg: 90 })).rejects.toBeInstanceOf(ReloadNeeded);
     await expect(app.remove('2026-10-21')).rejects.toBeInstanceOf(ReloadNeeded);
     await expect(app.restore('2026-10-21', earlier, null)).rejects.toBeInstanceOf(ReloadNeeded);
-    await expect(app.setProfile({ goalKg: 90, heightCm: null })).rejects.toBeInstanceOf(ReloadNeeded);
+    await expect(
+      app.setProfile({ goalKg: 90, heightCm: null, birthYear: null, sex: null }),
+    ).rejects.toBeInstanceOf(ReloadNeeded);
     await expect(
       app.importBackup(
         { ok: true, source: 'backup', weighIns: [earlier], profile: null, skipped: 0 },

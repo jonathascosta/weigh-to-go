@@ -7,8 +7,16 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { expect, type Page } from '@playwright/test';
 
-/** A made-up year: a slow loss with daily noise and a few days skipped, ending yesterday. */
-export function yearBackup(days = 365): Buffer {
+/** The made-up profile of the year's backup: a goal and a height. */
+const PROFILE = { goalKg: 92, heightCm: 176 };
+/** The same with what the body composition estimates need too: born 1983, a man. */
+export const FULL_PROFILE = { ...PROFILE, birthYear: 1983, sex: 'male' };
+
+/**
+ * A made-up year: a slow loss with daily noise and a few days skipped, ending yesterday, with
+ * `profile` (a goal and a height unless said).
+ */
+export function yearBackup(days = 365, profile: Record<string, unknown> = PROFILE): Buffer {
   let seed = 11;
   const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const end =
@@ -25,7 +33,7 @@ export function yearBackup(days = 365): Buffer {
     format: 1,
     exportedAt: new Date().toISOString(),
     weighIns,
-    profile: { goalKg: 92, heightCm: 176 },
+    profile,
   };
   return Buffer.from(JSON.stringify(backup));
 }

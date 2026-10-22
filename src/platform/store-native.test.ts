@@ -103,21 +103,21 @@ describe('libraryFiles', () => {
 describe('openNativeStore', () => {
   it("brings over an earlier build's IndexedDB diary on the first opening, then deletes the database", async () => {
     const earlier = memoryStore();
-    await earlier.put([weighIn], { goalKg: 90, heightCm: null });
+    await earlier.put([weighIn], { goalKg: 90, heightCm: null, birthYear: null, sex: null });
     old.store = { ...earlier, kind: 'indexeddb', reason: null };
     const store = await openNativeStore();
     expect(await store.weighIns()).toEqual([weighIn]);
-    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: null });
+    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: null, birthYear: null, sex: null });
     expect(disk.has('diary/weigh-ins.json')).toBe(true);
     expect(old.deleted).toBe(1);
   });
 
   it('brings over a goal and height alone, too', async () => {
     const earlier = memoryStore();
-    await earlier.setProfile({ goalKg: 80, heightCm: 170 });
+    await earlier.setProfile({ goalKg: 80, heightCm: 170, birthYear: null, sex: null });
     old.store = { ...earlier, kind: 'indexeddb', reason: null };
     const store = await openNativeStore();
-    expect(await store.profile()).toEqual({ goalKg: 80, heightCm: 170 });
+    expect(await store.profile()).toEqual({ goalKg: 80, heightCm: 170, birthYear: null, sex: null });
     expect(old.deleted).toBe(1);
   });
 
@@ -136,7 +136,7 @@ describe('openNativeStore', () => {
         app: 'weigh-to-go',
         format: 1,
         weighIns: [],
-        profile: { goalKg: 90, heightCm: null },
+        profile: { goalKg: 90, heightCm: null, birthYear: null, sex: null },
       }),
     );
     const earlier = memoryStore();

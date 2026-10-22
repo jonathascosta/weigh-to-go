@@ -1,12 +1,13 @@
 /**
  * axe on every page in light and dark, in both projects (playwright.config.ts): the desktop's one
- * page and the phone's views, with a year of weigh-ins loaded and every analysis card open; the
- * sheets (Layers, a card's options, a day, Erase, Sections, Goal, Height, Paste) open over them; the
- * empty diary; and the static pages. Any violation fails the test, with what and where.
+ * page and the phone's views, with a year of weigh-ins loaded and every analysis card open (the body
+ * composition card with every estimate, and asking for its details); the sheets (Layers, a card's
+ * options, Change details, a day, Erase, Sections, Goal, Height, Year of birth, Paste) open over
+ * them; the empty diary; and the static pages. Any violation fails the test, with what and where.
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { loadBackup } from './helpers';
+import { FULL_PROFILE, loadBackup, yearBackup } from './helpers';
 
 const STATIC_PAGES = ['/404.html', '/privacy.html', '/pt/privacidade.html'];
 
@@ -49,11 +50,16 @@ for (const colorScheme of ['light', 'dark'] as const) {
       }) => {
         await page.goto(path);
         await expect(page.locator('body')).toHaveClass(/frame-checked/);
-        await loadBackup(page);
+        await loadBackup(page, yearBackup(365, FULL_PROFILE));
         const found: Record<string, unknown> = {};
         for (const view of isMobile ? ['today', 'progress', 'analysis', 'data'] : ['all']) {
           await show(page, view, isMobile);
-          if (view === 'analysis' || view === 'all') await openCards(page);
+          if (view === 'analysis' || view === 'all') {
+            await openCards(page);
+            // About the formulas open too (closed on a phone).
+            if ((await page.locator('#body-about-toggle').getAttribute('aria-expanded')) !== 'true')
+              await page.locator('#body-about-toggle').click();
+          }
           const problems = await scan(page);
           if (problems.length > 0) found[view] = problems;
         }
@@ -75,6 +81,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
         ['data', '#sections-panel-button', false],
         ['data', '#settings-goal', true],
         ['data', '#settings-height', true],
+        ['data', '#settings-birth-year', true],
+        ['analysis', '#body-change-button', false],
         ['data', '#paste-panel-button', false],
       ];
       for (const [view, opener, everywhere] of sheets) {
@@ -90,6 +98,25 @@ for (const colorScheme of ['light', 'dark'] as const) {
         await expect(sheet).toBeHidden();
       }
       expect(found).toEqual({});
+    });
+
+    test('the body composition card asking for its details has no axe violations', async ({
+      page,
+      isMobile,
+    }) => {
+      await page.goto('/');
+      await expect(page.locator('body')).toHaveClass(/frame-checked/);
+      // A height alone: the card lists what it needs.
+      await loadBackup(page);
+      await show(page, 'analysis', isMobile);
+      await openCards(page);
+      await expect(page.locator('.body-needs li')).toHaveCount(3);
+      // On the one page, Change details opens in place, with its fields and radios.
+      if (!isMobile) {
+        await page.locator('#body-change-button').click();
+        await expect(page.locator('#details-birth-year')).toBeVisible();
+      }
+      expect(await scan(page)).toEqual([]);
     });
 
     test('the empty diary has no axe violations', async ({ page, isMobile }) => {

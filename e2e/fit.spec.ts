@@ -15,7 +15,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { en, pt } from '../src/i18n/messages';
-import { loadBackup, watch } from './helpers';
+import { FULL_PROFILE, loadBackup, watch, yearBackup } from './helpers';
 
 const SIZES = [
   { width: 320, height: 568 },
@@ -460,15 +460,21 @@ for (const language of LANGUAGES) {
     test('Analysis fits with every card open, and each card’s options', async ({ page }) => {
       const { check } = await watchHere(page);
       await page.goto(home);
-      await loadBackup(page);
+      // With a year of birth and a sex: the body composition card shows every estimate.
+      await loadBackup(page, yearBackup(365, FULL_PROFILE));
       await show(page, 'analysis');
       const toggles = page.locator('#view-analysis .acard-toggle');
       const count = await toggles.count();
-      expect(count).toBeGreaterThanOrEqual(8);
+      expect(count).toBeGreaterThanOrEqual(9);
       for (let i = 0; i < count; i++) {
         const toggle = toggles.nth(i);
         if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
       }
+      // The body composition card's About the formulas, closed on a phone, open too.
+      await expect(page.locator('#body-about-toggle')).toHaveAttribute('aria-expanded', 'false');
+      await page.locator('#body-about-toggle').tap();
+      await expect(page.locator('#body-about-panel')).toBeVisible();
+      await expect(page.locator('.body-chips button')).toHaveCount(4);
       // The compound rate at Detailed too: its curve and the simulator's table.
       await page.locator('#rate-options-button').tap();
       await page.getByRole('dialog').getByRole('button', { name: language.detailed, exact: true }).tap();
@@ -477,6 +483,11 @@ for (const language of LANGUAGES) {
       await afterSheet(page);
       await expect(page.locator('#sim-title')).toBeVisible();
       await expectFits(page, 'Analysis, every card open');
+      // BMR has the longest readout (three lines in Portuguese at 320 px and 150%).
+      await page.locator('.body-chips button').last().tap();
+      await expect(page.locator('#body-chart-name')).toContainText(/Mifflin-St Jeor/);
+      await expectFits(page, 'Analysis, with BMR on the body composition chart');
+      await sheetFits(page, '#body-change-button', 'the Change details sheet');
       const options = await page
         .locator('#view-analysis .options-button')
         .evaluateAll((buttons) => buttons.filter((b) => b.getClientRects().length > 0).map((b) => b.id));
@@ -497,6 +508,22 @@ for (const language of LANGUAGES) {
       await sheetFits(page, '#sections-panel-button', 'the Sections sheet');
       await sheetFits(page, '#settings-goal', 'the Goal sheet');
       await sheetFits(page, '#settings-height', 'the Height sheet');
+      await sheetFits(page, '#settings-birth-year', 'the Year of birth sheet');
+      // A year refused: the sheet with its message.
+      await page.locator('#settings-birth-year').tap();
+      await page.locator('#data-birth-year').fill('2015');
+      await page.locator('#data-birth-year').press('Enter');
+      await expect(page.locator('#data-birth-year')).toHaveAttribute('aria-invalid', 'true');
+      await expectFits(page, 'the Year of birth sheet with a year refused');
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.sheet-layer')).toBeHidden();
+      await afterSheet(page);
+      // The sex chosen in its row: the row and the note under the group.
+      await page.locator('#settings-sex').selectOption('female');
+      await expect(page.locator('#settings-sex + .row-face')).toContainText(
+        lang === 'en' ? 'Female' : 'Feminino',
+      );
+      await expectFits(page, 'Your data with the sex chosen');
       await sheetFits(page, '#data-erase', 'the Erase sheet');
       // The day sheet with the longest weight, in kg and in lb, then its delete's Undo notice.
       for (const unit of ['kg', 'lb']) {
@@ -513,6 +540,93 @@ for (const language of LANGUAGES) {
       await page.locator('#day-delete').tap();
       await expect(page.locator('.toast')).toBeVisible();
       await expectFits(page, 'Your data with the Undo notice');
+      await check();
+    });
+
+    test('the body composition chips share one row from 375 px, and two rows of two below', async ({
+      page,
+    }) => {
+      const { check } = await watchHere(page);
+      await page.goto(home);
+      await loadBackup(page, yearBackup(365, FULL_PROFILE));
+      await show(page, 'analysis');
+      await page.locator('#body-toggle').tap();
+      const chips = page.locator('.body-chips button');
+      await expect(chips).toHaveCount(4);
+      /** Each chip's top and width, rounded. */
+      const boxes = () =>
+        chips.evaluateAll((all) =>
+          all.map((c) => {
+            const r = c.getBoundingClientRect();
+            return { top: Math.round(r.top), width: Math.round(r.width) };
+          }),
+        );
+      for (const width of [375, 390, 430]) {
+        await page.setViewportSize({ width, height: 844 });
+        await settle(page);
+        const tops = new Set((await boxes()).map((b) => b.top));
+        expect.soft(tops.size, `the chips at ${String(width)} px share one row`).toBe(1);
+      }
+      // At 320 px with text 150%: two equal rows of two, never a lone chip across the card.
+      await page.setViewportSize({ width: 320, height: 568 });
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = '150%';
+      });
+      await settle(page);
+      const small = await boxes();
+      expect(new Set(small.map((b) => b.top)).size).toBe(2);
+      expect(new Set(small.map((b) => b.width)).size).toBe(1);
+      await check();
+    });
+
+    test('a refusal in Change details shows on the screen, next to its field, with large text', async ({
+      page,
+    }) => {
+      const { check } = await watchHere(page);
+      await page.goto(home);
+      await loadBackup(page);
+      await show(page, 'analysis');
+      await page.locator('#body-toggle').tap();
+      await page.setViewportSize({ width: 320, height: 568 });
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = '150%';
+      });
+      await settle(page);
+      await page.locator('#body-change-button').tap();
+      await page.locator('#details-birth-year').fill('2015');
+      await page.locator('.sheet button[type=submit]').tap();
+      const error = page.locator('#details-birth-year-error');
+      await expect(error).toBeVisible();
+      await expect(error).toBeInViewport();
+      await expect(page.locator('#details-birth-year')).toBeFocused();
+      await check();
+    });
+
+    test('the body composition card fits when it asks for its details, and as a single estimate', async ({
+      page,
+    }) => {
+      const { check } = await watchHere(page);
+      await page.goto(home);
+      // A height and no sex: the card lists what it needs, with Change details.
+      await loadBackup(page);
+      await show(page, 'analysis');
+      await page.locator('#body-toggle').tap();
+      await expect(page.locator('.body-needs li')).toHaveCount(3);
+      await expectFits(page, 'the body composition card asking for its details');
+      await sheetFits(page, '#body-change-button', 'the Change details sheet, empty');
+      // A man without a year of birth: lean mass alone, no chips.
+      await page.locator('#body-change-button').tap();
+      await page.locator('#details-sex-male').check();
+      await page.locator('.sheet button[type=submit]').tap();
+      await expect(page.locator('#details-status')).toHaveText(
+        lang === 'en' ? 'Details saved.' : 'Informações salvas.',
+      );
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.sheet-layer')).toBeHidden();
+      await afterSheet(page);
+      await expect(page.locator('.body-row')).toHaveCount(4);
+      await expect(page.locator('.body-chips button')).toHaveCount(0);
+      await expectFits(page, 'the body composition card with lean mass alone');
       await check();
     });
 

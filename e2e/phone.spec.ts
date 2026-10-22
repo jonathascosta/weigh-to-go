@@ -463,7 +463,7 @@ test('sets the language, the units and the sections from Your data', async ({ pa
   const sheet = page.getByRole('dialog', { name: 'Sections' });
   await sheet.getByRole('button', { name: 'Calendar' }).tap();
   await sheet.getByRole('button', { name: 'Done' }).first().tap();
-  await expect(page.locator('#sections-panel-button')).toContainText('12 of 13 shown');
+  await expect(page.locator('#sections-panel-button')).toContainText('13 of 14 shown');
   await page.locator('#setting-lang').selectOption('pt');
   await expect(page.locator('#view-data-title')).toHaveText('Seus dados');
   // The footer's words are in About on a phone.

@@ -26,20 +26,77 @@ const ok = (text: string) => {
 describe('createBackup and parseBackup', () => {
   it('round-trip every weigh-in and the profile, unrounded', () => {
     const weighIns = [w('2026-10-17', 109.1), w('2026-10-18', 176.2 * 0.45359237)];
-    const text = createBackup(weighIns, { goalKg: 90, heightCm: 178 }, now);
+    const text = createBackup(weighIns, { goalKg: 90, heightCm: 178, birthYear: null, sex: null }, now);
     expect(JSON.parse(text)).toMatchObject({ app: 'weigh-to-go', format: 1, exportedAt: now.toISOString() });
     const parsed = ok(text);
     expect(parsed).toEqual({
       ok: true,
       source: 'backup',
       weighIns,
-      profile: { goalKg: 90, heightCm: 178 },
+      profile: { goalKg: 90, heightCm: 178, birthYear: null, sex: null },
       skipped: 0,
     });
   });
 
   it('names the file after the day', () => {
     expect(backupFileName(today)).toBe('weigh-to-go-2026-10-19.json');
+  });
+
+  it('carry the year of birth and sex, and read an older backup without them', () => {
+    const profile = { goalKg: 90, heightCm: 178, birthYear: 1983, sex: 'female' as const };
+    const text = createBackup([w('2026-10-17', 100)], profile, now);
+    expect((JSON.parse(text) as { profile: unknown }).profile).toEqual(profile);
+    expect(ok(text).profile).toEqual(profile);
+    // A backup made before they existed: none, the rest as it was.
+    const older = JSON.stringify({
+      app: 'weigh-to-go',
+      format: 1,
+      weighIns: [w('2026-10-17', 100)],
+      profile: { goalKg: 90, heightCm: 178 },
+    });
+    expect(ok(older).profile).toEqual({ goalKg: 90, heightCm: 178, birthYear: null, sex: null });
+    // Only these alone still make a profile, and a backup without weigh-ins.
+    expect(
+      ok(createBackup([], { goalKg: null, heightCm: null, birthYear: null, sex: 'male' }, now)).profile,
+    ).toEqual({ goalKg: null, heightCm: null, birthYear: null, sex: 'male' });
+  });
+
+  it('keep only a valid year of birth and sex', () => {
+    const read = (birthYear: unknown, sex: unknown) =>
+      ok(
+        JSON.stringify({
+          app: 'weigh-to-go',
+          format: 1,
+          weighIns: [w('2026-10-17', 100)],
+          profile: { goalKg: 90, heightCm: null, birthYear, sex },
+        }),
+      ).profile;
+    for (const [year, sex] of [
+      [1983.5, 'other'],
+      ['1983', 'Male'],
+      [1899, 'f'],
+      // Not a year of birth yet, even with a year of slack for a clock behind.
+      [new Date().getFullYear() + 2, ''],
+      [null, null],
+    ])
+      expect(read(year, sex), String(year)).toEqual({
+        goalKg: 90,
+        heightCm: null,
+        birthYear: null,
+        sex: null,
+      });
+    expect(read(1926, 'female')).toEqual({ goalKg: 90, heightCm: null, birthYear: 1926, sex: 'female' });
+    // A year saved long ago stays: the bound below never moves.
+    expect(read(1900, 'male')).toEqual({ goalKg: 90, heightCm: null, birthYear: 1900, sex: 'male' });
+    // A year saved on a device whose clock is ahead (or this one's behind) is still read: only the
+    // year typed in is held to an adult's.
+    const next = new Date().getFullYear() + 1;
+    expect(read(next - 18, 'male')).toEqual({
+      goalKg: 90,
+      heightCm: null,
+      birthYear: next - 18,
+      sex: 'male',
+    });
   });
 
   it('skips rows that are not weigh-ins, counting them', () => {
@@ -56,12 +113,12 @@ describe('createBackup and parseBackup', () => {
         null,
         w('2026-10-17', 108.8),
       ],
-      profile: { goalKg: 10, heightCm: 178 },
+      profile: { goalKg: 10, heightCm: 178, birthYear: null, sex: null },
     });
     const parsed = ok(text);
     expect(parsed.weighIns).toEqual([w('2026-10-17', 108.8)]);
     expect(parsed.skipped).toBe(7);
-    expect(parsed.profile).toEqual({ goalKg: null, heightCm: 178 });
+    expect(parsed.profile).toEqual({ goalKg: null, heightCm: 178, birthYear: null, sex: null });
   });
 
   it('allows a day of slack for a time zone ahead', () => {
@@ -113,9 +170,9 @@ describe('createBackup and parseBackup', () => {
   });
 
   it('takes a backup with no weigh-ins when it holds a goal or height', () => {
-    const parsed = ok(createBackup([], { goalKg: 90, heightCm: null }, now));
+    const parsed = ok(createBackup([], { goalKg: 90, heightCm: null, birthYear: null, sex: null }, now));
     expect(parsed.weighIns).toEqual([]);
-    expect(parsed.profile).toEqual({ goalKg: 90, heightCm: null });
+    expect(parsed.profile).toEqual({ goalKg: 90, heightCm: null, birthYear: null, sex: null });
   });
 
   it('leaves the profile alone when the file has none, or nothing valid in it', () => {
@@ -142,12 +199,12 @@ describe('createBackup and parseBackup', () => {
       pesagens: [{ data: '2026-10-18', peso: 108 }],
       config: [{ id: 'config/perfil', data: { meta: 88, altura: 175 } }],
     });
-    expect(ok(text).profile).toEqual({ goalKg: 88, heightCm: 175 });
+    expect(ok(text).profile).toEqual({ goalKg: 88, heightCm: 175, birthYear: null, sex: null });
   });
 
   it('takes a height in metres without float noise', () => {
     const text = JSON.stringify({ pesagens: [{ data: '2026-10-18', peso: 108 }], perfil: { altura: 1.1 } });
-    expect(ok(text).profile).toEqual({ goalKg: null, heightCm: 110 });
+    expect(ok(text).profile).toEqual({ goalKg: null, heightCm: 110, birthYear: null, sex: null });
   });
 
   it('refuses a today that is not a day', () => {
@@ -169,7 +226,7 @@ describe('createBackup and parseBackup', () => {
       ['2026-10-18', 108.7],
     ]);
     expect(parsed.skipped).toBe(1);
-    expect(parsed.profile).toEqual({ goalKg: 90, heightCm: 178 });
+    expect(parsed.profile).toEqual({ goalKg: 90, heightCm: 178, birthYear: null, sex: null });
   });
 
   it("reads the original's profile under perfil", () => {
@@ -177,14 +234,19 @@ describe('createBackup and parseBackup', () => {
       pesagens: [{ data: '2026-10-18', peso: 108 }],
       perfil: { meta: 85, altura: 180 },
     });
-    expect(ok(text).profile).toEqual({ goalKg: 85, heightCm: 180 });
+    expect(ok(text).profile).toEqual({ goalKg: 85, heightCm: 180, birthYear: null, sex: null });
   });
 });
 
 describe('importBackup', () => {
   const setup = async () => {
     const store = memoryStore();
-    await store.put([w('2026-10-10', 111), w('2026-10-17', 109)], { goalKg: 90, heightCm: 178 });
+    await store.put([w('2026-10-10', 111), w('2026-10-17', 109)], {
+      goalKg: 90,
+      heightCm: 178,
+      birthYear: null,
+      sex: null,
+    });
     return store;
   };
 
@@ -192,7 +254,7 @@ describe('importBackup', () => {
     const store = await setup();
     const text = createBackup(
       [w('2026-10-17', 108.5), w('2026-10-18', 108)],
-      { goalKg: 85, heightCm: null },
+      { goalKg: 85, heightCm: null, birthYear: null, sex: null },
       now,
     );
     await importBackup(store, ok(text), 'merge');
@@ -201,21 +263,21 @@ describe('importBackup', () => {
       ['2026-10-17', 108.5],
       ['2026-10-18', 108],
     ]);
-    expect(await store.profile()).toEqual({ goalKg: 85, heightCm: 178 });
+    expect(await store.profile()).toEqual({ goalKg: 85, heightCm: 178, birthYear: null, sex: null });
   });
 
   it("merges the original's rows without touching the profile", async () => {
     const store = await setup();
     await importBackup(store, ok(JSON.stringify([{ data: '2026-10-18', peso: 108 }])), 'merge');
     expect(await store.weighIns()).toHaveLength(3);
-    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 178 });
+    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 178, birthYear: null, sex: null });
   });
 
   it('merges: a day saved here after the file was made keeps its weigh-in', async () => {
     const store = await setup();
     const old = createBackup(
       [w('2026-10-17', 110, '2026-10-01T08:00:00.000Z')],
-      { goalKg: null, heightCm: null },
+      { goalKg: null, heightCm: null, birthYear: null, sex: null },
       now,
     );
     expect(await importBackup(store, ok(old), 'merge')).toEqual({
@@ -225,7 +287,7 @@ describe('importBackup', () => {
       unchanged: 0,
     });
     expect((await store.weighIns()).find((x) => x.date === '2026-10-17')!.kg).toBe(109);
-    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 178 });
+    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 178, birthYear: null, sex: null });
   });
 
   it('reports a backup imported twice as unchanged', async () => {
@@ -245,18 +307,52 @@ describe('importBackup', () => {
       await importBackup(store, ok(JSON.stringify([{ data: '2026-10-18', peso: 108 }])), 'replace'),
     ).toBeNull();
     expect((await store.weighIns()).map((x) => x.date)).toEqual(['2026-10-18']);
-    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 178 });
+    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 178, birthYear: null, sex: null });
+  });
+
+  it('merges the year of birth and sex like the other fields: given replaces, missing keeps', async () => {
+    const store = await setup();
+    await importBackup(
+      store,
+      ok(
+        createBackup(
+          [w('2026-10-18', 108)],
+          { goalKg: null, heightCm: null, birthYear: 1983, sex: 'male' },
+          now,
+        ),
+      ),
+      'merge',
+    );
+    expect(await store.profile()).toEqual({ goalKg: 90, heightCm: 178, birthYear: 1983, sex: 'male' });
+    // An older backup, without them, keeps the ones here.
+    const older = JSON.stringify({
+      app: 'weigh-to-go',
+      format: 1,
+      weighIns: [w('2026-10-19', 107)],
+      profile: { goalKg: 88, heightCm: 180 },
+    });
+    await importBackup(store, ok(older), 'merge');
+    expect(await store.profile()).toEqual({ goalKg: 88, heightCm: 180, birthYear: 1983, sex: 'male' });
+    // Replace takes the file's profile whole: an older backup's has none.
+    await importBackup(store, ok(older), 'replace');
+    expect(await store.profile()).toEqual({ goalKg: 88, heightCm: 180, birthYear: null, sex: null });
   });
 
   it('replaces everything with a backup, profile included', async () => {
     const store = await setup();
     await importBackup(
       store,
-      ok(createBackup([w('2026-10-18', 108)], { goalKg: null, heightCm: 170 }, now)),
+      ok(
+        createBackup(
+          [w('2026-10-18', 108)],
+          { goalKg: null, heightCm: 170, birthYear: null, sex: null },
+          now,
+        ),
+      ),
       'replace',
     );
     expect((await store.weighIns()).map((x) => x.date)).toEqual(['2026-10-18']);
-    expect(await store.profile()).toEqual({ goalKg: null, heightCm: 170 });
+    expect(await store.profile()).toEqual({ goalKg: null, heightCm: 170, birthYear: null, sex: null });
   });
 });
 
