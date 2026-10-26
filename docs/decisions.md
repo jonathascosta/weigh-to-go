@@ -1348,3 +1348,29 @@ Choices made while preparing the first submission, open to the owner under decis
      the user (Google calls it "user-associated") and the rest not (it calls the crash logs
      "non-user related"); the crash logs also serve App Functionality. Other Diagnostic Data isn't
      on the page, so it isn't declared.
+
+## 26 October 2026 · The adaptive banner, and the banner only
+
+179. **The banner is Google's anchored adaptive banner** (the owner's call, 26 October 2026,
+     after simulations of four sizes: 320 × 50, adaptive, 320 × 100 and a fifth of the screen).
+     It changes decision 125's size. The request asks for `ADAPTIVE_BANNER` (still `npa`, at the
+     top, `margin` 0): the screen's full width and a height Google picks for it, between 50 and
+     90 pt and at most 15% of the screen, about 67 pt on a 430-pt-wide iPhone. It fills the width
+     the 320 × 50 left empty on both sides, and it is the size Google recommends. A fifth of the
+     screen was set aside: Google's anchored banners stop at 15% (the medium rectangle that would
+     reach it is meant for the middle of the content), and it would shrink the charts. The band
+     keeps decision 125's promise, so the page doesn't move when the banner comes: it is reserved
+     as the banner is asked for, at the height the plugin last reported (kept with the screen
+     preferences under the same key, a number now; the old "band up" reads as the estimate), or,
+     before any, at an estimate of about 50 pt per 320 pt of width within Google's bounds
+     (`band.ts`); the size event corrects it. The fit test checks the app with the tallest band,
+     90 px.
+     - **Interstitials: none.** On 22 October 2026 the owner considered a full-screen ad on tab
+       changes, at most every 5 minutes, and set it aside after the session's advice (nearly one per
+       visit, in a diary used for a minute a day, at the moment the person checks their progress,
+       and close to what AdMob's policy forbids): the app keeps one banner only. Ads between the
+       content's sections are an open question of the owner's, not planned.
+     - **Device ID linked to the user.** In App Store Connect's App Privacy (STORE.md, step 9) the
+       owner declared the Device ID linked to the user, on 22 October 2026, the safer answer since
+       it travels with the performance data Google calls "user-associated"; decision 178's table
+       said not linked, and step 9 now says linked.

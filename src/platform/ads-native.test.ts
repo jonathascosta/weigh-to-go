@@ -19,7 +19,7 @@ vi.mock('@capacitor/core', () => ({
 vi.mock('@capacitor-community/admob', () => ({
   BannerAdPluginEvents: { SizeChanged: 'bannerAdSizeChanged', Loaded: 'bannerAdLoaded', FailedToLoad: 'x' },
   BannerAdPosition: { TOP_CENTER: 'TOP_CENTER' },
-  BannerAdSize: { BANNER: 'BANNER' },
+  BannerAdSize: { ADAPTIVE_BANNER: 'ADAPTIVE_BANNER' },
   AdMob: {
     hideBanner: () => {
       calls.push('hide');
@@ -65,11 +65,17 @@ describe('the banner on a static page', () => {
 });
 
 describe('the plugin, as the ads call it', () => {
-  it('asks for a non-personalised 320 × 50 banner at the top, and starts the SDK with no tracking', async () => {
-    await admob.showBanner({ adId: 'u', adSize: 'BANNER', position: 'TOP_CENTER', margin: 0, npa: true });
+  it('asks for a non-personalised adaptive banner at the top, and starts the SDK with no tracking', async () => {
+    await admob.showBanner({
+      adId: 'u',
+      adSize: 'ADAPTIVE_BANNER',
+      position: 'TOP_CENTER',
+      margin: 0,
+      npa: true,
+    });
     await admob.initialize();
     expect(calls).toEqual([
-      'show {"adId":"u","adSize":"BANNER","position":"TOP_CENTER","margin":0,"npa":true}',
+      'show {"adId":"u","adSize":"ADAPTIVE_BANNER","position":"TOP_CENTER","margin":0,"npa":true}',
       'start {}',
     ]);
   });

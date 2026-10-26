@@ -435,7 +435,7 @@ describe('the ads with Remove ads (story 2)', () => {
       doc: document,
       now: () => LAUNCHED + FIRST_DAYS * 86_400_000,
       firstLaunch: memory<number | null>(LAUNCHED),
-      band: memory(false),
+      band: memory(0),
     });
     return ads;
   };

@@ -196,13 +196,15 @@ de consentimento.
    (`privacy.ads.collects`); onde a página disser outra coisa, a sessão muda a política e a data
    dela. Depois responda pelo SDK de anúncios do Google, seguindo essa página, para anúncios não
    personalizados sem rastreamento. A página do Google diz quais dados ficam ligados à pessoa: os
-   registros de falhas não, os dados de desempenho sim. Para cada tipo abaixo, Used for tracking:
-   No, e Linked to the user's identity como a tabela diz:
+   registros de falhas não, os dados de desempenho sim. O ID do aparelho vai ao Google com os dados
+   de desempenho, então também é declarado ligado à pessoa, a resposta mais segura (sua escolha no
+   App Store Connect, 22 de outubro de 2026; decisão 179). Para cada tipo abaixo, Used for
+   tracking: No, e Linked to the user's identity como a tabela diz:
 
    | Categoria › tipo                                         | Linked to the user | Propósitos                                            |
    | -------------------------------------------------------- | ------------------ | ----------------------------------------------------- |
    | Location › Coarse Location (do endereço IP)              | Não                | Third-Party Advertising, Analytics                    |
-   | Identifiers › Device ID                                  | Não                | Third-Party Advertising, Analytics                    |
+   | Identifiers › Device ID                                  | **Sim**            | Third-Party Advertising, Analytics                    |
    | Usage Data › Product Interaction                         | Não                | Third-Party Advertising, Analytics                    |
    | Usage Data › Advertising Data                            | Não                | Third-Party Advertising, Analytics                    |
    | Diagnostics › Crash Data ("non-user related crash logs") | Não                | App Functionality, Third-Party Advertising, Analytics |
