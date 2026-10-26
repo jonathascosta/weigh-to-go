@@ -313,10 +313,15 @@ de consentimento.
        mais dentro dos 3 primeiros dias: ela não contata nenhum domínio do Google.
     6. **O caminho do revisor até o banner.** Na mesma instalação nova, com as pesagens, siga as
        notas: a data 4 dias adiantada, o app fechado no seletor e aberto de novo: o banner de teste
-       do Google aparece no topo (em Portugal, antes a mensagem do Google). Ligue Ajustar
-       Automaticamente de novo. Se nenhum banner aparecer, não submeta: avise uma sessão. Depois
-       importe o seu backup (Seus dados, Importar backup, Substituir tudo), ou guarde esta instalação
-       de lado se for gravar o item 9 em outro iPhone.
+       do Google aparece no topo (em Portugal, antes a mensagem do Google). Olhe-o com atenção, já
+       que ninguém viu ainda o banner adaptativo num iPhone (decisão 179): ele ocupa a largura toda,
+       logo abaixo da barra de status, e a barra do "Weigh to Go" começa logo abaixo dele, sem faixa
+       vazia entre os dois e sem nada da barra coberto; fechado no seletor e aberto de novo, a
+       página não pula quando o banner chega. Ligue Ajustar Automaticamente de novo. Se nenhum
+       banner aparecer, ou se ele deixar uma faixa vazia, cobrir a barra ou a página pular, não
+       submeta: avise uma sessão, com uma captura de tela. Depois importe o seu backup (Seus dados,
+       Importar backup, Substituir tudo), ou guarde esta instalação de lado se for gravar o item 9
+       em outro iPhone.
     7. **Escolha o build.** Na página da versão, Build, adicione o build do item 2. Antes de salvar,
        abra o link de comparação no resumo da execução dele: "There isn't anything to compare"
        quer dizer que o `main` não andou desde então, e o build é o `main` atual. Se o `main` andou,
