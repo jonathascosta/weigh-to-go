@@ -814,8 +814,9 @@ for (const { lang, locale, home } of LANGUAGES)
       });
   });
 
-// The iPhone app with its banner's band (design §8): `--ad-h` at the banner's 50 px under a
-// notched phone's status bar (safe area 47 px at the top, 34 at the bottom). Nothing of the page
+// The iPhone app with its banner's band (design §8): `--ad-h` at the adaptive banner's greatest
+// height, 90 px (decision 179; a band that fits at its tallest fits at any), under a notched phone's
+// status bar (safe area 47 px at the top, 34 at the bottom). Nothing of the page
 // starts under the band at the top of a view, every sheet stops 32 px below it, and every
 // focused control clears it (a box taller than the room below it, a table, can't: its top must).
 test.describe("the iPhone app with its banner's band", () => {
@@ -848,13 +849,13 @@ test.describe("the iPhone app with its banner's band", () => {
         await loadBackup(page);
         await page.evaluate((t) => {
           document.documentElement.style.fontSize = t === 100 ? '' : `${String(t)}%`;
-          document.documentElement.style.setProperty('--ad-h', '50px');
+          document.documentElement.style.setProperty('--ad-h', '90px');
         }, text);
         const bandBottom = await page
           .locator('.ad-space')
           .evaluate((el) => el.getBoundingClientRect().bottom);
         // The safe area and the banner: the band is really there.
-        expect(bandBottom).toBeGreaterThanOrEqual(sideways ? 50 : 97);
+        expect(bandBottom).toBeGreaterThanOrEqual(sideways ? 90 : 137);
         const problems: string[] = [];
 
         for (const view of ['today', 'progress', 'analysis', 'data']) {
@@ -924,14 +925,14 @@ test.describe("the iPhone app with its banner's band", () => {
       });
 });
 
-// A launch after one with the band up (decision 125): the band is there before the diary is, so
-// the page never moves when the banner comes.
+// A launch after one with the band up (decisions 125 and 179): the band is there, at the height the
+// banner had, before the diary is, so the page never moves when the banner comes.
 test('starts the iPhone app with the band up when it was up last time', async ({ page }) => {
   test.skip(test.info().project.name !== 'ios', "The band is the iPhone app's only.");
   const { check } = await watchHere(page);
   await page.addInitScript(() => {
     try {
-      localStorage.setItem('weigh-to-go:adBand', 'true');
+      localStorage.setItem('weigh-to-go:adBand', '66');
     } catch {
       // Without storage there is nothing to remember.
     }
@@ -944,6 +945,6 @@ test('starts the iPhone app with the band up when it was up last time', async ({
   });
   await page.goto('/');
   await expect(page.locator('#entry-weight')).toBeVisible();
-  expect(await page.evaluate(() => (window as unknown as { bandAtField?: string }).bandAtField)).toBe('50px');
+  expect(await page.evaluate(() => (window as unknown as { bandAtField?: string }).bandAtField)).toBe('66px');
   await check();
 });

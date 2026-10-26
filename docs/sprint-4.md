@@ -67,7 +67,9 @@ both change together, in the same pull request.
    on a device: the consent message, the
    banner's place under the status bar, and its hiding; the simulator run starts with an empty
    diary, so it reaches none of Google's code. The first days are 3 since 22 October 2026, not 7
-   (`FIRST_DAYS`, decision 177).
+   (`FIRST_DAYS`, decision 177). Since 26 October 2026 the banner is Google's anchored adaptive
+   banner, across the whole width, and the band takes the height it had last time, or an estimate
+   for the screen before it has any (`band.ts`, decision 179).
 
 2. **Remove ads, once and for good.** A non-consumable in-app purchase,
    `net.jonathas.weightogo.removeads`, at the price the owner sets in App Store Connect. Checked on

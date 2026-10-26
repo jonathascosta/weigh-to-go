@@ -116,8 +116,8 @@ export interface AdsOptions {
   readonly doc: Document;
   readonly now?: () => number;
   readonly firstLaunch?: Pref<number | null>;
-  /** Whether the band was up last time (band.ts). */
-  readonly band?: Pref<boolean>;
+  /** The band's height last time, 0 for none (band.ts). */
+  readonly band?: Pref<number>;
   readonly onError?: (error: unknown) => void;
 }
 
@@ -175,7 +175,7 @@ export function startAds(options: AdsOptions): Ads {
   const noBand = () => {
     if (banner) return;
     setBand(doc, 0);
-    band.write(false);
+    band.write(0);
   };
   const start = () =>
     (starting ??= api.initialize().then(

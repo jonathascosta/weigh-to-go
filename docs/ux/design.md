@@ -883,13 +883,19 @@ a compra aqui." States the table didn't have:
 ## 8 · The iPhone app's banner (Sprint 4)
 
 Screenshots: [11](design/11-today-375x667-app-banner.png) and [20](design/20-data-390-app.png) show
-the reserved space, hatched.
+the reserved space, hatched; [28](design/28-today-390-app-banner-adaptive.png) and
+[29](design/29-today-320-app-banner-adaptive.png) show the 320 × 50 banner beside the adaptive one
+(decision 179), light and dark, the ad drawn as a blue box.
 
 - **Where.** The banner is a native AdMob view laid over the web view, at the **top**, under the
-  status bar, centred. A standard 320 × 50 banner fits every iPhone width.
+  status bar, across the whole width: Google's anchored adaptive banner (decision 179), whose
+  height Google picks for the width, between 50 and 90 pt and never above 15% of the screen (about
+  67 pt on a 430-pt-wide iPhone). Until 26 October 2026 it was a standard 320 × 50 banner, centred.
 - **The page reserves its height with a token, `--ad-h`:**
-  - It is 0 on the website. The app sets it on `<html>` from the plugin's size event, and back to 0
-    when there is no banner.
+  - It is 0 on the website. The app sets it on `<html>` as the banner is asked for, at the height
+    the banner had last time (kept with the screen preferences) or, before it has any, an estimate
+    for the screen's width (`band.ts`); the plugin's size event then corrects it to the banner's own
+    height. It goes back to 0 when there is no banner.
   - A fixed, opaque `.ad-space` element sits under the native view. It holds no controls ever, so a
     tap near the ad can't hit anything of ours, and content scrolls beneath it.
   - The app bar, the sheets' maximum height, `scroll-padding-top` and the focused skip link
@@ -1507,7 +1513,8 @@ to 43, and B1 to B19 are 44 to 62. All are open to the owner.
   _Alternative:_ keep a Delete per row, larger, with Undo.
 - **O12.** **Your data's order:** Weigh-ins, Backup, Settings, iPhone app, About, Erase.
   _Alternative:_ Settings first.
-- **O13.** **The ad banner goes at the top**, under the status bar, with 50 pt reserved.
+- **O13.** **The ad banner goes at the top**, under the status bar, with 50 pt reserved (since
+  decision 179, the adaptive banner's own height, 50 to 90 pt).
   _Alternative:_ above the tab bar.
 - **O14.** **When ads first show:** never while the diary is empty, and not in the first 7 days
   after

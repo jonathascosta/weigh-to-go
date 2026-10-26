@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeStorage } from '../data/fake-storage.test-helper';
 import type { Pref } from '../data/prefs';
-import { bandPref, restoreBand } from './band';
+import { bandPref, estimateBannerHeight, restoreBand } from './band';
 import { AD_HEIGHT, mountBanner, type Banner } from './banner';
 import { FakeAdMob } from './fake-admob.test-helper';
 
@@ -20,11 +20,11 @@ const setVisibility = (state: 'visible' | 'hidden') => {
   Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
   document.dispatchEvent(new Event('visibilitychange'));
 };
-const memoryBand = (value = false): Pref<boolean> & { value: boolean } => {
+const memoryBand = (value = 0): Pref<number> & { value: number } => {
   const box = {
     value,
     read: () => box.value,
-    write: (next: boolean) => {
+    write: (next: number) => {
       box.value = next;
       return true;
     },
@@ -41,6 +41,9 @@ beforeEach(() => {
   html.className = 'in-app';
   html.style.removeProperty(AD_HEIGHT);
   Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+  // A 6.9-inch iPhone, 430 × 932 points: the estimate is 67.
+  Object.defineProperty(window, 'innerWidth', { value: 430, configurable: true });
+  Object.defineProperty(window, 'innerHeight', { value: 932, configurable: true });
 });
 afterEach(async () => {
   await banner?.dispose();
@@ -52,62 +55,97 @@ const mount = () => {
   return banner;
 };
 
+describe('the estimate of the banner’s height', () => {
+  it('is about 50 pt per 320 pt of width, between 50 and 90 pt and at most 15% of the screen', () => {
+    expect(estimateBannerHeight(320, 568)).toBe(50);
+    expect(estimateBannerHeight(430, 932)).toBe(67);
+    expect(estimateBannerHeight(200, 932)).toBe(50);
+    expect(estimateBannerHeight(1024, 1366)).toBe(90);
+    // A short window: 15% of 400 is 60.
+    expect(estimateBannerHeight(430, 400)).toBe(60);
+  });
+});
+
 describe('the banner', () => {
   it('asks for nothing until wanted, then one non-personalised banner at the top', () => {
     const b = mount();
     expect(api.calls).toEqual([]);
     b.want(true);
     expect(api.banners).toEqual([
-      { adId: UNIT, adSize: 'BANNER', position: 'TOP_CENTER', margin: 0, npa: true },
+      { adId: UNIT, adSize: 'ADAPTIVE_BANNER', position: 'TOP_CENTER', margin: 0, npa: true },
     ]);
   });
 
-  it('reserves its 50 px band as it is asked for, so the page doesn’t move when it arrives', () => {
+  it('reserves the estimate for the screen as it is asked for, and takes the banner’s own height', () => {
     const b = mount();
     b.want(true);
-    expect(band()).toBe('50px');
-    expect(kept.value).toBe(true);
-    api.load(50);
-    expect(band()).toBe('50px');
+    expect(band()).toBe('67px');
+    expect(kept.value).toBe(67);
+    api.load(66);
+    expect(band()).toBe('66px');
+    expect(kept.value).toBe(66);
+  });
+
+  it('reserves the height the banner had last time, so the page doesn’t move when it arrives', () => {
+    kept.value = 66;
+    const b = mount();
+    b.want(true);
+    expect(band()).toBe('66px');
+    api.load(66);
+    expect(band()).toBe('66px');
   });
 
   it('keeps the band while hidden, and gives it back when no banner is wanted', async () => {
     const b = mount();
     b.want(true);
-    api.load(50);
+    api.load(67);
     html.classList.add('sheet-open');
     await settle();
     // A hide reports 0: the band stays, so nothing jumps.
     api.reportSize(0);
-    expect(band()).toBe('50px');
+    expect(band()).toBe('67px');
+    expect(kept.value).toBe(67);
     b.want(false);
     expect(band()).toBe('0px');
-    expect(kept.value).toBe(false);
+    expect(kept.value).toBe(0);
     expect(api.calls.at(-1)).toBe('remove');
   });
 
   it('keeps the empty band when a banner fails while shown, and lets it go only out of sight', () => {
     const b = mount();
     b.want(true);
-    api.load(50);
+    api.load(67);
     api.fail();
-    expect(band()).toBe('50px');
+    expect(band()).toBe('67px');
     setVisibility('hidden');
     expect(band()).toBe('0px');
     // Back in the app: asked for again, the band first.
     setVisibility('visible');
-    expect(band()).toBe('50px');
+    expect(band()).toBe('67px');
     expect(api.banners).toHaveLength(2);
   });
 
-  it('starts with the band up when it was up last time, and not otherwise', () => {
-    vi.stubGlobal('localStorage', fakeStorage());
+  it('starts with the band at its height last time, and none otherwise', () => {
+    const storage = fakeStorage();
+    vi.stubGlobal('localStorage', storage);
     try {
       restoreBand(document);
       expect(band()).toBe('');
-      bandPref.write(true);
+      bandPref.write(66);
       restoreBand(document);
-      expect(band()).toBe('50px');
+      expect(band()).toBe('66px');
+      bandPref.write(0);
+      html.style.removeProperty(AD_HEIGHT);
+      restoreBand(document);
+      expect(band()).toBe('');
+      // Kept before the adaptive banner: only whether the band was up; up reads as the estimate.
+      storage.setItem('weigh-to-go:adBand', 'true');
+      expect(bandPref.read()).toBe(67);
+      storage.setItem('weigh-to-go:adBand', 'false');
+      expect(bandPref.read()).toBe(0);
+      // A height no banner of this kind has is not kept.
+      bandPref.write(250);
+      expect(bandPref.read()).toBe(0);
     } finally {
       vi.unstubAllGlobals();
     }

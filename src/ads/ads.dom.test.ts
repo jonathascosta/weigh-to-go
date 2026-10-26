@@ -69,9 +69,9 @@ const TESTFLIGHT: BuildAds = {
 let api: FakeAdMob;
 let diary: FakeDiary;
 let ads: Ads | null;
-let band: Pref<boolean> & { value: boolean };
+let band: Pref<number> & { value: number };
 beforeEach(() => {
-  band = memory(false);
+  band = memory(0);
   api = new FakeAdMob();
   diary = new FakeDiary();
   ads = null;
@@ -119,7 +119,7 @@ describe('the ads at launch', () => {
     await ads.settled();
     expect(api.calls).toEqual(['info', 'start', 'show']);
     expect(api.banners).toEqual([
-      { adId: TEST_BANNER_UNIT, adSize: 'BANNER', position: 'TOP_CENTER', margin: 0, npa: true },
+      { adId: TEST_BANNER_UNIT, adSize: 'ADAPTIVE_BANNER', position: 'TOP_CENTER', margin: 0, npa: true },
     ]);
   });
 
@@ -330,19 +330,19 @@ describe('the band at launch', () => {
   const height = () => html.style.getPropertyValue(AD_HEIGHT);
 
   it('stays up from last time while the banner is asked for', async () => {
-    band.value = true;
-    html.style.setProperty(AD_HEIGHT, '50px');
+    band.value = 66;
+    html.style.setProperty(AD_HEIGHT, '66px');
     const { ads } = start();
     await ads.settled();
-    expect(height()).toBe('50px');
-    expect(band.value).toBe(true);
+    expect(height()).toBe('66px');
+    expect(band.value).toBe(66);
   });
 
   it('goes when this launch shows no banner: the purchase held, the first days, a refusal', async () => {
     for (const setup of ['held', 'early', 'refused'] as const) {
       api = new FakeAdMob();
-      band.value = true;
-      html.style.setProperty(AD_HEIGHT, '50px');
+      band.value = 66;
+      html.style.setProperty(AD_HEIGHT, '66px');
       if (setup === 'refused') {
         api.info = { ...api.info, status: 'OBTAINED', privacyOptionsRequirementStatus: 'REQUIRED' };
       }
@@ -353,7 +353,7 @@ describe('the band at launch', () => {
       });
       await ads.settled();
       expect(height(), setup).toBe('0px');
-      expect(band.value, setup).toBe(false);
+      expect(band.value, setup).toBe(0);
       await ads.stop();
     }
   });

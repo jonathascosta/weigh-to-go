@@ -1,13 +1,13 @@
 /**
- * The iPhone app's banner (docs/ux/design.md §8): a native AdMob view at the top, under the status
- * bar, over the web view. The page reserves its height in `--ad-h` (plus the safe area, in
- * `.ad-space`; band.ts). The banner hides, its band staying so nothing jumps, while a sheet is
+ * The iPhone app's banner (docs/ux/design.md §8): Google's anchored adaptive banner, a native AdMob
+ * view across the top, under the status bar, over the web view (decision 179). The page reserves
+ * its height in `--ad-h` (plus the safe area, in `.ad-space`; band.ts). The banner hides, its band staying so nothing jumps, while a sheet is
  * open, while the keypad is up and during the purchase (classes on `<html>`), and whenever the web
  * view leaves the diary for one of the static pages. Every request is for a non-personalised ad
  * (`npa`), whatever the person consented to (decision 5).
  */
 import type { Pref } from '../data/prefs';
-import { BANNER_HEIGHT, bandPref, setBand } from './band';
+import { bandPref, estimateFor, setBand } from './band';
 
 export { AD_HEIGHT } from './band';
 
@@ -17,7 +17,8 @@ export const HIDING_CLASSES = ['sheet-open', 'typing', 'buying'] as const;
 /** What the banner asks of the plugin: always the same request but for its unit. */
 export interface BannerRequest {
   readonly adId: string;
-  readonly adSize: 'BANNER';
+  /** Google's anchored adaptive banner: the screen's width, a height Google picks for it. */
+  readonly adSize: 'ADAPTIVE_BANNER';
   readonly position: 'TOP_CENTER';
   readonly margin: 0;
   /** Non-personalised, on every request. */
@@ -53,8 +54,8 @@ export interface Banner {
 
 export interface BannerOptions {
   readonly onError?: (error: unknown) => void;
-  /** Whether the band was up last time (band.ts). */
-  readonly band?: Pref<boolean>;
+  /** The band's height last time, 0 for none (band.ts). */
+  readonly band?: Pref<number>;
 }
 
 type Phase = 'off' | 'loading' | 'loaded' | 'failed';
@@ -98,7 +99,7 @@ export function mountBanner(
       }
       // No banner wanted: no band, now or at the next launch.
       setBand(doc, 0);
-      band.write(false);
+      band.write(0);
       return;
     }
     if (phase === 'off') {
@@ -108,11 +109,19 @@ export function mountBanner(
       hidden = false;
       // One request at a time: a new one replaces any still loading.
       pending = 1;
-      // The band first, at the banner's fixed height: the page doesn't move when it arrives.
-      setBand(doc, BANNER_HEIGHT);
-      band.write(true);
+      // The band first, at the height the banner had last time, or the estimate for this screen:
+      // the page doesn't move when it arrives (or, the first time, only by the estimate's error).
+      const height = band.read() || estimateFor(doc);
+      setBand(doc, height);
+      band.write(height);
       call(() =>
-        api.showBanner({ adId: unit, adSize: 'BANNER', position: 'TOP_CENTER', margin: 0, npa: true }),
+        api.showBanner({
+          adId: unit,
+          adSize: 'ADAPTIVE_BANNER',
+          position: 'TOP_CENTER',
+          margin: 0,
+          npa: true,
+        }),
       );
       return;
     }
@@ -147,9 +156,12 @@ export function mountBanner(
   const listen = () => {
     pageHandles.push(
       api.onSize((height) => {
-        // The band is set when the banner is asked for; a size of 0 (our hide, or a failure) leaves
-        // it, so nothing jumps.
-        if (height > 0 && phase !== 'off' && !disposed) setBand(doc, height);
+        // The band is set when the banner is asked for; the banner's own height corrects it, and is
+        // kept for the next launch. A size of 0 (our hide, or a failure) leaves it, so nothing jumps.
+        if (height > 0 && phase !== 'off' && !disposed) {
+          setBand(doc, height);
+          band.write(height);
+        }
       }),
     );
     handles.push(

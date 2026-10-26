@@ -188,13 +188,15 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
    the IP address, and crash and performance data (`privacy.ads.collects`); where the page says
    otherwise, the session changes the policy and its date. Then answer for Google's ad SDK,
    following that page, for non-personalised ads without tracking. Google's page says which data is
-   tied to the user: crash logs are not, performance data is. For each type below, Used for
-   tracking: No, and Linked to the user's identity as the table says:
+   tied to the user: crash logs are not, performance data is. The device ID goes to Google with the
+   performance data, so it is declared linked too, the safer answer (your call in App Store Connect,
+   22 October 2026; decision 179). For each type below, Used for tracking: No, and Linked to the
+   user's identity as the table says:
 
    | Category › type                                          | Linked to the user | Purposes                                              |
    | -------------------------------------------------------- | ------------------ | ----------------------------------------------------- |
    | Location › Coarse Location (from the IP address)         | No                 | Third-Party Advertising, Analytics                    |
-   | Identifiers › Device ID                                  | No                 | Third-Party Advertising, Analytics                    |
+   | Identifiers › Device ID                                  | **Yes**            | Third-Party Advertising, Analytics                    |
    | Usage Data › Product Interaction                         | No                 | Third-Party Advertising, Analytics                    |
    | Usage Data › Advertising Data                            | No                 | Third-Party Advertising, Analytics                    |
    | Diagnostics › Crash Data ("non-user related crash logs") | No                 | App Functionality, Third-Party Advertising, Analytics |
