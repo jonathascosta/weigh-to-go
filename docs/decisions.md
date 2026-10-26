@@ -734,12 +734,12 @@ decisions above.
      it are well formed and unique, and the App Store run fails while it is empty. No id was typed
      or copied, not even Arrows', whose list this session can't check against Google's page.
      _Alternative:_ a JSON file the build turns into Info.plist entries.
-125. **The banner and its band** (revised after DaVinci's review, open to the owner; revised in
-     179: the adaptive banner, its band at the height it had last time). One 320 × 50
-     banner (`BANNER`, as the design asks), at the top, `margin` 0, below the safe area. The band
-     (`--ad-h`) is 50 px **from the moment the banner is asked for**, not from the size event a
-     second or more later, so the page doesn't move when it arrives; the size event only corrects
-     it. It stays while the banner hides (the plugin's 0 for a hide of ours is ignored), and **after
+125. **The banner and its band** (revised after DaVinci's review, open to the owner; revised in 179:
+     the adaptive banner replaces the 320 × 50, and the band takes the height it had last time). One
+     320 × 50 banner (`BANNER`, as the design asks), at the top, `margin` 0, below the safe area.
+     The band (`--ad-h`) is 50 px **from the moment the banner is asked for**, not from the size
+     event a second or more later, so the page doesn't move when it arrives; the size event only
+     corrects it. It stays while the banner hides (the plugin's 0 for a hide of ours is ignored), and **after
      a failure** (no network, no fill, the plugin removing its view): the empty band stays for the
      rest of the session and goes only when the app goes out of sight (`visibilitychange` to
      hidden); back in sight the banner is asked for again, the band first. The app remembers in a
