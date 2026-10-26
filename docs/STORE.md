@@ -299,8 +299,12 @@ name, the agreement for paid apps, the bank and tax details, the AdMob app and i
        contacts no Google domain.
     6. **The reviewer's way to the banner.** On the same fresh install, with its weigh-ins, follow
        the notes: the date 4 days ahead, the app swiped away and opened again: Google's test banner
-       shows at the top (in Portugal, Google's message first). Put Set Automatically back on. If no
-       banner shows, don't submit: tell a session. Then import your backup (Your data, Import
+       shows at the top (in Portugal, Google's message first). Look at it closely, since nobody has
+       yet seen the adaptive banner on an iPhone (decision 179): it spans the whole width and sits on
+       its band, right under the status bar, with no gap below it and without covering the "Weigh to
+       Go" bar; swiped away and opened again, the page doesn't move when the banner arrives. Put Set
+       Automatically back on. If no banner shows, or it doesn't sit on its band, don't submit: tell
+       a session, with a screenshot. Then import your backup (Your data, Import
        backup, Replace everything), or keep this install aside if you record item 9 on another
        iPhone.
     7. **Choose the build.** In the version's page, Build, add the build of item 2. Before saving,

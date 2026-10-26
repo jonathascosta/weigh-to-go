@@ -52,8 +52,8 @@ both change together, in the same pull request.
    `src/ads/` holds the seam (`AdProvider`, `NO_ADS`, the `Entitlement` stub that story 2 replaces),
    the order at launch (`ads.ts`: the purchase, the ad unit, the first days, consent, the SDK, the
    banner; decision 121), the consent (`consent.ts`, a refusal read from the IAB TCF choices,
-   decision 122) and the banner (`banner.ts`: `npa` on every request, `--ad-h` from the size event,
-   hidden under a sheet, the keypad, the purchase's `buying` class and off the diary; decisions 125
+   decision 122) and the banner (`banner.ts`: `npa` on every request, `--ad-h` from the moment the
+   banner is asked for, decisions 125 and 179, hidden under a sheet, the keypad, the purchase's `buying` class and off the diary; decisions 125
    and 126). `platform/ads-native.ts` and `ios/App/App/AdSetupPlugin.swift` are the native side,
    loaded only in the app's build; `check:dist` fails when the website's scripts carry ad code, and
    when a static page of the app's build doesn't hide the banner. Test ads come from the sandbox
@@ -65,7 +65,8 @@ both change together, in the same pull request.
    one with it, a banner taken away while loading is taken away again when it arrives, only App
    Store runs carry the owner's ids, and the fit test checks the app with the band. Not yet checked
    on a device: the consent message, the
-   banner's place under the status bar, and its hiding; the simulator run starts with an empty
+   banner's place under the status bar, the adaptive banner's height against its band, and its
+   hiding; the simulator run starts with an empty
    diary, so it reaches none of Google's code. The first days are 3 since 22 October 2026, not 7
    (`FIRST_DAYS`, decision 177). Since 26 October 2026 the banner is Google's anchored adaptive
    banner, across the whole width, and the band takes the height it had last time, or an estimate
